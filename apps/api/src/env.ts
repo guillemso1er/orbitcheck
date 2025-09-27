@@ -1,0 +1,16 @@
+export const env = {
+    PORT: parseInt(process.env.PORT || "8080", 10),
+    DATABASE_URL: process.env.DATABASE_URL || "postgres://postgres:postgres@localhost:5432/orbicheck",
+    REDIS_URL: process.env.REDIS_URL || "redis://localhost:6379",
+    LOG_LEVEL: process.env.LOG_LEVEL || "info",
+    NOMINATIM_URL: process.env.NOMINATIM_URL || "https://nominatim.openstreetmap.org",
+    LOCATIONIQ_KEY: process.env.LOCATIONIQ_KEY || "",
+    DISPOSABLE_LIST_URL: process.env.DISPOSABLE_LIST_URL || "https://raw.githubusercontent.com/disposable/disposable-email-domains/master/domains.json",
+    SENTRY_DSN: process.env.SENTRY_DSN || "",
+    VIES_WSDL_URL: process.env.VIES_WSDL_URL || "https://ec.europa.eu/taxation_customs/vies/checkVatService.wsdl",
+    RETENTION_DAYS: parseInt(process.env.RETENTION_DAYS || "90", 10),
+    RATE_LIMIT_COUNT: parseInt(process.env.RATE_LIMIT_COUNT || "300", 10),
+    TWILIO_ACCOUNT_SID: process.env.TWILIO_ACCOUNT_SID || "",
+    TWILIO_AUTH_TOKEN: process.env.TWILIO_AUTH_TOKEN || "",
+    TWILIO_PHONE_NUMBER: process.env.TWILIO_PHONE_NUMBER || ""
+};

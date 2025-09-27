@@ -1,0 +1,7 @@
+api.orbicheck.com {
+encode gzip
+reverse_proxy api:8080
+header {
+Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+}
+}
