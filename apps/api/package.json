@@ -10,7 +10,9 @@
         "start": " node dist/server.js",
         "migrate": "node-pg-migrate -m ./migrations up",
         "migrate:create": "node-pg-migrate create -m ./migrations",
-        "db:init": "ts-node ./src/jobs/refreshDisposable.ts"
+        "db:init": "ts-node ./src/jobs/refreshDisposable.ts",
+        "test": "jest",
+        "test:watch": "jest --watch"
     },
     "dependencies": {
         "@fastify/cors": "11.1.0",
@@ -46,6 +48,7 @@
         "@types/pg": "^8.15.5",
         "@types/supertest": "6.0.3",
         "jest": "30.1.3",
+        "jest-pnp-resolver": "^1.2.3",
         "supertest": "7.1.4",
         "ts-jest": "29.4.4",
         "ts-node": "^10.9.2",

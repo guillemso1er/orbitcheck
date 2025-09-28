@@ -33,16 +33,22 @@ export function validateCNPJ(value: string) {
 }
 
 // MX RFC: 12 or 13 chars, mod 11 check digit with charset
-const RFC_CHARS = "0123456789ABCDEFGHIJKLMN&OPQRSTUVWXYZ Ñ";
+const RFC_CHARS = " 0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ&Ñ";
 const RFC_MAP: Record<string, number> = Object.fromEntries(RFC_CHARS.split("").map((c, i) => [c, i]));
 export function validateRFC(value: string) {
     const v = value.trim().toUpperCase();
-    if (!/^[A-Z&Ñ]{3,4}\d{6}[A-Z0-9]{2}\d$/.test(v)) return { valid: false, reason_codes: ["taxid.invalid_format"] };
-    const body = v.slice(0, v.length - 1);
+    if (!/^[A-Z&Ñ]{3,4}\d{6}[A-Z0-9&Ñ]{3}$/.test(v)) return { valid: false, reason_codes: ["taxid.invalid_format"] };
+    if (v.length !== 12 && v.length !== 13) return { valid: false, reason_codes: ["taxid.invalid_format"] };
+    let body: string;
+    if (v.length === 13) {
+      body = v.slice(0, 12);
+    } else {
+      body = v.slice(0, 11);
+    }
     const check = v.slice(-1);
     let sum = 0;
     const weights = [13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2];
-    const pad = (12 - body.length);
+    const pad = 12 - body.length;
     const padded = " ".repeat(pad) + body;
     for (let i = 0; i < 12; i++) { sum += (RFC_MAP[padded[i]] || 0) * weights[i]; }
     const dg = 11 - (sum % 11);
@@ -66,7 +72,7 @@ export function validateCUIT(value: string) {
 
 // CL RUT: digits + K check
 export function validateRUT(value: string) {
-    const v = value.replace(/./g, "").replace(/-/g, "").toUpperCase();
+    const v = value.replace(/\./g, "").replace(/-/g, "").toUpperCase();
     const body = v.slice(0, -1); const dv = v.slice(-1);
     if (!/^\d+$/.test(body)) return { valid: false, reason_codes: ["taxid.invalid_format"] };
     let sum = 0, mul = 2;

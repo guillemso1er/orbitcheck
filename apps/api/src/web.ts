@@ -9,12 +9,10 @@ import dns from "node:dns/promises";
 import url from 'node:url';
 import { Pool } from "pg";
 import { getDomain as getRegistrableDomain } from 'tldts';
+import twilio from 'twilio';
 import { env } from "./env";
 import { detectPoBox, normalizeAddress } from "./validators/address";
 import { validateTaxId } from "./validators/taxid";
-import twilio from 'twilio';
-const pool = new Pool({ connectionString: env.DATABASE_URL });
-const redis = new IORedis(env.REDIS_URL);
 
 // --- Reusable Schema Components ---
 const errorSchema = {
@@ -44,7 +42,7 @@ const rateLimitResponse = { 429: { description: 'Rate Limit Exceeded', ...errorS
 const validationErrorResponse = { 400: { description: 'Validation Error', ...errorSchema } };
 
 
-async function auth(req: FastifyRequest, rep: FastifyReply) {
+async function auth(req: FastifyRequest, rep: FastifyReply, pool: Pool) {
     const header = req.headers["authorization"];
     if (!header || !header.startsWith("Bearer ")) {
         return rep.status(401).send({ error: { code: "unauthorized", message: "Missing API key" } });
@@ -68,7 +66,7 @@ async function auth(req: FastifyRequest, rep: FastifyReply) {
     (req as any).project_id = rows[0].project_id;
 }
 
-async function rateLimit(req: FastifyRequest, rep: FastifyReply) {
+async function rateLimit(req: FastifyRequest, rep: FastifyReply, redis: IORedis) {
     const key = `rl:${(req as any).project_id}:${req.ip}`;
     const limit = env.RATE_LIMIT_COUNT;
     const ttl = 60;
@@ -77,7 +75,7 @@ async function rateLimit(req: FastifyRequest, rep: FastifyReply) {
     if (cnt > limit) return rep.status(429).send({ error: { code: "rate_limited", message: "Rate limit exceeded" } });
 }
 
-async function idempotency(req: FastifyRequest, rep: FastifyReply) {
+async function idempotency(req: FastifyRequest, rep: FastifyReply, redis: IORedis) {
     const idem = req.headers["idempotency-key"];
     if (!idem || typeof idem !== "string") return;
     const cacheKey = `idem:${(req as any).project_id}:${idem}`;
@@ -91,23 +89,37 @@ async function idempotency(req: FastifyRequest, rep: FastifyReply) {
     };
 }
 
-async function logEvent(project_id: string, type: string, endpoint: string, reason_codes: string[], status: number, meta: any) {
+async function logEvent(project_id: string, type: string, endpoint: string, reason_codes: string[], status: number, meta: any, pool: Pool) {
     await pool.query(
         "insert into logs (project_id, type, endpoint, reason_codes, status, meta) values ($1, $2, $3, $4, $5, $6)",
         [project_id, type, endpoint, reason_codes, status, meta]
     );
 }
 
-export function registerRoutes(app: FastifyInstance) {
+export function registerRoutes(app: FastifyInstance, pool: Pool, redis: IORedis) {
     app.addHook("preHandler", async (req, rep) => {
         if (req.url.startsWith("/health") || req.url.startsWith("/documentation")) return;
-        await auth(req, rep);
-        await rateLimit(req, rep);
-        await idempotency(req, rep);
+        await auth(req, rep, pool);
+        await rateLimit(req, rep, redis);
+        await idempotency(req, rep, redis);
     });
 
-    const withTimeout = (p: Promise<any>, ms = 1200) =>
-        Promise.race([p, new Promise((_, r) => setTimeout(() => r(new Error('ETIMEDOUT')), ms))]);
+
+    const withTimeout = (p: Promise<any>, ms = 1200) => {
+        let timer: NodeJS.Timeout;
+
+        // The timeout promise
+        const timeoutPromise = new Promise((_, reject) => {
+            timer = setTimeout(() => reject(new Error('ETIMEDOUT')), ms);
+        });
+
+        // Race the input promise against the timeout
+        return Promise.race([p, timeoutPromise])
+            .finally(() => {
+                // CRITICAL: Always clear the timer when the race is over.
+                clearTimeout(timer);
+            });
+    };
 
     app.post('/validate/email', {
         schema: {
@@ -232,7 +244,7 @@ export function registerRoutes(app: FastifyInstance) {
             domain: registrableDomain || asciiHost,
             disposable,
             mx_found,
-        });
+        }, pool);
 
         return rep.send(response);
 
@@ -310,7 +322,7 @@ export function registerRoutes(app: FastifyInstance) {
         }
         const response = { valid, e164, country: cc || null, reason_codes, request_id: crypto.randomUUID(), ttl_seconds: 30 * 24 * 3600, verification_id };
         await (rep as any).saveIdem?.(response);
-        await logEvent((req as any).project_id, "validation", "/validate/phone", reason_codes, 200, { request_otp, otp_status: verification_id ? 'otp_sent' : 'no_otp' });
+        await logEvent((req as any).project_id, "validation", "/validate/phone", reason_codes, 200, { request_otp, otp_status: verification_id ? 'otp_sent' : 'no_otp' }, pool);
         return rep.send(response);
     });
 
@@ -391,7 +403,7 @@ export function registerRoutes(app: FastifyInstance) {
         const valid = postal_city_match && !po_box;
         const response = { valid, normalized: norm, geo, po_box, postal_city_match, reason_codes, request_id: crypto.randomUUID(), ttl_seconds: 7 * 24 * 3600 };
         await (rep as any).saveIdem?.(response);
-        await logEvent((req as any).project_id, "validation", "/validate/address", reason_codes, 200, { po_box, postal_city_match });
+        await logEvent((req as any).project_id, "validation", "/validate/address", reason_codes, 200, { po_box, postal_city_match }, pool);
         return rep.send(response);
     });
 
@@ -431,7 +443,7 @@ export function registerRoutes(app: FastifyInstance) {
         const { type, value, country } = req.body as { type: string; value: string; country?: string };
         const out = await validateTaxId({ type, value, country: country || "" });
         await (rep as any).saveIdem?.(out);
-        await logEvent((req as any).project_id, "validation", "/validate/tax-id", out.reason_codes, 200, { type });
+        await logEvent((req as any).project_id, "validation", "/validate/tax-id", out.reason_codes, 200, { type }, pool);
         return rep.send(out);
     });
 
@@ -627,341 +639,6 @@ export function registerRoutes(app: FastifyInstance) {
                         });
                     }
                 });
-            
-                app.post('/order/evaluate', {
-                    schema: {
-                        summary: 'Evaluate Order for Risk and Rules',
-                        description: 'Evaluates an order for deduplication, validation, and applies business rules like P.O. box blocking, fraud scoring, and auto-hold/tagging. Returns risk assessment and action recommendations.',
-                        tags: ['Order Evaluation'],
-                        headers: securityHeader,
-                        body: {
-                            type: 'object',
-                            required: ['order_id', 'customer', 'shipping_address', 'total_amount', 'currency'],
-                            properties: {
-                                order_id: { type: 'string', description: 'Unique order identifier' },
-                                customer: {
-                                    type: 'object',
-                                    properties: {
-                                        email: { type: 'string' },
-                                        phone: { type: 'string' },
-                                        first_name: { type: 'string' },
-                                        last_name: { type: 'string' }
-                                    }
-                                },
-                                shipping_address: {
-                                    type: 'object',
-                                    required: ['line1', 'city', 'postal_code', 'country'],
-                                    properties: {
-                                        line1: { type: 'string' },
-                                        line2: { type: 'string' },
-                                        city: { type: 'string' },
-                                        state: { type: 'string' },
-                                        postal_code: { type: 'string' },
-                                        country: { type: 'string' }
-                                    }
-                                },
-                                total_amount: { type: 'number' },
-                                currency: { type: 'string', pattern: '^[A-Z]{3}$' },
-                                payment_method: { type: 'string', enum: ['card', 'cod', 'bank_transfer'] }
-                            }
-                        },
-                        response: {
-                            200: {
-                                description: 'Order evaluation results',
-                                type: 'object',
-                                properties: {
-                                    order_id: { type: 'string' },
-                                    risk_score: { type: 'number', minimum: 0, maximum: 100 },
-                                    action: { type: 'string', enum: ['approve', 'hold', 'block'] },
-                                    tags: { type: 'array', items: { type: 'string' } },
-                                    reason_codes: { type: 'array', items: { type: 'string' } },
-                                    customer_dedupe: {
-                                        type: 'object',
-                                        properties: {
-                                            matches: { type: 'array', items: { type: 'object' } },
-                                            suggested_action: { type: 'string' }
-                                        }
-                                    },
-                                    address_dedupe: {
-                                        type: 'object',
-                                        properties: {
-                                            matches: { type: 'array', items: { type: 'object' } },
-                                            suggested_action: { type: 'string' }
-                                        }
-                                    },
-                                    validations: {
-                                        type: 'object',
-                                        properties: {
-                                            email: { type: 'object', properties: { valid: { type: 'boolean' }, reason_codes: { type: 'array', items: { type: 'string' } } } },
-                                            phone: { type: 'object', properties: { valid: { type: 'boolean' }, reason_codes: { type: 'array', items: { type: 'string' } } } },
-                                            address: { type: 'object', properties: { valid: { type: 'boolean' }, reason_codes: { type: 'array', items: { type: 'string' } } } }
-                                        }
-                                    },
-                                    request_id: { type: 'string' }
-                                }
-                            },
-                            ...unauthorizedResponse,
-                            ...rateLimitResponse,
-                            ...validationErrorResponse
-                        }
-                    }
-                }, async (req, rep) => {
-                    const body = req.body as any;
-                    const project_id = (req as any).project_id;
-                    const reason_codes: string[] = [];
-                    const tags: string[] = [];
-                    let risk_score = 0;
-                    const request_id = crypto.randomUUID();
-            
-                    try {
-                        const { order_id, customer, shipping_address, total_amount, currency, payment_method } = body;
-            
-                        // 1. Customer dedupe
-                        let customer_dedupe = { matches: [], suggested_action: 'create_new' };
-                        if (customer && (customer.email || customer.phone || (customer.first_name && customer.last_name))) {
-                            const full_name = `${customer.first_name || ''} ${customer.last_name || ''}`.trim();
-                            const { rows: customerMatches } = await pool.query(
-                                `SELECT id, email, phone, first_name, last_name,
-                                 CASE
-                                   WHEN email = $1 THEN 1.0
-                                   WHEN phone = $2 THEN 1.0
-                                   ELSE similarity((first_name || ' ' || last_name), $3)
-                                 END as score,
-                                 CASE
-                                   WHEN email = $1 THEN 'exact_email'
-                                   WHEN phone = $2 THEN 'exact_phone'
-                                   ELSE 'fuzzy_name'
-                                 END as match_type
-                                 FROM customers
-                                 WHERE project_id = $4
-                                 AND (email = $1 OR phone = $2 OR similarity((first_name || ' ' || last_name), $3) > 0.3)
-                                 ORDER BY score DESC LIMIT 3`,
-                                [customer.email || '', customer.phone || '', full_name, project_id]
-                            );
-                            customer_dedupe.matches = customerMatches.map(row => ({
-                                id: row.id,
-                                similarity_score: row.score,
-                                match_type: row.match_type,
-                                data: row
-                            }));
-                            if (customer_dedupe.matches.length > 0) {
-                                const best = customer_dedupe.matches[0];
-                                customer_dedupe.suggested_action = best.similarity_score === 1.0 ? 'merge_with' : 'review';
-                                risk_score += 20;
-                                tags.push('potential_duplicate_customer');
-                                reason_codes.push('order.customer_dedupe_match');
-                            }
-                        }
-            
-                        // 2. Address dedupe and validation
-                        let address_dedupe = { matches: [], suggested_action: 'create_new' };
-                        const normAddr = await normalizeAddress(shipping_address);
-                        const addrKey = `${normAddr.line1} ${normAddr.city} ${normAddr.postal_code} ${normAddr.country}`.trim();
-                        const { rows: addressMatches } = await pool.query(
-                            `SELECT id, line1, line2, city, state, postal_code, country, lat, lng,
-                             CASE
-                               WHEN postal_code = $1 AND lower(city) = lower($2) AND country = $3 THEN 1.0
-                               ELSE similarity((line1 || ' ' || city || ' ' || postal_code || ' ' || country), $4)
-                             END as score,
-                             CASE
-                               WHEN postal_code = $1 AND lower(city) = lower($2) AND country = $3 THEN 'exact_postal'
-                               ELSE 'fuzzy_address'
-                             END as match_type
-                             FROM addresses
-                             WHERE project_id = $5
-                             AND (postal_code = $1 AND lower(city) = lower($2) AND country = $3 OR similarity((line1 || ' ' || city || ' ' || postal_code || ' ' || country), $4) > 0.6)
-                             ORDER BY score DESC LIMIT 3`,
-                            [normAddr.postal_code, normAddr.city, normAddr.country, addrKey, project_id]
-                        );
-                        address_dedupe.matches = addressMatches.map(row => ({
-                            id: row.id,
-                            similarity_score: row.score,
-                            match_type: row.match_type,
-                            data: row
-                        }));
-                        if (address_dedupe.matches.length > 0) {
-                            const best = address_dedupe.matches[0];
-                            address_dedupe.suggested_action = best.similarity_score === 1.0 ? 'merge_with' : 'review';
-                            risk_score += 15;
-                            tags.push('potential_duplicate_address');
-                            reason_codes.push('order.address_dedupe_match');
-                        }
-            
-                        // 3. Address rules
-                        const po_box = detectPoBox(normAddr.line1) || detectPoBox(normAddr.line2);
-                        if (po_box) {
-                            risk_score += 30;
-                            tags.push('po_box_detected');
-                            reason_codes.push('order.po_box_block');
-                        }
-            
-                        const { rows: postalMatch } = await pool.query(
-                            "select 1 from geonames_postal where country_code=$1 and postal_code=$2 and (lower(place_name)=lower($3) or lower(admin_name1)=lower($3)) limit 1",
-                            [normAddr.country.toUpperCase(), normAddr.postal_code, normAddr.city]
-                        );
-                        const postal_city_match = rows.length > 0;
-                        if (!postal_city_match) {
-                            risk_score += 10;
-                            reason_codes.push('order.address_mismatch');
-                        }
-            
-                        // 4. Customer validation
-                        let email_valid = { valid: true, reason_codes: [] as string[] };
-                        if (customer && customer.email) {
-                            const isFormatValid = isEmailValid(customer.email);
-                            if (!isFormatValid) {
-                                email_valid = { valid: false, reason_codes: ['email.invalid_format'] };
-                                risk_score += 25;
-                                reason_codes.push('order.invalid_email');
-                            }
-                        }
-            
-                        let phone_valid = { valid: true, reason_codes: [] as string[] };
-                        if (customer && customer.phone) {
-                            const parsed = parsePhoneNumber(customer.phone);
-                            if (!parsed || !parsed.isValid()) {
-                                phone_valid = { valid: false, reason_codes: ['phone.invalid_format'] };
-                                risk_score += 25;
-                                reason_codes.push('order.invalid_phone');
-                            }
-                        }
-            
-                        let address_valid = { valid: true, reason_codes: [] as string[] };
-                        address_valid.valid = !po_box && postal_city_match;
-                        if (po_box) address_valid.reason_codes.push('address.po_box');
-                        if (!postal_city_match) address_valid.reason_codes.push('address.postal_city_mismatch');
-            
-                        // 5. Order dedupe
-                        const { rows: orderMatch } = await pool.query(
-                            'SELECT id FROM orders WHERE project_id = $1 AND order_id = $2',
-                            [project_id, order_id]
-                        );
-                        if (orderMatch.length > 0) {
-                            risk_score += 50;
-                            tags.push('duplicate_order');
-                            reason_codes.push('order.duplicate_detected');
-                        }
-            
-                        // 6. Business rules
-                        if (payment_method === 'cod') {
-                            risk_score += 20;
-                            tags.push('cod_order');
-                            reason_codes.push('order.cod_risk');
-                        }
-            
-                        if (total_amount > 1000) {
-                            risk_score += 15;
-                            tags.push('high_value_order');
-                            reason_codes.push('order.high_value');
-                        }
-            
-                        // 7. Determine action
-                        let action = 'approve';
-                        if (risk_score > 70) {
-                            action = 'block';
-                        } else if (risk_score > 40) {
-                            action = 'hold';
-                        }
-            
-                        const validations = { email: email_valid, phone: phone_valid, address: address_valid };
-            
-                        const response = {
-                            order_id,
-                            risk_score: Math.min(risk_score, 100),
-                            action,
-                            tags,
-                            reason_codes,
-                            customer_dedupe,
-                            address_dedupe,
-                            validations,
-                            request_id
-                        };
-            
-                        // Log the order
-                        await pool.query(
-                            'INSERT INTO orders (project_id, order_id, customer_email, customer_phone, shipping_address, total_amount, currency, status) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) ON CONFLICT (order_id) DO UPDATE SET updated_at = now()',
-                            [project_id, order_id, customer?.email, customer?.phone, shipping_address, total_amount, currency, action]
-                        );
-            
-                        await (rep as any).saveIdem?.(response);
-                        await logEvent(project_id, 'order', '/order/evaluate', reason_codes, 200, { risk_score, action, tags: tags.join(',') });
-                        return rep.send(response);
-            
-                    } catch (error) {
-                        req.log.error(error);
-                        reason_codes.push('order.server_error');
-                        const response = {
-                            order_id: body.order_id,
-                            risk_score: 0,
-                            action: 'hold',
-                            tags: [],
-                            reason_codes,
-                            customer_dedupe: { matches: [], suggested_action: 'create_new' },
-                            address_dedupe: { matches: [], suggested_action: 'create_new' },
-                            validations: { email: { valid: false, reason_codes: [] }, phone: { valid: false, reason_codes: [] }, address: { valid: false, reason_codes: [] } },
-                            request_id
-                        };
-                        await logEvent(project_id, 'order', '/order/evaluate', reason_codes, 500, {});
-                        return rep.status(500).send(response);
-                    }
-                });
-            
-                app.get('/rules', {
-                    schema: {
-                        summary: 'Get Available Rules',
-                        description: 'Returns a list of available validation and business rules with descriptions and reason codes.',
-                        tags: ['Configuration'],
-                        headers: securityHeader,
-                        response: {
-                            200: {
-                                description: 'List of rules',
-                                type: 'object',
-                                properties: {
-                                    rules: {
-                                        type: 'array',
-                                        items: {
-                                            type: 'object',
-                                            properties: {
-                                                id: { type: 'string' },
-                                                name: { type: 'string' },
-                                                description: { type: 'string' },
-                                                reason_code: { type: 'string' },
-                                                severity: { type: 'string', enum: ['low', 'medium', 'high'] },
-                                                enabled: { type: 'boolean' }
-                                            }
-                                        }
-                                    },
-                                    request_id: { type: 'string' }
-                                }
-                            },
-                            ...unauthorizedResponse,
-                            ...rateLimitResponse
-                        }
-                    }
-                }, async (req, rep) => {
-                    const project_id = (req as any).project_id;
-                    const request_id = crypto.randomUUID();
-            
-                    const rules = [
-                        { id: 'email_format', name: 'Email Format Validation', description: 'Checks if email is properly formatted', reason_code: 'email.invalid_format', severity: 'low', enabled: true },
-                        { id: 'email_mx', name: 'Email MX Records', description: 'Verifies domain has MX records', reason_code: 'email.mx_not_found', severity: 'medium', enabled: true },
-                        { id: 'email_disposable', name: 'Disposable Email Detection', description: 'Blocks disposable email providers', reason_code: 'email.disposable_domain', severity: 'high', enabled: true },
-                        { id: 'phone_format', name: 'Phone Format Validation', description: 'Validates phone number in E.164 format', reason_code: 'phone.invalid_format', severity: 'low', enabled: true },
-                        { id: 'address_po_box', name: 'P.O. Box Detection', description: 'Blocks shipments to P.O. boxes', reason_code: 'address.po_box', severity: 'high', enabled: true },
-                        { id: 'address_postal_match', name: 'Postal Code-City Matching', description: 'Verifies postal code matches city', reason_code: 'address.postal_city_mismatch', severity: 'medium', enabled: true },
-                        { id: 'tax_id_checksum', name: 'Tax ID Checksum', description: 'Validates tax ID checksum', reason_code: 'taxid.invalid_checksum', severity: 'medium', enabled: true },
-                        { id: 'customer_dedupe', name: 'Customer Deduplication', description: 'Detects duplicate customers', reason_code: 'order.customer_dedupe_match', severity: 'medium', enabled: true },
-                        { id: 'address_dedupe', name: 'Address Deduplication', description: 'Detects duplicate addresses', reason_code: 'order.address_dedupe_match', severity: 'medium', enabled: true },
-                        { id: 'order_duplicate', name: 'Order Duplicate Detection', description: 'Blocks duplicate orders', reason_code: 'order.duplicate_detected', severity: 'high', enabled: true },
-                        { id: 'cod_risk', name: 'COD Order Risk', description: 'Increases risk for cash on delivery', reason_code: 'order.cod_risk', severity: 'medium', enabled: true },
-                        { id: 'high_value', name: 'High Value Order', description: 'Flags high value orders for review', reason_code: 'order.high_value', severity: 'low', enabled: true }
-                    ];
-            
-                    const response = { rules, request_id };
-                    await logEvent(project_id, 'config', '/rules', [], 200, { rules_count: rules.length });
-                    return rep.send(response);
-                });
-            
             }
             // Sort matches by score descending
             matches.sort((a, b) => b.similarity_score - a.similarity_score);
@@ -978,14 +655,134 @@ export function registerRoutes(app: FastifyInstance) {
 
             const response = { matches, suggested_action, request_id };
             await (rep as any).saveIdem?.(response);
-            await logEvent(project_id, 'dedupe', '/dedupe/customer', reason_codes, 200, { matches_count: matches.length, suggested_action });
+            await logEvent(project_id, 'dedupe', '/dedupe/customer', reason_codes, 200, { matches_count: matches.length, suggested_action }, pool);
             return rep.send(response);
 
         } catch (error) {
             req.log.error(error);
             reason_codes.push('dedupe.server_error');
             const response = { matches: [], suggested_action: 'create_new', request_id, reason_codes };
-            await logEvent(project_id, 'dedupe', '/dedupe/customer', reason_codes, 500, {});
+            await logEvent(project_id, 'dedupe', '/dedupe/customer', reason_codes, 500, {}, pool);
+            return rep.status(500).send(response);
+        }
+    });
+
+    app.post('/dedupe/address', {
+        schema: {
+            summary: 'Deduplicate Address',
+            description: 'Searches for existing addresses using deterministic (exact postal/city/country) and fuzzy matching on address components.',
+            tags: ['Deduplication'],
+            headers: securityHeader,
+            body: {
+                type: 'object',
+                required: ['line1', 'city', 'postal_code', 'country'],
+                properties: {
+                    line1: { type: 'string' },
+                    line2: { type: 'string' },
+                    city: { type: 'string' },
+                    state: { type: 'string' },
+                    postal_code: { type: 'string' },
+                    country: { type: 'string', minLength: 2, maxLength: 2 }
+                }
+            },
+            response: {
+                200: {
+                    description: 'Deduplication results',
+                    type: 'object',
+                    properties: {
+                        matches: {
+                            type: 'array',
+                            items: {
+                                type: 'object',
+                                properties: {
+                                    id: { type: 'string' },
+                                    similarity_score: { type: 'number' },
+                                    match_type: { type: 'string', enum: ['exact_postal', 'fuzzy_address'] },
+                                    data: { type: 'object' }
+                                }
+                            }
+                        },
+                        suggested_action: { type: 'string', enum: ['create_new', 'merge_with', 'review'] },
+                        request_id: { type: 'string' }
+                    }
+                },
+                ...unauthorizedResponse,
+                ...rateLimitResponse,
+                ...validationErrorResponse
+            }
+        }
+    }, async (req, rep) => {
+        const { line1, line2, city, state, postal_code, country } = req.body as any;
+        const project_id = (req as any).project_id;
+        const reason_codes: string[] = [];
+        const matches: any[] = [];
+        const request_id = crypto.randomUUID();
+
+        try {
+            // Normalize the input address
+            const normAddr = await normalizeAddress({ line1, line2: line2 || '', city, state: state || '', postal_code, country });
+            const addrKey = `${normAddr.line1} ${normAddr.line2} ${normAddr.city} ${normAddr.state} ${normAddr.postal_code} ${normAddr.country}`.trim();
+
+            // Deterministic match: exact postal_code + city + country
+            const { rows: exactMatches } = await pool.query(
+                'SELECT id, line1, line2, city, state, postal_code, country, lat, lng, similarity((line1 || \' \' || line2 || \' \' || city || \' \' || state || \' \' || postal_code || \' \' || country), $1) as score FROM addresses WHERE project_id = $2 AND postal_code = $3 AND lower(city) = lower($4) AND country = $5',
+                [addrKey, project_id, normAddr.postal_code, normAddr.city, normAddr.country]
+            );
+            exactMatches.forEach(row => {
+                if (row.id) {
+                    matches.push({
+                        id: row.id,
+                        similarity_score: 1.0,
+                        match_type: 'exact_postal',
+                        data: row
+                    });
+                }
+            });
+
+            // Fuzzy matches
+            const { rows: fuzzyMatches } = await pool.query(
+                `SELECT id, line1, line2, city, state, postal_code, country, lat, lng,
+                 similarity((line1 || ' ' || line2 || ' ' || city || ' ' || state || ' ' || postal_code || ' ' || country), $1) as score
+                 FROM addresses
+                 WHERE project_id = $2
+                 AND similarity((line1 || ' ' || line2 || ' ' || city || ' ' || state || ' ' || postal_code || ' ' || country), $1) > 0.6
+                 ORDER BY score DESC LIMIT 5`,
+                [addrKey, project_id]
+            );
+            fuzzyMatches.forEach(row => {
+                if (row.id && !matches.some(m => m.id === row.id)) {  // Avoid duplicates
+                    matches.push({
+                        id: row.id,
+                        similarity_score: row.score,
+                        match_type: 'fuzzy_address',
+                        data: row
+                    });
+                }
+            });
+
+            // Sort matches by score descending
+            matches.sort((a, b) => b.similarity_score - a.similarity_score);
+
+            let suggested_action = 'create_new';
+            if (matches.length > 0) {
+                const bestMatch = matches[0];
+                if (bestMatch.similarity_score === 1.0) {
+                    suggested_action = 'merge_with';
+                } else if (bestMatch.similarity_score > 0.8) {
+                    suggested_action = 'review';
+                }
+            }
+
+            const response = { matches, suggested_action, request_id };
+            await (rep as any).saveIdem?.(response);
+            await logEvent(project_id, 'dedupe', '/dedupe/address', reason_codes, 200, { matches_count: matches.length, suggested_action }, pool);
+            return rep.send(response);
+
+        } catch (error) {
+            req.log.error(error);
+            reason_codes.push('dedupe.server_error');
+            const response = { matches: [], suggested_action: 'create_new', request_id, reason_codes };
+            await logEvent(project_id, 'dedupe', '/dedupe/address', reason_codes, 500, {}, pool);
             return rep.status(500).send(response);
         }
     });
@@ -1123,7 +920,7 @@ export function registerRoutes(app: FastifyInstance) {
             }
 
             // 4. Customer validation (email and phone)
-            let email_valid = { valid: true, reason_codes: [] };
+            let email_valid = { valid: true, reason_codes: [] as string[] };
             if (customer.email) {
                 // Simplified - in production, call the full validator
                 const isFormatValid = isEmailValid(customer.email);
@@ -1134,7 +931,7 @@ export function registerRoutes(app: FastifyInstance) {
                 }
             }
 
-            let phone_valid = { valid: true, reason_codes: [] };
+            let phone_valid = { valid: true, reason_codes: [] as string[] };
             if (customer.phone) {
                 const parsed = parsePhoneNumber(customer.phone);
                 if (!parsed || !parsed.isValid()) {
@@ -1197,14 +994,14 @@ export function registerRoutes(app: FastifyInstance) {
             );
 
             await (rep as any).saveIdem?.(response);
-            await logEvent(project_id, 'order', '/order/evaluate', reason_codes, 200, { risk_score, action, tags: tags.join(',') });
+            await logEvent(project_id, 'order', '/order/evaluate', reason_codes, 200, { risk_score, action, tags: tags.join(',') }, pool);
             return rep.send(response);
 
         } catch (error) {
             req.log.error(error);
             reason_codes.push('order.server_error');
-            const response = { order_id: body.order_id, risk_score: 0, action: 'hold', tags: [], reason_codes, customer_dedupe: { matches: [], suggested_action: 'create_new' }, address_dedupe: { matches: [], suggested_action: 'create_new' }, validations: {}, request_id };
-            await logEvent(project_id, 'order', '/order/evaluate', reason_codes, 500, {});
+            const response = { order_id: body.order_id, risk_score: 0, action: 'hold', tags: [], reason_codes, customer_dedupe: { matches: [], suggested_action: 'create_new' }, address_dedupe: { matches: [], suggested_action: 'create_new' }, validations: { email: { valid: false, reason_codes: [] as string[] }, phone: { valid: false, reason_codes: [] as string[] }, address: { valid: false, reason_codes: [] as string[] } }, request_id };
+            await logEvent(project_id, 'order', '/order/evaluate', reason_codes, 500, {}, pool);
             return rep.status(500).send(response);
         }
     });
@@ -1262,7 +1059,7 @@ export function registerRoutes(app: FastifyInstance) {
         ];
 
         const response = { rules, request_id };
-        await logEvent(project_id, 'config', '/rules', [], 200, { rules_count: rules.length });
+        await logEvent(project_id, 'config', '/rules', [], 200, { rules_count: rules.length }, pool);
         return rep.send(response);
     });
 }

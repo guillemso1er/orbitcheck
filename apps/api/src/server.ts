@@ -3,11 +3,17 @@ import fastifySwagger from '@fastify/swagger';
 import fastifySwaggerUi from '@fastify/swagger-ui';
 import Fastify from "fastify";
 import cron from 'node-cron';
+import { Pool } from "pg";
+import IORedis from "ioredis";
 import { env } from "./env";
 import { refreshDisposableDomains } from "./jobs/refreshDisposable";
 import { registerRoutes } from "./web";
+
 async function build() {
     const app = Fastify({ logger: { level: env.LOG_LEVEL } });
+
+    const pool = new Pool({ connectionString: env.DATABASE_URL });
+    const redis = new IORedis(env.REDIS_URL);
 
     // Register @fastify/swagger
     await app.register(fastifySwagger, {
@@ -46,7 +52,7 @@ async function build() {
     });
 
     await app.register(cors, { origin: true });
-    registerRoutes(app);
+    registerRoutes(app, pool, redis);
 
     app.get("/health", async () => ({ ok: true }));
 
