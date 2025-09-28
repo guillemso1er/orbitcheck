@@ -1,4 +1,5 @@
 import crypto from "crypto";
+import type { Redis } from "ioredis";
 function onlyDigits(s: string) { return (s || "").replace(/[^0-9]/g, ""); }
 function mod11Checksum(nums: number[], weights: number[]) {
     const sum = nums.reduce((acc, n, i) => acc + n * weights[i], 0);
@@ -6,7 +7,13 @@ function mod11Checksum(nums: number[], weights: number[]) {
     return mod;
 }
 
-// BR CPF: 11 digits, 2 check digits
+/**
+ * Validates Brazilian CPF (Cadastro de Pessoas Físicas) using checksum algorithm.
+ * Removes non-digits, checks length (11), rejects all-identical digits, computes check digits.
+ *
+ * @param value - The CPF value (e.g., "123.456.789-09").
+ * @returns {Object} Validation result with valid flag and reason codes.
+ */
 export function validateCPF(value: string) {
     const v = onlyDigits(value);
     if (v.length !== 11) return { valid: false, reason_codes: ["taxid.invalid_format"] };
@@ -19,6 +26,13 @@ export function validateCPF(value: string) {
 }
 
 // BR CNPJ: 14 digits, 2 check digits
+/**
+ * Validates Brazilian CNPJ (Cadastro Nacional da Pessoa Jurídica) using checksum.
+ * Removes non-digits, checks length (14), rejects all-identical, computes check digits with weights.
+ *
+ * @param value - The CNPJ value (e.g., "12.345.678/0001-99").
+ * @returns {Object} Validation result with valid flag and reason codes.
+ */
 export function validateCNPJ(value: string) {
     const v = onlyDigits(value);
     if (v.length !== 14) return { valid: false, reason_codes: ["taxid.invalid_format"] };
@@ -33,6 +47,13 @@ export function validateCNPJ(value: string) {
 }
 
 // MX RFC: 12 or 13 chars, mod 11 check digit with charset
+/**
+ * Validates Mexican RFC (Registro Federal de Contribuyentes) using mod 11 checksum with custom charset.
+ * Supports 12/13 char formats, maps letters to numbers, computes check digit.
+ *
+ * @param value - The RFC value (e.g., "ABCD123456EFG").
+ * @returns {Object} Validation result with valid flag and reason codes.
+ */
 const RFC_CHARS = " 0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ&Ñ";
 const RFC_MAP: Record<string, number> = Object.fromEntries(RFC_CHARS.split("").map((c, i) => [c, i]));
 export function validateRFC(value: string) {
@@ -58,6 +79,13 @@ export function validateRFC(value: string) {
 }
 
 // AR CUIT: 11 digits
+/**
+ * Validates Argentine CUIT (Clave Única de Identificación Tributaria) using mod 11 checksum.
+ * Removes non-digits, checks length (11), computes check digit with weights.
+ *
+ * @param value - The CUIT value (e.g., "20-12345678-9").
+ * @returns {Object} Validation result with valid flag and reason codes.
+ */
 export function validateCUIT(value: string) {
     const v = onlyDigits(value);
     if (v.length !== 11) return { valid: false, reason_codes: ["taxid.invalid_format"] };
@@ -71,6 +99,13 @@ export function validateCUIT(value: string) {
 }
 
 // CL RUT: digits + K check
+/**
+ * Validates Chilean RUT (Rol Único Tributario) using mod 11 with verifier digit (0-9 or K).
+ * Removes dots/dashes, checks body digits, computes verifier with incremental multiplier.
+ *
+ * @param value - The RUT value (e.g., "12345678-9" or "1234567-K").
+ * @returns {Object} Validation result with valid flag and reason codes.
+ */
 export function validateRUT(value: string) {
     const v = value.replace(/\./g, "").replace(/-/g, "").toUpperCase();
     const body = v.slice(0, -1); const dv = v.slice(-1);
@@ -87,6 +122,13 @@ export function validateRUT(value: string) {
 }
 
 // PE RUC: 11 digits with known prefixes, checksum
+/**
+ * Validates Peruvian RUC (Registro Único de Contribuyentes) using mod 11 checksum.
+ * Removes non-digits, checks length (11), computes check digit with specific weights.
+ *
+ * @param value - The RUC value (e.g., "12345678901").
+ * @returns {Object} Validation result with valid flag and reason codes.
+ */
 export function validateRUC(value: string) {
     const v = onlyDigits(value);
     if (v.length !== 11) return { valid: false, reason_codes: ["taxid.invalid_format"] };
@@ -100,6 +142,13 @@ export function validateRUC(value: string) {
 }
 
 // CO NIT: mod 11
+/**
+ * Validates Colombian NIT (Número de Identificación Tributaria) using mod 11.
+ * Removes non-digits, uses specific weights (repeating after 10), computes check digit.
+ *
+ * @param value - The NIT value (e.g., "1234567890").
+ * @returns {Object} Validation result with valid flag and reason codes.
+ */
 export function validateNIT(value: string) {
     const v = onlyDigits(value);
     const weights = [3, 7, 13, 17, 19, 23, 29, 37, 41, 43];
@@ -113,6 +162,13 @@ export function validateNIT(value: string) {
 }
 
 // ES NIF/NIE/CIF (simplified formats, checksum)
+/**
+ * Validates Spanish NIF/NIE/CIF (Número de Identificación Fiscal) using letter-based checksum.
+ * Handles NIE (X/Y/Z prefix), NIF (digits + letter), simplified CIF.
+ *
+ * @param value - The NIF/NIE/CIF value (e.g., "12345678Z" or "X1234567Z").
+ * @returns {Object} Validation result with valid flag and reason codes.
+ */
 const NIF_LETTERS = "TRWAGMYFPDXBNJZSQVHLCKE";
 export function validateES(value: string) {
     let v = value.trim().toUpperCase();
@@ -149,14 +205,34 @@ export function validateES(value: string) {
 }
 
 // US EIN: format only
+/**
+ * Validates US EIN (Employer Identification Number) by format (9 digits only).
+ * No checksum; just length check after removing non-digits.
+ *
+ * @param value - The EIN value (e.g., "12-3456789").
+ * @returns {Object} Validation result with valid flag and reason codes.
+ */
 export function validateEIN(value: string) {
     const v = onlyDigits(value);
     return { valid: v.length === 9, reason_codes: v.length === 9 ? [] : ["taxid.invalid_format"] };
 }
 
 // VIES SOAP
+/**
+ * Validates EU VAT number via VIES SOAP service.
+ * Simulates outages if VIES_DOWN env var is true; catches errors as unavailable.
+ *
+ * @param country - Two-letter country code (e.g., "DE").
+ * @param vatNumber - The VAT number without country prefix.
+ * @returns {Promise<Object>} Validation result with valid flag, reason codes, and source ('vies').
+ */
 import soap from "soap";
 export async function validateVATViaVIES(country: string, vatNumber: string): Promise<{ valid: boolean; reason_codes: string[]; source: string }> {
+    // VIES outage simulation
+    if (process.env.VIES_DOWN === "true") {
+        return { valid: false, reason_codes: ["taxid.vies_unavailable"], source: "vies" };
+    }
+
     try {
         const client = await soap.createClientAsync(process.env.VIES_WSDL_URL || "https://ec.europa.eu/taxation_customs/vies/checkVatService.wsdl");
         const [result] = await client.checkVatAsync({ countryCode: country, vatNumber });
@@ -167,23 +243,88 @@ export async function validateVATViaVIES(country: string, vatNumber: string): Pr
     }
 }
 
-export async function validateTaxId({ type, value, country }: { type: string, value: string, country: string }) {
+/**
+ * Main entry for tax ID validation: dispatches to type-specific validators (CPF, CNPJ, etc.) or VIES for VAT.
+ * Normalizes input, caches in Redis (24h TTL) using SHA-1 hash.
+ * Supports LATAM, ES, US EIN, EU VAT types.
+ *
+ * @param params - Object with type (e.g., 'cpf', 'vat'), value, country (optional), redis (optional).
+ * @returns {Promise<Object>} Validation result with valid flag, normalized value, reason codes, source.
+ */
+export async function validateTaxId({ type, value, country, redis }: { type: string, value: string, country: string, redis?: Redis }) {
     const t = type.toUpperCase();
-    let base = { valid: false, reason_codes: [] as string[], request_id: crypto.randomUUID(), source: "format", normalized: value.replace(/\s/g, "") };
-    if (t === "CPF") return { ...base, ...validateCPF(value) };
-    if (t === "CNPJ") return { ...base, ...validateCNPJ(value) };
-    if (t === "RFC") return { ...base, ...validateRFC(value) };
-    if (t === "CUIT") return { ...base, ...validateCUIT(value) };
-    if (t === "RUT") return { ...base, ...validateRUT(value) };
-    if (t === "RUC") return { ...base, ...validateRUC(value) };
-    if (t === "NIT") return { ...base, ...validateNIT(value) };
-    if (t === "NIF" || t === "NIE" || t === "CIF") return { ...base, ...validateES(value) };
-    if (t === "EIN") return { ...base, ...validateEIN(value) };
-    if (t === "VAT") {
+    const normalizedValue = value.replace(/\s/g, "");
+    const input = { type: t, value: normalizedValue, country: country || "" };
+    const keyStr = JSON.stringify(input);
+    const hash = crypto.createHash('sha1').update(keyStr).digest('hex');
+    const cacheKey = `validator:taxid:${hash}`;
+
+    let result: any;
+
+    if (redis) {
+        const cached = await redis.get(cacheKey);
+        if (cached) {
+            return JSON.parse(cached);
+        }
+    }
+
+    let base = { valid: false, reason_codes: [] as string[], request_id: crypto.randomUUID(), source: "format", normalized: normalizedValue };
+    let valid = false;
+    let reason_codes: string[] = [];
+    let source = "format";
+
+    if (t === "CPF") {
+        const cpfRes = validateCPF(value);
+        valid = cpfRes.valid;
+        reason_codes = cpfRes.reason_codes;
+    } else if (t === "CNPJ") {
+        const cnpjRes = validateCNPJ(value);
+        valid = cnpjRes.valid;
+        reason_codes = cnpjRes.reason_codes;
+    } else if (t === "RFC") {
+        const rfcRes = validateRFC(value);
+        valid = rfcRes.valid;
+        reason_codes = rfcRes.reason_codes;
+    } else if (t === "CUIT") {
+        const cuitRes = validateCUIT(value);
+        valid = cuitRes.valid;
+        reason_codes = cuitRes.reason_codes;
+    } else if (t === "RUT") {
+        const rutRes = validateRUT(value);
+        valid = rutRes.valid;
+        reason_codes = rutRes.reason_codes;
+    } else if (t === "RUC") {
+        const rucRes = validateRUC(value);
+        valid = rucRes.valid;
+        reason_codes = rucRes.reason_codes;
+    } else if (t === "NIT") {
+        const nitRes = validateNIT(value);
+        valid = nitRes.valid;
+        reason_codes = nitRes.reason_codes;
+    } else if (t === "NIF" || t === "NIE" || t === "CIF") {
+        const esRes = validateES(value);
+        valid = esRes.valid;
+        reason_codes = esRes.reason_codes;
+    } else if (t === "EIN") {
+        const einRes = validateEIN(value);
+        valid = einRes.valid;
+        reason_codes = einRes.reason_codes;
+    } else if (t === "VAT") {
         const cc = country?.toUpperCase() || value.slice(0, 2);
         const vn = value.replace(/^[A-Z]{2}/, "");
         const res = await validateVATViaVIES(cc, vn);
-        return { ...base, valid: res.valid, reason_codes: res.reason_codes, source: res.source };
+        valid = res.valid;
+        reason_codes = res.reason_codes;
+        source = res.source;
+    } else {
+        reason_codes = ["taxid.invalid_format"];
     }
-    return { ...base, valid: false, reason_codes: ["taxid.invalid_format"] };
+
+    result = { ...base, valid, reason_codes, source };
+
+    if (redis) {
+        await redis.set(cacheKey, JSON.stringify(result), 'EX', 24 * 3600);
+    }
+
+    return result;
 }

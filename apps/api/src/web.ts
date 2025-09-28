@@ -11,8 +11,11 @@ import { Pool } from "pg";
 import { getDomain as getRegistrableDomain } from 'tldts';
 import twilio from 'twilio';
 import { env } from "./env";
-import { detectPoBox, normalizeAddress } from "./validators/address";
+import { detectPoBox, normalizeAddress, validateAddress } from "./validators/address";
 import { validateTaxId } from "./validators/taxid";
+import { validateEmail } from "./validators/email";
+import { validatePhone } from "./validators/phone";
+import { registerRulesRoutes } from "./routes/rules";
 
 // --- Reusable Schema Components ---
 const errorSchema = {
@@ -42,6 +45,17 @@ const rateLimitResponse = { 429: { description: 'Rate Limit Exceeded', ...errorS
 const validationErrorResponse = { 400: { description: 'Validation Error', ...errorSchema } };
 
 
+/**
+ * Authentication hook for API requests.
+ * Extracts and validates the Bearer API key from the Authorization header.
+ * Computes SHA-256 hash for secure comparison against stored hashes.
+ * Attaches project_id to the request if valid.
+ *
+ * @param req - Fastify request object.
+ * @param rep - Fastify reply object.
+ * @param pool - PostgreSQL connection pool.
+ * @returns {Promise<void>} Resolves if authenticated, sends 401 error if not.
+ */
 async function auth(req: FastifyRequest, rep: FastifyReply, pool: Pool) {
     const header = req.headers["authorization"];
     if (!header || !header.startsWith("Bearer ")) {
@@ -66,6 +80,15 @@ async function auth(req: FastifyRequest, rep: FastifyReply, pool: Pool) {
     (req as any).project_id = rows[0].project_id;
 }
 
+/**
+ * Rate limiting hook using Redis.
+ * Limits requests per project and IP to RATE_LIMIT_COUNT per minute.
+ *
+ * @param req - Fastify request object (requires project_id from auth).
+ * @param rep - Fastify reply object.
+ * @param redis - Redis client.
+ * @returns {Promise<void>} Resolves if under limit, sends 429 if exceeded.
+ */
 async function rateLimit(req: FastifyRequest, rep: FastifyReply, redis: IORedis) {
     const key = `rl:${(req as any).project_id}:${req.ip}`;
     const limit = env.RATE_LIMIT_COUNT;
@@ -75,6 +98,16 @@ async function rateLimit(req: FastifyRequest, rep: FastifyReply, redis: IORedis)
     if (cnt > limit) return rep.status(429).send({ error: { code: "rate_limited", message: "Rate limit exceeded" } });
 }
 
+/**
+ * Idempotency hook using Redis cache (24h TTL).
+ * Checks for idempotency-key header; replays cached response if exists.
+ * Provides saveIdem method on reply for storing new responses.
+ *
+ * @param req - Fastify request object (requires project_id from auth).
+ * @param rep - Fastify reply object.
+ * @param redis - Redis client.
+ * @returns {Promise<void|FastifyReply>} Sends cached response if found, otherwise attaches saveIdem.
+ */
 async function idempotency(req: FastifyRequest, rep: FastifyReply, redis: IORedis) {
     const idem = req.headers["idempotency-key"];
     if (!idem || typeof idem !== "string") return;
@@ -89,6 +122,19 @@ async function idempotency(req: FastifyRequest, rep: FastifyReply, redis: IORedi
     };
 }
 
+/**
+ * Logs an event to the database for observability.
+ * Inserts into 'logs' table with project_id, type, endpoint, reason_codes, status, and meta JSON.
+ *
+ * @param project_id - The project identifier.
+ * @param type - Event type (e.g., 'validation', 'order').
+ * @param endpoint - API endpoint called.
+ * @param reason_codes - Array of reason codes for the event.
+ * @param status - HTTP status code.
+ * @param meta - Additional metadata as JSON.
+ * @param pool - PostgreSQL connection pool.
+ * @returns {Promise<void>}
+ */
 async function logEvent(project_id: string, type: string, endpoint: string, reason_codes: string[], status: number, meta: any, pool: Pool) {
     await pool.query(
         "insert into logs (project_id, type, endpoint, reason_codes, status, meta) values ($1, $2, $3, $4, $5, $6)",
@@ -96,6 +142,17 @@ async function logEvent(project_id: string, type: string, endpoint: string, reas
     );
 }
 
+/**
+ * Registers all API routes on the Fastify instance.
+ * Sets up preHandler hooks for auth, rate limiting, and idempotency.
+ * Defines routes for validation, deduplication, order evaluation, logs, usage, and rules.
+ * Includes schema definitions for OpenAPI/Swagger.
+ *
+ * @param app - Fastify instance to register routes on.
+ * @param pool - PostgreSQL connection pool.
+ * @param redis - Redis client for caching and limits.
+ * @returns {void}
+ */
 export function registerRoutes(app: FastifyInstance, pool: Pool, redis: IORedis) {
     app.addHook("preHandler", async (req, rep) => {
         if (req.url.startsWith("/health") || req.url.startsWith("/documentation")) return;
@@ -104,6 +161,7 @@ export function registerRoutes(app: FastifyInstance, pool: Pool, redis: IORedis)
         await idempotency(req, rep, redis);
     });
 
+    registerRulesRoutes(app, pool);
 
     const withTimeout = (p: Promise<any>, ms = 1200) => {
         let timer: NodeJS.Timeout;
@@ -121,7 +179,7 @@ export function registerRoutes(app: FastifyInstance, pool: Pool, redis: IORedis)
             });
     };
 
-    app.post('/validate/email', {
+    app.post('/v1/validate/email', {
         schema: {
             summary: 'Validate Email Address',
             description: 'Performs a comprehensive validation of an email address, checking for format, domain reachability (MX records), and whether it belongs to a disposable email provider.',
@@ -154,100 +212,15 @@ export function registerRoutes(app: FastifyInstance, pool: Pool, redis: IORedis)
             }
         }
     }, async (req, rep) => {
-        // --- 1. INITIALIZATION ---
-        // Initialize all state variables with safe defaults.
-        const reason_codes: string[] = [];
-        let mx_found = false;
-        let disposable = false;
-        let normalizedEmail = '';
-        let registrableDomain = '';
-        let asciiHost = '';
-        let isFormatValid = false;
-
-        // --- 2. GLOBAL ERROR HANDLING ---
-        try {
-            // --- 3. PARSING & NORMALIZATION ---
-            const body = (req.body ?? {}) as { email: string };
-            const raw = String(body.email || '').trim();
-            const [local, host = ''] = raw.split('@');
-
-            asciiHost = url.domainToASCII(host || '');
-            normalizedEmail = (local || '') + (host ? '@' + asciiHost.toLowerCase() : '');
-            registrableDomain = asciiHost ? (getRegistrableDomain(asciiHost) || asciiHost) : '';
-
-            // --- 4. FORMAT VALIDATION ---
-            isFormatValid = isEmailValid(normalizedEmail, { /* ... your options ... */ });
-
-            if (!isFormatValid) {
-                reason_codes.push('email.invalid_format');
-            }
-
-            // --- 5. NETWORK-DEPENDENT VALIDATIONS ---
-            if (isFormatValid && asciiHost) {
-                // --- DNS LOOKUP (with MX and A/AAAA fallback) ---
-                try {
-                    // First, try to resolve MX records.
-                    const recs = (await withTimeout(dns.resolveMx(asciiHost))) as { exchange: string }[];
-                    mx_found = !!(recs && recs.length > 0 && recs[0].exchange !== '.');
-                } catch (mxError) {
-                    // If MX lookup fails (e.g., no records found), fall back to checking for A/AAAA.
-                    req.log.warn({ domain: asciiHost, error: mxError }, 'MX lookup failed, falling back to A/AAAA check.');
-                    try {
-                        const [a, aaaa] = await Promise.allSettled([
-                            withTimeout(dns.resolve4(asciiHost)),
-                            withTimeout(dns.resolve6(asciiHost)),
-                        ]);
-                        const hasA = a.status === 'fulfilled' && (a.value as string[])?.length > 0;
-                        const hasAAAA = aaaa.status === 'fulfilled' && (aaaa.value as string[])?.length > 0;
-                        mx_found = hasA || hasAAAA; // Domain is valid if it has either A or AAAA record.
-                    } catch (aError) {
-                        req.log.warn({ domain: asciiHost, error: aError }, 'A/AAAA lookup also failed.');
-                        mx_found = false;
-                    }
-                }
-
-                if (!mx_found) {
-                    reason_codes.push('email.mx_not_found');
-                }
-
-                // --- REDIS LOOKUP for disposable domains ---
-                const isDisposable =
-                    (await redis.sismember('disposable_domains', asciiHost)) ||
-                    (registrableDomain && (await redis.sismember('disposable_domains', registrableDomain)));
-
-                if (isDisposable) {
-                    disposable = true;
-                    reason_codes.push('email.disposable_domain');
-                }
-            }
-        } catch (error) {
-            // Global safety net
-            req.log.error(error, "A critical error occurred during email validation");
-            mx_found = false;
-            disposable = false;
-            reason_codes.push('email.server_error');
-        }
-
-        // --- 6. CONSTRUCT AND SEND RESPONSE ---
-        const response = {
-            valid: isFormatValid && mx_found && !disposable,
-            normalized: normalizedEmail,
-            disposable,
-            mx_found,
-            reason_codes,
-            request_id: crypto.randomUUID(),
-            ttl_seconds: 30 * 24 * 3600,
-        };
-
-        await (rep as any).saveIdem?.(response);
-        await logEvent((req as any).project_id, 'validation', '/validate/email', reason_codes, 200, {
-            domain: registrableDomain || asciiHost,
-            disposable,
-            mx_found,
+        const { email } = req.body as { email: string };
+        const out = await validateEmail(email, redis);
+        await (rep as any).saveIdem?.(out);
+        await logEvent((req as any).project_id, 'validation', '/v1/validate/email', out.reason_codes, 200, {
+            domain: out.normalized.split('@')[1],
+            disposable: out.disposable,
+            mx_found: out.mx_found,
         }, pool);
-
-        return rep.send(response);
-
+        return rep.send(out);
     });
 
     app.post("/validate/phone", {
@@ -286,23 +259,9 @@ export function registerRoutes(app: FastifyInstance, pool: Pool, redis: IORedis)
         }
     }, async (req, rep) => {
         const { phone, country, request_otp = false } = req.body as { phone: string; country?: string; request_otp?: boolean };
-        const reason_codes: string[] = [];
-        let e164 = "";
-        let cc = country?.toUpperCase();
-        try {
-            const parsed = cc ? parsePhoneNumber(phone, cc as any) : parsePhoneNumber(phone as any);
-            if (parsed && parsed.isValid()) {
-                e164 = parsed.number;
-                cc = parsed.country || cc;
-            } else {
-                reason_codes.push("phone.invalid_format");
-            }
-        } catch {
-            reason_codes.push("phone.unparseable");
-        }
-        const valid = reason_codes.length === 0;
+        const validation = await validatePhone(phone, country, redis);
         let verification_id: string | null = null;
-        if (valid && request_otp && e164 && env.TWILIO_ACCOUNT_SID && env.TWILIO_AUTH_TOKEN && env.TWILIO_PHONE_NUMBER) {
+        if (validation.valid && request_otp && validation.e164 && env.TWILIO_ACCOUNT_SID && env.TWILIO_AUTH_TOKEN && env.TWILIO_PHONE_NUMBER) {
             verification_id = crypto.randomUUID();
             const otp = Math.floor(1000 + Math.random() * 9000).toString();
             const client = twilio(env.TWILIO_ACCOUNT_SID, env.TWILIO_AUTH_TOKEN);
@@ -310,19 +269,19 @@ export function registerRoutes(app: FastifyInstance, pool: Pool, redis: IORedis)
                 await client.messages.create({
                     body: `Your Orbicheck verification code is ${otp}`,
                     from: env.TWILIO_PHONE_NUMBER,
-                    to: e164
+                    to: validation.e164
                 });
                 await redis.set(`otp:${verification_id}`, otp, 'EX', 300);
-                reason_codes.push("phone.otp_sent");
+                validation.reason_codes.push("phone.otp_sent");
             } catch (err) {
                 req.log.error(err, "Failed to send OTP");
-                reason_codes.push("phone.otp_send_failed");
+                validation.reason_codes.push("phone.otp_send_failed");
                 verification_id = null;
             }
         }
-        const response = { valid, e164, country: cc || null, reason_codes, request_id: crypto.randomUUID(), ttl_seconds: 30 * 24 * 3600, verification_id };
+        const response = { ...validation, verification_id };
         await (rep as any).saveIdem?.(response);
-        await logEvent((req as any).project_id, "validation", "/validate/phone", reason_codes, 200, { request_otp, otp_status: verification_id ? 'otp_sent' : 'no_otp' }, pool);
+        await logEvent((req as any).project_id, "validation", "/validate/phone", response.reason_codes, 200, { request_otp, otp_status: verification_id ? 'otp_sent' : 'no_otp' }, pool);
         return rep.send(response);
     });
 
@@ -372,39 +331,10 @@ export function registerRoutes(app: FastifyInstance, pool: Pool, redis: IORedis)
         }
     }, async (req, rep) => {
         const { address } = req.body as any; // Cast because Fastify has already validated
-        const reason_codes: string[] = [];
-        const norm = await normalizeAddress(address);
-        const po_box = detectPoBox(norm.line1) || detectPoBox(norm.line2);
-        if (po_box) reason_codes.push("address.po_box");
-
-        const { rows } = await pool.query(
-            "select 1 from geonames_postal where country_code=$1 and postal_code=$2 and (lower(place_name)=lower($3) or lower(admin_name1)=lower($3)) limit 1",
-            [norm.country.toUpperCase(), norm.postal_code, norm.city]
-        );
-        const postal_city_match = rows.length > 0;
-        if (!postal_city_match) reason_codes.push("address.postal_city_mismatch");
-
-        let geo: any = null;
-        try {
-            const q = encodeURIComponent(`${norm.line1} ${norm.city} ${norm.state} ${norm.postal_code} ${norm.country}`);
-            if (env.LOCATIONIQ_KEY) {
-                const url = `https://us1.locationiq.com/search.php?key=${env.LOCATIONIQ_KEY}&q=${q}&format=json&addressdetails=1`;
-                const r = await fetch(url, { headers: { "User-Agent": "Orbicheck/0.1" } });
-                const j = await r.json();
-                if (Array.isArray(j) && j[0]) geo = { lat: parseFloat(j[0].lat), lng: parseFloat(j[0].lon), confidence: 0.9 };
-            } else {
-                const url = `${env.NOMINATIM_URL}/search?format=json&limit=1&q=${q}`;
-                const r = await fetch(url, { headers: { "User-Agent": "Orbicheck/0.1" } });
-                const j = await r.json();
-                if (Array.isArray(j) && j[0]) geo = { lat: parseFloat(j[0].lat), lng: parseFloat(j[0].lon), confidence: 0.7 };
-            }
-        } catch { /* ignore */ }
-
-        const valid = postal_city_match && !po_box;
-        const response = { valid, normalized: norm, geo, po_box, postal_city_match, reason_codes, request_id: crypto.randomUUID(), ttl_seconds: 7 * 24 * 3600 };
-        await (rep as any).saveIdem?.(response);
-        await logEvent((req as any).project_id, "validation", "/validate/address", reason_codes, 200, { po_box, postal_city_match }, pool);
-        return rep.send(response);
+        const out = await validateAddress(address, pool, redis);
+        await (rep as any).saveIdem?.(out);
+        await logEvent((req as any).project_id, "validation", "/validate/address", out.reason_codes, 200, { po_box: out.po_box, postal_city_match: out.postal_city_match }, pool);
+        return rep.send(out);
     });
 
     app.post("/validate/tax-id", {
@@ -441,7 +371,7 @@ export function registerRoutes(app: FastifyInstance, pool: Pool, redis: IORedis)
         }
     }, async (req, rep) => {
         const { type, value, country } = req.body as { type: string; value: string; country?: string };
-        const out = await validateTaxId({ type, value, country: country || "" });
+        const out = await validateTaxId({ type, value, country: country || "", redis });
         await (rep as any).saveIdem?.(out);
         await logEvent((req as any).project_id, "validation", "/validate/tax-id", out.reason_codes, 200, { type }, pool);
         return rep.send(out);

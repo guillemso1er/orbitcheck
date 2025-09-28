@@ -2,9 +2,8 @@ import IORedis from "ioredis";
 import fetch from "node-fetch";
 import { env } from "../env";
 
-// Turn it into an exportable function
-export async function refreshDisposableDomains() {
-    const redis = new IORedis(env.REDIS_URL);
+export const disposableProcessor = async (job: any) => {
+    const redis = job.data.redis || new IORedis(env.REDIS_URL);
     try {
         console.log("Refreshing disposable domains list...");
         const r = await fetch(env.DISPOSABLE_LIST_URL);
@@ -24,7 +23,10 @@ export async function refreshDisposableDomains() {
         console.log(`Successfully loaded ${list.length} disposable domains.`);
     } catch (error) {
         console.error("Failed to refresh disposable domains:", error);
+        throw error; // Let BullMQ handle retries
     } finally {
-        await redis.quit();
+        if (!job.data.redis) {
+            await redis.quit();
+        }
     }
-}
+};

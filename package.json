@@ -5,7 +5,10 @@
     "api": "pnpm --filter @orbicheck/api"
   },
   "devDependencies": {
-    "typescript": "5.5.4",
-    "ts-node-dev": "2.0.0"
+    "@types/adm-zip": "^0.5.7",
+    "adm-zip": "^0.5.16",
+    "dotenv": "^17.2.2",
+    "ts-node-dev": "2.0.0",
+    "typescript": "5.5.4"
   }
 }

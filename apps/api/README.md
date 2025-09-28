@@ -2,6 +2,8 @@
 
 The API is a Fastify-based TypeScript server providing data validation, deduplication, and order risk assessment for e-commerce hygiene. It handles validators for emails, phones, addresses, tax IDs; fuzzy/deterministic dedupe for entities; order evaluation with rules (P.O. box block, COD risk, fraud scoring); and observability (logs, metrics).
 
+**AI-Friendly Notes:** Follow root README.md for monorepo setup. Use `list_code_definition_names` on `src/` to see routes (e.g., validateEmail), validators, jobs. Before edits, read `src/server.ts` (Fastify config, BullMQ), `src/web.ts` (route registration), and relevant files. Test changes with `pnpm run test` via `execute_command`.
+
 ## Setup
 
 ### Dependencies
@@ -27,12 +29,15 @@ TWILIO_PHONE_NUMBER=
 
 ### Database
 - Migrations: Manual via psql or tool: `psql $DATABASE_URL -f migrations/*.sql`.
-- Seed: `ts-node src/seed.ts` (creates dev project/API key; output PROJECT_ID/API_KEY).
+- Seed: `pnpm exec ts-node --require dotenv/config src/seed.ts` (creates dev project/API key; output PROJECT_ID/API_KEY for auth). If SASL/password error, ensure DATABASE_URL in .env is correct and dotenv is loaded.
 
 ### Run
-- Dev: `tsx watch src/server.ts` or `pnpm run dev`.
-- Prod: `tsc && node dist/server.js`.
-- Docker: `docker build -t orbicheck-api . && docker run -p 8080:8080 --env-file .env orbicheck-api`.
+- Dev (local, no compose): `pnpm run dev` (ts-node-dev + dotenv; binds to localhost:8080; requires manual DB/Redis start). BullMQ/Valkey compatible with `{ maxRetriesPerRequest: null }` in `src/server.ts` (line 81).
+  **AI Tip:** If Redis error on local, confirm REDIS_URL=redis://localhost:6379. Use `execute_command` for `pnpm run dev`; logs show startup and disposable refresh.
+- Container (with compose): API auto-starts in `podman compose up -d`; accesses via localhost:8080 (direct) or 8081 (edge proxy). Env uses service names (postgres:5432, valkey:6379).
+  **Common Issue:** Proxy 502—API binds 0.0.0.0 but logs 127.0.0.1; accessible via network. Test direct: `curl http://localhost:8080/health`.
+- Prod Build: `pnpm run build && node dist/server.js` (or Docker: `podman build -t orbicheck-api . && podman run -p 8080:8080 --env-file .env orbicheck-api`).
+  **AI Tip:** For rebuild after code changes, `podman compose restart api` (no full up needed). Verify with `podman logs compose-api-1`.
 
 ### Swagger Docs
 - http://localhost:8080/documentation (OpenAPI UI).
@@ -124,8 +129,10 @@ All POST/GET; auth via Bearer API key; rate limited (300/min); idempotent.
 
 ## Testing
 
-- Load: k6 scripts in tests/k6/ (run from root: `./bin/k6 run tests/k6/email.js`).
-- Unit: Add Jest (pnpm add -D jest @types/jest; configure tsconfig.json).
+- Load: k6 scripts in `tests/k6/` (run from root: `./bin/k6 run tests/k6/email.js`; 50 VUs/1min, hits proxy@8081). Fails 100% (502) due to bind—edit script to http://host.docker.internal:8080 or localhost:8080 (direct). Add auth: `headers: { Authorization: 'Bearer ' + seededKey }`.
+  **AI Tip:** Thresholds: http_req_duration <3s p95. For custom load, `--vus 10 --duration 30s`. Results show iterations/checks; integrate with Prometheus for metrics.
+- Unit: Jest in `src/__tests__/` (run `pnpm run test`; 59 tests, covers validators/web). Mocks DB/Redis; expects /v1/ routes. If 404/401, check `src/web.ts` prefixes and env API_KEY for auth. Passes on clean setup.
+  **AI Tip:** Add tests with supertest; run `--coverage` for reports. For integration, start API and use real endpoints.
 
 ## Deployment
 
@@ -134,3 +141,10 @@ All POST/GET; auth via Bearer API key; rate limited (300/min); idempotent.
 - Scaling: Horizontal Fastify instances behind load balancer.
 
 For monorepo overview, see root README.md.
+
+**AI-Specific Troubleshooting:**
+- **Proxy/502 Error:** Edge (`apps/edge/nginx.conf`) proxies to api:8080; fails if API not reachable in network. Use direct localhost:8080. Fix: Ensure no HOST=127.0.0.1 override.
+- **VIES/SOAP Slow:** Set VIES_DOWN=true in env to skip EU VAT (fallback to format check).
+- **Disposable Refresh:** BullMQ job runs on startup/cron; loads 71k+ domains from GitHub raw. If fails, manual: `pnpm exec ts-node src/jobs/refreshDisposable.ts`.
+- **Rate Limiting:** Redis-based; 300/min default. Increase for tests.
+- **Idempotency:** All POST use request_id (UUID) for 24h dedupe.

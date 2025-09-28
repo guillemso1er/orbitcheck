@@ -141,7 +141,7 @@ describe('Web API Endpoints', () => {
   describe('POST /validate/email', () => {
     it('should validate a valid email using default success mocks', async () => {
       const res = await request(app.server)
-        .post('/validate/email')
+        .post('/v1/validate/email')
         .set('Authorization', 'Bearer valid_key')
         .send({ email: 'test@example.com' })
         .expect(200);
@@ -158,7 +158,7 @@ describe('Web API Endpoints', () => {
       );
 
       const res = await request(app.server)
-        .post('/validate/email')
+        .post('/v1/validate/email')
         .set('Authorization', 'Bearer valid_key')
         .send({ email: 'test@disposable.com' })
         .expect(200);
@@ -173,7 +173,7 @@ describe('Web API Endpoints', () => {
       hapi.isEmailValid.mockReturnValue(false);
 
       const res = await request(app.server)
-        .post('/validate/email')
+        .post('/v1/validate/email')
         .set('Authorization', 'Bearer valid_key')
         .send({ email: 'invalid-email' })
         .expect(200);
@@ -415,7 +415,7 @@ describe('Web API Endpoints', () => {
     it('should reject requests with a missing API key', async () => {
       // FIX: Expect 400 because a missing required header is a schema/request format error.
       await request(app.server)
-        .post('/validate/email')
+        .post('/v1/validate/email')
         .send({ email: 'test@example.com' })
         .expect(400);
     });
@@ -430,7 +430,7 @@ describe('Web API Endpoints', () => {
       });
 
       const res = await request(app.server)
-        .post('/validate/email')
+        .post('/v1/validate/email')
         .set('Authorization', 'Bearer invalid_key')
         .send({ email: 'test@example.com' })
         .expect(401);

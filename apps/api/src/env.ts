@@ -12,5 +12,11 @@ export const env = {
     RATE_LIMIT_COUNT: parseInt(process.env.RATE_LIMIT_COUNT || "300", 10),
     TWILIO_ACCOUNT_SID: process.env.TWILIO_ACCOUNT_SID || "",
     TWILIO_AUTH_TOKEN: process.env.TWILIO_AUTH_TOKEN || "",
-    TWILIO_PHONE_NUMBER: process.env.TWILIO_PHONE_NUMBER || ""
+    TWILIO_PHONE_NUMBER: process.env.TWILIO_PHONE_NUMBER || "",
+    S3_ENDPOINT: process.env.S3_ENDPOINT || "http://localhost:9000",
+    S3_ACCESS_KEY: process.env.S3_ACCESS_KEY || "minioadmin",
+    S3_SECRET_KEY: process.env.S3_SECRET_KEY || "minioadmin",
+    S3_BUCKET: process.env.S3_BUCKET || "orbicheck",
+    GOOGLE_GEOCODING_KEY: process.env.GOOGLE_GEOCODING_KEY || "",
+    USE_GOOGLE_FALLBACK: process.env.USE_GOOGLE_FALLBACK === "true"
 };
