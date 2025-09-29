@@ -1,6 +1,13 @@
 # Orbicheck - API Data Hygiene Guard
 
-Orbicheck is a monorepo project implementing a robust API for data validation, entity deduplication, and order risk assessment. The core focus is on e-commerce data hygiene, preventing fraud, duplicates, and invalid data through validators, fuzzy matching, and business rules. Built with TypeScript, Fastify, PostgreSQL, Redis, and Docker for scalability.
+Orbicheck is a monorepo project implementing a robust API for data validation, entity deduplication, and order risk assessment. The core focus is on e-commerce data hygiene, preventing fraud, duplicates, and invalid data through validators, fuzzy matching, and business rules. Built with TypeScript, Fastify, PostgreSQL, Redis, and Podman for scalability.
+
+Recent improvements include:
+- Enhanced server startup logic with separate build and start functions for better testability and modularity.
+- Refactored route registration in web.ts with dedicated authentication and middleware functions for improved maintainability.
+- Added domain-level caching in email validation to optimize DNS lookups and disposable checks, reducing latency in critical paths.
+- Improved error handling in validation routes with try-catch blocks and consistent error responses.
+- Expanded JSDoc documentation in validators and hooks for better code readability and IDE support.
 
 ## Overview
 
@@ -29,7 +36,7 @@ Orbicheck is a monorepo project implementing a robust API for data validation, e
   - **cli/**: Command-line tools (placeholder).
   - **shared/**: Shared types and reason codes.
 - **infra/**
-  - **compose/**: Docker Compose (dev.compose.yml for local dev with Postgres/Redis/Caddy; prod.compose.yml for production).
+  - **compose/**: Podman Compose (dev.compose.yml for local dev with Postgres/Redis/Caddy; prod.compose.yml for production).
   - **loki/grafana/prometheus/promtail/**: Observability stack for logs/metrics.
 - **scripts/**: Importers and maintenance (e.g., geonames-importer.ts).
 - **tests/**
@@ -49,13 +56,13 @@ This repository is structured to facilitate AI-driven development and modificati
   - Adding features: Extend routes in `apps/api/src/routes/`, validators in `apps/api/src/validators/`.
   - Database changes: Add SQL migrations in `apps/api/migrations/` with timestamps.
   - Testing: Write Jest tests in `apps/api/src/__tests__/` or k6 load tests in `tests/k6/`.
-  - Infrastructure: Modify Docker Compose in `infra/compose/` for dev/prod environments.
+  - Infrastructure: Modify Podman Compose in `infra/compose/` for dev/prod environments.
 - **Best Practices for AI Tasks:** Break complex changes into steps using a todo list (`update_todo_list`). Run `pnpm lint` after changes via `execute_command`. Confirm tool successes before proceeding.
 - **Dependencies:** Managed via pnpm workspace; install with `pnpm install` from root.
 - **Running the Project:** Follow Quick Start below; use `execute_command` for commands like `pnpm run dev` in `apps/api`.
 
 **Troubleshooting Common Issues (AI-Specific):**
-- **Docker Compose YAML Errors:** If `podman compose up` fails with "additional properties not allowed" for services like statping/uptime-kuma, ensure they are indented under `services:` (2 spaces from root). Use `read_file` on `infra/compose/dev.compose.yml` to verify indentation before running.
+- **Podman Compose YAML Errors:** If `podman compose up` fails with "additional properties not allowed" for services like statping/uptime-kuma, ensure they are indented under `services:` (2 spaces from root). Use `read_file` on `infra/compose/dev.compose.yml` to verify indentation before running.
 - **BullMQ Redis Error ("maxRetriesPerRequest must be null"):** When starting the API (`pnpm run dev`), add `{ maxRetriesPerRequest: null }` to IORedis constructor in `apps/api/src/server.ts` line ~81. Example: `new IORedis(env.REDIS_URL, { maxRetriesPerRequest: null })`.
 - **Seed Script Fails (SASL/Password Error):** Run with explicit dotenv: `cd apps/api && pnpm exec ts-node --require dotenv/config src/seed.ts`. Ensure `DATABASE_URL` in `.env` matches Postgres setup (e.g., `postgres://postgres:postgres@localhost:5432/orbicheck`).
 - **GeoNames Importer 404 Error:** The URL in `scripts/geonames-importer.ts` (line 11) is outdated. GeoNames postal data is now country-specific (e.g., download AR.zip for Argentina from http://download.geonames.org/export/zip/ and update script to handle multiple files). For quick setup, skip or use Nominatim for geo without import.
@@ -162,7 +169,7 @@ If the AI needs clarification, it should use `ask_followup_question` sparingly, 
 
 ### Production
 - Use `infra/compose/prod.compose.yml` with secrets (Infisical integration).
-- Deploy API Docker image: `docker build -t orbicheck-api apps/api/`.
+- Deploy API Podman image: `podman build -t orbicheck-api apps/api/`.
 - Scale with Kubernetes or ECS; monitor with Grafana/Prometheus.
 - Edge: Configure OpenResty in `apps/edge/nginx.conf` for caching/routing.
 - Object Storage: MinIO (S3-compatible) for files/logs.
@@ -172,6 +179,13 @@ If the AI needs clarification, it should use `ask_followup_question` sparingly, 
 ## API Documentation
 
 See [apps/api/README.md](apps/api/README.md) for full endpoint details, schemas, examples, and reason codes.
+
+### Recent Refactoring and Optimizations
+- **Server Modularity:** The server now separates `build()` for app configuration from `start()` for runtime setup (queues, cron, listening), improving test isolation.
+- **Route Hooks:** Authentication and middleware (rate limiting, idempotency) are now in dedicated functions (`authenticateRequest`, `applyRateLimitingAndIdempotency`) in web.ts, making the preHandler hook cleaner and easier to extend.
+- **Email Validation Performance:** Added domain-level caching (7 days TTL) for MX records and disposable checks, avoiding repeated DNS/Redis calls for the same domain.
+- **Error Handling:** All validation routes now wrap logic in try-catch, logging errors and returning consistent 500 responses with 'server_error' code.
+- **Documentation:** Added comprehensive JSDoc to validators (e.g., validateEmail, validateAddress) and hooks (auth, rateLimit), including param descriptions, returns, and performance notes.
 
 ### BullMQ/Redis Note
 In container (Valkey), BullMQ jobs (disposable refresh) require `{ maxRetriesPerRequest: null }` in IORedis (already in `src/server.ts` line 81). If error on local Redis, add to constructor.

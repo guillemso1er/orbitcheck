@@ -95,7 +95,7 @@ describe('Web API Endpoints', () => {
     // --- Default Mock Implementations (Success Cases) ---
     mockPool.query.mockImplementation((queryText: string) => {
       // 1. Handle authentication successfully
-      if (queryText.startsWith('select id, project_id from api_keys')) {
+      if (queryText.includes('api_keys')) {
         return Promise.resolve({ rows: [{ project_id: 'test_project' }] });
       }
       // 2. Handle successful postal code validation for order tests
@@ -138,7 +138,7 @@ describe('Web API Endpoints', () => {
     await app.close();
   });
 
-  describe('POST /validate/email', () => {
+  describe('POST /v1/validate/email', () => {
     it('should validate a valid email using default success mocks', async () => {
       const res = await request(app.server)
         .post('/v1/validate/email')
@@ -183,10 +183,10 @@ describe('Web API Endpoints', () => {
     });
   });
 
-  describe('POST /validate/phone', () => {
+  describe('POST /v1/validate/phone', () => {
     it('should validate a valid phone number', async () => {
       const res = await request(app.server)
-        .post('/validate/phone')
+        .post('/v1/validate/phone')
         .set('Authorization', 'Bearer valid_key')
         .send({ phone: '+1 555 123 4567' })
         .expect(200);
@@ -200,7 +200,7 @@ describe('Web API Endpoints', () => {
       libphone.parsePhoneNumber.mockReturnValue(null);
 
       const res = await request(app.server)
-        .post('/validate/phone')
+        .post('/v1/validate/phone')
         .set('Authorization', 'Bearer valid_key')
         .send({ phone: 'invalid' })
         .expect(200);
@@ -211,7 +211,7 @@ describe('Web API Endpoints', () => {
 
     it('should send OTP if requested', async () => {
       const res = await request(app.server)
-        .post('/validate/phone')
+        .post('/v1/validate/phone')
         .set('Authorization', 'Bearer valid_key')
         .send({ phone: '+1 555 123 4567', request_otp: true })
         .expect(200);
@@ -221,7 +221,7 @@ describe('Web API Endpoints', () => {
     });
   });
 
-  describe('POST /dedupe/customer', () => {
+  describe('POST /v1/dedupe/customer', () => {
     it('should find exact email match', async () => {
       // Override: Mock the DB query for finding a customer by email
       mockPool.query.mockImplementation((queryText: string) => {
@@ -234,7 +234,7 @@ describe('Web API Endpoints', () => {
       });
 
       const res = await request(app.server)
-        .post('/dedupe/customer')
+        .post('/v1/dedupe/customer')
         .set('Authorization', 'Bearer valid_key')
         .send({ email: 'test@example.com', first_name: 'John', last_name: 'Doe' })
         .expect(200);
@@ -255,7 +255,7 @@ describe('Web API Endpoints', () => {
       });
 
       const res = await request(app.server)
-        .post('/dedupe/customer')
+        .post('/v1/dedupe/customer')
         .set('Authorization', 'Bearer valid_key')
         .send({ email: 'new@example.com', first_name: 'John', last_name: 'Doe' })
         .expect(200);
@@ -266,7 +266,7 @@ describe('Web API Endpoints', () => {
     it('should create new if no matches are found', async () => {
       // No override needed, the default mock returns no matches
       const res = await request(app.server)
-        .post('/dedupe/customer')
+        .post('/v1/dedupe/customer')
         .set('Authorization', 'Bearer valid_key')
         .send({ email: 'unique@example.com', first_name: 'Jane', last_name: 'Smith' })
         .expect(200);
@@ -276,12 +276,12 @@ describe('Web API Endpoints', () => {
     });
   });
 
-  describe('POST /order/evaluate', () => {
+  describe('POST /v1/order/evaluate', () => {
     it('should approve low-risk order', async () => {
       // The default mock setup now correctly represents a "perfect" low-risk scenario.
       // No overrides are needed.
       const res = await request(app.server)
-        .post('/order/evaluate')
+        .post('/v1/order/evaluate')
         .set('Authorization', 'Bearer valid_key')
         .send({
           order_id: 'order-123',
@@ -302,7 +302,7 @@ describe('Web API Endpoints', () => {
       mockAddressValidator.detectPoBox.mockReturnValue(true);
 
       const res = await request(app.server)
-        .post('/order/evaluate')
+        .post('/v1/order/evaluate')
         .set('Authorization', 'Bearer valid_key')
         .send({
           order_id: 'order-po-box',
@@ -325,7 +325,7 @@ describe('Web API Endpoints', () => {
         if (queryText.startsWith('SELECT id FROM orders')) { // Intercept the order dedupe query
           return Promise.resolve({ rows: [{ id: 'existing_order' }] });
         }
-        if (queryText.startsWith('select id, project_id from api_keys')) {
+        if (queryText.includes('api_keys')) {
           return Promise.resolve({ rows: [{ project_id: 'test_project' }] });
         }
         if (queryText.startsWith('select 1 from geonames_postal')) {
@@ -335,7 +335,7 @@ describe('Web API Endpoints', () => {
       });
 
       const res = await request(app.server)
-        .post('/order/evaluate')
+        .post('/v1/order/evaluate')
         .set('Authorization', 'Bearer valid_key')
         .send({
           order_id: 'duplicate-123',
@@ -354,13 +354,19 @@ describe('Web API Endpoints', () => {
 
   describe('GET /logs', () => {
     it('should return logs for the project', async () => {
-      const logEntry = { id: 'log-1', type: 'validation', endpoint: '/validate/email', reason_codes: [], status: 200, created_at: new Date().toISOString() };
+      const logEntry = { id: 'log-1', type: 'validation', endpoint: '/validate/email', reason_codes: [], status: 200, created_at: new Date().toISOString(), meta: {} };
       // Override: Mock DB to return a log entry
       mockPool.query.mockImplementation((queryText: string) => {
-        if (queryText.includes('from logs')) {
+        if (queryText.includes('COUNT(*) as total FROM logs')) {
+          return Promise.resolve({ rows: [{ total: 1 }] });
+        }
+        if (queryText.includes('FROM logs') && queryText.includes('ORDER BY created_at DESC')) {
           return Promise.resolve({ rows: [logEntry] });
         }
-        return Promise.resolve({ rows: [{ project_id: 'test_project' }] }); // Auth
+        if (queryText.includes('api_keys')) {
+          return Promise.resolve({ rows: [{ project_id: 'test_project' }] });
+        }
+        return Promise.resolve({ rows: [] });
       });
 
       const res = await request(app.server)
@@ -370,6 +376,7 @@ describe('Web API Endpoints', () => {
 
       expect(res.body.data.length).toBe(1);
       expect(res.body.data[0].id).toBe('log-1');
+      expect(res.body.total_count).toBe(1);
     });
   });
 
@@ -384,7 +391,16 @@ describe('Web API Endpoints', () => {
         if (queryText.includes('from usage_daily')) {
           return Promise.resolve({ rows: usageData });
         }
-        return Promise.resolve({ rows: [{ project_id: 'test_project' }] }); // Auth
+        if (queryText.includes('unnest(reason_codes) as code')) {
+          return Promise.resolve({ rows: [{ code: 'email.valid', count: 20 }] });
+        }
+        if (queryText.includes('count(*) as total_requests FROM logs')) {
+          return Promise.resolve({ rows: [{ total_requests: 30 }] });
+        }
+        if (queryText.includes('api_keys')) {
+          return Promise.resolve({ rows: [{ project_id: 'test_project' }] });
+        }
+        return Promise.resolve({ rows: [] });
       });
 
       const res = await request(app.server)
@@ -398,11 +414,11 @@ describe('Web API Endpoints', () => {
     });
   });
 
-  describe('GET /rules', () => {
+  describe('GET /v1/rules', () => {
     it('should return a list of rules', async () => {
       // No DB override needed for this static endpoint
       const res = await request(app.server)
-        .get('/rules')
+        .get('/v1/rules')
         .set('Authorization', 'Bearer valid_key')
         .expect(200);
 

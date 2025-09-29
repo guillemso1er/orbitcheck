@@ -50,7 +50,8 @@ services:
       - ../../apps/edge/nginx.conf:/usr/local/openresty/nginx/conf/nginx.conf:ro
       - nginx_cache:/tmp/nginx_cache
     depends_on:
-      - api
+      api:
+        condition: service_started
 
   api:
     build:
@@ -73,6 +74,8 @@ services:
         condition: service_healthy
       minio:
         condition: service_healthy
+    ports:
+      - "8080:8080"
 
   prom:
     image: prom/prometheus:latest

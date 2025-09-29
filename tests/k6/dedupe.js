@@ -4,7 +4,7 @@ import { check, sleep } from 'k6';
 export const options = { vus: 10, duration: '30s' };
 
 const KEY = __ENV.KEY;
-const BASE_URL = 'http://localhost:8080';
+const BASE_URL = 'http://localhost:8081';
 const HEADERS = {
     'Content-Type': 'application/json',
     'Authorization': `Bearer ${KEY}`

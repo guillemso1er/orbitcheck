@@ -1,5 +1,8 @@
+import dotenv from 'dotenv';
+dotenv.config();
 import { createHash, randomBytes } from "crypto";
 import { Pool } from "pg";
+console.log('DATABASE_URL:', process.env.DATABASE_URL);
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 (async () => {
     const { rows } = await pool.query("insert into projects (name, plan) values ($1, $2) returning id", ["Dev Project", "dev"]);

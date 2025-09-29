@@ -50,6 +50,124 @@ const reasonCodes: ReasonCode[] = [
 ];
 
 export async function registerRulesRoutes(app: FastifyInstance, pool: Pool) {
+  const rules = [
+    {
+      id: 'email_format',
+      name: 'Email Format Validation',
+      description: 'Validates the basic format of email addresses using RFC standards.',
+      category: 'email',
+      enabled: true,
+    },
+    {
+      id: 'email_mx',
+      name: 'Email MX Record Check',
+      description: 'Verifies that the domain has valid MX records for email delivery.',
+      category: 'email',
+      enabled: true,
+    },
+    {
+      id: 'email_disposable',
+      name: 'Disposable Email Detection',
+      description: 'Detects and flags temporary or disposable email services.',
+      category: 'email',
+      enabled: true,
+    },
+    {
+      id: 'phone_format',
+      name: 'Phone Number Format Validation',
+      description: 'Parses and validates international phone number formats.',
+      category: 'phone',
+      enabled: true,
+    },
+    {
+      id: 'phone_otp',
+      name: 'Phone OTP Verification',
+      description: 'Sends one-time password for phone number verification.',
+      category: 'phone',
+      enabled: true,
+    },
+    {
+      id: 'address_po_box',
+      name: 'PO Box Detection',
+      description: 'Identifies and flags addresses using PO Box or similar mail services.',
+      category: 'address',
+      enabled: true,
+    },
+    {
+      id: 'address_geocode',
+      name: 'Address Geocoding Validation',
+      description: 'Normalizes and validates physical addresses against geographic data.',
+      category: 'address',
+      enabled: true,
+    },
+    {
+      id: 'taxid_format',
+      name: 'Tax ID Format Check',
+      description: 'Validates the format and checksum of tax identification numbers.',
+      category: 'taxid',
+      enabled: true,
+    },
+    {
+      id: 'taxid_vies',
+      name: 'VAT Validation via VIES',
+      description: 'Verifies EU VAT numbers against the official VIES service.',
+      category: 'taxid',
+      enabled: true,
+    },
+    {
+      id: 'order_dedupe',
+      name: 'Order Deduplication',
+      description: 'Checks for potential duplicate orders based on customer and address data.',
+      category: 'order',
+      enabled: true,
+    },
+    {
+      id: 'order_risk',
+      name: 'Order Risk Scoring',
+      description: 'Evaluates overall risk of orders based on multiple validation signals.',
+      category: 'order',
+      enabled: true,
+    },
+  ];
+
+  // Rules list endpoint
+  app.get('/v1/rules', {
+    schema: {
+      summary: 'Get Available Rules',
+      description: 'Returns a list of all available validation and risk assessment rules.',
+      tags: ['Rules'],
+      response: {
+        200: {
+          description: 'List of rules',
+          type: 'object',
+          properties: {
+            rules: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  id: { type: 'string' },
+                  name: { type: 'string' },
+                  description: { type: 'string' },
+                  category: { type: 'string' },
+                  enabled: { type: 'boolean' },
+                },
+              },
+            },
+            request_id: { type: 'string' },
+          },
+        },
+      },
+    },
+  }, async (req: FastifyRequest, rep: FastifyReply) => {
+    const request_id = crypto.randomUUID();
+    const response = {
+      rules,
+      request_id,
+    };
+    return rep.send(response);
+  });
+
   // Reason code catalog endpoint
   app.get('/v1/rules/catalog', {
     schema: {

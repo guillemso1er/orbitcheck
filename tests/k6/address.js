@@ -10,7 +10,7 @@ export const options = {
 };
 
 const KEY = __ENV.KEY;
-const BASE_URL = 'http://localhost:8081';
+const BASE_URL = 'http://localhost:8081/v1';
 const HEADERS = {
     'Content-Type': 'application/json',
     'Authorization': `Bearer ${KEY}`

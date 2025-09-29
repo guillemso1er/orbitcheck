@@ -18,5 +18,6 @@ export const env = {
     S3_SECRET_KEY: process.env.S3_SECRET_KEY || "minioadmin",
     S3_BUCKET: process.env.S3_BUCKET || "orbicheck",
     GOOGLE_GEOCODING_KEY: process.env.GOOGLE_GEOCODING_KEY || "",
-    USE_GOOGLE_FALLBACK: process.env.USE_GOOGLE_FALLBACK === "true"
+    USE_GOOGLE_FALLBACK: process.env.USE_GOOGLE_FALLBACK === "true",
+    JWT_SECRET: process.env.JWT_SECRET || "your-super-secret-jwt-key-change-in-production"
 };

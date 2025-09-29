@@ -22,7 +22,7 @@ import { runLogRetention } from './cron/retention';
  * @param redis - Redis client for caching and rate limiting.
  * @returns {Promise<FastifyInstance>} Configured Fastify app instance.
  */
-async function build(pool: Pool, redis: IORedis) {
+export async function build(pool: Pool, redis: IORedis) {
     if (env.SENTRY_DSN) {
         Sentry.init({
             dsn: env.SENTRY_DSN,
@@ -76,7 +76,7 @@ async function build(pool: Pool, redis: IORedis) {
     return app;
 }
 
-(async () => {
+export async function start() {
     const pool = new Pool({ connectionString: env.DATABASE_URL });
     const redis = new IORedis(env.REDIS_URL, { maxRetriesPerRequest: null });
     const app = await build(pool, redis);
@@ -99,10 +99,14 @@ async function build(pool: Pool, redis: IORedis) {
 
     await app.listen({ port: env.PORT, host: "0.0.0.0" });
     app.log.info(`API up on ${env.PORT}`);
-})().catch(err => {
-    if (env.SENTRY_DSN) {
-        Sentry.captureException(err);
-    }
-    console.error(err);
-    process.exit(1);
-});
+}
+
+if (require.main === module) {
+  start().catch(err => {
+      if (env.SENTRY_DSN) {
+          Sentry.captureException(err);
+      }
+      console.error(err);
+      process.exit(1);
+  });
+}
