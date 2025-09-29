@@ -98,9 +98,13 @@ describe('Webhook Test Routes (JWT Auth)', () => {
             });
 
         expect(res.statusCode).toBe(200);
-        expect(fetchMock).toHaveBeenCalledWith('https://example.com/webhook', expect.objectContaining({
-            body: JSON.stringify({ event: 'custom_event', data: 'test', project_id: 'test_project' })
-        }));
+        const call = fetchMock.mock.calls[0][1];
+        expect(JSON.parse(call.body)).toMatchObject({
+            event: 'custom_event',
+            data: 'test',
+            project_id: 'test_project'
+        });
+        console.log('Response body:', JSON.stringify(res.body, null, 2));
         expect(res.body.payload.event).toBe('custom_event');
         expect(hooks.logEvent).toHaveBeenCalled();
     });

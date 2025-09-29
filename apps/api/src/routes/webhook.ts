@@ -1,13 +1,14 @@
 import { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
-import { Pool } from "pg";
 import fetch from "node-fetch";
-import crypto from "crypto";
+import { Pool } from "pg";
 import { logEvent } from "../hooks";
-import { securityHeader, unauthorizedResponse, rateLimitResponse, generateRequestId, sendError, sendServerError } from "./utils";
+import { verifyJWT } from "./auth";
+import { generateRequestId, rateLimitResponse, securityHeader, sendError, unauthorizedResponse } from "./utils";
 
 
 export function registerWebhookRoutes(app: FastifyInstance, pool: Pool) {
     app.post('/webhooks/test', {
+        preHandler: async (req: FastifyRequest, rep: FastifyReply) => await verifyJWT(req, rep, pool),
         schema: {
             summary: 'Test Webhook',
             description: 'Sends a sample payload to the provided webhook URL and returns the response. Useful for testing webhook configurations.',
@@ -41,7 +42,10 @@ export function registerWebhookRoutes(app: FastifyInstance, pool: Pool) {
                     type: 'object',
                     properties: {
                         sent_to: { type: 'string' },
-                        payload: { type: 'object' },
+                        payload: {
+                            type: 'object',
+                            additionalProperties: true
+                        },
                         response: {
                             type: 'object',
                             properties: {
