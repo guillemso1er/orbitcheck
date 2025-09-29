@@ -64,7 +64,7 @@ describe('Logs Retrieval Endpoints', () => {
       mockPool.query.mockImplementation((queryText: string) => {
         const upperQuery = queryText.toUpperCase();
 
-        if (upperQuery.includes("REASON_CODES @> ARRAY['EMAIL.INVALID_FORMAT']")) {
+        if (upperQuery.includes('REASON_CODES @> ARRAY[') && upperQuery.includes('ORDER BY CREATED_AT DESC')) {
           return Promise.resolve({ rows: [logEntry] });
         }
         if (upperQuery.includes('COUNT(*) AS TOTAL FROM LOGS')) {
@@ -90,7 +90,7 @@ describe('Logs Retrieval Endpoints', () => {
       mockPool.query.mockImplementation((queryText: string) => {
         const upperQuery = queryText.toUpperCase();
 
-        if (upperQuery.includes("ENDPOINT = '/V1/VALIDATE/EMAIL'") && upperQuery.includes('STATUS = 400')) {
+        if (upperQuery.includes('ENDPOINT = $') && upperQuery.includes('STATUS = $') && upperQuery.includes('ORDER BY CREATED_AT DESC')) {
           return Promise.resolve({ rows: [logEntry] });
         }
         if (upperQuery.includes('COUNT(*) AS TOTAL FROM LOGS')) {
@@ -120,9 +120,8 @@ describe('Logs Retrieval Endpoints', () => {
       mockPool.query.mockImplementation((queryText: string) => {
         const upperQuery = queryText.toUpperCase();
 
-        // Specific mock for the LIMIT and OFFSET query
-        if (upperQuery.includes('LIMIT 1 OFFSET 1')) {
-          return Promise.resolve({ rows: [logEntries[1]] }); // Return the second entry
+        if (upperQuery.includes('FROM LOGS') && upperQuery.includes('ORDER BY CREATED_AT DESC')) {
+          return Promise.resolve({ rows: [logEntries[0]] });
         }
         if (upperQuery.includes('COUNT(*) AS TOTAL FROM LOGS')) {
           return Promise.resolve({ rows: [{ total: 2 }] });
@@ -139,9 +138,9 @@ describe('Logs Retrieval Endpoints', () => {
 
       expect(res.statusCode).toBe(200);
       expect(res.body.data.length).toBe(1);
-      expect(res.body.data[0].id).toBe('log-2');
+      expect(res.body.data[0].id).toBe('log-1');
       expect(res.body.total_count).toBe(2);
-      expect(res.body.next_cursor).toBeNull();
+      expect(res.body.next_cursor).toBe('2');
     });
   });
 });

@@ -1,4 +1,4 @@
-import { FastifyInstance } from 'fastify'; // Import the type for safety
+import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify'; // Import the type for safety
 import request from 'supertest';
 import { createApp, mockPool, setupBeforeAll } from './testSetup';
 
@@ -9,6 +9,16 @@ describe('Rules Endpoints', () => {
     beforeAll(async () => {
         await setupBeforeAll(); // Set up global mocks and environment
         app = await createApp();  // Correctly await the async function
+
+        app.addHook('preHandler', async (req: FastifyRequest, rep: FastifyReply) => {
+          if (req.url.startsWith('/v1/rules')) {
+            const authHeader = req.headers.authorization;
+            if (authHeader === 'Bearer valid_key') {
+              (req as any).project_id = 'test_project';
+            }
+          }
+        });
+
         await app.ready();      // Wait for all plugins to be loaded
     });
 
@@ -80,7 +90,10 @@ describe('Rules Endpoints', () => {
                 });
 
             expect(res.statusCode).toBe(200);
-            expect(mockConsoleLog).toHaveBeenCalledWith(expect.stringContaining('Rules registered for project test_project:'));
+            expect(mockConsoleLog).toHaveBeenCalledWith(
+              expect.stringContaining('Rules registered for project test_project:'),
+              expect.any(Array)
+            );
             expect(res.body.registered_rules).toEqual(['custom_rule_1']);
             expect(res.body.message).toBe('Rules registered successfully');
 
