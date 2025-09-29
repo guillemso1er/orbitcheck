@@ -4,6 +4,7 @@ import { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { Pool } from "pg";
 import crypto from "crypto";
 import { env } from "../env";
+import { generateRequestId, sendError, sendServerError } from "./utils";
 
 export async function verifyJWT(req: FastifyRequest, rep: FastifyReply, pool: Pool) {
     const header = req.headers["authorization"];
@@ -56,7 +57,8 @@ export function registerAuthRoutes(app: FastifyInstance, pool: Pool) {
                                 id: { type: 'string' },
                                 email: { type: 'string' }
                             }
-                        }
+                        },
+                        request_id: { type: 'string' }
                     }
                 },
                 400: { description: 'Invalid input' },
@@ -64,10 +66,11 @@ export function registerAuthRoutes(app: FastifyInstance, pool: Pool) {
             }
         }
     }, async (req, rep) => {
-        const { email, password } = req.body as { email: string; password: string };
-        const hashedPassword = await bcrypt.hash(password, 12);
-
         try {
+            const request_id = generateRequestId();
+            const { email, password } = req.body as { email: string; password: string };
+            const hashedPassword = await bcrypt.hash(password, 12);
+
             // Create user
             const { rows: userRows } = await pool.query(
                 'INSERT INTO users (email, password_hash) VALUES ($1, $2) RETURNING id, email',
@@ -75,7 +78,7 @@ export function registerAuthRoutes(app: FastifyInstance, pool: Pool) {
             );
 
             if (userRows.length === 0) {
-                return rep.status(409).send({ error: { code: 'user_exists', message: 'User already exists' } });
+                return sendError(rep, 409, 'user_exists', 'User already exists', request_id);
             }
 
             const user = userRows[0];
@@ -101,12 +104,12 @@ export function registerAuthRoutes(app: FastifyInstance, pool: Pool) {
             // Generate JWT
             const token = jwt.sign({ user_id: user.id }, env.JWT_SECRET, { expiresIn: '7d' });
 
-            return rep.status(201).send({ token, user });
+            return rep.status(201).send({ token, user, request_id });
         } catch (err) {
             if ((err as any).code === '23505') { // Unique violation
-                return rep.status(409).send({ error: { code: 'user_exists', message: 'User already exists' } });
+                return sendError(rep, 409, 'user_exists', 'User already exists', generateRequestId());
             }
-            throw err;
+            return sendServerError(req, rep, err, '/auth/register', generateRequestId());
         }
     });
 
@@ -131,24 +134,30 @@ export function registerAuthRoutes(app: FastifyInstance, pool: Pool) {
                                 id: { type: 'string' },
                                 email: { type: 'string' }
                             }
-                        }
+                        },
+                        request_id: { type: 'string' }
                     }
                 },
                 401: { description: 'Invalid credentials' }
             }
         }
     }, async (req, rep) => {
-        const { email, password } = req.body as { email: string; password: string };
+        try {
+            const request_id = generateRequestId();
+            const { email, password } = req.body as { email: string; password: string };
 
-        const { rows } = await pool.query('SELECT id, password_hash FROM users WHERE email = $1', [email]);
+            const { rows } = await pool.query('SELECT id, password_hash FROM users WHERE email = $1', [email]);
 
-        if (rows.length === 0 || !(await bcrypt.compare(password, rows[0].password_hash))) {
-            return rep.status(401).send({ error: { code: 'invalid_credentials', message: 'Invalid email or password' } });
+            if (rows.length === 0 || !(await bcrypt.compare(password, rows[0].password_hash))) {
+                return sendError(rep, 401, 'invalid_credentials', 'Invalid email or password', request_id);
+            }
+
+            const user = rows[0];
+            const token = jwt.sign({ user_id: user.id }, env.JWT_SECRET, { expiresIn: '7d' });
+
+            return rep.send({ token, user: { id: user.id, email }, request_id });
+        } catch (error) {
+            return sendServerError(req, rep, error, '/auth/login', generateRequestId());
         }
-
-        const user = rows[0];
-        const token = jwt.sign({ user_id: user.id }, env.JWT_SECRET, { expiresIn: '7d' });
-
-        return rep.send({ token, user: { id: user.id, email } });
     });
 }

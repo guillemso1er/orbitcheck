@@ -10,6 +10,10 @@ jest.mock('node-fetch');
 const mockFetch = fetch as jest.MockedFunction<typeof fetch>;
 
 describe('Disposable Domains Refresh Job', () => {
+  beforeAll(() => {
+    process.env.JWT_SECRET = 'test_jwt_secret';
+    process.env.DISPOSABLE_LIST_URL = 'https://example.com/disposable-domains.json';
+  });
   let mockRedis: jest.Mocked<IORedis>;
   let mockPipeline: {
     exec: jest.Mock;

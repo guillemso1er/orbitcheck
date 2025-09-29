@@ -8,6 +8,9 @@ jest.mock('pg', () => ({
 }));
 
 describe('Log Retention Cron Job', () => {
+  beforeAll(() => {
+    process.env.JWT_SECRET = 'test_jwt_secret';
+  });
   let mockPool: jest.Mocked<Pool>;
   let mockQuery: jest.Mock;
 

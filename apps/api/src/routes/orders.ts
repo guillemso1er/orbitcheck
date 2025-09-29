@@ -6,35 +6,11 @@ import { detectPoBox } from "../validators/address";
 import { isEmailValid } from '@hapi/address';
 import { parsePhoneNumber } from "libphonenumber-js";
 import { logEvent } from "../hooks";
+import { securityHeader, unauthorizedResponse, rateLimitResponse, validationErrorResponse, generateRequestId, sendServerError } from "./utils";
 
-const errorSchema = {
-    type: 'object',
-    properties: {
-        error: {
-            type: 'object',
-            properties: {
-                code: { type: 'string' },
-                message: { type: 'string' }
-            }
-        }
-    }
-};
-
-const securityHeader = {
-    type: 'object',
-    properties: {
-        'authorization': { type: 'string' },
-        'idempotency-key': { type: 'string' }
-    },
-    required: ['authorization']
-};
-
-const unauthorizedResponse = { 401: { description: 'Unauthorized', ...errorSchema } };
-const rateLimitResponse = { 429: { description: 'Rate Limit Exceeded', ...errorSchema } };
-const validationErrorResponse = { 400: { description: 'Validation Error', ...errorSchema } };
 
 export function registerOrderRoutes(app: FastifyInstance, pool: Pool) {
-    app.post('/v1/order/evaluate', {
+    app.post('/v1/orders/evaluate', {
         schema: {
             summary: 'Evaluate Order for Risk and Rules',
             description: 'Evaluates an order for deduplication, validation, and applies business rules like P.O. box blocking, fraud scoring, and auto-hold/tagging. Returns risk assessment and action recommendations.',
@@ -112,14 +88,14 @@ export function registerOrderRoutes(app: FastifyInstance, pool: Pool) {
             }
         }
     }, async (req, rep) => {
-        const body = req.body as any;
-        const project_id = (req as any).project_id;
-        const reason_codes: string[] = [];
-        const tags: string[] = [];
-        let risk_score = 0;
-        const request_id = crypto.randomUUID();
-
         try {
+            const request_id = generateRequestId();
+            const body = req.body as any;
+            const project_id = (req as any).project_id;
+            const reason_codes: string[] = [];
+            const tags: string[] = [];
+            let risk_score = 0;
+
             const { order_id, customer, shipping_address, total_amount, currency, payment_method } = body;
 
             // 1. Customer dedupe
@@ -241,15 +217,10 @@ export function registerOrderRoutes(app: FastifyInstance, pool: Pool) {
             );
 
             await (rep as any).saveIdem?.(response);
-            await logEvent(project_id, 'order', '/order/evaluate', reason_codes, 200, { risk_score, action, tags: tags.join(',') }, pool);
+            await logEvent(project_id, 'order', '/orders/evaluate', reason_codes, 200, { risk_score, action, tags: tags.join(',') }, pool);
             return rep.send(response);
-
         } catch (error) {
-            req.log.error(error);
-            reason_codes.push('order.server_error');
-            const response = { order_id: body.order_id, risk_score: 0, action: 'hold', tags: [], reason_codes, customer_dedupe: { matches: [], suggested_action: 'create_new' }, address_dedupe: { matches: [], suggested_action: 'create_new' }, validations: { email: { valid: false, reason_codes: [] as string[] }, phone: { valid: false, reason_codes: [] as string[] }, address: { valid: false, reason_codes: [] as string[] } }, request_id };
-            await logEvent(project_id, 'order', '/order/evaluate', reason_codes, 500, {}, pool);
-            return rep.status(500).send(response);
+            return sendServerError(req, rep, error, '/v1/orders/evaluate', generateRequestId());
         }
     });
 }

@@ -48,6 +48,7 @@
         "zod": "4.1.11"
     },
     "devDependencies": {
+        "@babel/preset-typescript": "^7.27.1",
         "@types/jest": "30.0.0",
         "@types/node": "24.5.2",
         "@types/node-cron": "^3.0.11",

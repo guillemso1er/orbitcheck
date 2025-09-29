@@ -2,6 +2,17 @@ import crypto from "crypto";
 import { parsePhoneNumber } from "libphonenumber-js";
 import type { Redis } from "ioredis";
 
+/**
+ * Validates a phone number using libphonenumber-js for international format parsing.
+ * Supports optional country hint for ambiguous numbers. Caches results in Redis (30 days TTL)
+ * using SHA-1 hash of input for performance. Normalizes to E.164 format on success.
+ *
+ * @param phone - The phone number string to validate (e.g., "+1 555-123-4567" or "5551234567").
+ * @param country - Optional two-letter ISO country code hint (e.g., "US") for parsing.
+ * @param redis - Optional Redis client for caching validation results.
+ * @returns {Promise<Object>} Validation result with E.164 normalized number, validity, country, reason codes, request ID, and TTL.
+ */
+
 export async function validatePhone(
     phone: string,
     country?: string,

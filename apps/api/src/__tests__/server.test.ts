@@ -23,6 +23,7 @@ jest.mock('@fastify/swagger-ui', () => jest.fn());
 
 const mockApp = {
   register: jest.fn(),
+  addHook: jest.fn(),
   get: jest.fn(),
   listen: jest.fn().mockResolvedValue(undefined),
   log: { info: jest.fn() },
@@ -122,7 +123,7 @@ describe('Server Startup', () => {
     expect(Worker).toHaveBeenCalledWith('disposable', expect.any(Function), { connection: mockRedis });
     expect(cron.schedule).toHaveBeenCalledWith('0 0 * * *', expect.any(Function));
     expect(mockApp.listen).toHaveBeenCalledWith({ port: 3000, host: '0.0.0.0' });
-    expect(mockApp.log.info).toHaveBeenCalledWith('API up on 3000');
+    expect(mockApp.log.info).toHaveBeenCalledWith(`Orbicheck API server listening on http://0.0.0.0:${env.PORT}`);
   });
 
   it('should handle startup errors', async () => {

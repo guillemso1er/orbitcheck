@@ -15,6 +15,17 @@ import { env } from "./env";
  * @param pool - PostgreSQL connection pool.
  * @returns {Promise<void>} Resolves if authenticated, sends 401 error if not.
  */
+/**
+ * Authentication hook for API requests using Bearer token.
+ * Extracts API key from Authorization header, computes SHA-256 hash for secure comparison.
+ * Queries database for active key matching hash and prefix, attaches project_id to request.
+ * Updates last_used_at timestamp on successful auth.
+ *
+ * @param req - Fastify request object with headers.
+ * @param rep - Fastify reply object for sending responses.
+ * @param pool - PostgreSQL connection pool for database queries.
+ * @returns {Promise<void>} Resolves on success, sends 401 error on failure.
+ */
 export async function auth(req: FastifyRequest, rep: FastifyReply, pool: Pool) {
     const header = req.headers["authorization"];
     if (!header || !header.startsWith("Bearer ")) {
@@ -23,10 +34,10 @@ export async function auth(req: FastifyRequest, rep: FastifyReply, pool: Pool) {
     const key = header.substring(7).trim();
     const prefix = key.slice(0, 6);
 
-    // Instead of bcrypt hash, we will store and compare a SHA-256 hash.
+    // Compute SHA-256 hash for secure storage and comparison (avoids storing plaintext keys)
     const keyHash = crypto.createHash('sha256').update(key).digest('hex');
 
-    // The query now looks for the full hash. This is much more secure and efficient.
+    // Query for active key matching full hash and prefix (efficient indexing on hash/prefix)
     const { rows } = await pool.query(
         "select id, project_id from api_keys where hash=$1 and prefix=$2 and status='active'",
         [keyHash, prefix]
@@ -36,12 +47,13 @@ export async function auth(req: FastifyRequest, rep: FastifyReply, pool: Pool) {
         return rep.status(401).send({ error: { code: "unauthorized", message: "Invalid API key" } });
     }
 
-    // Update last_used_at
+    // Update usage timestamp for auditing and analytics
     await pool.query(
         "UPDATE api_keys SET last_used_at = now() WHERE id = $1",
         [rows[0].id]
     );
 
+    // Attach project_id to request for downstream route access
     (req as any).project_id = rows[0].project_id;
 }
 
@@ -52,6 +64,16 @@ export async function auth(req: FastifyRequest, rep: FastifyReply, pool: Pool) {
  * @param req - Fastify request object (requires project_id from auth).
  * @param rep - Fastify reply object.
  * @param redis - Redis client.
+ * @returns {Promise<void>} Resolves if under limit, sends 429 if exceeded.
+ */
+/**
+ * Rate limiting hook using Redis sliding window (per project + IP, 1-minute window).
+ * Increments counter for unique key, sets TTL on first request, enforces limit.
+ * Prevents abuse and ensures fair usage across projects.
+ *
+ * @param req - Fastify request object with project_id (from auth) and IP.
+ * @param rep - Fastify reply object for sending 429 error if limited.
+ * @param redis - Redis client for atomic increment and expiration.
  * @returns {Promise<void>} Resolves if under limit, sends 429 if exceeded.
  */
 export async function rateLimit(req: FastifyRequest, rep: FastifyReply, redis: IORedis) {
@@ -71,6 +93,17 @@ export async function rateLimit(req: FastifyRequest, rep: FastifyReply, redis: I
  * @param req - Fastify request object (requires project_id from auth).
  * @param rep - Fastify reply object.
  * @param redis - Redis client.
+ * @returns {Promise<void|FastifyReply>} Sends cached response if found, otherwise attaches saveIdem.
+ */
+/**
+ * Idempotency hook using Redis (24-hour TTL per project + key).
+ * Checks idempotency-key header; replays cached response if exists to prevent duplicates.
+ * Attaches saveIdem method to reply for storing new responses post-processing.
+ * Ensures safe retries for non-idempotent operations like payments.
+ *
+ * @param req - Fastify request object with headers and project_id (from auth).
+ * @param rep - Fastify reply object; extended with saveIdem for caching responses.
+ * @param redis - Redis client for GET/SET with expiration.
  * @returns {Promise<void|FastifyReply>} Sends cached response if found, otherwise attaches saveIdem.
  */
 export async function idempotency(req: FastifyRequest, rep: FastifyReply, redis: IORedis) {
@@ -99,6 +132,20 @@ export async function idempotency(req: FastifyRequest, rep: FastifyReply, redis:
  * @param meta - Additional metadata as JSON.
  * @param pool - PostgreSQL connection pool.
  * @returns {Promise<void>}
+ */
+/**
+ * Logs an event to the 'logs' table for observability, auditing, and analytics.
+ * Records project_id, event type, endpoint, reason codes, HTTP status, and metadata (JSON).
+ * Enables querying for usage stats, error tracking, and compliance reporting.
+ *
+ * @param project_id - Unique identifier for the project.
+ * @param type - Event category (e.g., 'validation', 'order', 'dedupe').
+ * @param endpoint - API endpoint invoked (e.g., '/v1/validate/email').
+ * @param reason_codes - Array of validation or risk reason codes.
+ * @param status - HTTP status code of the response (e.g., 200, 400).
+ * @param meta - Additional context as JSON object (e.g., { domain: 'example.com' }).
+ * @param pool - PostgreSQL connection pool for inserting the log entry.
+ * @returns {Promise<void>} Inserts log entry asynchronously.
  */
 export async function logEvent(project_id: string, type: string, endpoint: string, reason_codes: string[], status: number, meta: any, pool: Pool) {
     await pool.query(

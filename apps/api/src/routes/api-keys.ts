@@ -1,31 +1,8 @@
 import { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { Pool } from "pg";
 import crypto from "crypto";
+import { errorSchema, securityHeader, unauthorizedResponse, rateLimitResponse, generateRequestId, sendError, sendServerError } from "./utils";
 
-const errorSchema = {
-    type: 'object',
-    properties: {
-        error: {
-            type: 'object',
-            properties: {
-                code: { type: 'string' },
-                message: { type: 'string' }
-            }
-        }
-    }
-};
-
-const securityHeader = {
-    type: 'object',
-    properties: {
-        'authorization': { type: 'string' },
-        'idempotency-key': { type: 'string' }
-    },
-    required: ['authorization']
-};
-
-const unauthorizedResponse = { 401: { description: 'Unauthorized', ...errorSchema } };
-const rateLimitResponse = { 429: { description: 'Rate Limit Exceeded', ...errorSchema } };
 
 export function registerApiKeysRoutes(app: FastifyInstance, pool: Pool) {
     app.get('/api-keys', {
@@ -60,13 +37,17 @@ export function registerApiKeysRoutes(app: FastifyInstance, pool: Pool) {
             }
         }
     }, async (req, rep) => {
-        const project_id = (req as any).project_id;
-        const request_id = crypto.randomUUID();
-        const { rows } = await pool.query(
-            "SELECT id, prefix, name, status, created_at, last_used_at FROM api_keys WHERE project_id = $1 ORDER BY created_at DESC",
-            [project_id]
-        );
-        return rep.send({ data: rows, request_id });
+        try {
+            const project_id = (req as any).project_id;
+            const request_id = generateRequestId();
+            const { rows } = await pool.query(
+                "SELECT id, prefix, name, status, created_at, last_used_at FROM api_keys WHERE project_id = $1 ORDER BY created_at DESC",
+                [project_id]
+            );
+            return rep.send({ data: rows, request_id });
+        } catch (error) {
+            return sendServerError(req, rep, error, '/api-keys', generateRequestId());
+        }
     });
 
     app.post('/api-keys', {
@@ -99,29 +80,33 @@ export function registerApiKeysRoutes(app: FastifyInstance, pool: Pool) {
             }
         }
     }, async (req, rep) => {
-        const project_id = (req as any).project_id;
-        const { name } = req.body as { name?: string };
-        const request_id = crypto.randomUUID();
+        try {
+            const project_id = (req as any).project_id;
+            const { name } = req.body as { name?: string };
+            const request_id = generateRequestId();
 
-        // Generate full key
-        const full_key = "ok_" + crypto.randomBytes(32).toString('hex');
-        const prefix = full_key.slice(0, 6);
-        const keyHash = crypto.createHash('sha256').update(full_key).digest('hex');
+            // Generate full key
+            const full_key = "ok_" + crypto.randomBytes(32).toString('hex');
+            const prefix = full_key.slice(0, 6);
+            const keyHash = crypto.createHash('sha256').update(full_key).digest('hex');
 
-        const { rows } = await pool.query(
-            "INSERT INTO api_keys (project_id, prefix, hash, status, name) VALUES ($1, $2, $3, 'active', $4) RETURNING id, created_at",
-            [project_id, prefix, keyHash, name || null]
-        );
+            const { rows } = await pool.query(
+                "INSERT INTO api_keys (project_id, prefix, hash, status, name) VALUES ($1, $2, $3, 'active', $4) RETURNING id, created_at",
+                [project_id, prefix, keyHash, name || null]
+            );
 
-        const newKey = rows[0];
-        return rep.status(201).send({
-            id: newKey.id,
-            prefix,
-            full_key, // Only return full_key once
-            status: 'active',
-            created_at: newKey.created_at,
-            request_id
-        });
+            const newKey = rows[0];
+            return rep.status(201).send({
+                id: newKey.id,
+                prefix,
+                full_key, // Only return full_key once
+                status: 'active',
+                created_at: newKey.created_at,
+                request_id
+            });
+        } catch (error) {
+            return sendServerError(req, rep, error, '/api-keys', generateRequestId());
+        }
     });
 
     app.delete('/api-keys/:id', {
@@ -149,23 +134,27 @@ export function registerApiKeysRoutes(app: FastifyInstance, pool: Pool) {
                 },
                 ...unauthorizedResponse,
                 ...rateLimitResponse,
-                404: { description: 'API key not found' }
+                404: { description: 'API key not found', ...errorSchema }
             }
         }
     }, async (req, rep) => {
-        const project_id = (req as any).project_id;
-        const { id } = req.params as { id: string };
-        const request_id = crypto.randomUUID();
+        try {
+            const project_id = (req as any).project_id;
+            const { id } = req.params as { id: string };
+            const request_id = generateRequestId();
 
-        const { rowCount } = await pool.query(
-            "UPDATE api_keys SET status = 'revoked' WHERE id = $1 AND project_id = $2",
-            [id, project_id]
-        );
+            const { rowCount } = await pool.query(
+                "UPDATE api_keys SET status = 'revoked' WHERE id = $1 AND project_id = $2",
+                [id, project_id]
+            );
 
-        if (rowCount === 0) {
-            return rep.status(404).send({ error: { code: 'not_found', message: 'API key not found' } });
+            if (rowCount === 0) {
+                return sendError(rep, 404, 'not_found', 'API key not found', request_id);
+            }
+
+            return rep.send({ id, status: 'revoked', request_id });
+        } catch (error) {
+            return sendServerError(req, rep, error, '/api-keys/:id', generateRequestId());
         }
-
-        return rep.send({ id, status: 'revoked', request_id });
     });
 }

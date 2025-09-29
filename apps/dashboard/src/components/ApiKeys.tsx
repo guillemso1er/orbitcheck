@@ -23,7 +23,7 @@ const ApiKeys: React.FC = () => {
   const fetchKeys = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/api-keys', {
+      const response = await fetch('/api-keys', {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -49,7 +49,7 @@ const ApiKeys: React.FC = () => {
     if (!newKeyName.trim()) return;
     try {
       setCreating(true);
-      const response = await fetch('/api/api-keys', {
+      const response = await fetch('/api-keys', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -75,7 +75,7 @@ const ApiKeys: React.FC = () => {
   const handleRevoke = async (id: string) => {
     if (!confirm('Are you sure you want to revoke this API key? This action cannot be undone.')) return;
     try {
-      const response = await fetch(`/api/api-keys/${id}`, {
+      const response = await fetch(`/api-keys/${id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -97,7 +97,7 @@ const ApiKeys: React.FC = () => {
     try {
       setCreating(true);
       // Create new key with same name
-      const createResponse = await fetch('/api/api-keys', {
+      const createResponse = await fetch('/api-keys', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -110,7 +110,7 @@ const ApiKeys: React.FC = () => {
       }
       const newData = await createResponse.json();
       // Revoke old key
-      const revokeResponse = await fetch(`/api/api-keys/${key.id}`, {
+      const revokeResponse = await fetch(`/api-keys/${key.id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`

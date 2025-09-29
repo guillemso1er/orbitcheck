@@ -128,7 +128,7 @@ If the AI needs clarification, it should use `ask_followup_question` sparingly, 
      PROJECT_ID=502ee0d2-912c-4782-be54-bd4de33038e1
      API_KEY=ok_test_b56fe58b1cad24b0dec2367c1f2595d97cde
      ```
-     Use this API_KEY in Authorization: Bearer headers for authenticated requests (e.g., /order/evaluate). If SASL/password error, confirm DATABASE_URL and dotenv load.
+     Use this API_KEY in Authorization: Bearer headers for authenticated requests (e.g., /orders/evaluate). If SASL/password error, confirm DATABASE_URL and dotenv load.
      **AI Tip:** Seed runs once; re-run to regenerate keys. PROJECT_ID scopes usage/logs.
    - Import GeoNames (optional for postal/geo accuracy): `pnpm exec ts-node --require dotenv/config scripts/geonames-importer.ts`.
      Fails with 404 (outdated URL). Workaround: Download country zips manually from http://download.geonames.org/export/zip/ (e.g., AR.zip for Argentina), unzip to `./data/geonames/`, update script line 11 to loop over files (e.g., forEach zip in dir). Or skip—address validation uses Nominatim (free, but slower/rate-limited).

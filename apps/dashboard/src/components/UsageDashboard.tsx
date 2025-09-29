@@ -189,55 +189,6 @@ const UsageDashboard: React.FC = () => {
           </div>
         </div>
       </div>
-    </div>
-  );
-
-  return (
-    <div className="usage-dashboard">
-      <header className="page-header">
-        <h2>Usage Dashboard</h2>
-      </header>
-
-      <div className="stats-grid">
-        <div className="stat-card">
-          <div className="stat-icon">📊</div>
-          <h3>Total Validations</h3>
-          <p className="stat-value">{data!.totals.validations.toLocaleString()}</p>
-        </div>
-        <div className="stat-card">
-          <div className="stat-icon">🛒</div>
-          <h3>Total Orders</h3>
-          <p className="stat-value">{data!.totals.orders.toLocaleString()}</p>
-        </div>
-        <div className="stat-card">
-          <div className="stat-icon">⚡</div>
-          <h3>Cache Hit Ratio</h3>
-          <p className="stat-value">{data!.cache_hit_ratio.toFixed(1)}%</p>
-        </div>
-      </div>
-
-      <div className="charts-grid">
-        <div className="chart-card">
-          <h3 className="chart-title">Daily Usage</h3>
-          <div className="chart-container">
-            <Line options={options} data={dailyChartData} />
-          </div>
-        </div>
-
-        <div className="chart-card">
-          <h3 className="chart-title">Top Reason Codes</h3>
-          <div className="chart-container">
-            <Bar options={options} data={reasonChartData} />
-          </div>
-        </div>
-
-        <div className="chart-card">
-          <h3 className="chart-title">Cache Hit Ratio</h3>
-          <div className="chart-container">
-            <Pie data={cacheData} />
-          </div>
-        </div>
-      </div>
 
       <style>{`
         .usage-dashboard {

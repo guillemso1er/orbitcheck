@@ -31,7 +31,7 @@ export default function () {
         currency: 'USD',
         payment_method: 'card'
     });
-    let res = http.post(`${BASE_URL}/order/evaluate`, lowRiskPayload, { headers: HEADERS });
+    let res = http.post(`${BASE_URL}/orders/evaluate`, lowRiskPayload, { headers: HEADERS });
     check(res, {
         'status 200': (r) => r.status === 200,
         'order_id matches': (r) => {
@@ -72,7 +72,7 @@ export default function () {
         currency: 'USD',
         payment_method: 'cod'
     });
-    res = http.post(`${BASE_URL}/order/evaluate`, highRiskPayload, { headers: HEADERS });
+    res = http.post(`${BASE_URL}/orders/evaluate`, highRiskPayload, { headers: HEADERS });
     check(res, {
         'status 200': (r) => r.status === 200,
         'order_id matches': (r) => {
@@ -117,7 +117,7 @@ export default function () {
         currency: 'USD',
         payment_method: 'card'
     });
-    res = http.post(`${BASE_URL}/order/evaluate`, mediumRiskPayload, { headers: HEADERS });
+    res = http.post(`${BASE_URL}/orders/evaluate`, mediumRiskPayload, { headers: HEADERS });
     check(res, {
         'status 200': (r) => r.status === 200,
         'order_id matches': (r) => {

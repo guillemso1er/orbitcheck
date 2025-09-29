@@ -1,6 +1,6 @@
 import { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { Pool } from "pg";
-import crypto from "crypto";
+import { securityHeader, generateRequestId, sendServerError } from "./utils";
 
 interface ReasonCode {
   code: string;
@@ -49,7 +49,7 @@ const reasonCodes: ReasonCode[] = [
   { code: 'dedupe.server_error', description: 'Server error during deduplication', category: 'dedupe', severity: 'high' },
 ];
 
-export async function registerRulesRoutes(app: FastifyInstance, pool: Pool) {
+export function registerRulesRoutes(app: FastifyInstance, pool: Pool) {
   const rules = [
     {
       id: 'email_format',
@@ -136,6 +136,7 @@ export async function registerRulesRoutes(app: FastifyInstance, pool: Pool) {
       summary: 'Get Available Rules',
       description: 'Returns a list of all available validation and risk assessment rules.',
       tags: ['Rules'],
+      headers: securityHeader,
       response: {
         200: {
           description: 'List of rules',
@@ -160,12 +161,16 @@ export async function registerRulesRoutes(app: FastifyInstance, pool: Pool) {
       },
     },
   }, async (req: FastifyRequest, rep: FastifyReply) => {
-    const request_id = crypto.randomUUID();
-    const response = {
-      rules,
-      request_id,
-    };
-    return rep.send(response);
+    try {
+      const request_id = generateRequestId();
+      const response = {
+        rules,
+        request_id,
+      };
+      return rep.send(response);
+    } catch (error) {
+      return sendServerError(req, rep, error, '/v1/rules', generateRequestId());
+    }
   });
 
   // Reason code catalog endpoint
@@ -174,6 +179,7 @@ export async function registerRulesRoutes(app: FastifyInstance, pool: Pool) {
       summary: 'Get Reason Code Catalog',
       description: 'Returns a comprehensive list of all possible reason codes with descriptions and severity levels.',
       tags: ['Rules'],
+      headers: securityHeader,
       response: {
         200: {
           description: 'List of reason codes',
@@ -197,12 +203,16 @@ export async function registerRulesRoutes(app: FastifyInstance, pool: Pool) {
       },
     },
   }, async (req: FastifyRequest, rep: FastifyReply) => {
-    const request_id = crypto.randomUUID();
-    const response = {
-      reason_codes: reasonCodes,
-      request_id,
-    };
-    return rep.send(response);
+    try {
+      const request_id = generateRequestId();
+      const response = {
+        reason_codes: reasonCodes,
+        request_id,
+      };
+      return rep.send(response);
+    } catch (error) {
+      return sendServerError(req, rep, error, '/v1/rules/catalog', generateRequestId());
+    }
   });
 
   // Placeholder for register rules route (to be implemented)
@@ -211,6 +221,7 @@ export async function registerRulesRoutes(app: FastifyInstance, pool: Pool) {
       summary: 'Register Custom Rules',
       description: 'Registers custom business rules for the project.',
       tags: ['Rules'],
+      headers: securityHeader,
       body: {
         type: 'object',
         properties: {
@@ -243,19 +254,23 @@ export async function registerRulesRoutes(app: FastifyInstance, pool: Pool) {
       },
     },
   }, async (req: FastifyRequest, rep: FastifyReply) => {
-    const project_id = (req as any).project_id;
-    const { rules } = req.body as { rules: any[] };
-    const request_id = crypto.randomUUID();
+    try {
+      const project_id = (req as any).project_id;
+      const { rules } = req.body as { rules: any[] };
+      const request_id = generateRequestId();
 
-    // For now, log the registration; in production, store in DB
-    console.log(`Rules registered for project ${project_id}:`, rules);
+      // For now, log the registration; in production, store in DB
+      console.log(`Rules registered for project ${project_id}:`, rules);
 
-    const response = {
-      message: 'Rules registered successfully',
-      registered_rules: rules.map((r: any) => r.id),
-      request_id,
-    };
+      const response = {
+        message: 'Rules registered successfully',
+        registered_rules: rules.map((r: any) => r.id),
+        request_id,
+      };
 
-    return rep.send(response);
+      return rep.send(response);
+    } catch (error) {
+      return sendServerError(req, rep, error, '/v1/rules/register', generateRequestId());
+    }
   });
 }

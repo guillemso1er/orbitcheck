@@ -1,16 +1,26 @@
-import { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
-import { Pool } from "pg";
+import { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import IORedis from "ioredis";
-import { auth, rateLimit, idempotency } from "./hooks";
-import { verifyJWT } from "./routes/auth";
-import { registerAuthRoutes } from './routes/auth';
+import { Pool } from "pg";
+import { auth, idempotency, rateLimit } from "./hooks";
 import { registerApiKeysRoutes } from './routes/api-keys';
-import { registerValidationRoutes } from './routes/validation';
-import { registerDedupeRoutes } from './routes/dedupe';
-import { registerOrderRoutes } from './routes/order';
+import { registerAuthRoutes, verifyJWT } from "./routes/auth";
 import { registerDataRoutes } from './routes/data';
-import { registerWebhookRoutes } from './routes/webhook';
+import { registerDedupeRoutes } from './routes/dedupe';
+import { registerOrderRoutes } from './routes/orders';
 import { registerRulesRoutes } from './routes/rules';
+import { registerValidationRoutes } from './routes/validation';
+import { registerWebhookRoutes } from './routes/webhook';
+
+/**
+ * Determines authentication strategy based on request URL path.
+ * Skips public routes (health, docs, auth). Uses JWT for dashboard routes (api-keys, webhooks),
+ * API key auth for all others. Calls appropriate verify function or auth hook.
+ *
+ * @param req - Fastify request object with URL path.
+ * @param rep - Fastify reply object for error responses.
+ * @param pool - PostgreSQL pool for JWT user/project verification.
+ * @returns {Promise<void>} Resolves after auth check or sends 401/403 error.
+ */
 
 /**
  * Determines the appropriate authentication hook based on the request URL.
@@ -25,15 +35,15 @@ import { registerRulesRoutes } from './routes/rules';
 async function authenticateRequest(req: FastifyRequest, rep: FastifyReply, pool: Pool) {
     const url = req.url;
 
-    // Skip public routes
+    // Skip authentication for public endpoints: health checks, API docs, and auth routes
     if (url.startsWith("/health") || url.startsWith("/documentation") || url.startsWith("/auth")) {
         return;
     }
 
-    // Determine if this is a dashboard route
+    // Dashboard routes require JWT authentication (user session)
     const isDashboardRoute = url.startsWith("/api-keys") || url.startsWith("/webhooks");
 
-    // Apply appropriate authentication
+    // Apply JWT verification for dashboard or API key auth for public API
     if (isDashboardRoute) {
         await verifyJWT(req, rep, pool);
     } else {
@@ -49,6 +59,16 @@ async function authenticateRequest(req: FastifyRequest, rep: FastifyReply, pool:
  * @param redis - Redis client
  * @returns {Promise<void>} Resolves after applying middleware or sends error response
  */
+/**
+ * Applies rate limiting and idempotency checks for non-dashboard API routes only.
+ * Skips for dashboard to avoid unnecessary overhead on low-volume admin routes.
+ * Calls rateLimit hook (project+IP per minute) and idempotency hook (replay if key exists).
+ *
+ * @param req - Fastify request object with URL and project_id (from auth).
+ * @param rep - Fastify reply object for potential error responses or caching.
+ * @param redis - Redis client for rate counters and idempotency storage.
+ * @returns {Promise<void>} Resolves after middleware or sends 429/200 replay.
+ */
 async function applyRateLimitingAndIdempotency(req: FastifyRequest, rep: FastifyReply, redis: IORedis) {
     const url = req.url;
     const isDashboardRoute = url.startsWith("/api-keys") || url.startsWith("/webhooks");
@@ -59,14 +79,24 @@ async function applyRateLimitingAndIdempotency(req: FastifyRequest, rep: Fastify
     }
 }
 
+/**
+ * Registers all API routes on the Fastify instance with global preHandler hooks for auth, rate limiting, and idempotency.
+ * Hooks run before every route: authenticate based on path, apply middleware for API routes.
+ * Imports and registers modular route handlers for auth, API keys, validation, dedupe, orders, data, webhooks, rules.
+ * Ensures consistent middleware application across the API surface.
+ *
+ * @param app - FastifyInstance to register routes and hooks on.
+ * @param pool - Shared PostgreSQL pool for all route database access.
+ * @param redis - Shared Redis client for caching, rate limiting, and idempotency in routes.
+ */
 export function registerRoutes(app: FastifyInstance, pool: Pool, redis: IORedis) {
-    // Common preHandler hook - composed of authentication and middleware
+    // Global preHandler hook chain: authentication + rate limiting/idempotency middleware
     app.addHook("preHandler", async (req, rep) => {
         await authenticateRequest(req, rep, pool);
         await applyRateLimitingAndIdempotency(req, rep, redis);
     });
 
-    // Register all route groups
+    // Register modular route groups with shared dependencies
     registerAuthRoutes(app, pool);
     registerApiKeysRoutes(app, pool);
     registerValidationRoutes(app, pool, redis);

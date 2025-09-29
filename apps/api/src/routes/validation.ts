@@ -9,32 +9,8 @@ import { validateTaxId } from "../validators/taxid";
 import { logEvent } from "../hooks";
 import { env } from "../env";
 import twilio from 'twilio';
+import { securityHeader, unauthorizedResponse, rateLimitResponse, validationErrorResponse, generateRequestId, sendError, sendServerError } from "./utils";
 
-const errorSchema = {
-    type: 'object',
-    properties: {
-        error: {
-            type: 'object',
-            properties: {
-                code: { type: 'string' },
-                message: { type: 'string' }
-            }
-        }
-    }
-};
-
-const securityHeader = {
-    type: 'object',
-    properties: {
-        'authorization': { type: 'string' },
-        'idempotency-key': { type: 'string' }
-    },
-    required: ['authorization']
-};
-
-const unauthorizedResponse = { 401: { description: 'Unauthorized', ...errorSchema } };
-const rateLimitResponse = { 429: { description: 'Rate Limit Exceeded', ...errorSchema } };
-const validationErrorResponse = { 400: { description: 'Validation Error', ...errorSchema } };
 
 export function registerValidationRoutes(app: FastifyInstance, pool: Pool, redis: IORedis) {
     app.post('/v1/validate/email', {
@@ -71,6 +47,7 @@ export function registerValidationRoutes(app: FastifyInstance, pool: Pool, redis
         }
     }, async (req, rep) => {
         try {
+            const request_id = generateRequestId();
             const { email } = req.body as { email: string };
             const out = await validateEmail(email, redis);
             await (rep as any).saveIdem?.(out);
@@ -79,10 +56,10 @@ export function registerValidationRoutes(app: FastifyInstance, pool: Pool, redis
                 disposable: out.disposable,
                 mx_found: out.mx_found,
             }, pool);
-            return rep.send(out);
+            return rep.send({ ...out, request_id });
         } catch (error) {
-            req.log.error(error, 'Email validation error');
-            return rep.status(500).send({ error: { code: 'server_error', message: 'Internal server error' } });
+            console.error('Email validation error:', error);
+            return sendServerError(req, rep, error, '/v1/validate/email', generateRequestId());
         }
     });
 
@@ -122,6 +99,7 @@ export function registerValidationRoutes(app: FastifyInstance, pool: Pool, redis
         }
     }, async (req, rep) => {
         try {
+            const request_id = generateRequestId();
             const { phone, country, request_otp = false } = req.body as { phone: string; country?: string; request_otp?: boolean };
             const validation = await validatePhone(phone, country, redis);
             let verification_id: string | null = null;
@@ -146,10 +124,9 @@ export function registerValidationRoutes(app: FastifyInstance, pool: Pool, redis
             const response = { ...validation, verification_id };
             await (rep as any).saveIdem?.(response);
             logEvent((req as any).project_id, "validation", "/validate/phone", response.reason_codes, 200, { request_otp, otp_status: verification_id ? 'otp_sent' : 'no_otp' }, pool);
-            return rep.send(response);
+            return rep.send({ ...response, request_id });
         } catch (error) {
-            req.log.error(error, 'Phone validation error');
-            return rep.status(500).send({ error: { code: 'server_error', message: 'Internal server error' } });
+            return sendServerError(req, rep, error, '/v1/validate/phone', generateRequestId());
         }
     });
 
@@ -199,14 +176,14 @@ export function registerValidationRoutes(app: FastifyInstance, pool: Pool, redis
         }
     }, async (req, rep) => {
         try {
+            const request_id = generateRequestId();
             const { address } = req.body as any; // Cast because Fastify has already validated
             const out = await validateAddress(address, pool, redis);
             await (rep as any).saveIdem?.(out);
             logEvent((req as any).project_id, "validation", "/validate/address", out.reason_codes, 200, { po_box: out.po_box, postal_city_match: out.postal_city_match }, pool);
-            return rep.send(out);
+            return rep.send({ ...out, request_id });
         } catch (error) {
-            req.log.error(error, 'Address validation error');
-            return rep.status(500).send({ error: { code: 'server_error', message: 'Internal server error' } });
+            return sendServerError(req, rep, error, '/v1/validate/address', generateRequestId());
         }
     });
 
@@ -244,14 +221,14 @@ export function registerValidationRoutes(app: FastifyInstance, pool: Pool, redis
         }
     }, async (req, rep) => {
         try {
+            const request_id = generateRequestId();
             const { type, value, country } = req.body as { type: string; value: string; country?: string };
             const out = await validateTaxId({ type, value, country: country || "", redis });
             await (rep as any).saveIdem?.(out);
             logEvent((req as any).project_id, "validation", "/validate/tax-id", out.reason_codes, 200, { type }, pool);
-            return rep.send(out);
+            return rep.send({ ...out, request_id });
         } catch (error) {
-            req.log.error(error, 'Tax ID validation error');
-            return rep.status(500).send({ error: { code: 'server_error', message: 'Internal server error' } });
+            return sendServerError(req, rep, error, '/v1/validate/tax-id', generateRequestId());
         }
     });
 }

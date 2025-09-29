@@ -3,32 +3,8 @@ import { Pool } from "pg";
 import crypto from "crypto";
 import { normalizeAddress } from "../validators/address";
 import { logEvent } from "../hooks";
+import { securityHeader, unauthorizedResponse, rateLimitResponse, validationErrorResponse, generateRequestId, sendError, sendServerError } from "./utils";
 
-const errorSchema = {
-    type: 'object',
-    properties: {
-        error: {
-            type: 'object',
-            properties: {
-                code: { type: 'string' },
-                message: { type: 'string' }
-            }
-        }
-    }
-};
-
-const securityHeader = {
-    type: 'object',
-    properties: {
-        'authorization': { type: 'string' },
-        'idempotency-key': { type: 'string' }
-    },
-    required: ['authorization']
-};
-
-const unauthorizedResponse = { 401: { description: 'Unauthorized', ...errorSchema } };
-const rateLimitResponse = { 429: { description: 'Rate Limit Exceeded', ...errorSchema } };
-const validationErrorResponse = { 400: { description: 'Validation Error', ...errorSchema } };
 
 export function registerDedupeRoutes(app: FastifyInstance, pool: Pool) {
     app.post('/v1/dedupe/customer', {
@@ -74,13 +50,13 @@ export function registerDedupeRoutes(app: FastifyInstance, pool: Pool) {
             }
         }
     }, async (req, rep) => {
-        const { email, phone, first_name, last_name } = req.body as any;
-        const project_id = (req as any).project_id;
-        const reason_codes: string[] = [];
-        const matches: any[] = [];
-        const request_id = crypto.randomUUID();
-
         try {
+            const request_id = generateRequestId();
+            const { email, phone, first_name, last_name } = req.body as any;
+            const project_id = (req as any).project_id;
+            const reason_codes: string[] = [];
+            const matches: any[] = [];
+
             // Deterministic matches
             if (email) {
                 const { rows: emailMatches } = await pool.query(
@@ -159,13 +135,8 @@ export function registerDedupeRoutes(app: FastifyInstance, pool: Pool) {
             await (rep as any).saveIdem?.(response);
             await logEvent(project_id, 'dedupe', '/dedupe/customer', reason_codes, 200, { matches_count: matches.length, suggested_action }, pool);
             return rep.send(response);
-
         } catch (error) {
-            req.log.error(error);
-            reason_codes.push('dedupe.server_error');
-            const response = { matches: [], suggested_action: 'create_new', request_id, reason_codes };
-            await logEvent(project_id, 'dedupe', '/dedupe/customer', reason_codes, 500, {}, pool);
-            return rep.status(500).send(response);
+            return sendServerError(req, rep, error, '/v1/dedupe/customer', generateRequestId());
         }
     });
 
@@ -214,13 +185,13 @@ export function registerDedupeRoutes(app: FastifyInstance, pool: Pool) {
             }
         }
     }, async (req, rep) => {
-        const { line1, line2, city, state, postal_code, country } = req.body as any;
-        const project_id = (req as any).project_id;
-        const reason_codes: string[] = [];
-        const matches: any[] = [];
-        const request_id = crypto.randomUUID();
-
         try {
+            const request_id = generateRequestId();
+            const { line1, line2, city, state, postal_code, country } = req.body as any;
+            const project_id = (req as any).project_id;
+            const reason_codes: string[] = [];
+            const matches: any[] = [];
+
             // Normalize the input address
             const normAddr = await normalizeAddress({ line1, line2: line2 || '', city, state: state || '', postal_code, country });
             const addrKey = `${normAddr.line1} ${normAddr.line2} ${normAddr.city} ${normAddr.state} ${normAddr.postal_code} ${normAddr.country}`.trim();
@@ -279,13 +250,8 @@ export function registerDedupeRoutes(app: FastifyInstance, pool: Pool) {
             await (rep as any).saveIdem?.(response);
             await logEvent(project_id, 'dedupe', '/dedupe/address', reason_codes, 200, { matches_count: matches.length, suggested_action }, pool);
             return rep.send(response);
-
         } catch (error) {
-            req.log.error(error);
-            reason_codes.push('dedupe.server_error');
-            const response = { matches: [], suggested_action: 'create_new', request_id, reason_codes };
-            await logEvent(project_id, 'dedupe', '/dedupe/address', reason_codes, 500, {}, pool);
-            return rep.status(500).send(response);
+            return sendServerError(req, rep, error, '/v1/dedupe/address', generateRequestId());
         }
     });
 }

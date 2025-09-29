@@ -1,6 +1,23 @@
 import crypto from "crypto";
 import type { Redis } from "ioredis";
+
+/**
+ * Utility to extract only digits from a string, removing non-numeric characters.
+ * Used for normalizing tax ID inputs before validation.
+ *
+ * @param s - Input string (e.g., "123.456.789-09").
+ * @returns {string} String containing only digits.
+ */
 function onlyDigits(s: string) { return (s || "").replace(/[^0-9]/g, ""); }
+
+/**
+ * Computes mod 11 checksum for validation algorithms.
+ * Sums weighted digits and returns modulus for check digit calculation.
+ *
+ * @param nums - Array of numeric digits.
+ * @param weights - Array of weights corresponding to each digit position.
+ * @returns {number} Modulus result for check digit computation.
+ */
 function mod11Checksum(nums: number[], weights: number[]) {
     const sum = nums.reduce((acc, n, i) => acc + n * weights[i], 0);
     const mod = sum % 11;
@@ -13,6 +30,14 @@ function mod11Checksum(nums: number[], weights: number[]) {
  *
  * @param value - The CPF value (e.g., "123.456.789-09").
  * @returns {Object} Validation result with valid flag and reason codes.
+ */
+/**
+ * Validates Brazilian CPF (Cadastro de Pessoas Físicas) using the official checksum algorithm.
+ * Removes non-digits, verifies 11-digit length, rejects sequences of identical digits,
+ * computes first and second check digits using decreasing weights (10 to 2, then 11 to 2).
+ *
+ * @param value - The CPF string (e.g., "123.456.789-09" or "12345678909").
+ * @returns {Object} Validation result with valid flag and reason codes (format or checksum errors).
  */
 export function validateCPF(value: string) {
     const v = onlyDigits(value);
@@ -32,6 +57,14 @@ export function validateCPF(value: string) {
  *
  * @param value - The CNPJ value (e.g., "12.345.678/0001-99").
  * @returns {Object} Validation result with valid flag and reason codes.
+ */
+/**
+ * Validates Brazilian CNPJ (Cadastro Nacional da Pessoa Jurídica) using checksum with specific weights.
+ * Removes non-digits, verifies 14-digit length, rejects identical digits, uses weights [5-2,9-2] for first check,
+ * [6,5-2,9-2] for second, with 0 substitution for 10/11.
+ *
+ * @param value - The CNPJ string (e.g., "12.345.678/0001-99" or "12345678000199").
+ * @returns {Object} Validation result with valid flag and reason codes (format or checksum errors).
  */
 export function validateCNPJ(value: string) {
     const v = onlyDigits(value);
@@ -53,6 +86,14 @@ export function validateCNPJ(value: string) {
  *
  * @param value - The RFC value (e.g., "ABCD123456EFG").
  * @returns {Object} Validation result with valid flag and reason codes.
+ */
+/**
+ * Validates Mexican RFC (Registro Federal de Contribuyentes) using mod 11 checksum with alphanumeric mapping.
+ * Supports 12/13 character formats (personas morales/físicas), maps letters/symbols to numbers via charset,
+ * pads shorter body, applies weights [13-2], computes check digit (0-9,A for 10, space for 11 but simplified).
+ *
+ * @param value - The RFC string (e.g., "ABCD123456EFG" or "GABC123456789").
+ * @returns {Object} Validation result with valid flag and reason codes (format or checksum errors).
  */
 const RFC_CHARS = " 0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ&Ñ";
 const RFC_MAP: Record<string, number> = Object.fromEntries(RFC_CHARS.split("").map((c, i) => [c, i]));
@@ -86,6 +127,14 @@ export function validateRFC(value: string) {
  * @param value - The CUIT value (e.g., "20-12345678-9").
  * @returns {Object} Validation result with valid flag and reason codes.
  */
+/**
+ * Validates Argentine CUIT (Clave Única de Identificación Tributaria) using mod 11 checksum.
+ * Removes non-digits, verifies 11-digit length, applies weights [5,4,3,2,7,6,5,4,3,2] to first 10 digits,
+ * computes check digit (0 for 11, 9 for 10, else mod).
+ *
+ * @param value - The CUIT string (e.g., "20-12345678-9" or "20123456789").
+ * @returns {Object} Validation result with valid flag and reason codes (format or checksum errors).
+ */
 export function validateCUIT(value: string) {
     const v = onlyDigits(value);
     if (v.length !== 11) return { valid: false, reason_codes: ["taxid.invalid_format"] };
@@ -105,6 +154,14 @@ export function validateCUIT(value: string) {
  *
  * @param value - The RUT value (e.g., "12345678-9" or "1234567-K").
  * @returns {Object} Validation result with valid flag and reason codes.
+ */
+/**
+ * Validates Chilean RUT (Rol Único Tributario) using mod 11 with incremental multiplier and verifier 'K'.
+ * Removes dots/dashes, extracts body digits and verifier (0-9 or K), multiplies from right with 2-7 cycle,
+ * computes verifier (0 for 11, K for 10, else res).
+ *
+ * @param value - The RUT string (e.g., "12.345.678-9" or "12345678-K").
+ * @returns {Object} Validation result with valid flag and reason codes (format or checksum errors).
  */
 export function validateRUT(value: string) {
     const v = value.replace(/\./g, "").replace(/-/g, "").toUpperCase();
@@ -129,6 +186,14 @@ export function validateRUT(value: string) {
  * @param value - The RUC value (e.g., "12345678901").
  * @returns {Object} Validation result with valid flag and reason codes.
  */
+/**
+ * Validates Peruvian RUC (Registro Único de Contribuyentes) using mod 11 checksum.
+ * Removes non-digits, verifies 11-digit length, applies weights [5,4,3,2,7,6,5,4,3,2] to first 10 digits,
+ * check digit 1 for mod 11, 2 for 10, else mod.
+ *
+ * @param value - The RUC string (e.g., "12345678901").
+ * @returns {Object} Validation result with valid flag and reason codes (format or checksum errors).
+ */
 export function validateRUC(value: string) {
     const v = onlyDigits(value);
     if (v.length !== 11) return { valid: false, reason_codes: ["taxid.invalid_format"] };
@@ -149,6 +214,14 @@ export function validateRUC(value: string) {
  * @param value - The NIT value (e.g., "1234567890").
  * @returns {Object} Validation result with valid flag and reason codes.
  */
+/**
+ * Validates Colombian NIT (Número de Identificación Tributaria) using mod 11 with repeating weights.
+ * Removes non-digits, reverses first n-1 digits, applies weights [3,7,13,17,19,23,29,37,41,43] cycling from 3,
+ * check digit 0 if mod <=1, else 11-mod.
+ *
+ * @param value - The NIT string (e.g., "890123456-7" or "8901234567").
+ * @returns {Object} Validation result with valid flag and reason codes (format or checksum errors).
+ */
 export function validateNIT(value: string) {
     const v = onlyDigits(value);
     const weights = [3, 7, 13, 17, 19, 23, 29, 37, 41, 43];
@@ -168,6 +241,14 @@ export function validateNIT(value: string) {
  *
  * @param value - The NIF/NIE/CIF value (e.g., "12345678Z" or "X1234567Z").
  * @returns {Object} Validation result with valid flag and reason codes.
+ */
+/**
+ * Validates Spanish NIF/NIE/CIF (Número de Identificación Fiscal) using letter-based mod 23 checksum.
+ * Handles NIE (X/Y/Z prefix + 7 digits + letter), NIF (8 digits + letter), simplified CIF (letter + 7 digits + control).
+ * Maps NIE prefix to digits, computes position in TRWAGMYFPDXBNJZSQVHLCKE table.
+ *
+ * @param value - The NIF/NIE/CIF string (e.g., "12345678Z", "X1234567Z", or "A1234567X").
+ * @returns {Object} Validation result with valid flag and reason codes (format or checksum errors).
  */
 const NIF_LETTERS = "TRWAGMYFPDXBNJZSQVHLCKE";
 export function validateES(value: string) {
@@ -212,6 +293,13 @@ export function validateES(value: string) {
  * @param value - The EIN value (e.g., "12-3456789").
  * @returns {Object} Validation result with valid flag and reason codes.
  */
+/**
+ * Validates US EIN (Employer Identification Number) by format only (9 digits).
+ * Removes non-digits, checks exact length; no checksum validation as per IRS rules.
+ *
+ * @param value - The EIN string (e.g., "12-3456789" or "123456789").
+ * @returns {Object} Validation result with valid flag and reason codes (format errors only).
+ */
 export function validateEIN(value: string) {
     const v = onlyDigits(value);
     return { valid: v.length === 9, reason_codes: v.length === 9 ? [] : ["taxid.invalid_format"] };
@@ -226,9 +314,18 @@ export function validateEIN(value: string) {
  * @param vatNumber - The VAT number without country prefix.
  * @returns {Promise<Object>} Validation result with valid flag, reason codes, and source ('vies').
  */
+/**
+ * Validates EU VAT number via official VIES SOAP web service.
+ * Simulates outages if VIES_DOWN env var is set; handles connection errors gracefully.
+ * Extracts country code and number, calls checkVat service, returns validity and source.
+ *
+ * @param country - Two-letter ISO country code (e.g., "DE" for Germany).
+ * @param vatNumber - VAT number without country prefix (e.g., "123456789").
+ * @returns {Promise<Object>} Validation result with valid flag, reason codes, and source ('vies').
+ */
 import soap from "soap";
 export async function validateVATViaVIES(country: string, vatNumber: string): Promise<{ valid: boolean; reason_codes: string[]; source: string }> {
-    // VIES outage simulation
+    // VIES outage simulation for testing
     if (process.env.VIES_DOWN === "true") {
         return { valid: false, reason_codes: ["taxid.vies_unavailable"], source: "vies" };
     }
@@ -250,6 +347,16 @@ export async function validateVATViaVIES(country: string, vatNumber: string): Pr
  *
  * @param params - Object with type (e.g., 'cpf', 'vat'), value, country (optional), redis (optional).
  * @returns {Promise<Object>} Validation result with valid flag, normalized value, reason codes, source.
+ */
+/**
+ * Main dispatcher for tax ID validation based on type (e.g., 'cpf', 'vat', 'ein').
+ * Normalizes input by removing whitespace, dispatches to country-specific validators or VIES for EU VAT.
+ * Caches results in Redis (24 hours TTL) using SHA-1 hash of normalized input for repeated queries.
+ * Supports Brazilian CPF/CNPJ, Mexican RFC, Argentine CUIT, Chilean RUT, Peruvian RUC, Colombian NIT,
+ * Spanish NIF/NIE/CIF, US EIN, and EU VAT via VIES.
+ *
+ * @param params - Validation parameters: type (e.g., 'cpf', 'vat'), value (tax ID string), country (ISO code), redis (optional client).
+ * @returns {Promise<Object>} Comprehensive result with validity, normalized value, reason codes, source (format/vies), request ID, and TTL.
  */
 export async function validateTaxId({ type, value, country, redis }: { type: string, value: string, country: string, redis?: Redis }) {
     const t = type.toUpperCase();

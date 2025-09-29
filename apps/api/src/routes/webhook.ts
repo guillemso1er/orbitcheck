@@ -3,31 +3,8 @@ import { Pool } from "pg";
 import fetch from "node-fetch";
 import crypto from "crypto";
 import { logEvent } from "../hooks";
+import { securityHeader, unauthorizedResponse, rateLimitResponse, generateRequestId, sendError, sendServerError } from "./utils";
 
-const errorSchema = {
-    type: 'object',
-    properties: {
-        error: {
-            type: 'object',
-            properties: {
-                code: { type: 'string' },
-                message: { type: 'string' }
-            }
-        }
-    }
-};
-
-const securityHeader = {
-    type: 'object',
-    properties: {
-        'authorization': { type: 'string' },
-        'idempotency-key': { type: 'string' }
-    },
-    required: ['authorization']
-};
-
-const unauthorizedResponse = { 401: { description: 'Unauthorized', ...errorSchema } };
-const rateLimitResponse = { 429: { description: 'Rate Limit Exceeded', ...errorSchema } };
 
 export function registerWebhookRoutes(app: FastifyInstance, pool: Pool) {
     app.post('/webhooks/test', {
@@ -90,65 +67,56 @@ export function registerWebhookRoutes(app: FastifyInstance, pool: Pool) {
             payload_type?: 'validation' | 'order' | 'custom';
             custom_payload?: any;
         };
-        const request_id = crypto.randomUUID();
-
-        if (!url || !/^https?:\/\//.test(url)) {
-            return rep.status(400).send({
-                error: { code: 'invalid_url', message: 'Valid HTTPS/HTTP URL required' },
-                request_id
-            });
-        }
-
-        let payload: any;
-        const timestamp = new Date().toISOString();
-        const common = {
-            project_id,
-            timestamp,
-            request_id
-        };
-
-        switch (payload_type) {
-            case 'validation':
-                payload = {
-                    ...common,
-                    event: 'validation_result',
-                    type: 'email',
-                    result: {
-                        valid: true,
-                        normalized: 'user@example.com',
-                        reason_codes: ['email.valid'],
-                        meta: { domain: 'example.com' }
-                    }
-                };
-                break;
-            case 'order':
-                payload = {
-                    ...common,
-                    event: 'order_evaluated',
-                    order_id: 'test-order-123',
-                    risk_score: 25,
-                    action: 'approve',
-                    reason_codes: ['order.approved'],
-                    tags: ['low_risk']
-                };
-                break;
-            case 'custom':
-                if (!custom_payload) {
-                    return rep.status(400).send({
-                        error: { code: 'missing_payload', message: 'Custom payload required for custom type' },
-                        request_id
-                    });
-                }
-                payload = { ...common, ...custom_payload };
-                break;
-            default:
-                return rep.status(400).send({
-                    error: { code: 'invalid_type', message: 'Invalid payload_type' },
-                    request_id
-                });
-        }
-
         try {
+            const request_id = generateRequestId();
+
+            if (!url || !/^https?:\/\//.test(url)) {
+                return sendError(rep, 400, 'invalid_url', 'Valid HTTPS/HTTP URL required', request_id);
+            }
+
+            let payload: any;
+            const timestamp = new Date().toISOString();
+            const common = {
+                project_id,
+                timestamp,
+                request_id
+            };
+
+            switch (payload_type) {
+                case 'validation':
+                    payload = {
+                        ...common,
+                        event: 'validation_result',
+                        type: 'email',
+                        result: {
+                            valid: true,
+                            normalized: 'user@example.com',
+                            reason_codes: ['email.valid'],
+                            meta: { domain: 'example.com' }
+                        }
+                    };
+                    break;
+                case 'order':
+                    payload = {
+                        ...common,
+                        event: 'order_evaluated',
+                        order_id: 'test-order-123',
+                        risk_score: 25,
+                        action: 'approve',
+                        reason_codes: ['order.approved'],
+                        tags: ['low_risk']
+                    };
+                    break;
+                case 'custom':
+                    if (!custom_payload) {
+                        return sendError(rep, 400, 'missing_payload', 'Custom payload required for custom type', request_id);
+                    }
+                    payload = { ...common, ...custom_payload };
+                    break;
+                default:
+                    return sendError(rep, 400, 'invalid_type', 'Invalid payload_type', request_id);
+            }
+
             const response = await fetch(url, {
                 method: 'POST',
                 headers: {
@@ -184,6 +152,7 @@ export function registerWebhookRoutes(app: FastifyInstance, pool: Pool) {
 
             return rep.send(result);
         } catch (err) {
+            const request_id = generateRequestId();
             const errorMsg = err instanceof Error ? err.message : 'Unknown error';
             await logEvent(project_id, 'webhook_test', '/webhooks/test', ['webhook.send_failed'], 500, {
                 url,
@@ -191,10 +160,7 @@ export function registerWebhookRoutes(app: FastifyInstance, pool: Pool) {
                 error: errorMsg
             }, pool);
 
-            return rep.status(500).send({
-                error: { code: 'send_failed', message: errorMsg },
-                request_id
-            });
+            return sendError(rep, 500, 'send_failed', errorMsg, request_id);
         }
     });
 }

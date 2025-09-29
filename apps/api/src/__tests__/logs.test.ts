@@ -1,0 +1,147 @@
+import request from 'supertest';
+import { createApp, setupBeforeAll, mockPool } from './testSetup';
+import { FastifyInstance } from 'fastify'; // Import the type for safety
+
+describe('Logs Retrieval Endpoints', () => {
+  let app: FastifyInstance;
+
+  // Create the app instance once before all tests in this suite run
+  beforeAll(async () => {
+    await setupBeforeAll(); // Set up all global mocks
+    app = await createApp();  // Correctly await the async function
+    await app.ready();      // Wait for the app to be ready
+  });
+
+  // Close the app instance once after all tests in this suite are finished
+  afterAll(async () => {
+    if (app) {
+      await app.close();
+    }
+  });
+
+  // Before each test, simply clear all mocks to ensure a clean slate.
+  // We will define specific mock behaviors inside each test.
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  describe('GET /logs', () => {
+    it('should return logs for the project', async () => {
+      const logEntry = { id: 'log-1', type: 'validation', endpoint: '/validate/email', reason_codes: [], status: 200, created_at: new Date().toISOString(), meta: {} };
+      
+      // Mock the DB to handle all queries for this specific request
+      mockPool.query.mockImplementation((queryText: string) => {
+        const upperQuery = queryText.toUpperCase();
+        
+        // Mock the query that gets the total count for pagination
+        if (upperQuery.includes('COUNT(*) AS TOTAL FROM LOGS')) {
+          return Promise.resolve({ rows: [{ total: 1 }] });
+        }
+        // Mock the query that fetches the actual log data
+        if (upperQuery.includes('FROM LOGS') && upperQuery.includes('ORDER BY CREATED_AT DESC')) {
+          return Promise.resolve({ rows: [logEntry] });
+        }
+        // Mock the authentication query
+        if (upperQuery.includes('API_KEYS')) {
+          return Promise.resolve({ rows: [{ project_id: 'test_project' }] });
+        }
+        return Promise.resolve({ rows: [] });
+      });
+
+      const res = await request(app.server)
+        .get('/logs')
+        .set('Authorization', 'Bearer valid_key');
+
+      expect(res.statusCode).toBe(200);
+      expect(res.body.data.length).toBe(1);
+      expect(res.body.data[0].id).toBe('log-1');
+      expect(res.body.total_count).toBe(1);
+    });
+
+    it('should filter logs by reason_code', async () => {
+      const logEntry = { id: 'log-filtered', type: 'validation', endpoint: '/validate/email', reason_codes: ['email.invalid_format'], status: 200, created_at: new Date().toISOString(), meta: {} };
+      
+      mockPool.query.mockImplementation((queryText: string) => {
+        const upperQuery = queryText.toUpperCase();
+
+        if (upperQuery.includes("REASON_CODES @> ARRAY['EMAIL.INVALID_FORMAT']")) {
+          return Promise.resolve({ rows: [logEntry] });
+        }
+        if (upperQuery.includes('COUNT(*) AS TOTAL FROM LOGS')) {
+          return Promise.resolve({ rows: [{ total: 1 }] });
+        }
+        if (upperQuery.includes('API_KEYS')) {
+          return Promise.resolve({ rows: [{ project_id: 'test_project' }] });
+        }
+        return Promise.resolve({ rows: [] });
+      });
+
+      const res = await request(app.server)
+        .get('/logs?reason_code=email.invalid_format')
+        .set('Authorization', 'Bearer valid_key');
+
+      expect(res.statusCode).toBe(200);
+      expect(res.body.data[0].reason_codes).toContain('email.invalid_format');
+    });
+
+    it('should filter logs by endpoint and status', async () => {
+      const logEntry = { id: 'log-status', type: 'validation', endpoint: '/v1/validate/email', reason_codes: [], status: 400, created_at: new Date().toISOString(), meta: {} };
+      
+      mockPool.query.mockImplementation((queryText: string) => {
+        const upperQuery = queryText.toUpperCase();
+
+        if (upperQuery.includes("ENDPOINT = '/V1/VALIDATE/EMAIL'") && upperQuery.includes('STATUS = 400')) {
+          return Promise.resolve({ rows: [logEntry] });
+        }
+        if (upperQuery.includes('COUNT(*) AS TOTAL FROM LOGS')) {
+          return Promise.resolve({ rows: [{ total: 1 }] });
+        }
+        if (upperQuery.includes('API_KEYS')) {
+          return Promise.resolve({ rows: [{ project_id: 'test_project' }] });
+        }
+        return Promise.resolve({ rows: [] });
+      });
+
+      const res = await request(app.server)
+        .get('/logs?endpoint=/v1/validate/email&status=400')
+        .set('Authorization', 'Bearer valid_key');
+
+      expect(res.statusCode).toBe(200);
+      expect(res.body.data[0].endpoint).toBe('/v1/validate/email');
+      expect(res.body.data[0].status).toBe(400);
+    });
+
+    it('should handle pagination with limit and offset', async () => {
+      const logEntries = [
+        { id: 'log-1', type: 'validation', endpoint: '/validate/email', reason_codes: [], status: 200, created_at: new Date(Date.now() - 2000).toISOString(), meta: {} },
+        { id: 'log-2', type: 'validation', endpoint: '/validate/email', reason_codes: [], status: 200, created_at: new Date().toISOString(), meta: {} }
+      ];
+
+      mockPool.query.mockImplementation((queryText: string) => {
+        const upperQuery = queryText.toUpperCase();
+
+        // Specific mock for the LIMIT and OFFSET query
+        if (upperQuery.includes('LIMIT 1 OFFSET 1')) {
+          return Promise.resolve({ rows: [logEntries[1]] }); // Return the second entry
+        }
+        if (upperQuery.includes('COUNT(*) AS TOTAL FROM LOGS')) {
+          return Promise.resolve({ rows: [{ total: 2 }] });
+        }
+        if (upperQuery.includes('API_KEYS')) {
+          return Promise.resolve({ rows: [{ project_id: 'test_project' }] });
+        }
+        return Promise.resolve({ rows: [] });
+      });
+
+      const res = await request(app.server)
+        .get('/logs?limit=1&offset=1')
+        .set('Authorization', 'Bearer valid_key');
+
+      expect(res.statusCode).toBe(200);
+      expect(res.body.data.length).toBe(1);
+      expect(res.body.data[0].id).toBe('log-2');
+      expect(res.body.total_count).toBe(2);
+      expect(res.body.next_cursor).toBeNull();
+    });
+  });
+});

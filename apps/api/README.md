@@ -103,7 +103,7 @@ All POST/GET; auth via Bearer API key; rate limited (300/min); idempotent.
 **Example Request:** `{ "address": { "line1": "123 Main St", "city": "New York", "postal_code": "10001", "country": "US" } }`
 **Example Response:** `{ "matches": [{ "id": "uuid", "similarity_score": 1.0, "match_type": "exact_postal", "data": { "postal_code": "10001" } }], "suggested_action": "merge_with", "request_id": "uuid" }`
 
-### 7. POST /order/evaluate
+### 7. POST /orders/evaluate
 **Body:** { "order_id": "string", "customer": object, "shipping_address": object, "total_amount": number, "currency": "string", "payment_method"?: "string" }
 **Response (200):** { "order_id": "string", "risk_score": number (0-100), "action": "string" (approve|hold|block), "tags": ["string"], "reason_codes": ["string"], "customer_dedupe": object, "address_dedupe": object, "validations": { "email": object, "phone": object, "address": object }, "request_id": "string" }
 **Example Request:** `{ "order_id": "ORD-123", "customer": { "email": "test@example.com", "first_name": "John", "last_name": "Doe" }, "shipping_address": { "line1": "123 Main St", "city": "New York", "postal_code": "10001", "country": "US" }, "total_amount": 150.0, "currency": "USD", "payment_method": "cod" }`

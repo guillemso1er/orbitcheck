@@ -3,10 +3,10 @@ import { promisify } from "node:util";
 const exec = promisify(execFile);
 
 import crypto from "crypto";
-import fetch from "node-fetch";
-import { env } from "../env";
-import type { Pool } from "pg";
 import type { Redis } from "ioredis";
+import fetch from "node-fetch";
+import type { Pool } from "pg";
+import { env } from "../env";
 
 // Simple PO Box detector for multiple locales
 /**
