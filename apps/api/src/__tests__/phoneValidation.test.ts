@@ -1,6 +1,6 @@
 import request from 'supertest';
 // Import the necessary setup functions and mock instances
-import { createApp, libphone, mockPool, mockTwilioInstance, setupBeforeAll } from './testSetup';
+import { createApp, libphone, mockPool, mockTwilioInstance, mockValidatePhone, setupBeforeAll } from './testSetup';
 // Import the Fastify type for better code quality
 import { FastifyInstance } from 'fastify';
 
@@ -62,7 +62,14 @@ describe('Phone Validation Endpoints', () => {
 
         it('should handle invalid phone number when parser returns null', async () => {
             // Override the default mock to simulate an invalid number
-            libphone.parsePhoneNumber.mockReturnValue(null);
+            mockValidatePhone.mockResolvedValueOnce({
+                valid: false,
+                e164: '',
+                country: null,
+                reason_codes: ['phone.invalid_format'],
+                request_id: 'test-request-id',
+                ttl_seconds: 2592000
+            });
 
             const res = await request(app.server)
                 .post('/v1/validate/phone')

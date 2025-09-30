@@ -1,5 +1,5 @@
-import request from 'supertest';
 import { FastifyInstance } from 'fastify';
+import request from 'supertest';
 import { createApp, mockPool, setupBeforeAll } from './testSetup';
 
 describe('Dedupe Merge Endpoint', () => {
@@ -18,10 +18,20 @@ describe('Dedupe Merge Endpoint', () => {
     });
 
     it('should merge customer records successfully', async () => {
-        // Mock pool to simulate merge
+        // Mock pool to simulate verification and merge
         mockPool.query.mockImplementation((query) => {
+            if (query.includes('SELECT id FROM customers')) {
+                return Promise.resolve({ rows: [
+                    { id: 'uuid1' },
+                    { id: 'uuid2' },
+                    { id: 'canonical-uuid' }
+                ] });
+            }
             if (query.includes('UPDATE customers')) {
                 return Promise.resolve({ rows: [], rowCount: 2 });
+            }
+            if (query.includes('INSERT INTO LOGS')) {
+                return Promise.resolve({ rows: [], rowCount: 1 });
             }
             return Promise.resolve({ rows: [] });
         });
@@ -44,8 +54,18 @@ describe('Dedupe Merge Endpoint', () => {
     it('should merge address records successfully', async () => {
         // Mock pool for address merge
         mockPool.query.mockImplementation((query) => {
+            if (query.includes('SELECT id FROM addresses')) {
+                return Promise.resolve({ rows: [
+                    { id: 'uuid3' },
+                    { id: 'uuid4' },
+                    { id: 'canonical-uuid-addr' }
+                ] });
+            }
             if (query.includes('UPDATE addresses')) {
                 return Promise.resolve({ rows: [], rowCount: 2 });
+            }
+            if (query.includes('INSERT INTO LOGS')) {
+                return Promise.resolve({ rows: [], rowCount: 1 });
             }
             return Promise.resolve({ rows: [] });
         });
@@ -85,4 +105,4 @@ describe('Dedupe Merge Endpoint', () => {
         expect(res.statusCode).toBe(400);
         expect(res.body.error.code).toBe('invalid_ids');
     });
-}
+});

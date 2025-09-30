@@ -178,6 +178,7 @@ export const createApp = async () => {
   }
   registerRulesRoutesFunction(app, mockPool as any);
 
+
   // Add security headers for test coverage
   app.addHook('preHandler', (req, reply, done) => {
     reply.header('X-Content-Type-Options', 'nosniff');

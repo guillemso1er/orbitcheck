@@ -101,34 +101,73 @@ export function registerOrderRoutes(app: FastifyInstance, pool: Pool, redis: Red
 
             // 1. Customer dedupe using normalized fields and fuzzy name >0.85
             let customer_matches: any[] = [];
+            const seenIds = new Set<string>();
             if (customer) {
                 const normEmail = customer.email ? customer.email.trim().toLowerCase() : null;
                 const normPhone = customer.phone ? customer.phone.replace(/[^0-9+]/g, '') : null;
                 const full_name = `${customer.first_name || ''} ${customer.last_name || ''}`.trim();
 
-                let query = 'SELECT id, email, phone, first_name, last_name, 1.0 as similarity_score, CASE WHEN normalized_email = $1 THEN \'exact_email\' WHEN normalized_phone = $2 THEN \'exact_phone\' ELSE \'fuzzy_name\' END as match_type FROM customers WHERE project_id = $3';
-                let params = [project_id];
-                let paramIndex = 4;
+                // Exact email match
                 if (normEmail) {
-                    query += ' AND normalized_email = $1';
-                    params = [normEmail, ...params];
-                    paramIndex++;
+                    const { rows } = await pool.query(
+                        'SELECT id, email, phone, first_name, last_name FROM customers WHERE project_id = $1 AND normalized_email = $2',
+                        [project_id, normEmail]
+                    );
+                    rows.forEach(row => {
+                        if (!seenIds.has(row.id)) {
+                            customer_matches.push({
+                                ...row,
+                                similarity_score: 1.0,
+                                match_type: 'exact_email'
+                            });
+                            seenIds.add(row.id);
+                        }
+                    });
                 }
-                if (normPhone) {
-                    query += ' AND normalized_phone = $' + paramIndex;
-                    params = [normPhone, ...params];
-                    paramIndex++;
-                }
-                if (full_name) {
-                    query += ' AND similarity((first_name || \' \' || last_name), $' + paramIndex + ') > 0.85';
-                    params.push(full_name);
-                    paramIndex++;
-                }
-                query += ' ORDER BY similarity((first_name || \' \' || last_name), $' + paramIndex + ') DESC LIMIT 5';
-                if (full_name) params.push(full_name);
 
-                const { rows } = await pool.query(query, params);
-                customer_matches = rows;
+                // Exact phone match
+                if (normPhone) {
+                    const { rows } = await pool.query(
+                        'SELECT id, email, phone, first_name, last_name FROM customers WHERE project_id = $1 AND normalized_phone = $2',
+                        [project_id, normPhone]
+                    );
+                    rows.forEach(row => {
+                        if (!seenIds.has(row.id)) {
+                            customer_matches.push({
+                                ...row,
+                                similarity_score: 1.0,
+                                match_type: 'exact_phone'
+                            });
+                            seenIds.add(row.id);
+                        }
+                    });
+                }
+
+                // Fuzzy name match
+                if (full_name) {
+                    const { rows } = await pool.query(
+                        `SELECT id, email, phone, first_name, last_name,
+                         similarity((first_name || ' ' || last_name), $2) as name_score
+                         FROM customers
+                         WHERE project_id = $1
+                         AND similarity((first_name || ' ' || last_name), $2) > 0.85
+                         ORDER BY name_score DESC LIMIT 5`,
+                        [project_id, full_name]
+                    );
+                    rows.forEach(row => {
+                        if (!seenIds.has(row.id)) {
+                            customer_matches.push({
+                                ...row,
+                                similarity_score: row.name_score,
+                                match_type: 'fuzzy_name'
+                            });
+                            seenIds.add(row.id);
+                        }
+                    });
+                }
+
+                // Sort by score descending
+                customer_matches.sort((a, b) => b.similarity_score - a.similarity_score);
             }
             if (customer_matches.length > 0) {
                 risk_score += 20;
@@ -166,7 +205,7 @@ export function registerOrderRoutes(app: FastifyInstance, pool: Pool, redis: Red
             }
 
             // 3. Full address validation
-            const { po_box, postal_city_match, in_bounds, geo, reason_codes: addrReasons } = addressValidation;
+            const { po_box, postal_city_match, in_bounds, geo, reason_codes: addrReasons, valid } = addressValidation;
             reason_codes.push(...addrReasons);
             if (po_box) {
                 risk_score += 30;
@@ -185,6 +224,11 @@ export function registerOrderRoutes(app: FastifyInstance, pool: Pool, redis: Red
             if (!geo) {
                 risk_score += 20;
                 reason_codes.push('order.geocode_failed');
+            }
+            if (!valid) {
+                risk_score += 30;
+                tags.push('invalid_address');
+                reason_codes.push('order.invalid_address');
             }
 
             // 4. Full customer validation

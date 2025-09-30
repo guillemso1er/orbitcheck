@@ -1,6 +1,7 @@
+import { FastifyInstance } from 'fastify'; // Import the type for safety
 import request from 'supertest';
-import { createApp, mockPool, setupBeforeAll } from './testSetup';
 import * as twilio from 'twilio';
+import { createApp, setupBeforeAll } from './testSetup';
 
 jest.mock('twilio');
 
@@ -20,18 +21,19 @@ describe('Phone OTP Verify', () => {
     });
 
     it('should verify OTP successfully', async () => {
-        const mockTwilio = {
+        const mockClient = {
             verify: {
                 v2: {
                     services: jest.fn().mockReturnValue({
                         verificationChecks: {
-                            create: jest.fn().mockReturnValue(Promise.resolve({ status: 'approved' }))
+                            create: jest.fn().mockResolvedValue({ status: 'approved' })
                         }
                     })
                 }
             }
         };
-        (twilio as any) = mockTwilio;
+
+        (twilio as unknown as jest.Mock).mockImplementation(() => mockClient);
 
         const res = await request(app.server)
             .post('/v1/verify/phone')
@@ -47,18 +49,19 @@ describe('Phone OTP Verify', () => {
     });
 
     it('should return invalid for wrong OTP', async () => {
-        const mockTwilio = {
+        const mockClient = {
             verify: {
                 v2: {
                     services: jest.fn().mockReturnValue({
                         verificationChecks: {
-                            create: jest.fn().mockReturnValue(Promise.resolve({ status: 'failed' }))
+                            create: jest.fn().mockResolvedValue({ status: 'failed' })
                         }
                     })
                 }
             }
         };
-        (twilio as any) = mockTwilio;
+
+        (twilio as unknown as jest.Mock).mockImplementation(() => mockClient);
 
         const res = await request(app.server)
             .post('/v1/verify/phone')
