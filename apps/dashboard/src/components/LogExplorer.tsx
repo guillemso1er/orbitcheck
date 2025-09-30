@@ -17,13 +17,222 @@ interface LogsResponse {
   total_count: number;
 }
 
-const LogExplorer: React.FC = () => {
-  const { token } = useAuth();
+interface LogExplorerProps {
+  token: string;
+}
+
+interface FiltersState {
+  reason_code: string;
+  endpoint: string;
+  status: string;
+  type: string;
+  date_from: string;
+  date_to: string;
+}
+
+const FiltersSection: React.FC<{
+  filters: FiltersState;
+  onFilterChange: (key: keyof FiltersState, value: string) => void;
+  onApplyFilters: (filters: FiltersState) => void;
+  onClearFilters: () => void;
+}> = ({ filters, onFilterChange, onApplyFilters, onClearFilters }) => (
+  <div className="filters-section">
+    <div className="filters-card">
+      <h3>Filters</h3>
+      <div className="filter-row">
+        <div className="form-group">
+          <label htmlFor="reason-code">Reason Code</label>
+          <input
+            id="reason-code"
+            type="text"
+            placeholder="Enter reason code"
+            value={filters.reason_code}
+            onChange={(e) => onFilterChange('reason_code', e.target.value)}
+          />
+        </div>
+        <div className="form-group">
+          <label htmlFor="endpoint">Endpoint</label>
+          <input
+            id="endpoint"
+            type="text"
+            placeholder="Enter endpoint"
+            value={filters.endpoint}
+            onChange={(e) => onFilterChange('endpoint', e.target.value)}
+          />
+        </div>
+        <div className="form-group">
+          <label htmlFor="status">Status</label>
+          <input
+            id="status"
+            type="number"
+            placeholder="Enter status code"
+            value={filters.status}
+            onChange={(e) => onFilterChange('status', e.target.value)}
+          />
+        </div>
+        <div className="form-group">
+          <label htmlFor="type">Type</label>
+          <select
+            id="type"
+            value={filters.type}
+            onChange={(e) => onFilterChange('type', e.target.value)}
+          >
+            <option value="">All Types</option>
+            <option value="validation">Validation</option>
+            <option value="order">Order</option>
+          </select>
+        </div>
+        <div className="form-group">
+          <label htmlFor="date-from">Date From</label>
+          <input
+            id="date-from"
+            type="date"
+            value={filters.date_from}
+            onChange={(e) => onFilterChange('date_from', e.target.value)}
+          />
+        </div>
+        <div className="form-group">
+          <label htmlFor="date-to">Date To</label>
+          <input
+            id="date-to"
+            type="date"
+            value={filters.date_to}
+            onChange={(e) => onFilterChange('date_to', e.target.value)}
+          />
+        </div>
+      </div>
+      <div className="filter-actions">
+        <button onClick={() => onApplyFilters(filters)} className="btn btn-primary">Apply Filters</button>
+        <button onClick={onClearFilters} className="btn btn-secondary">Clear Filters</button>
+      </div>
+    </div>
+  </div>
+);
+
+const PaginationControls: React.FC<{
+  currentPage: number;
+  totalPages: number;
+  nextCursor: string | null;
+  onPrevPage: () => void;
+  onNextPage: () => void;
+  onGoToPage: (page: number) => void;
+  limit: number;
+}> = ({ currentPage, totalPages, nextCursor, onPrevPage, onNextPage, onGoToPage, limit }) => (
+  <div className="pagination-controls">
+    <button onClick={onPrevPage} disabled={currentPage === 1} className="btn btn-secondary">
+      Previous
+    </button>
+    <div className="page-numbers">
+      {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+        const pageNum = currentPage <= 3 ? i + 1 : totalPages - 4 + i + 1;
+        return (
+          <button
+            key={pageNum}
+            onClick={() => onGoToPage(pageNum)}
+            className={`btn ${pageNum === currentPage ? 'btn-primary' : 'btn-outline-primary'}`}
+          >
+            {pageNum}
+          </button>
+        );
+      })}
+      {totalPages > 5 && (
+        <>
+          <span>...</span>
+          <button onClick={() => onGoToPage(totalPages)} className="btn btn-outline-primary">
+            {totalPages}
+          </button>
+        </>
+      )}
+    </div>
+    <button onClick={onNextPage} disabled={currentPage === totalPages || !nextCursor} className="btn btn-secondary">
+      Next
+    </button>
+  </div>
+);
+
+const LogsTable: React.FC<{
+  logs: LogEntry[];
+  sortBy: 'created_at' | 'status' | 'endpoint';
+  sortDir: 'asc' | 'desc';
+  onSort: (column: 'created_at' | 'status' | 'endpoint') => void;
+}> = ({ logs, sortBy, sortDir, onSort }) => (
+  <div className="table-container">
+    <table className="table table-striped">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Type</th>
+          <th
+            onClick={() => onSort('endpoint')}
+            className="sortable"
+            style={{ cursor: 'pointer' }}
+          >
+            Endpoint {sortBy === 'endpoint' && (sortDir === 'asc' ? '↑' : '↓')}
+          </th>
+          <th>Reason Codes</th>
+          <th
+            onClick={() => onSort('status')}
+            className="sortable"
+            style={{ cursor: 'pointer' }}
+          >
+            Status {sortBy === 'status' && (sortDir === 'asc' ? '↑' : '↓')}
+          </th>
+          <th
+            onClick={() => onSort('created_at')}
+            className="sortable"
+            style={{ cursor: 'pointer' }}
+          >
+            Created At {sortBy === 'created_at' && (sortDir === 'asc' ? '↑' : '↓')}
+          </th>
+          <th>Meta</th>
+        </tr>
+      </thead>
+      <tbody>
+        {logs.length === 0 ? (
+          <tr>
+            <td colSpan={7} className="text-center">No logs found.</td>
+          </tr>
+        ) : (
+          logs.map((log) => (
+            <tr key={log.id}>
+              <td><code>{log.id}</code></td>
+              <td>
+                <span className={`badge badge-${log.type === 'validation' ? 'info' : 'warning'}`}>
+                  {log.type}
+                </span>
+              </td>
+              <td>{log.endpoint}</td>
+              <td>
+                {log.reason_codes.length > 0 ? (
+                  <span className="reason-codes">{log.reason_codes.join(', ')}</span>
+                ) : 'None'}
+              </td>
+              <td>
+                <span className={`badge badge-${log.status >= 200 && log.status < 300 ? 'success' : 'danger'}`}>
+                  {log.status}
+                </span>
+              </td>
+              <td>{new Date(log.created_at).toLocaleString()}</td>
+              <td>
+                <details>
+                  <summary>View Meta</summary>
+                  <pre>{JSON.stringify(log.meta, null, 2)}</pre>
+                </details>
+              </td>
+            </tr>
+          ))
+        )}
+      </tbody>
+    </table>
+  </div>
+);
+
+const LogExplorer: React.FC<LogExplorerProps> = ({ token }) => {
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [totalCount, setTotalCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [filters, setFilters] = useState({
+  const [filters, setFilters] = useState<FiltersState>({
     reason_code: '',
     endpoint: '',
     status: '',
@@ -31,7 +240,7 @@ const LogExplorer: React.FC = () => {
     date_from: '',
     date_to: ''
   });
-  const [appliedFilters, setAppliedFilters] = useState({
+  const [appliedFilters, setAppliedFilters] = useState<FiltersState>({
     reason_code: '',
     endpoint: '',
     status: '',
@@ -85,8 +294,27 @@ const LogExplorer: React.FC = () => {
     fetchLogs(0, 1);
   }, [appliedFilters, sortBy, sortDir, fetchLogs]);
 
-  const handleFilterChange = (key: keyof typeof filters, value: string) => {
+  const handleFilterChange = (key: keyof FiltersState, value: string) => {
     setFilters(prev => ({ ...prev, [key]: value }));
+  };
+
+  const handleApplyFilters = () => {
+    setAppliedFilters(filters);
+    fetchLogs(0, 1);
+  };
+
+  const handleClearFilters = () => {
+    const emptyFilters: FiltersState = {
+      reason_code: '',
+      endpoint: '',
+      status: '',
+      type: '',
+      date_from: '',
+      date_to: ''
+    };
+    setFilters(emptyFilters);
+    setAppliedFilters(emptyFilters);
+    fetchLogs(0, 1);
   };
 
   const handleSort = (column: 'created_at' | 'status' | 'endpoint') => {
@@ -160,98 +388,12 @@ const LogExplorer: React.FC = () => {
         </div>
       </header>
 
-      <div className="filters-section">
-        <div className="filters-card">
-          <h3>Filters</h3>
-          <div className="filter-row">
-            <div className="form-group">
-              <label htmlFor="reason-code">Reason Code</label>
-              <input
-                id="reason-code"
-                type="text"
-                placeholder="Enter reason code"
-                value={filters.reason_code}
-                onChange={(e) => handleFilterChange('reason_code', e.target.value)}
-              />
-            </div>
-            <div className="form-group">
-              <label htmlFor="endpoint">Endpoint</label>
-              <input
-                id="endpoint"
-                type="text"
-                placeholder="Enter endpoint"
-                value={filters.endpoint}
-                onChange={(e) => handleFilterChange('endpoint', e.target.value)}
-              />
-            </div>
-            <div className="form-group">
-              <label htmlFor="status">Status</label>
-              <input
-                id="status"
-                type="number"
-                placeholder="Enter status code"
-                value={filters.status}
-                onChange={(e) => handleFilterChange('status', e.target.value)}
-              />
-            </div>
-            <div className="form-group">
-              <label htmlFor="type">Type</label>
-              <select
-                id="type"
-                value={filters.type}
-                onChange={(e) => handleFilterChange('type', e.target.value)}
-              >
-                <option value="">All Types</option>
-                <option value="validation">Validation</option>
-                <option value="order">Order</option>
-              </select>
-            </div>
-            <div className="form-group">
-              <label htmlFor="date-from">Date From</label>
-              <input
-                id="date-from"
-                type="date"
-                value={filters.date_from}
-                onChange={(e) => handleFilterChange('date_from', e.target.value)}
-              />
-            </div>
-            <div className="form-group">
-              <label htmlFor="date-to">Date To</label>
-              <input
-                id="date-to"
-                type="date"
-                value={filters.date_to}
-                onChange={(e) => handleFilterChange('date_to', e.target.value)}
-              />
-            </div>
-          </div>
-          <div className="filter-actions">
-            <button onClick={() => {
-              setAppliedFilters(filters);
-              fetchLogs(0, 1);
-            }} className="btn btn-primary">Apply Filters</button>
-            <button onClick={() => {
-              setFilters({
-                reason_code: '',
-                endpoint: '',
-                status: '',
-                type: '',
-                date_from: '',
-                date_to: ''
-              });
-              setAppliedFilters({
-                reason_code: '',
-                endpoint: '',
-                status: '',
-                type: '',
-                date_from: '',
-                date_to: ''
-              });
-              fetchLogs(0, 1);
-            }} className="btn btn-secondary">Clear Filters</button>
-          </div>
-        </div>
-      </div>
+      <FiltersSection
+        filters={filters}
+        onFilterChange={handleFilterChange}
+        onApplyFilters={handleApplyFilters}
+        onClearFilters={handleClearFilters}
+      />
 
       <div className="table-section">
         <div className="table-header">
@@ -259,107 +401,23 @@ const LogExplorer: React.FC = () => {
             <p>Total Logs: <strong>{totalCount.toLocaleString()}</strong></p>
             <p>Showing {logs.length} of {totalCount} logs</p>
           </div>
-          <div className="pagination-controls">
-            <button onClick={handlePrevPage} disabled={currentPage === 1} className="btn btn-secondary">
-              Previous
-            </button>
-            <div className="page-numbers">
-              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                const pageNum = currentPage <= 3 ? i + 1 : totalPages - 4 + i + 1;
-                return (
-                  <button
-                    key={pageNum}
-                    onClick={() => goToPage(pageNum)}
-                    className={`btn ${pageNum === currentPage ? 'btn-primary' : 'btn-outline-primary'}`}
-                  >
-                    {pageNum}
-                  </button>
-                );
-              })}
-              {totalPages > 5 && (
-                <>
-                  <span>...</span>
-                  <button onClick={() => goToPage(totalPages)} className="btn btn-outline-primary">
-                    {totalPages}
-                  </button>
-                </>
-              )}
-            </div>
-            <button onClick={handleNextPage} disabled={currentPage === totalPages || !nextCursor} className="btn btn-secondary">
-              Next
-            </button>
-          </div>
+          <PaginationControls
+            currentPage={currentPage}
+            totalPages={totalPages}
+            nextCursor={nextCursor}
+            onPrevPage={handlePrevPage}
+            onNextPage={handleNextPage}
+            onGoToPage={goToPage}
+            limit={limit}
+          />
         </div>
 
-        <div className="table-container">
-          <table className="table table-striped">
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>Type</th>
-                <th
-                  onClick={() => handleSort('endpoint')}
-                  className="sortable"
-                  style={{ cursor: 'pointer' }}
-                >
-                  Endpoint {sortBy === 'endpoint' && (sortDir === 'asc' ? '↑' : '↓')}
-                </th>
-                <th>Reason Codes</th>
-                <th
-                  onClick={() => handleSort('status')}
-                  className="sortable"
-                  style={{ cursor: 'pointer' }}
-                >
-                  Status {sortBy === 'status' && (sortDir === 'asc' ? '↑' : '↓')}
-                </th>
-                <th
-                  onClick={() => handleSort('created_at')}
-                  className="sortable"
-                  style={{ cursor: 'pointer' }}
-                >
-                  Created At {sortBy === 'created_at' && (sortDir === 'asc' ? '↑' : '↓')}
-                </th>
-                <th>Meta</th>
-              </tr>
-            </thead>
-            <tbody>
-              {logs.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="text-center">No logs found.</td>
-                </tr>
-              ) : (
-                logs.map((log) => (
-                  <tr key={log.id}>
-                    <td><code>{log.id}</code></td>
-                    <td>
-                      <span className={`badge badge-${log.type === 'validation' ? 'info' : 'warning'}`}>
-                        {log.type}
-                      </span>
-                    </td>
-                    <td>{log.endpoint}</td>
-                    <td>
-                      {log.reason_codes.length > 0 ? (
-                        <span className="reason-codes">{log.reason_codes.join(', ')}</span>
-                      ) : 'None'}
-                    </td>
-                    <td>
-                      <span className={`badge badge-${log.status >= 200 && log.status < 300 ? 'success' : 'danger'}`}>
-                        {log.status}
-                      </span>
-                    </td>
-                    <td>{new Date(log.created_at).toLocaleString()}</td>
-                    <td>
-                      <details>
-                        <summary>View Meta</summary>
-                        <pre>{JSON.stringify(log.meta, null, 2)}</pre>
-                      </details>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+        <LogsTable
+          logs={logs}
+          sortBy={sortBy}
+          sortDir={sortDir}
+          onSort={handleSort}
+        />
       </div>
 
       <style>{`

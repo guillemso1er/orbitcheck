@@ -358,80 +358,93 @@ export async function validateVATViaVIES(country: string, vatNumber: string): Pr
  * @param params - Validation parameters: type (e.g., 'cpf', 'vat'), value (tax ID string), country (ISO code), redis (optional client).
  * @returns {Promise<Object>} Comprehensive result with validity, normalized value, reason codes, source (format/vies), request ID, and TTL.
  */
+async function getCachedResult(redis: Redis | undefined, cacheKey: string) {
+  if (!redis) return null;
+  const cached = await redis.get(cacheKey);
+  return cached ? JSON.parse(cached) : null;
+}
+
+async function setCachedResult(redis: Redis | undefined, cacheKey: string, result: any) {
+  if (!redis) return;
+  await redis.set(cacheKey, JSON.stringify(result), 'EX', 24 * 3600);
+}
+
+function createBaseResult(normalizedValue: string): any {
+  return {
+    valid: false,
+    reason_codes: [] as string[],
+    request_id: crypto.randomUUID(),
+    source: "format",
+    normalized: normalizedValue
+  };
+}
+
+async function dispatchValidation(
+  t: string,
+  value: string,
+  country: string
+): Promise<{ valid: boolean; reason_codes: string[]; source?: string }> {
+  if (t === "CPF") {
+    const res = validateCPF(value);
+    return { valid: res.valid, reason_codes: res.reason_codes };
+  } else if (t === "CNPJ") {
+    const res = validateCNPJ(value);
+    return { valid: res.valid, reason_codes: res.reason_codes };
+  } else if (t === "RFC") {
+    const res = validateRFC(value);
+    return { valid: res.valid, reason_codes: res.reason_codes };
+  } else if (t === "CUIT") {
+    const res = validateCUIT(value);
+    return { valid: res.valid, reason_codes: res.reason_codes };
+  } else if (t === "RUT") {
+    const res = validateRUT(value);
+    return { valid: res.valid, reason_codes: res.reason_codes };
+  } else if (t === "RUC") {
+    const res = validateRUC(value);
+    return { valid: res.valid, reason_codes: res.reason_codes };
+  } else if (t === "NIT") {
+    const res = validateNIT(value);
+    return { valid: res.valid, reason_codes: res.reason_codes };
+  } else if (t === "NIF" || t === "NIE" || t === "CIF") {
+    const res = validateES(value);
+    return { valid: res.valid, reason_codes: res.reason_codes };
+  } else if (t === "EIN") {
+    const res = validateEIN(value);
+    return { valid: res.valid, reason_codes: res.reason_codes };
+  } else if (t === "VAT") {
+    const cc = country?.toUpperCase() || value.slice(0, 2);
+    const vn = value.replace(/^[A-Z]{2}/, "");
+    const res = await validateVATViaVIES(cc, vn);
+    return { valid: res.valid, reason_codes: res.reason_codes, source: res.source };
+  } else {
+    return { valid: false, reason_codes: ["taxid.invalid_format"] };
+  }
+}
+
 export async function validateTaxId({ type, value, country, redis }: { type: string, value: string, country: string, redis?: Redis }) {
-    const t = type.toUpperCase();
-    const normalizedValue = value.replace(/\s/g, "");
-    const input = { type: t, value: normalizedValue, country: country || "" };
-    const keyStr = JSON.stringify(input);
-    const hash = crypto.createHash('sha1').update(keyStr).digest('hex');
-    const cacheKey = `validator:taxid:${hash}`;
+  const t = type.toUpperCase();
+  const normalizedValue = value.replace(/\s/g, "");
+  const input = { type: t, value: normalizedValue, country: country || "" };
+  const keyStr = JSON.stringify(input);
+  const hash = crypto.createHash('sha1').update(keyStr).digest('hex');
+  const cacheKey = `validator:taxid:${hash}`;
 
-    let result: any;
+  const cached = await getCachedResult(redis, cacheKey);
+  if (cached) {
+    return cached;
+  }
 
-    if (redis) {
-        const cached = await redis.get(cacheKey);
-        if (cached) {
-            return JSON.parse(cached);
-        }
-    }
+  const base = createBaseResult(normalizedValue);
+  const validationResult = await dispatchValidation(t, value, country);
 
-    let base = { valid: false, reason_codes: [] as string[], request_id: crypto.randomUUID(), source: "format", normalized: normalizedValue };
-    let valid = false;
-    let reason_codes: string[] = [];
-    let source = "format";
+  const result = {
+    ...base,
+    valid: validationResult.valid,
+    reason_codes: validationResult.reason_codes,
+    ...(validationResult.source && { source: validationResult.source })
+  };
 
-    if (t === "CPF") {
-        const cpfRes = validateCPF(value);
-        valid = cpfRes.valid;
-        reason_codes = cpfRes.reason_codes;
-    } else if (t === "CNPJ") {
-        const cnpjRes = validateCNPJ(value);
-        valid = cnpjRes.valid;
-        reason_codes = cnpjRes.reason_codes;
-    } else if (t === "RFC") {
-        const rfcRes = validateRFC(value);
-        valid = rfcRes.valid;
-        reason_codes = rfcRes.reason_codes;
-    } else if (t === "CUIT") {
-        const cuitRes = validateCUIT(value);
-        valid = cuitRes.valid;
-        reason_codes = cuitRes.reason_codes;
-    } else if (t === "RUT") {
-        const rutRes = validateRUT(value);
-        valid = rutRes.valid;
-        reason_codes = rutRes.reason_codes;
-    } else if (t === "RUC") {
-        const rucRes = validateRUC(value);
-        valid = rucRes.valid;
-        reason_codes = rucRes.reason_codes;
-    } else if (t === "NIT") {
-        const nitRes = validateNIT(value);
-        valid = nitRes.valid;
-        reason_codes = nitRes.reason_codes;
-    } else if (t === "NIF" || t === "NIE" || t === "CIF") {
-        const esRes = validateES(value);
-        valid = esRes.valid;
-        reason_codes = esRes.reason_codes;
-    } else if (t === "EIN") {
-        const einRes = validateEIN(value);
-        valid = einRes.valid;
-        reason_codes = einRes.reason_codes;
-    } else if (t === "VAT") {
-        const cc = country?.toUpperCase() || value.slice(0, 2);
-        const vn = value.replace(/^[A-Z]{2}/, "");
-        const res = await validateVATViaVIES(cc, vn);
-        valid = res.valid;
-        reason_codes = res.reason_codes;
-        source = res.source;
-    } else {
-        reason_codes = ["taxid.invalid_format"];
-    }
+  await setCachedResult(redis, cacheKey, result);
 
-    result = { ...base, valid, reason_codes, source };
-
-    if (redis) {
-        await redis.set(cacheKey, JSON.stringify(result), 'EX', 24 * 3600);
-    }
-
-    return result;
+  return result;
 }

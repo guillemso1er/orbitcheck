@@ -35,8 +35,144 @@ interface UsageData {
   request_id: string;
 }
 
-const UsageDashboard: React.FC = () => {
-  const { token } = useAuth();
+interface UsageDashboardProps {
+  token: string;
+}
+
+function prepareDailyChartData(data: UsageData) {
+  const dailyLabels = data.by_day.map(d => d.date);
+  const dailyValidations = data.by_day.map(d => d.validations);
+  const dailyOrders = data.by_day.map(d => d.orders);
+
+  return {
+    labels: dailyLabels,
+    datasets: [
+      {
+        label: 'Validations',
+        data: dailyValidations,
+        borderColor: 'rgb(75, 192, 192)',
+        backgroundColor: 'rgba(75, 192, 192, 0.2)',
+        tension: 0.1
+      },
+      {
+        label: 'Orders',
+        data: dailyOrders,
+        borderColor: 'rgb(255, 99, 132)',
+        backgroundColor: 'rgba(255, 99, 132, 0.2)',
+        tension: 0.1
+      }
+    ]
+  };
+}
+
+function prepareReasonChartData(data: UsageData) {
+  const reasonLabels = data.top_reason_codes.map(r => r.code);
+  const reasonCounts = data.top_reason_codes.map(r => r.count);
+
+  return {
+    labels: reasonLabels,
+    datasets: [
+      {
+        label: 'Count',
+        data: reasonCounts,
+        backgroundColor: 'rgba(153, 102, 255, 0.6)',
+        borderColor: 'rgba(153, 102, 255, 1)',
+        borderWidth: 1
+      }
+    ]
+  };
+}
+
+function prepareCacheChartData(data: UsageData) {
+  return {
+    labels: ['Cache Hits', 'Cache Misses'],
+    datasets: [
+      {
+        data: [data.cache_hit_ratio, 100 - data.cache_hit_ratio],
+        backgroundColor: [
+          'rgba(75, 192, 192, 0.6)',
+          'rgba(255, 99, 132, 0.6)'
+        ],
+        borderColor: [
+          'rgba(75, 192, 192, 1)',
+          'rgba(255, 99, 132, 1)'
+        ],
+        borderWidth: 1
+      }
+    ]
+  };
+}
+
+const chartOptions = {
+  responsive: true,
+  plugins: {
+    legend: {
+      position: 'top' as const
+    },
+    title: {
+      display: true,
+      text: 'Usage Dashboard'
+    }
+  }
+};
+
+const StatsGrid: React.FC<{ data: UsageData }> = ({ data }) => (
+  <div className="stats-grid">
+    <div className="stat-card">
+      <div className="stat-icon">📊</div>
+      <h3>Total Validations</h3>
+      <p className="stat-value">{data.totals.validations.toLocaleString()}</p>
+    </div>
+    <div className="stat-card">
+      <div className="stat-icon">🛒</div>
+      <h3>Total Orders</h3>
+      <p className="stat-value">{data.totals.orders.toLocaleString()}</p>
+    </div>
+    <div className="stat-card">
+      <div className="stat-icon">⚡</div>
+      <h3>Cache Hit Ratio</h3>
+      <p className="stat-value">{data.cache_hit_ratio.toFixed(1)}%</p>
+    </div>
+  </div>
+);
+
+const DailyUsageChart: React.FC<{ data: UsageData }> = ({ data }) => {
+  const chartData = prepareDailyChartData(data);
+  return (
+    <div className="chart-card">
+      <h3 className="chart-title">Daily Usage</h3>
+      <div className="chart-container">
+        <Line options={chartOptions} data={chartData} />
+      </div>
+    </div>
+  );
+};
+
+const TopReasonCodesChart: React.FC<{ data: UsageData }> = ({ data }) => {
+  const chartData = prepareReasonChartData(data);
+  return (
+    <div className="chart-card">
+      <h3 className="chart-title">Top Reason Codes</h3>
+      <div className="chart-container">
+        <Bar options={chartOptions} data={chartData} />
+      </div>
+    </div>
+  );
+};
+
+const CacheHitRatioChart: React.FC<{ data: UsageData }> = ({ data }) => {
+  const chartData = prepareCacheChartData(data);
+  return (
+    <div className="chart-card">
+      <h3 className="chart-title">Cache Hit Ratio</h3>
+      <div className="chart-container">
+        <Pie data={chartData} />
+      </div>
+    </div>
+  );
+};
+
+const UsageDashboard: React.FC<UsageDashboardProps> = ({ token }) => {
   const [data, setData] = useState<UsageData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -69,125 +205,18 @@ const UsageDashboard: React.FC = () => {
   if (error) return <div className="alert alert-danger">Error: {error}</div>;
   if (!data) return <div className="empty-state">No usage data available.</div>;
 
-  // Prepare data for daily chart
-  const dailyLabels = data.by_day.map(d => d.date);
-  const dailyValidations = data.by_day.map(d => d.validations);
-  const dailyOrders = data.by_day.map(d => d.orders);
-
-  const dailyChartData = {
-    labels: dailyLabels,
-    datasets: [
-      {
-        label: 'Validations',
-        data: dailyValidations,
-        borderColor: 'rgb(75, 192, 192)',
-        backgroundColor: 'rgba(75, 192, 192, 0.2)',
-        tension: 0.1
-      },
-      {
-        label: 'Orders',
-        data: dailyOrders,
-        borderColor: 'rgb(255, 99, 132)',
-        backgroundColor: 'rgba(255, 99, 132, 0.2)',
-        tension: 0.1
-      }
-    ]
-  };
-
-  // Top reason codes bar chart
-  const reasonLabels = data.top_reason_codes.map(r => r.code);
-  const reasonCounts = data.top_reason_codes.map(r => r.count);
-
-  const reasonChartData = {
-    labels: reasonLabels,
-    datasets: [
-      {
-        label: 'Count',
-        data: reasonCounts,
-        backgroundColor: 'rgba(153, 102, 255, 0.6)',
-        borderColor: 'rgba(153, 102, 255, 1)',
-        borderWidth: 1
-      }
-    ]
-  };
-
-  // Cache hit ratio pie chart
-  const cacheData = {
-    labels: ['Cache Hits', 'Cache Misses'],
-    datasets: [
-      {
-        data: [data.cache_hit_ratio, 100 - data.cache_hit_ratio],
-        backgroundColor: [
-          'rgba(75, 192, 192, 0.6)',
-          'rgba(255, 99, 132, 0.6)'
-        ],
-        borderColor: [
-          'rgba(75, 192, 192, 1)',
-          'rgba(255, 99, 132, 1)'
-        ],
-        borderWidth: 1
-      }
-    ]
-  };
-
-  const options = {
-    responsive: true,
-    plugins: {
-      legend: {
-        position: 'top' as const
-      },
-      title: {
-        display: true,
-        text: 'Usage Dashboard'
-      }
-    }
-  };
-
   return (
     <div className="usage-dashboard">
       <header className="page-header">
         <h2>Usage Dashboard</h2>
       </header>
 
-      <div className="stats-grid">
-        <div className="stat-card">
-          <div className="stat-icon">📊</div>
-          <h3>Total Validations</h3>
-          <p className="stat-value">{data.totals.validations.toLocaleString()}</p>
-        </div>
-        <div className="stat-card">
-          <div className="stat-icon">🛒</div>
-          <h3>Total Orders</h3>
-          <p className="stat-value">{data.totals.orders.toLocaleString()}</p>
-        </div>
-        <div className="stat-card">
-          <div className="stat-icon">⚡</div>
-          <h3>Cache Hit Ratio</h3>
-          <p className="stat-value">{data.cache_hit_ratio.toFixed(1)}%</p>
-        </div>
-      </div>
+      <StatsGrid data={data} />
 
       <div className="charts-grid">
-        <div className="chart-card">
-          <h3 className="chart-title">Daily Usage</h3>
-          <div className="chart-container">
-            <Line options={options} data={dailyChartData} />
-          </div>
-        </div>
-
-        <div className="chart-card">
-          <h3 className="chart-title">Top Reason Codes</h3>
-          <div className="chart-container">
-            <Bar options={options} data={reasonChartData} />
-          </div>
-        </div>
-
-        <div className="chart-card">
-          <h3 className="chart-title">Cache Hit Ratio</h3>
-          <div className="chart-container">
-            <Pie data={cacheData} />
-          </div>
-        </div>
+        <DailyUsageChart data={data} />
+        <TopReasonCodesChart data={data} />
+        <CacheHitRatioChart data={data} />
       </div>
 
       <style>{`

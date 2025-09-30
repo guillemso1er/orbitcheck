@@ -13,8 +13,154 @@ interface WebhookTestResult {
   request_id: string;
 }
 
-const WebhookTester: React.FC = () => {
-  const { token } = useAuth();
+interface WebhookTesterProps {
+  token: string;
+}
+
+const TestForm: React.FC<{
+  url: string;
+  payloadType: 'validation' | 'order' | 'custom';
+  customPayload: string;
+  onUrlChange: (url: string) => void;
+  onPayloadTypeChange: (type: 'validation' | 'order' | 'custom') => void;
+  onCustomPayloadChange: (payload: string) => void;
+  onSubmit: (e: React.FormEvent) => void;
+  loading: boolean;
+}> = ({
+  url,
+  payloadType,
+  customPayload,
+  onUrlChange,
+  onPayloadTypeChange,
+  onCustomPayloadChange,
+  onSubmit,
+  loading
+}) => (
+  <form onSubmit={onSubmit} className="test-form">
+    <div className="form-group">
+      <label htmlFor="webhook-url">Webhook URL</label>
+      <input
+        id="webhook-url"
+        type="url"
+        value={url}
+        onChange={(e) => onUrlChange(e.target.value)}
+        placeholder="https://your-webhook-url.com/endpoint"
+        required
+      />
+    </div>
+    
+    <div className="form-group">
+      <label htmlFor="payload-type">Payload Type</label>
+      <select
+        id="payload-type"
+        value={payloadType}
+        onChange={(e) => onPayloadTypeChange(e.target.value as 'validation' | 'order' | 'custom')}
+      >
+        <option value="validation">Validation Result</option>
+        <option value="order">Order Evaluation</option>
+        <option value="custom">Custom Payload</option>
+      </select>
+    </div>
+
+    {payloadType === 'custom' && (
+      <div className="form-group">
+        <label htmlFor="custom-payload">Custom Payload (JSON)</label>
+        <textarea
+          id="custom-payload"
+          value={customPayload}
+          onChange={(e) => onCustomPayloadChange(e.target.value)}
+          placeholder='{"event": "custom", "data": "your data"}'
+          rows={6}
+        />
+      </div>
+    )}
+
+    <div className="form-actions">
+      <button type="submit" className="btn btn-primary" disabled={loading}>
+        {loading ? (
+          <>
+            <span className="spinner"></span> Sending...
+          </>
+        ) : (
+          'Send Test Payload'
+        )}
+      </button>
+    </div>
+  </form>
+);
+
+const RequestTab: React.FC<{ result: WebhookTestResult }> = ({ result }) => (
+  <div className="tab-content">
+    <div className="content-section">
+      <h4>Sent To</h4>
+      <p><code>{result.sent_to}</code></p>
+    </div>
+    <div className="content-section">
+      <h4>Payload</h4>
+      <pre>{JSON.stringify(result.payload, null, 2)}</pre>
+    </div>
+  </div>
+);
+
+const ResponseTab: React.FC<{ result: WebhookTestResult }> = ({ result }) => (
+  <div className="tab-content">
+    <div className="content-section">
+      <h4>Status</h4>
+      <div className={`status-badge status-${result.response.status >= 200 && result.response.status < 300 ? 'success' : 'error'}`}>
+        {result.response.status} {result.response.status_text}
+      </div>
+    </div>
+    <div className="content-section">
+      <h4>Headers</h4>
+      <pre>{JSON.stringify(result.response.headers, null, 2)}</pre>
+    </div>
+    <div className="content-section">
+      <h4>Body</h4>
+      <pre>{result.response.body}</pre>
+    </div>
+    <div className="content-section">
+      <h4>Request ID</h4>
+      <p><code>{result.request_id}</code></p>
+    </div>
+  </div>
+);
+
+const ResultTabs: React.FC<{
+  result: WebhookTestResult;
+  activeTab: 'request' | 'response';
+  onTabChange: (tab: 'request' | 'response') => void;
+  onClear: () => void;
+}> = ({ result, activeTab, onTabChange, onClear }) => (
+  <div className="result-section">
+    <div className="result-header">
+      <h3>Test Result</h3>
+      <button onClick={onClear} className="btn btn-secondary">Clear</button>
+    </div>
+
+    <div className="result-tabs">
+      <button
+        className={`tab-btn ${activeTab === 'request' ? 'active' : ''}`}
+        onClick={() => onTabChange('request')}
+      >
+        Request
+      </button>
+      <button
+        className={`tab-btn ${activeTab === 'response' ? 'active' : ''}`}
+        onClick={() => onTabChange('response')}
+      >
+        Response
+      </button>
+    </div>
+
+    {activeTab === 'request' ? (
+      <RequestTab result={result} />
+    ) : (
+      <ResponseTab result={result} />
+    )}
+  </div>
+);
+
+const WebhookTester: React.FC<WebhookTesterProps> = ({ token }) => {
   const [url, setUrl] = useState('');
   const [payloadType, setPayloadType] = useState<'validation' | 'order' | 'custom'>('validation');
   const [customPayload, setCustomPayload] = useState('');
@@ -62,6 +208,8 @@ const WebhookTester: React.FC = () => {
     }
   };
 
+  const handleClearResult = () => setResult(null);
+
   return (
     <div className="webhook-tester">
       <header className="page-header">
@@ -69,57 +217,16 @@ const WebhookTester: React.FC = () => {
       </header>
 
       <div className="tester-section">
-        <form onSubmit={handleTest} className="test-form">
-          <div className="form-group">
-            <label htmlFor="webhook-url">Webhook URL</label>
-            <input
-              id="webhook-url"
-              type="url"
-              value={url}
-              onChange={(e) => setUrl(e.target.value)}
-              placeholder="https://your-webhook-url.com/endpoint"
-              required
-            />
-          </div>
-          
-          <div className="form-group">
-            <label htmlFor="payload-type">Payload Type</label>
-            <select
-              id="payload-type"
-              value={payloadType}
-              onChange={(e) => setPayloadType(e.target.value as 'validation' | 'order' | 'custom')}
-            >
-              <option value="validation">Validation Result</option>
-              <option value="order">Order Evaluation</option>
-              <option value="custom">Custom Payload</option>
-            </select>
-          </div>
-
-          {payloadType === 'custom' && (
-            <div className="form-group">
-              <label htmlFor="custom-payload">Custom Payload (JSON)</label>
-              <textarea
-                id="custom-payload"
-                value={customPayload}
-                onChange={(e) => setCustomPayload(e.target.value)}
-                placeholder='{"event": "custom", "data": "your data"}'
-                rows={6}
-              />
-            </div>
-          )}
-
-          <div className="form-actions">
-            <button type="submit" className="btn btn-primary" disabled={loading}>
-              {loading ? (
-                <>
-                  <span className="spinner"></span> Sending...
-                </>
-              ) : (
-                'Send Test Payload'
-              )}
-            </button>
-          </div>
-        </form>
+        <TestForm
+          url={url}
+          payloadType={payloadType}
+          customPayload={customPayload}
+          onUrlChange={setUrl}
+          onPayloadTypeChange={setPayloadType}
+          onCustomPayloadChange={setCustomPayload}
+          onSubmit={handleTest}
+          loading={loading}
+        />
       </div>
 
       {error && (
@@ -129,63 +236,12 @@ const WebhookTester: React.FC = () => {
       )}
 
       {result && (
-        <div className="result-section">
-          <div className="result-header">
-            <h3>Test Result</h3>
-            <button onClick={() => setResult(null)} className="btn btn-secondary">Clear</button>
-          </div>
-
-          <div className="result-tabs">
-            <button
-              className={`tab-btn ${activeTab === 'request' ? 'active' : ''}`}
-              onClick={() => setActiveTab('request')}
-            >
-              Request
-            </button>
-            <button
-              className={`tab-btn ${activeTab === 'response' ? 'active' : ''}`}
-              onClick={() => setActiveTab('response')}
-            >
-              Response
-            </button>
-          </div>
-
-          {activeTab === 'request' && (
-            <div className="tab-content">
-              <div className="content-section">
-                <h4>Sent To</h4>
-                <p><code>{result.sent_to}</code></p>
-              </div>
-              <div className="content-section">
-                <h4>Payload</h4>
-                <pre>{JSON.stringify(result.payload, null, 2)}</pre>
-              </div>
-            </div>
-          )}
-
-          {activeTab === 'response' && (
-            <div className="tab-content">
-              <div className="content-section">
-                <h4>Status</h4>
-                <div className={`status-badge status-${result.response.status >= 200 && result.response.status < 300 ? 'success' : 'error'}`}>
-                  {result.response.status} {result.response.status_text}
-                </div>
-              </div>
-              <div className="content-section">
-                <h4>Headers</h4>
-                <pre>{JSON.stringify(result.response.headers, null, 2)}</pre>
-              </div>
-              <div className="content-section">
-                <h4>Body</h4>
-                <pre>{result.response.body}</pre>
-              </div>
-              <div className="content-section">
-                <h4>Request ID</h4>
-                <p><code>{result.request_id}</code></p>
-              </div>
-            </div>
-          )}
-        </div>
+        <ResultTabs
+          result={result}
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+          onClear={handleClearResult}
+        />
       )}
 
       <style>{`

@@ -1,6 +1,7 @@
 import IORedis from 'ioredis';
 import fetch from 'node-fetch';
 import { disposableProcessor } from '../refreshDisposable';
+import { env } from '../../env';
 
 // Mock the dependencies
 jest.mock('ioredis');
@@ -11,9 +12,9 @@ const mockFetch = fetch as jest.MockedFunction<typeof fetch>;
 
 describe('Disposable Domains Refresh Job', () => {
   beforeAll(() => {
-    process.env.JWT_SECRET = 'test_jwt_secret';
-    process.env.DISPOSABLE_LIST_URL = 'https://example.com/disposable-domains.json';
+    env.DISPOSABLE_LIST_URL = 'https://example.com/disposable-domains.json';
   });
+
   let mockRedis: jest.Mocked<IORedis>;
   let mockPipeline: {
     exec: jest.Mock;

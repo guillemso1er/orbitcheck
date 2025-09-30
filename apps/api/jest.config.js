@@ -13,5 +13,7 @@ module.exports = {
   },
   setupFilesAfterEnv: ['<rootDir>/src/setupTests.ts'],
   testTimeout: 10000,
-
+  testMatch: [
+    "**/?(*.)+(spec|test).[jt]s?(x)"
+  ],
 };
