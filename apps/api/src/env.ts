@@ -12,6 +12,7 @@ export const env = {
     RATE_LIMIT_COUNT: parseInt(process.env.RATE_LIMIT_COUNT || "300", 10),
     TWILIO_ACCOUNT_SID: process.env.TWILIO_ACCOUNT_SID || "",
     TWILIO_AUTH_TOKEN: process.env.TWILIO_AUTH_TOKEN || "",
+    TWILIO_VERIFY_SERVICE_SID: process.env.TWILIO_VERIFY_SERVICE_SID || "",
     TWILIO_PHONE_NUMBER: process.env.TWILIO_PHONE_NUMBER || "",
     S3_ENDPOINT: process.env.S3_ENDPOINT || "http://localhost:9000",
     S3_ACCESS_KEY: process.env.S3_ACCESS_KEY || "minioadmin",

@@ -78,6 +78,7 @@ export async function validateAddress(
     normalized: any;
     po_box: boolean;
     postal_city_match: boolean;
+    in_bounds: boolean;
     geo: any;
     reason_codes: string[];
     request_id: string;
@@ -113,6 +114,7 @@ export async function validateAddress(
     }
 
     let geo: any = null;
+    let in_bounds = true;
     try {
         const q = encodeURIComponent(`${norm.line1} ${norm.city} ${norm.state || ""} ${norm.postal_code} ${norm.country}`);
         let primarySuccess = false;
@@ -145,16 +147,32 @@ export async function validateAddress(
                 geo = { lat: loc.lat, lng: loc.lng, confidence: 0.8, source: 'google' };
             }
         }
+
+        // Geo-validation: check if lat/lng in country bounding box
+        if (geo) {
+            const { rows: bboxRows } = await pool.query(
+                "SELECT 1 FROM countries_bounding_boxes WHERE country_code = $1 AND $2 >= min_lat AND $2 <= max_lat AND $3 >= min_lng AND $3 <= max_lng LIMIT 1",
+                [norm.country.toUpperCase(), geo.lat, geo.lng]
+            );
+            in_bounds = bboxRows.length > 0;
+            if (!in_bounds) {
+                reason_codes.push("address.geo_out_of_bounds");
+            }
+        } else {
+            reason_codes.push("address.geocode_failed");
+        }
     } catch {
         // ignore geocoding errors
+        reason_codes.push("address.geocode_failed");
     }
 
-    const valid = postal_city_match && !po_box;
+    const valid = postal_city_match && !po_box && in_bounds;
     result = {
         valid,
         normalized: norm,
         po_box,
         postal_city_match,
+        in_bounds,
         geo,
         reason_codes,
         request_id: crypto.randomUUID(),

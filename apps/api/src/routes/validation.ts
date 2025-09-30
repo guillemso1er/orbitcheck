@@ -89,7 +89,7 @@ export function registerValidationRoutes(app: FastifyInstance, pool: Pool, redis
                         reason_codes: { type: 'array', items: { type: 'string' } },
                         request_id: { type: 'string' },
                         ttl_seconds: { type: 'integer' },
-                        verification_id: { type: 'string', nullable: true, description: 'ID for OTP verification if requested.' }
+                        verification_sid: { type: 'string', nullable: true, description: 'Twilio Verify SID for OTP verification if requested.' }
                     }
                 },
                 ...unauthorizedResponse,
@@ -102,28 +102,26 @@ export function registerValidationRoutes(app: FastifyInstance, pool: Pool, redis
             const request_id = generateRequestId();
             const { phone, country, request_otp = false } = req.body as { phone: string; country?: string; request_otp?: boolean };
             const validation = await validatePhone(phone, country, redis);
-            let verification_id: string | null = null;
-            if (validation.valid && request_otp && validation.e164 && env.TWILIO_ACCOUNT_SID && env.TWILIO_AUTH_TOKEN && env.TWILIO_PHONE_NUMBER) {
-                verification_id = crypto.randomUUID();
-                const otp = Math.floor(1000 + Math.random() * 9000).toString();
+            let verification_sid: string | null = null;
+            if (validation.valid && request_otp && validation.e164 && env.TWILIO_ACCOUNT_SID && env.TWILIO_AUTH_TOKEN && env.TWILIO_VERIFY_SERVICE_SID) {
                 const client = twilio(env.TWILIO_ACCOUNT_SID, env.TWILIO_AUTH_TOKEN);
                 try {
-                    await client.messages.create({
-                        body: `Your Orbicheck verification code is ${otp}`,
-                        from: env.TWILIO_PHONE_NUMBER,
-                        to: validation.e164
+                    const verify = client.verify.v2.services(env.TWILIO_VERIFY_SERVICE_SID);
+                    const verification = await verify.verifications.create({
+                        to: validation.e164,
+                        channel: 'sms'
                     });
-                    await redis.set(`otp:${verification_id}`, otp, 'EX', 300);
+                    verification_sid = verification.sid;
                     validation.reason_codes.push("phone.otp_sent");
                 } catch (err) {
-                    req.log.error(err, "Failed to send OTP");
+                    req.log.error(err, "Failed to send OTP via Verify");
                     validation.reason_codes.push("phone.otp_send_failed");
-                    verification_id = null;
+                    verification_sid = null;
                 }
             }
-            const response = { ...validation, verification_id };
+            const response = { ...validation, verification_sid };
             await (rep as any).saveIdem?.(response);
-            logEvent((req as any).project_id, "validation", "/validate/phone", response.reason_codes, 200, { request_otp, otp_status: verification_id ? 'otp_sent' : 'no_otp' }, pool);
+            logEvent((req as any).project_id, "validation", "/validate/phone", response.reason_codes, 200, { request_otp, otp_status: verification_sid ? 'otp_sent' : 'no_otp' }, pool);
             return rep.send({ ...response, request_id });
         } catch (error) {
             return sendServerError(req, rep, error, '/v1/validate/phone', generateRequestId());
@@ -229,6 +227,56 @@ export function registerValidationRoutes(app: FastifyInstance, pool: Pool, redis
             return rep.send({ ...out, request_id });
         } catch (error) {
             return sendServerError(req, rep, error, '/v1/validate/tax-id', generateRequestId());
+        }
+    });
+    // New endpoint for verifying OTP with Twilio Verify
+    app.post("/v1/verify/phone", {
+        schema: {
+            summary: 'Verify Phone OTP',
+            description: 'Verifies the OTP sent to the phone number using Twilio Verify.',
+            tags: ['Validation'],
+            headers: securityHeader,
+            body: {
+                type: 'object',
+                required: ['verification_sid', 'code'],
+                properties: {
+                    verification_sid: { type: 'string', description: 'The Twilio Verify SID from the validation response.' },
+                    code: { type: 'string', description: 'The 4-10 digit OTP code entered by the user.' }
+                }
+            },
+            response: {
+                200: {
+                    description: 'Verification result',
+                    type: 'object',
+                    properties: {
+                        valid: { type: 'boolean' },
+                        reason_codes: { type: 'array', items: { type: 'string' } },
+                        request_id: { type: 'string' }
+                    }
+                },
+                ...unauthorizedResponse,
+                ...rateLimitResponse,
+                ...validationErrorResponse,
+            }
+        }
+    }, async (req, rep) => {
+        try {
+            const request_id = generateRequestId();
+            const { verification_sid, code } = req.body as { verification_sid: string; code: string };
+            if (!env.TWILIO_ACCOUNT_SID || !env.TWILIO_AUTH_TOKEN || !env.TWILIO_VERIFY_SERVICE_SID) {
+                return rep.status(500).send({ error: { code: "server_error", message: "Twilio Verify not configured" } });
+            }
+            const client = twilio(env.TWILIO_ACCOUNT_SID, env.TWILIO_AUTH_TOKEN);
+            const verify = client.verify.v2.services(env.TWILIO_VERIFY_SERVICE_SID);
+            const verificationCheck = await verify.verificationChecks.create({ code, to: verification_sid });
+            const valid = verificationCheck.status === 'approved';
+            const reason_codes = valid ? [] : ['phone.otp_invalid'];
+            const response = { valid, reason_codes, request_id };
+            await (rep as any).saveIdem?.(response);
+            await logEvent((req as any).project_id, "verification", "/verify/phone", reason_codes, valid ? 200 : 400, { verified: valid }, pool);
+            return rep.send(response);
+        } catch (error) {
+            return sendServerError(req, rep, error, '/v1/verify/phone', generateRequestId());
         }
     });
 }

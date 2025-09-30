@@ -50,10 +50,10 @@ describe('Customer Deduplication Endpoints', () => {
             mockPool.query.mockImplementation((queryText: string) => {
                 const upperQuery = queryText.toUpperCase();
 
-                // Specific case for this test: find a customer by email
-                if (upperQuery.includes('FROM CUSTOMERS WHERE PROJECT_ID = $2 AND EMAIL = $1')) {
+                // Specific case for this test: find a customer by normalized_email
+                if (upperQuery.includes('NORMALIZED_EMAIL = $1')) {
                     return Promise.resolve({
-                        rows: [{ id: 'uuid-1', email: 'test@example.com', first_name: 'John', last_name: 'Doe', similarity: 1.0 }]
+                        rows: [{ id: 'uuid-1', email: 'test@example.com', first_name: 'John', last_name: 'Doe' }]
                     });
                 }
                 
@@ -81,9 +81,9 @@ describe('Customer Deduplication Endpoints', () => {
                 const upperQuery = queryText.toUpperCase();
 
                 // Specific case for this test: find a fuzzy name match
-                if (upperQuery.includes("SIMILARITY((FIRST_NAME || ' ' || LAST_NAME), $1) > 0.3")) {
+                if (upperQuery.includes("SIMILARITY((FIRST_NAME || ' ' || LAST_NAME), $1) > 0.85")) {
                     return Promise.resolve({
-                        rows: [{ id: 'uuid-2', first_name: 'Jon', last_name: 'Doe', name_score: 0.85, email_score: 0, phone_score: 0 }]
+                        rows: [{ id: 'uuid-2', first_name: 'Jon', last_name: 'Doe', name_score: 0.9 }]
                     });
                 }
                 

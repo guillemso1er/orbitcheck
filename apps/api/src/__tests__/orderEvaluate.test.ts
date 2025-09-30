@@ -1,15 +1,18 @@
-import { FastifyInstance } from 'fastify'; // Import the type for safety
 import request from 'supertest';
-import { createApp, mockAddressValidator, mockPool, setupBeforeAll } from './testSetup';
+import { createApp, mockPool, mockValidateAddress, mockValidateEmail, mockValidatePhone, setupBeforeAll } from './testSetup';
+import { FastifyInstance } from 'fastify';
+import { validateEmail } from '../validators/email';
+import { validatePhone } from '../validators/phone';
+import { validateAddress } from '../validators/address';
 
 describe('Order Evaluation Endpoints', () => {
     let app: FastifyInstance;
 
-    // Create the app instance once before all tests in this suite run
+    // Create the app instance once before any tests in this suite run
     beforeAll(async () => {
-        await setupBeforeAll();   // Set up all global mocks and environment
-        app = await createApp();    // Correctly await the async app creation
-        await app.ready();        // Wait for the app to be fully loaded
+        await setupBeforeAll(); // Set up all global mocks
+        app = await createApp();  // Await the async function
+        await app.ready();      // Wait for the app to be ready
     });
 
     // Close the app instance once after all tests in this suite are finished
@@ -19,127 +22,131 @@ describe('Order Evaluation Endpoints', () => {
         }
     });
 
-    // Before each individual test, reset all mocks to a clean, default state
+    // Before each test, just clear mocks and set up a default state
     beforeEach(() => {
         jest.clearAllMocks();
 
-        // Default mock implementations for a "low-risk" order scenario
+        // Set up a default "happy path" mock for dependencies.
+        // This mock assumes authentication succeeds and finds no duplicates by default.
         mockPool.query.mockImplementation((queryText: string) => {
             const upperQuery = queryText.toUpperCase();
 
-            // Mock authentication to succeed
+            // Mock the authentication query to always succeed
             if (upperQuery.includes('API_KEYS')) {
                 return Promise.resolve({ rows: [{ id: 'test_key_id', project_id: 'test_project' }] });
             }
-            // Mock postal code validation to succeed
-            if (upperQuery.startsWith('SELECT 1 FROM GEONAMES_POSTAL')) {
-                return Promise.resolve({ rows: [{ '?column?': 1 }] });
-            }
-            // Mock logging
+
+            // Mock the logging query
             if (upperQuery.startsWith('INSERT INTO LOGS')) {
                 return Promise.resolve({ rows: [], rowCount: 1 });
             }
-            // Default to finding no duplicate orders
-            if (upperQuery.startsWith('SELECT ID FROM ORDERS')) {
-                return Promise.resolve({ rows: [] });
-            }
-            // Default empty response for any other query
+
+            // Default behavior for any other query: return no results.
+            // This is perfect for the "create new" test case.
             return Promise.resolve({ rows: [] });
         });
-
-        // Default mock for address validation to succeed
-        mockAddressValidator.normalizeAddress.mockResolvedValue({
-            line1: '123 Main St',
-            city: 'New York',
-            postal_code: '10001',
-            country: 'US',
-        });
-        mockAddressValidator.detectPoBox.mockReturnValue(false);
     });
 
     describe('POST /v1/orders/evaluate', () => {
-        it('should approve a low-risk order', async () => {
-            // The default mock setup in beforeEach already creates a "perfect" low-risk scenario.
-            // No specific overrides are needed for this test case.
+        it('should evaluate order with full validators and rules', async () => {
+            // Mock validators to return expected values
+            const mockEmail = { valid: true, reason_codes: [], disposable: false, normalized: 'test@example.com', mx_found: true };
+            const mockPhone = { valid: true, reason_codes: [], country: 'US', e164: '+15551234567' };
+            const mockAddress = { valid: true, reason_codes: [], po_box: false, postal_city_match: true, in_bounds: true, geo: { lat: 40, lng: -74 } };
+            validateEmail.mockResolvedValue(mockEmail);
+            validatePhone.mockResolvedValue(mockPhone);
+            validateAddress.mockResolvedValue(mockAddress);
+            const mockPoolQuery = mockPool.query as any;
+            mockPoolQuery.mockResolvedValueOnce({ rows: [] }); // No customer matches
+            mockPoolQuery.mockResolvedValueOnce({ rows: [] }); // No address matches
+            mockPoolQuery.mockResolvedValueOnce({ rows: [] }); // No order match
+            mockPoolQuery.mockResolvedValueOnce({ rowCount: 1 }); // Insert order
+
             const res = await request(app.server)
-                .post('/v1/orders/evaluate') // FIX: Changed path to plural 'orders'
+                .post('/v1/orders/evaluate')
                 .set('Authorization', 'Bearer valid_key')
                 .send({
-                    order_id: 'order-123',
-                    customer: { email: 'test@example.com', first_name: 'John', last_name: 'Doe' },
+                    order_id: 'test-order-1',
+                    customer: { email: 'test@example.com', phone: '+15551234567', first_name: 'John', last_name: 'Doe' },
                     shipping_address: { line1: '123 Main St', city: 'New York', postal_code: '10001', country: 'US' },
-                    total_amount: 100,
+                    total_amount: 500,
                     currency: 'USD',
-                    payment_method: 'card',
+                    payment_method: 'card'
                 });
 
             expect(res.statusCode).toBe(200);
-            expect(res.body.action).toBe('approve');
             expect(res.body.risk_score).toBe(0);
+            expect(res.body.action).toBe('approve');
+            expect(res.body.customer_dedupe.matches.length).toBe(0);
+            expect(res.body.address_dedupe.matches.length).toBe(0);
+            expect(res.body.validations.email.disposable).toBe(false);
+            expect(res.body.validations.address.in_bounds).toBe(true);
         });
 
-        it('should place a high-risk order (PO Box) on hold', async () => {
-            // Override the address validator mock specifically for this test
-            mockAddressValidator.detectPoBox.mockReturnValue(true);
+        it('should flag high risk for COD + disposable + mismatch', async () => {
+            // Mock for high risk case
+            const mockEmail = { valid: true, reason_codes: [], disposable: true, normalized: 'disposable@throwaway.com', mx_found: true };
+            const mockPhone = { valid: true, reason_codes: [], country: 'MX', e164: '+15551234567' };
+            const mockAddress = { valid: true, reason_codes: [], po_box: false, postal_city_match: true, in_bounds: true, geo: { lat: 40, lng: -74 } };
+            validateEmail.mockResolvedValue(mockEmail);
+            validatePhone.mockResolvedValue(mockPhone);
+            validateAddress.mockResolvedValue(mockAddress);
+            const mockPoolQuery = mockPool.query as any;
+            mockPoolQuery.mockResolvedValueOnce({ rows: [] }); // No customer matches
+            mockPoolQuery.mockResolvedValueOnce({ rows: [] }); // No address matches
+            mockPoolQuery.mockResolvedValueOnce({ rows: [] }); // No order match
+            mockPoolQuery.mockResolvedValueOnce({ rowCount: 1 }); // Insert order
 
             const res = await request(app.server)
-                .post('/v1/orders/evaluate') // FIX: Changed path to plural 'orders'
+                .post('/v1/orders/evaluate')
                 .set('Authorization', 'Bearer valid_key')
                 .send({
-                    order_id: 'order-po-box',
-                    customer: { email: 'test@example.com' },
-                    shipping_address: { line1: 'PO Box 123', city: 'New York', postal_code: '10001', country: 'US' },
-                    total_amount: 100,
-                    currency: 'USD',
-                    payment_method: 'cod', // Cash on delivery adds risk
-                });
-
-            expect(res.statusCode).toBe(200);
-            expect(res.body.action).toBe('hold');
-            expect(res.body.risk_score).toBe(50); // Assuming 30 (po_box) + 20 (cod)
-            expect(res.body.reason_codes).toContain('order.po_box_block');
-        });
-
-        it('should place a duplicate order on hold', async () => {
-            // Override the database mock ONLY to find a duplicate order_id for this test
-            mockPool.query.mockImplementation((queryText: string) => {
-                const upperQuery = queryText.toUpperCase();
-
-                // Specific override for this test: find a duplicate order
-                if (upperQuery.startsWith('SELECT ID FROM ORDERS')) {
-                    return Promise.resolve({ rows: [{ id: 'existing_order' }] });
-                }
-                // We must still handle the other queries that run during the request
-                if (upperQuery.includes('API_KEYS')) {
-                    return Promise.resolve({ rows: [{ id: 'test_key_id', project_id: 'test_project' }] });
-                }
-                if (upperQuery.startsWith('SELECT 1 FROM GEONAMES_POSTAL')) {
-                    return Promise.resolve({ rows: [{ '?column?': 1 }] });
-                }
-                if (upperQuery.startsWith('INSERT INTO LOGS')) {
-                    return Promise.resolve({ rows: [], rowCount: 1 });
-                }
-                if (upperQuery.startsWith('INSERT INTO ORDERS')) {
-                    return Promise.resolve({ rows: [], rowCount: 0 });
-                }
-                return Promise.resolve({ rows: [] }); // Default for others
-            });
-
-            const res = await request(app.server)
-                .post('/v1/orders/evaluate') // FIX: Changed path to plural 'orders'
-                .set('Authorization', 'Bearer valid_key')
-                .send({
-                    order_id: 'duplicate-123',
-                    customer: { email: 'test@example.com' },
+                    order_id: 'test-order-2',
+                    customer: { email: 'disposable@throwaway.com', phone: '+15551234567', first_name: 'John', last_name: 'Doe' },
                     shipping_address: { line1: '123 Main St', city: 'New York', postal_code: '10001', country: 'US' },
-                    total_amount: 100,
+                    total_amount: 500,
                     currency: 'USD',
+                    payment_method: 'cod'
                 });
 
             expect(res.statusCode).toBe(200);
-            expect(res.body.action).toBe('hold');
-            expect(res.body.risk_score).toBe(50); // Assuming 50 from duplicate order
-            expect(res.body.reason_codes).toContain('order.duplicate_detected');
+            expect(res.body.risk_score).toBe(95);
+            expect(res.body.action).toBe('block');
+            expect(res.body.tags).toContain('disposable_email');
+            expect(res.body.tags).toContain('high_risk_rto');
         });
+
+        it('should handle PO box and out-of-bounds geo', async () => {
+            // Mock for PO box and out-of-bounds
+            const mockEmail = { valid: true, reason_codes: [], disposable: false, normalized: 'test@example.com', mx_found: true };
+            const mockPhone = { valid: true, reason_codes: [], country: 'US', e164: '+15551234567' };
+            const mockAddress = { valid: false, reason_codes: ['address.po_box', 'address.geo_out_of_bounds'], po_box: true, postal_city_match: true, in_bounds: false, geo: { lat: 90, lng: 180 } };
+            validateEmail.mockResolvedValue(mockEmail);
+            validatePhone.mockResolvedValue(mockPhone);
+            validateAddress.mockResolvedValue(mockAddress);
+            const mockPoolQuery = mockPool.query as any;
+            mockPoolQuery.mockResolvedValueOnce({ rows: [] }); // No customer matches
+            mockPoolQuery.mockResolvedValueOnce({ rows: [] }); // No address matches
+            mockPoolQuery.mockResolvedValueOnce({ rows: [] }); // No order match
+            mockPoolQuery.mockResolvedValueOnce({ rowCount: 1 }); // Insert order
+
+            const res = await request(app.server)
+                .post('/v1/orders/evaluate')
+                .set('Authorization', 'Bearer valid_key')
+                .send({
+                    order_id: 'test-order-3',
+                    customer: { email: 'test@example.com', phone: '+15551234567', first_name: 'John', last_name: 'Doe' },
+                    shipping_address: { line1: 'P.O. Box 123', city: 'New York', postal_code: '10001', country: 'US' },
+                    total_amount: 500,
+                    currency: 'USD',
+                    payment_method: 'card'
+                });
+
+            expect(res.statusCode).toBe(200);
+            expect(res.body.risk_score).toBe(100);
+            expect(res.body.action).toBe('block');
+            expect(res.body.tags).toContain('po_box_detected');
+            expect(res.body.tags).toContain('virtual_address');
+        });
+      });
     });
-});

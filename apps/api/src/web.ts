@@ -82,7 +82,7 @@ export function registerRoutes(app: FastifyInstance, pool: Pool, redis: IORedis)
     registerApiKeysRoutes(app, pool);
     registerValidationRoutes(app, pool, redis);
     registerDedupeRoutes(app, pool);
-    registerOrderRoutes(app, pool);
+    registerOrderRoutes(app, pool, redis);
     registerDataRoutes(app, pool);
     registerWebhookRoutes(app, pool);
     registerRulesRoutes(app, pool);

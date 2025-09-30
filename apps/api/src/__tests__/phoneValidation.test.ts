@@ -81,8 +81,8 @@ describe('Phone Validation Endpoints', () => {
                 .send({ phone: '+1 555 123 4567', request_otp: true });
 
             expect(res.statusCode).toBe(200);
-            expect(res.body.verification_id).toBeDefined();
-            expect(mockTwilioInstance.messages.create).toHaveBeenCalled();
+            expect(res.body.verification_sid).toBeDefined();
+            expect(mockTwilioInstance.verify.v2.services().verifications.create).toHaveBeenCalled();
         });
     });
 });

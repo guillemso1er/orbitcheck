@@ -19,6 +19,18 @@ export const mockTwilioInstance = {
   messages: {
     create: jest.fn(),
   },
+  verify: {
+    v2: {
+      services: jest.fn().mockReturnValue({
+        verifications: {
+          create: jest.fn().mockResolvedValue({ sid: 'test_verify_sid' })
+        },
+        verificationChecks: {
+          create: jest.fn().mockResolvedValue({ status: 'approved' })
+        }
+      })
+    }
+  }
 };
 
 // --- Module Mocks ---
@@ -34,6 +46,7 @@ jest.mock('../env', () => ({
     TWILIO_ACCOUNT_SID: 'test_sid',
     TWILIO_AUTH_TOKEN: 'test_token',
     TWILIO_PHONE_NUMBER: '+15551234567',
+    TWILIO_VERIFY_SERVICE_SID: 'test_verify_sid',
     GOOGLE_GEOCODING_KEY: '',
     USE_GOOGLE_FALLBACK: false,
     DISPOSABLE_LIST_URL: 'https://example.com/disposable-domains.json',
@@ -59,8 +72,13 @@ jest.mock('../validators/taxid', () => ({
 }));
 
 jest.mock('../validators/address', () => ({
+  validateAddress: jest.fn(),
   normalizeAddress: jest.fn(),
   detectPoBox: jest.fn(),
+}));
+
+jest.mock('../validators/phone', () => ({
+  validatePhone: jest.fn(),
 }));
 
 jest.mock('@hapi/address', () => ({
@@ -119,10 +137,9 @@ export const createApp = async () => {
     }
   });
 
-  // This will now be a valid function because setupBeforeAll (which populates it)
-  // is awaited in the test file before createApp is called.
+  // Register routes using the loaded functions
   if (typeof registerAuthRoutesFunction !== 'function') {
-    throw new Error("registerAuthRoutesFunction was not loaded correctly. Check the dynamic import in setupBeforeAll.");
+    throw new Error("registerAuthRoutesFunction was not loaded correctly.");
   }
   registerAuthRoutesFunction(app, mockPool as any);
 
@@ -181,6 +198,9 @@ export let mockDns: any;
 export let libphone: any;
 export let mockAddressValidator: any;
 export let mockValidateEmail: jest.Mock<any>;
+export let mockGetDomain: jest.Mock<any>;
+export let mockValidatePhone: jest.Mock<any>;
+export let mockValidateAddress: jest.Mock<any>;
 export let bcrypt: any;
 export let jwt: any;
 // Common beforeAll setup
@@ -190,36 +210,31 @@ export const setupBeforeAll = async () => {
   process.env.TWILIO_ACCOUNT_SID = 'test_sid';
   process.env.TWILIO_AUTH_TOKEN = 'test_token';
   process.env.TWILIO_PHONE_NUMBER = '+15551234567';
+  process.env.TWILIO_VERIFY_SERVICE_SID = 'test_verify_sid';
 
-  // IMPORTANT: Change '../routes/auth' to the correct path of your file
-  // that exports the 'registerAuthRoutes' function.
-  try {
-    const authModule = await import('../routes/auth');
-    registerAuthRoutesFunction = authModule.registerAuthRoutes;
-    verifyJWTFunction = authModule.verifyJWT;
-    const apiKeysModule = await import('../routes/api-keys');
-    registerApiKeysRoutesFunction = apiKeysModule.registerApiKeysRoutes;
-    const validationModule = await import('../routes/validation');
-    registerValidationRoutesFunction = validationModule.registerValidationRoutes;
-    const dedupeModule = await import('../routes/dedupe');
-    registerDedupeRoutesFunction = dedupeModule.registerDedupeRoutes;
-    const ordersModule = await import('../routes/orders');
-    registerOrdersRoutesFunction = ordersModule.registerOrderRoutes;
-    const dataModule = await import('../routes/data');
-    registerDataRoutesFunction = dataModule.registerDataRoutes;
-    const webhooksModule = await import('../routes/webhook');
-    registerWebhooksRoutesFunction = webhooksModule.registerWebhookRoutes;
-    const rulesModule = await import('../routes/rules');
-    registerRulesRoutesFunction = rulesModule.registerRulesRoutes;
-
-  } catch (error) {
-    console.error("Failed to dynamically import routes. Check the path in testSetup.ts:", error);
-    // Exit gracefully to avoid cryptic errors later
-    process.exit(1);
-  }
+  // Load route modules synchronously with require for test environment
+  const authModule = await import('../routes/auth');
+  registerAuthRoutesFunction = authModule.registerAuthRoutes;
+  verifyJWTFunction = authModule.verifyJWT;
+  const apiKeysModule = await import('../routes/api-keys');
+  registerApiKeysRoutesFunction = apiKeysModule.registerApiKeysRoutes;
+  const validationModule = await import('../routes/validation');
+  registerValidationRoutesFunction = validationModule.registerValidationRoutes;
+  const dedupeModule = await import('../routes/dedupe');
+  registerDedupeRoutesFunction = dedupeModule.registerDedupeRoutes;
+  const ordersModule = await import('../routes/orders');
+  registerOrdersRoutesFunction = ordersModule.registerOrderRoutes;
+  const dataModule = await import('../routes/data');
+  registerDataRoutesFunction = dataModule.registerDataRoutes;
+  const webhooksModule = await import('../routes/webhook');
+  registerWebhooksRoutesFunction = webhooksModule.registerWebhookRoutes;
+  const rulesModule = await import('../routes/rules');
+  registerRulesRoutesFunction = rulesModule.registerRulesRoutes;
 
 
-  mockValidateEmail = require('../validators/email').validateEmail;
+  mockValidateEmail = require('../validators/email').validateEmail as jest.Mock;
+  mockValidatePhone = require('../validators/phone').validatePhone as jest.Mock;
+  mockValidateAddress = require('../validators/address').validateAddress as jest.Mock;
   hapi = require('@hapi/address');
   mockDns = require('node:dns/promises');
   libphone = require('libphonenumber-js');
@@ -233,6 +248,23 @@ export const setupBeforeAll = async () => {
     normalized: 'test@example.com',
     disposable: false,
     mx_found: true,
+    reason_codes: [],
+  });
+
+  mockValidatePhone.mockResolvedValue({
+    valid: true,
+    e164: '+15551234567',
+    country: 'US',
+    reason_codes: [],
+  });
+
+  mockValidateAddress.mockResolvedValue({
+    valid: true,
+    normalized: { line1: '123 Main St', city: 'New York', postal_code: '10001', country: 'US' },
+    po_box: false,
+    postal_city_match: true,
+    in_bounds: true,
+    geo: { lat: 40, lng: -74 },
     reason_codes: [],
   });
 
