@@ -12,17 +12,6 @@ import { registerValidationRoutes } from './routes/validation';
 import { registerWebhookRoutes } from './routes/webhook';
 
 /**
- * Determines authentication strategy based on request URL path.
- * Skips public routes (health, docs, auth). Uses JWT for dashboard routes (api-keys, webhooks),
- * API key auth for all others. Calls appropriate verify function or auth hook.
- *
- * @param req - Fastify request object with URL path.
- * @param rep - Fastify reply object for error responses.
- * @param pool - PostgreSQL pool for JWT user/project verification.
- * @returns {Promise<void>} Resolves after auth check or sends 401/403 error.
- */
-
-/**
  * Determines the appropriate authentication hook based on the request URL.
  * For dashboard routes, uses JWT verification; for API routes, uses API key auth.
  * Public routes are skipped.
@@ -51,14 +40,6 @@ async function authenticateRequest(req: FastifyRequest, rep: FastifyReply, pool:
     }
 }
 
-/**
- * Applies rate limiting and idempotency for non-dashboard routes.
- *
- * @param req - Fastify request object
- * @param rep - Fastify reply object
- * @param redis - Redis client
- * @returns {Promise<void>} Resolves after applying middleware or sends error response
- */
 /**
  * Applies rate limiting and idempotency checks for non-dashboard API routes only.
  * Skips for dashboard to avoid unnecessary overhead on low-volume admin routes.

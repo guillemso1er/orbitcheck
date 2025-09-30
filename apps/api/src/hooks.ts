@@ -4,17 +4,7 @@ import IORedis from "ioredis";
 import { Pool } from "pg";
 import { env } from "./env";
 
-/**
- * Authentication hook for API requests.
- * Extracts and validates the Bearer API key from the Authorization header.
- * Computes SHA-256 hash for secure comparison against stored hashes.
- * Attaches project_id to the request if valid.
- *
- * @param req - Fastify request object.
- * @param rep - Fastify reply object.
- * @param pool - PostgreSQL connection pool.
- * @returns {Promise<void>} Resolves if authenticated, sends 401 error if not.
- */
+
 /**
  * Authentication hook for API requests using Bearer token.
  * Extracts API key from Authorization header, computes SHA-256 hash for secure comparison.
@@ -58,15 +48,6 @@ export async function auth(req: FastifyRequest, rep: FastifyReply, pool: Pool) {
 }
 
 /**
- * Rate limiting hook using Redis.
- * Limits requests per project and IP to RATE_LIMIT_COUNT per minute.
- *
- * @param req - Fastify request object (requires project_id from auth).
- * @param rep - Fastify reply object.
- * @param redis - Redis client.
- * @returns {Promise<void>} Resolves if under limit, sends 429 if exceeded.
- */
-/**
  * Rate limiting hook using Redis sliding window (per project + IP, 1-minute window).
  * Increments counter for unique key, sets TTL on first request, enforces limit.
  * Prevents abuse and ensures fair usage across projects.
@@ -85,16 +66,7 @@ export async function rateLimit(req: FastifyRequest, rep: FastifyReply, redis: I
     if (cnt > limit) return rep.status(429).send({ error: { code: "rate_limited", message: "Rate limit exceeded" } });
 }
 
-/**
- * Idempotency hook using Redis cache (24h TTL).
- * Checks for idempotency-key header; replays cached response if exists.
- * Provides saveIdem method on reply for storing new responses.
- *
- * @param req - Fastify request object (requires project_id from auth).
- * @param rep - Fastify reply object.
- * @param redis - Redis client.
- * @returns {Promise<void|FastifyReply>} Sends cached response if found, otherwise attaches saveIdem.
- */
+
 /**
  * Idempotency hook using Redis (24-hour TTL per project + key).
  * Checks idempotency-key header; replays cached response if exists to prevent duplicates.
@@ -120,19 +92,7 @@ export async function idempotency(req: FastifyRequest, rep: FastifyReply, redis:
     };
 }
 
-/**
- * Logs an event to the database for observability.
- * Inserts into 'logs' table with project_id, type, endpoint, reason_codes, status, and meta JSON.
- *
- * @param project_id - The project identifier.
- * @param type - Event type (e.g., 'validation', 'order').
- * @param endpoint - API endpoint called.
- * @param reason_codes - Array of reason codes for the event.
- * @param status - HTTP status code.
- * @param meta - Additional metadata as JSON.
- * @param pool - PostgreSQL connection pool.
- * @returns {Promise<void>}
- */
+
 /**
  * Logs an event to the 'logs' table for observability, auditing, and analytics.
  * Records project_id, event type, endpoint, reason codes, HTTP status, and metadata (JSON).
