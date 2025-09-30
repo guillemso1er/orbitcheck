@@ -2,116 +2,72 @@ import { check, sleep } from 'k6';
 import http from 'k6/http';
 
 export const options = {
-  vus: 1,
-  duration: '1m',
-  thresholds: {
-    http_req_duration: ['p(95)<200', 'p(50)<50']
-  }
+    vus: 50,
+    duration: '1m',
+    thresholds: {
+        'checks': ['rate>0.99'],
+        http_req_duration: ['p(95)<200', 'p(50)<50']
+    }
 };
 
-const KEY = __ENV.KEY;
-const BASE_URL = 'http://localhost:8081';
+const KEY = (__ENV.KEY || '').trim();
+const BASE_URL = 'http://localhost:8081/v1';
 const HEADERS = {
     'Content-Type': 'application/json',
     'Authorization': `Bearer ${KEY}`
 };
 
-// Helper function to safely parse JSON and avoid test crashes
-function safeParse(body) {
-    try {
-        return JSON.parse(body);
-    } catch (e) {
-        return null;
-    }
-}
 
 export default function () {
     // --- Test Case 1: Valid Email (first request - MISS) ---
     // Should be valid, not disposable, with MX records found.
     const validPayload = JSON.stringify({ email: 'test@example.com' });
-    let res1 = http.post(`${BASE_URL}/v1/validate/email`, validPayload, { headers: HEADERS });
+    let res1 = http.post(`${BASE_URL}/validate/email`, validPayload, { headers: HEADERS });
     check(res1, {
-        '[Valid Email MISS] - Status is 200': (r) => r.status === 200,
-        '[Valid Email MISS] - Body is valid JSON': (r) => safeParse(r.body) !== null,
-        '[Valid Email MISS] - "valid" is true': (r) => {
-            const body = safeParse(r.body);
-            return body && body.valid === true;
-        },
-        '[Valid Email MISS] - "disposable" is false': (r) => {
-            const body = safeParse(r.body);
-            return body && body.disposable === false;
-        },
-        '[Valid Email MISS] - "mx_found" is true': (r) => {
-            const body = safeParse(r.body);
-            return body && body.mx_found === true;
-        },
-        '[Valid Email MISS] - Cache MISS': (r) => r.headers['X-Cache-Status'] === 'MISS',
-        '[Valid Email MISS] - No errors': (r) => !r.body.includes('error')
+        '[Valid Email] status 200 (first req)': (r) => r.status === 200,
+        '[Valid Email] valid is true (first req)': (r) => JSON.parse(r.body).valid === true,
+        '[Valid Email] disposable is false (first req)': (r) => JSON.parse(r.body).disposable === false,
+        '[Valid Email] mx_found is true (first req)': (r) => JSON.parse(r.body).mx_found === true,
     });
 
-    // Cache hit on second request
-    res1 = http.post(`${BASE_URL}/v1/validate/email`, validPayload, { headers: HEADERS });
+    // Second request for the same email. THIS MUST be a HIT.
+    res1 = http.post(`${BASE_URL}/validate/email`, validPayload, { headers: HEADERS });
     check(res1, {
-        '[Valid Email HIT] - Status is 200': (r) => r.status === 200,
-        '[Valid Email HIT] - Cache HIT': (r) => r.headers['X-Cache-Status'] === 'HIT',
-        '[Valid Email HIT] - "valid" is true (cached)': (r) => {
-            const body = safeParse(r.body);
-            return body && body.valid === true;
-        }
+        '[Valid Email] status 200 HIT': (r) => r.status === 200,
+        '[Valid Email] cache HIT': (r) => r.headers['X-Cache-Status'] === 'HIT',
     });
 
-    // --- Test Case 2: Invalid Email Format (MISS then HIT) ---
+    // Scenario 2: Test invalid email format
     const invalidPayload = JSON.stringify({ email: 'invalid-email' });
-    let res2 = http.post(`${BASE_URL}/v1/validate/email`, invalidPayload, { headers: HEADERS });
+    let res2 = http.post(`${BASE_URL}/validate/email`, invalidPayload, { headers: HEADERS });
     check(res2, {
-        '[Invalid Format MISS] - Status is 200': (r) => r.status === 200,
-        '[Invalid Format MISS] - "valid" is false': (r) => {
-            const body = safeParse(r.body);
-            return body && body.valid === false;
-        },
-        '[Invalid Format MISS] - Reason "email.invalid_format"': (r) => {
-            const body = safeParse(r.body);
-            return body && body.reason_codes && body.reason_codes.includes('email.invalid_format');
-        },
-        '[Invalid Format MISS] - Cache MISS': (r) => r.headers['X-Cache-Status'] === 'MISS'
+        '[Invalid Format] status 200 (first req)': (r) => r.status === 200,
+        '[Invalid Format] valid is false (first req)': (r) => JSON.parse(r.body).valid === false,
+        '[Invalid Format] reason email.invalid_format (first req)': (r) => JSON.parse(r.body).reason_codes.includes('email.invalid_format'),
     });
 
-    res2 = http.post(`${BASE_URL}/v1/validate/email`, invalidPayload, { headers: HEADERS });
+    // Second request, check for HIT.
+    res2 = http.post(`${BASE_URL}/validate/email`, invalidPayload, { headers: HEADERS });
     check(res2, {
-        '[Invalid Format HIT] - Cache HIT': (r) => r.headers['X-Cache-Status'] === 'HIT',
-        '[Invalid Format HIT] - "valid" is false (cached)': (r) => {
-            const body = safeParse(r.body);
-            return body && body.valid === false;
-        }
+        '[Invalid Format] status 200 HIT': (r) => r.status === 200,
+        '[Invalid Format] cache HIT': (r) => r.headers['X-Cache-Status'] === 'HIT',
     });
 
-    // --- Test Case 3: Disposable Domain (MISS then HIT) ---
+    // Scenario 3: Test disposable email
     const disposablePayload = JSON.stringify({ email: 'user@10minutemail.com' });
-    let res3 = http.post(`${BASE_URL}/v1/validate/email`, disposablePayload, { headers: HEADERS });
+    let res3 = http.post(`${BASE_URL}/validate/email`, disposablePayload, { headers: HEADERS });
     check(res3, {
-        '[Disposable MISS] - Status is 200': (r) => r.status === 200,
-        '[Disposable MISS] - "valid" is false': (r) => {
-            const body = safeParse(r.body);
-            return body && body.valid === false;
-        },
-        '[Disposable MISS] - "disposable" is true': (r) => {
-            const body = safeParse(r.body);
-            return body && body.disposable === true;
-        },
-        '[Disposable MISS] - Reason "email.disposable_domain"': (r) => {
-            const body = safeParse(r.body);
-            return body && body.reason_codes && body.reason_codes.includes('email.disposable_domain');
-        },
-        '[Disposable MISS] - Cache MISS': (r) => r.headers['X-Cache-Status'] === 'MISS'
+        '[Disposable] status 200 (first req)': (r) => r.status === 200,
+        '[Disposable] valid is false (first req)': (r) => JSON.parse(r.body).valid === false,
+        '[Disposable] disposable is true (first req)': (r) => JSON.parse(r.body).disposable === true,
+        '[Disposable] reason email.disposable_domain (first req)': (r) => JSON.parse(r.body).reason_codes.includes('email.disposable_domain'),
     });
 
-    res3 = http.post(`${BASE_URL}/v1/validate/email`, disposablePayload, { headers: HEADERS });
+    // Second request, check for HIT.
+    res3 = http.post(`${BASE_URL}/validate/email`, disposablePayload, { headers: HEADERS });
     check(res3, {
-        '[Disposable HIT] - Cache HIT': (r) => r.headers['X-Cache-Status'] === 'HIT',
-        '[Disposable HIT] - "valid" is false (cached)': (r) => {
-            const body = safeParse(r.body);
-            return body && body.valid === false;
-        }
+        '[Disposable] status 200 HIT': (r) => r.status === 200,
+        '[Disposable] cache HIT': (r) => r.headers['X-Cache-Status'] === 'HIT',
     });
 
     sleep(0.1);

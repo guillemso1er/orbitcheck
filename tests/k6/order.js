@@ -1,17 +1,24 @@
-import http from 'k6/http';
 import { check, sleep } from 'k6';
+import http from 'k6/http';
 
-export const options = { vus: 10, duration: '30s' };
+export const options = {
+    vus: 50,
+    duration: '1m',
+    thresholds: {
+        'checks': ['rate>0.99'],
+        http_req_duration: ['p(95)<200', 'p(50)<50']
+    }
+};
 
-const KEY = __ENV.KEY;
-const BASE_URL = 'http://localhost:8081';
+const KEY = (__ENV.KEY || '').trim();
+const BASE_URL = 'http://localhost:8081/v1';
 const HEADERS = {
     'Content-Type': 'application/json',
     'Authorization': `Bearer ${KEY}`
 };
 
 export default function () {
-    // Test low-risk order (should approve)
+    // Scenario 1: Test low-risk order (should approve)
     const lowRiskPayload = JSON.stringify({
         order_id: 'low-risk-1',
         customer: {
@@ -33,26 +40,27 @@ export default function () {
     });
     let res = http.post(`${BASE_URL}/orders/evaluate`, lowRiskPayload, { headers: HEADERS });
     check(res, {
-        'status 200': (r) => r.status === 200,
-        'order_id matches': (r) => {
-            const body = JSON.parse(r.body);
-            return body.order_id === 'low-risk-1';
-        },
-        'risk_score low': (r) => {
+        '[Low Risk] status 200 (first req)': (r) => r.status === 200,
+        '[Low Risk] order_id matches (first req)': (r) => JSON.parse(r.body).order_id === 'low-risk-1',
+        '[Low Risk] risk_score low (first req)': (r) => {
             const body = JSON.parse(r.body);
             return body.risk_score < 40;
         },
-        'action approve': (r) => {
-            const body = JSON.parse(r.body);
-            return body.action === 'approve';
-        },
-        'validations structure': (r) => {
+        '[Low Risk] action approve (first req)': (r) => JSON.parse(r.body).action === 'approve',
+        '[Low Risk] validations structure (first req)': (r) => {
             const body = JSON.parse(r.body);
             return body.validations && typeof body.validations === 'object';
         }
     });
 
-    // Test high-risk order (PO box, high value, COD)
+    // Second request for the same order. THIS MUST be a HIT.
+    res = http.post(`${BASE_URL}/orders/evaluate`, lowRiskPayload, { headers: HEADERS });
+    check(res, {
+        '[Low Risk] status 200 HIT': (r) => r.status === 200,
+        '[Low Risk] cache HIT': (r) => r.headers['X-Cache-Status'] === 'HIT',
+    });
+
+    // Scenario 2: Test high-risk order (PO box, high value, COD)
     const highRiskPayload = JSON.stringify({
         order_id: 'high-risk-1',
         customer: {
@@ -74,30 +82,31 @@ export default function () {
     });
     res = http.post(`${BASE_URL}/orders/evaluate`, highRiskPayload, { headers: HEADERS });
     check(res, {
-        'status 200': (r) => r.status === 200,
-        'order_id matches': (r) => {
-            const body = JSON.parse(r.body);
-            return body.order_id === 'high-risk-1';
-        },
-        'risk_score high': (r) => {
+        '[High Risk] status 200 (first req)': (r) => r.status === 200,
+        '[High Risk] order_id matches (first req)': (r) => JSON.parse(r.body).order_id === 'high-risk-1',
+        '[High Risk] risk_score high (first req)': (r) => {
             const body = JSON.parse(r.body);
             return body.risk_score > 70;
         },
-        'action block': (r) => {
-            const body = JSON.parse(r.body);
-            return body.action === 'block';
-        },
-        'tags present': (r) => {
+        '[High Risk] action block (first req)': (r) => JSON.parse(r.body).action === 'block',
+        '[High Risk] tags present (first req)': (r) => {
             const body = JSON.parse(r.body);
             return Array.isArray(body.tags) && body.tags.length > 0;
         },
-        'reason_codes present': (r) => {
+        '[High Risk] reason_codes present (first req)': (r) => {
             const body = JSON.parse(r.body);
             return Array.isArray(body.reason_codes) && body.reason_codes.length > 0;
         }
     });
 
-    // Test medium-risk order (hold)
+    // Second request, check for HIT.
+    res = http.post(`${BASE_URL}/orders/evaluate`, highRiskPayload, { headers: HEADERS });
+    check(res, {
+        '[High Risk] status 200 HIT': (r) => r.status === 200,
+        '[High Risk] cache HIT': (r) => r.headers['X-Cache-Status'] === 'HIT',
+    });
+
+    // Scenario 3: Test medium-risk order (hold)
     const mediumRiskPayload = JSON.stringify({
         order_id: 'medium-risk-1',
         customer: {
@@ -119,19 +128,20 @@ export default function () {
     });
     res = http.post(`${BASE_URL}/orders/evaluate`, mediumRiskPayload, { headers: HEADERS });
     check(res, {
-        'status 200': (r) => r.status === 200,
-        'order_id matches': (r) => {
-            const body = JSON.parse(r.body);
-            return body.order_id === 'medium-risk-1';
-        },
-        'risk_score medium': (r) => {
+        '[Medium Risk] status 200 (first req)': (r) => r.status === 200,
+        '[Medium Risk] order_id matches (first req)': (r) => JSON.parse(r.body).order_id === 'medium-risk-1',
+        '[Medium Risk] risk_score medium (first req)': (r) => {
             const body = JSON.parse(r.body);
             return body.risk_score >= 40 && body.risk_score <= 70;
         },
-        'action hold': (r) => {
-            const body = JSON.parse(r.body);
-            return body.action === 'hold';
-        }
+        '[Medium Risk] action hold (first req)': (r) => JSON.parse(r.body).action === 'hold',
+    });
+
+    // Second request, check for HIT.
+    res = http.post(`${BASE_URL}/orders/evaluate`, mediumRiskPayload, { headers: HEADERS });
+    check(res, {
+        '[Medium Risk] status 200 HIT': (r) => r.status === 200,
+        '[Medium Risk] cache HIT': (r) => r.headers['X-Cache-Status'] === 'HIT',
     });
 
     sleep(0.1);

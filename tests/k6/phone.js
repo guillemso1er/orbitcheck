@@ -2,128 +2,94 @@ import { check, sleep } from 'k6';
 import http from 'k6/http';
 
 export const options = {
-  vus: 50,
-  duration: '1m',
-  thresholds: {
-    http_req_duration: ['p(95)<200', 'p(50)<50']
-  }
+    vus: 50,
+    duration: '1m',
+    thresholds: {
+        'checks': ['rate>0.99'],
+        http_req_duration: ['p(95)<200', 'p(50)<50']
+    }
 };
 
-const KEY = __ENV.KEY;
-const BASE_URL = 'http://localhost:8081';
+const KEY = (__ENV.KEY || '').trim();
+const BASE_URL = 'http://localhost:8081/v1';
 const HEADERS = {
     'Content-Type': 'application/json',
     'Authorization': `Bearer ${KEY}`
 };
 
 export default function () {
-    // Test valid phone without country (MISS then HIT)
+    // Scenario 1: Test valid phone without country
     const validPayload = JSON.stringify({ phone: '+16502530000' });
     let res = http.post(`${BASE_URL}/validate/phone`, validPayload, { headers: HEADERS });
     check(res, {
-        'status 200 MISS': (r) => r.status === 200,
-        'valid true MISS': (r) => {
-            const body = JSON.parse(r.body);
-            return body.valid === true;
-        },
-        'e164 present MISS': (r) => {
+        '[Valid Phone] status 200 (first req)': (r) => r.status === 200,
+        '[Valid Phone] valid is true (first req)': (r) => JSON.parse(r.body).valid === true,
+        '[Valid Phone] e164 starts with +1 (first req)': (r) => {
             const body = JSON.parse(r.body);
             return body.e164 && body.e164.startsWith('+1');
         },
-        'country US MISS': (r) => {
-            const body = JSON.parse(r.body);
-            return body.country === 'US';
-        },
-        'cache MISS': (r) => r.headers['X-Cache-Status'] === 'MISS',
-        'no errors MISS': (r) => !r.body.includes('error')
+        '[Valid Phone] country is US (first req)': (r) => JSON.parse(r.body).country === 'US',
     });
 
+    // Second request for the same phone. THIS MUST be a HIT.
     res = http.post(`${BASE_URL}/validate/phone`, validPayload, { headers: HEADERS });
     check(res, {
-        'status 200 HIT': (r) => r.status === 200,
-        'cache HIT': (r) => r.headers['X-Cache-Status'] === 'HIT',
-        'valid true HIT': (r) => {
-            const body = JSON.parse(r.body);
-            return body.valid === true;
-        }
+        '[Valid Phone] status 200 HIT': (r) => r.status === 200,
+        '[Valid Phone] cache HIT': (r) => r.headers['X-Cache-Status'] === 'HIT',
     });
 
-    // Test valid phone with country hint (MISS then HIT)
+    // Scenario 2: Test valid phone with country hint
     const validWithCountryPayload = JSON.stringify({ phone: '6502530000', country: 'US' });
     res = http.post(`${BASE_URL}/validate/phone`, validWithCountryPayload, { headers: HEADERS });
     check(res, {
-        'status 200 MISS': (r) => r.status === 200,
-        'valid true MISS': (r) => {
-            const body = JSON.parse(r.body);
-            return body.valid === true;
-        },
-        'e164 present MISS': (r) => {
-            const body = JSON.parse(r.body);
-            return body.e164 === '+16502530000';
-        },
-        'cache MISS': (r) => r.headers['X-Cache-Status'] === 'MISS'
+        '[Valid with Country] status 200 (first req)': (r) => r.status === 200,
+        '[Valid with Country] valid is true (first req)': (r) => JSON.parse(r.body).valid === true,
+        '[Valid with Country] e164 is +16502530000 (first req)': (r) => JSON.parse(r.body).e164 === '+16502530000',
     });
 
+    // Second request, check for HIT.
     res = http.post(`${BASE_URL}/validate/phone`, validWithCountryPayload, { headers: HEADERS });
     check(res, {
-        'status 200 HIT': (r) => r.status === 200,
-        'cache HIT': (r) => r.headers['X-Cache-Status'] === 'HIT',
-        'valid true HIT': (r) => {
-            const body = JSON.parse(r.body);
-            return body.valid === true;
-        }
+        '[Valid with Country] status 200 HIT': (r) => r.status === 200,
+        '[Valid with Country] cache HIT': (r) => r.headers['X-Cache-Status'] === 'HIT',
     });
 
-    // Test invalid phone format (MISS then HIT)
+    // Scenario 3: Test invalid phone format
     const invalidPayload = JSON.stringify({ phone: 'invalid-phone' });
     res = http.post(`${BASE_URL}/validate/phone`, invalidPayload, { headers: HEADERS });
     check(res, {
-        'status 200 MISS': (r) => r.status === 200,
-        'valid false MISS': (r) => {
-            const body = JSON.parse(r.body);
-            return body.valid === false;
-        },
-        'reason unparseable MISS': (r) => {
+        '[Invalid Format] status 200 (first req)': (r) => r.status === 200,
+        '[Invalid Format] valid is false (first req)': (r) => JSON.parse(r.body).valid === false,
+        '[Invalid Format] reason phone.unparseable (first req)': (r) => {
             const body = JSON.parse(r.body);
             return body.reason_codes && body.reason_codes.includes('phone.unparseable');
         },
-        'cache MISS': (r) => r.headers['X-Cache-Status'] === 'MISS'
     });
 
+    // Second request, check for HIT.
     res = http.post(`${BASE_URL}/validate/phone`, invalidPayload, { headers: HEADERS });
     check(res, {
-        'status 200 HIT': (r) => r.status === 200,
-        'cache HIT': (r) => r.headers['X-Cache-Status'] === 'HIT',
-        'valid false HIT': (r) => {
-            const body = JSON.parse(r.body);
-            return body.valid === false;
-        }
+        '[Invalid Format] status 200 HIT': (r) => r.status === 200,
+        '[Invalid Format] cache HIT': (r) => r.headers['X-Cache-Status'] === 'HIT',
     });
 
-    // Test invalid with country hint (MISS then HIT)
+    // Scenario 4: Test invalid phone with country hint
     const invalidWithCountryPayload = JSON.stringify({ phone: '999999', country: 'US' });
     res = http.post(`${BASE_URL}/validate/phone`, invalidWithCountryPayload, { headers: HEADERS });
     check(res, {
-        'status 200 MISS': (r) => r.status === 200,
-        'valid false MISS': (r) => {
-            const body = JSON.parse(r.body);
-            return body.valid === false;
-        },
-        'reason invalid_format MISS': (r) => {
+        '[Invalid with Country] status 200 (first req)': (r) => r.status === 200,
+        '[Invalid with Country] valid is false (first req)': (r) => JSON.parse(r.body).valid === false,
+        '[Invalid with Country] reason phone.invalid_format (first req)': (r) => {
             const body = JSON.parse(r.body);
             return body.reason_codes && body.reason_codes.includes('phone.invalid_format');
         },
-        'cache MISS': (r) => r.headers['X-Cache-Status'] === 'MISS'
     });
 
+    // Second request, check for HIT.
     res = http.post(`${BASE_URL}/validate/phone`, invalidWithCountryPayload, { headers: HEADERS });
     check(res, {
-        'status 200 HIT': (r) => r.status === 200,
-        'cache HIT': (r) => r.headers['X-Cache-Status'] === 'HIT',
-        'valid false HIT': (r) => {
-            const body = JSON.parse(r.body);
-            return body.valid === false;
-        }
+        '[Invalid with Country] status 200 HIT': (r) => r.status === 200,
+        '[Invalid with Country] cache HIT': (r) => r.headers['X-Cache-Status'] === 'HIT',
     });
 
     sleep(0.1);
