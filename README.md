@@ -130,9 +130,7 @@ If the AI needs clarification, it should use `ask_followup_question` sparingly, 
      ```
      Use this API_KEY in Authorization: Bearer headers for authenticated requests (e.g., /orders/evaluate). If SASL/password error, confirm DATABASE_URL and dotenv load.
      **AI Tip:** Seed runs once; re-run to regenerate keys. PROJECT_ID scopes usage/logs.
-   - Import GeoNames (optional for postal/geo accuracy): `pnpm exec ts-node --require dotenv/config scripts/geonames-importer.ts`.
-     Fails with 404 (outdated URL). Workaround: Download country zips manually from http://download.geonames.org/export/zip/ (e.g., AR.zip for Argentina), unzip to `./data/geonames/`, update script line 11 to loop over files (e.g., forEach zip in dir). Or skip—address validation uses Nominatim (free, but slower/rate-limited).
-     **AI Tip:** For AI edits, use `apply_diff` on `scripts/geonames-importer.ts` to fix URL or add multi-file support. Table: geonames_postal (postal_code, place_name, admin_name1, lat, lng, country).
+   - GeoNames postal data is automatically imported during seeding if the table is empty (focuses on AR by default; extend countries in `apps/api/src/seed.ts` as needed). Address validation uses this data for faster postal/city matching, falling back to Nominatim.
 
 4. Run Locally:
    - Dev stack: `podman compose -f infra/compose/dev.compose.yml up -d` (from root; starts all services: Postgres@5432, Valkey@6379, MinIO@9000/9001, Edge@8081, API@8080 internal, monitoring stack). Wait for healthy (use `podman ps`).
