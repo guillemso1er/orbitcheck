@@ -10,6 +10,7 @@ import { logEvent } from "../hooks";
 import { env } from "../env";
 import twilio from 'twilio';
 import { securityHeader, unauthorizedResponse, rateLimitResponse, validationErrorResponse, generateRequestId, sendError, sendServerError } from "./utils";
+import { HTTP_STATUS, ERROR_CODES, ERROR_MESSAGES, API_PATHS, TTL_EMAIL, TTL_ADDRESS, TTL_TAXID, TWILIO_CHANNEL_SMS } from "../constants";
 
 
 export function registerValidationRoutes(app: FastifyInstance, pool: Pool, redis: IORedis) {
@@ -51,7 +52,7 @@ export function registerValidationRoutes(app: FastifyInstance, pool: Pool, redis
             const { email } = req.body as { email: string };
             const out = await validateEmail(email, redis);
             await (rep as any).saveIdem?.(out);
-            logEvent((req as any).project_id, 'validation', '/v1/validate/email', out.reason_codes, 200, {
+            logEvent((req as any).project_id, 'validation', API_PATHS.VALIDATE_EMAIL, out.reason_codes, HTTP_STATUS.OK, {
                 domain: out.normalized.split('@')[1],
                 disposable: out.disposable,
                 mx_found: out.mx_found,
@@ -109,7 +110,7 @@ export function registerValidationRoutes(app: FastifyInstance, pool: Pool, redis
                     const verify = client.verify.v2.services(env.TWILIO_VERIFY_SERVICE_SID);
                     const verification = await verify.verifications.create({
                         to: validation.e164,
-                        channel: 'sms'
+                        channel: TWILIO_CHANNEL_SMS
                     });
                     verification_sid = verification.sid;
                     validation.reason_codes.push("phone.otp_sent");
@@ -121,7 +122,7 @@ export function registerValidationRoutes(app: FastifyInstance, pool: Pool, redis
             }
             const response = { ...validation, verification_sid };
             await (rep as any).saveIdem?.(response);
-            logEvent((req as any).project_id, "validation", "/validate/phone", response.reason_codes, 200, { request_otp, otp_status: verification_sid ? 'otp_sent' : 'no_otp' }, pool);
+            logEvent((req as any).project_id, "validation", API_PATHS.VALIDATE_PHONE, response.reason_codes, HTTP_STATUS.OK, { request_otp, otp_status: verification_sid ? 'otp_sent' : 'no_otp' }, pool);
             return rep.send({ ...response, request_id });
         } catch (error) {
             return sendServerError(req, rep, error, '/v1/validate/phone', generateRequestId());
@@ -178,7 +179,7 @@ export function registerValidationRoutes(app: FastifyInstance, pool: Pool, redis
             const { address } = req.body as any; // Cast because Fastify has already validated
             const out = await validateAddress(address, pool, redis);
             await (rep as any).saveIdem?.(out);
-            logEvent((req as any).project_id, "validation", "/validate/address", out.reason_codes, 200, { po_box: out.po_box, postal_city_match: out.postal_city_match }, pool);
+            logEvent((req as any).project_id, "validation", API_PATHS.VALIDATE_ADDRESS, out.reason_codes, HTTP_STATUS.OK, { po_box: out.po_box, postal_city_match: out.postal_city_match }, pool);
             return rep.send({ ...out, request_id });
         } catch (error) {
             return sendServerError(req, rep, error, '/v1/validate/address', generateRequestId());
@@ -223,7 +224,7 @@ export function registerValidationRoutes(app: FastifyInstance, pool: Pool, redis
             const { type, value, country } = req.body as { type: string; value: string; country?: string };
             const out = await validateTaxId({ type, value, country: country || "", redis });
             await (rep as any).saveIdem?.(out);
-            logEvent((req as any).project_id, "validation", "/validate/tax-id", out.reason_codes, 200, { type }, pool);
+            logEvent((req as any).project_id, "validation", API_PATHS.VALIDATE_TAXID, out.reason_codes, HTTP_STATUS.OK, { type }, pool);
             return rep.send({ ...out, request_id });
         } catch (error) {
             return sendServerError(req, rep, error, '/v1/validate/tax-id', generateRequestId());
@@ -264,7 +265,7 @@ export function registerValidationRoutes(app: FastifyInstance, pool: Pool, redis
             const request_id = generateRequestId();
             const { verification_sid, code } = req.body as { verification_sid: string; code: string };
             if (!env.TWILIO_ACCOUNT_SID || !env.TWILIO_AUTH_TOKEN || !env.TWILIO_VERIFY_SERVICE_SID) {
-                return rep.status(500).send({ error: { code: "server_error", message: "Twilio Verify not configured" } });
+                return rep.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).send({ error: { code: ERROR_CODES.SERVER_ERROR, message: ERROR_MESSAGES[ERROR_CODES.SERVER_ERROR] } });
             }
             const client = twilio(env.TWILIO_ACCOUNT_SID, env.TWILIO_AUTH_TOKEN);
             const verify = client.verify.v2.services(env.TWILIO_VERIFY_SERVICE_SID);
@@ -273,7 +274,7 @@ export function registerValidationRoutes(app: FastifyInstance, pool: Pool, redis
             const reason_codes = valid ? [] : ['phone.otp_invalid'];
             const response = { valid, reason_codes, request_id };
             await (rep as any).saveIdem?.(response);
-            await logEvent((req as any).project_id, "verification", "/verify/phone", reason_codes, valid ? 200 : 400, { verified: valid }, pool);
+            await logEvent((req as any).project_id, "verification", API_PATHS.VERIFY_PHONE, reason_codes, valid ? HTTP_STATUS.OK : HTTP_STATUS.BAD_REQUEST, { verified: valid }, pool);
             return rep.send(response);
         } catch (error) {
             return sendServerError(req, rep, error, '/v1/verify/phone', generateRequestId());

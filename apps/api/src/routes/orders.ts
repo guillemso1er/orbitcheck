@@ -7,6 +7,7 @@ import { validateAddress } from "../validators/address";
 import { validateEmail } from "../validators/email";
 import { validatePhone } from "../validators/phone";
 import { generateRequestId, rateLimitResponse, securityHeader, sendServerError, unauthorizedResponse, validationErrorResponse } from "./utils";
+import { HTTP_STATUS, REASON_CODES, MATCH_TYPES, DEDUPE_ACTIONS, ORDER_ACTIONS, ORDER_TAGS, PAYMENT_METHODS, SIMILARITY_EXACT, SIMILARITY_FUZZY_THRESHOLD, RISK_BLOCK_THRESHOLD, RISK_HOLD_THRESHOLD, RISK_CUSTOMER_DEDUPE, RISK_ADDRESS_DEDUPE, RISK_PO_BOX, RISK_POSTAL_MISMATCH, RISK_GEO_OUT, RISK_GEOCODE_FAIL, RISK_INVALID_ADDR, RISK_INVALID_EMAIL_PHONE, RISK_COD, RISK_COD_HIGH, RISK_HIGH_VALUE, HIGH_VALUE_THRESHOLD } from "../constants";
 
 
 const customerMatchSchema = {
@@ -155,7 +156,7 @@ export function registerOrderRoutes(app: FastifyInstance, pool: Pool, redis: Red
                                 first_name: row.first_name,
                                 last_name: row.last_name,
                                 similarity_score: 1.0,
-                                match_type: 'exact_email'
+                                match_type: MATCH_TYPES.EXACT_EMAIL
                             });
                             seenIds.add(row.id);
                         }
@@ -182,7 +183,7 @@ export function registerOrderRoutes(app: FastifyInstance, pool: Pool, redis: Red
                                 first_name: row.first_name,
                                 last_name: row.last_name,
                                 similarity_score: row.similarity_score,
-                                match_type: 'fuzzy_name'
+                                match_type: MATCH_TYPES.FUZZY_NAME
                             });
                             seenIds.add(row.id);
                         }
@@ -191,9 +192,9 @@ export function registerOrderRoutes(app: FastifyInstance, pool: Pool, redis: Red
                 customer_matches.sort((a, b) => b.similarity_score - a.similarity_score);
             }
             if (customer_matches.length > 0) {
-                risk_score += 20;
-                tags.push('potential_duplicate_customer');
-                reason_codes.push('order.customer_dedupe_match');
+                risk_score += RISK_CUSTOMER_DEDUPE;
+                tags.push(ORDER_TAGS.POTENTIAL_DUPLICATE_CUSTOMER);
+                reason_codes.push(REASON_CODES.ORDER_CUSTOMER_DEDUPE_MATCH);
             }
 
             // 2. Address dedupe
@@ -215,18 +216,30 @@ export function registerOrderRoutes(app: FastifyInstance, pool: Pool, redis: Red
                     postal_code: row.postal_code,
                     country: row.country,
                     similarity_score: 1.0,
-                    match_type: 'exact_address'
+                    match_type: MATCH_TYPES.EXACT_ADDRESS
                 });
             } else {
                 const postalQuery = 'SELECT id, line1, line2, city, state, postal_code, country, lat, lng, 1.0 as similarity_score, \'exact_postal\' as match_type FROM addresses WHERE project_id = $1 AND postal_code = $2 AND lower(city) = lower($3) AND country = $4 LIMIT 1';
                 const { rows: postalMatches } = await pool.query(postalQuery, [project_id, normAddr.postal_code, normAddr.city, normAddr.country]);
                 if (postalMatches.length > 0) {
-                    address_matches.push({ ...postalMatches[0] });
+                    address_matches.push({
+                        id: postalMatches[0].id,
+                        line1: postalMatches[0].line1,
+                        line2: postalMatches[0].line2,
+                        city: postalMatches[0].city,
+                        state: postalMatches[0].state,
+                        postal_code: postalMatches[0].postal_code,
+                        country: postalMatches[0].country,
+                        lat: postalMatches[0].lat,
+                        lng: postalMatches[0].lng,
+                        similarity_score: SIMILARITY_EXACT,
+                        match_type: MATCH_TYPES.EXACT_POSTAL
+                    });
                 }
 
                 const fuzzyQuery = `SELECT id, line1, line2, city, state, postal_code, country, lat, lng, 
                                     greatest(similarity(line1, $2), similarity(city, $3)) as similarity_score, 
-                                    'fuzzy_address' as match_type 
+                                    MATCH_TYPES.FUZZY_ADDRESS as match_type
                                     FROM addresses 
                                     WHERE project_id = $1 AND (similarity(line1, $2) > 0.85 OR similarity(city, $3) > 0.85) 
                                     ORDER BY similarity_score DESC LIMIT 3`;
@@ -234,7 +247,19 @@ export function registerOrderRoutes(app: FastifyInstance, pool: Pool, redis: Red
                 address_matches = address_matches.concat(
                     fuzzyMatches
                         .filter(m => !address_matches.some(am => am.id === m.id))
-                        .map(row => ({ ...row })) // Ensure all fuzzy matches are also clean objects
+                        .map(row => ({
+                            id: row.id,
+                            line1: row.line1,
+                            line2: row.line2,
+                            city: row.city,
+                            state: row.state,
+                            postal_code: row.postal_code,
+                            country: row.country,
+                            lat: row.lat,
+                            lng: row.lng,
+                            similarity_score: row.similarity_score,
+                            match_type: MATCH_TYPES.FUZZY_ADDRESS
+                        })) // Ensure all fuzzy matches are also clean objects
                 );
             }
 
@@ -242,36 +267,36 @@ export function registerOrderRoutes(app: FastifyInstance, pool: Pool, redis: Red
             app.log.info({ request_id, address_matches }, "Address dedupe matches found");
 
             if (address_matches.length > 0) {
-                risk_score += 15;
-                tags.push('potential_duplicate_address');
-                reason_codes.push('order.address_dedupe_match');
+                risk_score += RISK_ADDRESS_DEDUPE;
+                tags.push(ORDER_TAGS.POTENTIAL_DUPLICATE_ADDRESS);
+                reason_codes.push(REASON_CODES.ORDER_ADDRESS_DEDUPE_MATCH);
             }
 
             // 3. Full address validation
             const { po_box, postal_city_match, in_bounds, geo, reason_codes: addrReasons, valid } = addressValidation;
             reason_codes.push(...addrReasons);
             if (po_box) {
-                risk_score += 30;
-                tags.push('po_box_detected');
-                reason_codes.push('order.po_box_block');
+                risk_score += RISK_PO_BOX;
+                tags.push(ORDER_TAGS.PO_BOX_DETECTED);
+                reason_codes.push(REASON_CODES.ORDER_PO_BOX_BLOCK);
             }
             if (!postal_city_match) {
-                risk_score += 10;
-                reason_codes.push('order.address_mismatch');
+                risk_score += RISK_POSTAL_MISMATCH;
+                reason_codes.push(REASON_CODES.ORDER_ADDRESS_MISMATCH);
             }
             if (geo && !in_bounds) {
-                risk_score += 40;
-                tags.push('virtual_address');
-                reason_codes.push('order.geo_out_of_bounds');
+                risk_score += RISK_GEO_OUT;
+                tags.push(ORDER_TAGS.VIRTUAL_ADDRESS);
+                reason_codes.push(REASON_CODES.ORDER_GEO_OUT_OF_BOUNDS);
             }
             if (!geo) {
-                risk_score += 20;
-                reason_codes.push('order.geocode_failed');
+                risk_score += RISK_GEOCODE_FAIL;
+                reason_codes.push(REASON_CODES.ORDER_GEOCODE_FAILED);
             }
             if (!valid) {
-                risk_score += 30;
-                tags.push('invalid_address');
-                reason_codes.push('order.invalid_address');
+                risk_score += RISK_INVALID_ADDR;
+                tags.push(ORDER_TAGS.INVALID_ADDRESS);
+                reason_codes.push(REASON_CODES.ORDER_INVALID_ADDRESS);
             }
 
             // 4. Full customer validation
@@ -282,10 +307,10 @@ export function registerOrderRoutes(app: FastifyInstance, pool: Pool, redis: Red
                 email_valid = { valid: emailVal.valid, reason_codes: emailVal.reason_codes, disposable: emailVal.disposable };
                 reason_codes.push(...emailVal.reason_codes);
                 if (!emailVal.valid || emailVal.disposable) {
-                    risk_score += 25;
+                    risk_score += RISK_INVALID_EMAIL_PHONE;
                     if (emailVal.disposable) {
-                        tags.push('disposable_email');
-                        reason_codes.push('order.disposable_email');
+                        tags.push(ORDER_TAGS.DISPOSABLE_EMAIL);
+                        reason_codes.push(REASON_CODES.ORDER_DISPOSABLE_EMAIL);
                     }
                 }
             }
@@ -294,8 +319,8 @@ export function registerOrderRoutes(app: FastifyInstance, pool: Pool, redis: Red
                 phone_valid = { valid: phoneVal.valid, reason_codes: phoneVal.reason_codes, country: phoneVal.country };
                 reason_codes.push(...phoneVal.reason_codes);
                 if (!phoneVal.valid) {
-                    risk_score += 25;
-                    reason_codes.push('order.invalid_phone');
+                    risk_score += RISK_INVALID_EMAIL_PHONE;
+                    reason_codes.push(REASON_CODES.ORDER_INVALID_PHONE);
                 }
             }
 
@@ -306,38 +331,38 @@ export function registerOrderRoutes(app: FastifyInstance, pool: Pool, redis: Red
             );
             if (orderMatch.length > 0) {
                 risk_score += 50;
-                tags.push('duplicate_order');
-                reason_codes.push('order.duplicate_detected');
+                tags.push(ORDER_TAGS.DUPLICATE_ORDER);
+                reason_codes.push(REASON_CODES.ORDER_DUPLICATE_DETECTED);
             }
 
             // 6. Business rules and heuristics
-            if (payment_method === 'cod') {
-                risk_score += 20;
-                tags.push('cod_order');
-                reason_codes.push('order.cod_risk');
+            if (payment_method === PAYMENT_METHODS.COD) {
+                risk_score += RISK_COD;
+                tags.push(ORDER_TAGS.COD_ORDER);
+                reason_codes.push(REASON_CODES.ORDER_COD_RISK);
                 // Full COD/RTO heuristic: new customer + COD + mismatch region + throwaway email
                 const isNewCustomer = customer_matches.length === 0;
                 const hasMismatch = !postal_city_match || (phone_valid.country && phone_valid.country !== normAddr.country);
                 const isThrowaway = email_valid.disposable;
                 if (isNewCustomer && hasMismatch && isThrowaway) {
-                    risk_score += 50;
-                    tags.push('high_risk_rto');
-                    reason_codes.push('order.high_risk_rto');
+                    risk_score += RISK_COD_HIGH;
+                    tags.push(ORDER_TAGS.HIGH_RISK_RTO);
+                    reason_codes.push(REASON_CODES.ORDER_HIGH_RISK_RTO);
                 }
             }
 
-            if (total_amount > 1000) {
-                risk_score += 15;
-                tags.push('high_value_order');
-                reason_codes.push('order.high_value');
+            if (total_amount > HIGH_VALUE_THRESHOLD) {
+                risk_score += RISK_HIGH_VALUE;
+                tags.push(ORDER_TAGS.HIGH_VALUE_ORDER);
+                reason_codes.push(REASON_CODES.ORDER_HIGH_VALUE);
             }
 
             // 7. Determine action
-            let action = 'approve';
-            if (risk_score > 70) {
-                action = 'block';
-            } else if (risk_score > 40) {
-                action = 'hold';
+            let action: 'approve' | 'hold' | 'block' = ORDER_ACTIONS.APPROVE;
+            if (risk_score > RISK_BLOCK_THRESHOLD) {
+                action = ORDER_ACTIONS.BLOCK;
+            } else if (risk_score > RISK_HOLD_THRESHOLD) {
+                action = ORDER_ACTIONS.HOLD;
             }
 
             const validations = {
@@ -358,8 +383,8 @@ export function registerOrderRoutes(app: FastifyInstance, pool: Pool, redis: Red
                 action,
                 tags,
                 reason_codes,
-                customer_dedupe: { matches: customer_matches, suggested_action: customer_matches.length > 0 ? (customer_matches[0].similarity_score === 1.0 ? 'merge_with' : 'review') : 'create_new', canonical_id: customer_matches.length > 0 ? customer_matches[0].id : null },
-                address_dedupe: { matches: address_matches, suggested_action: address_matches.length > 0 ? (address_matches[0].similarity_score === 1.0 ? 'merge_with' : 'review') : 'create_new', canonical_id: address_matches.length > 0 ? address_matches[0].id : null },
+                customer_dedupe: { matches: customer_matches, suggested_action: customer_matches.length > 0 ? (customer_matches[0].similarity_score === SIMILARITY_EXACT ? DEDUPE_ACTIONS.MERGE_WITH : DEDUPE_ACTIONS.REVIEW) : DEDUPE_ACTIONS.CREATE_NEW, canonical_id: customer_matches.length > 0 ? customer_matches[0].id : null },
+                address_dedupe: { matches: address_matches, suggested_action: address_matches.length > 0 ? (address_matches[0].similarity_score === SIMILARITY_EXACT ? DEDUPE_ACTIONS.MERGE_WITH : DEDUPE_ACTIONS.REVIEW) : DEDUPE_ACTIONS.CREATE_NEW, canonical_id: address_matches.length > 0 ? address_matches[0].id : null },
                 validations,
                 request_id
             };
@@ -371,7 +396,7 @@ export function registerOrderRoutes(app: FastifyInstance, pool: Pool, redis: Red
             );
 
             await (rep as any).saveIdem?.(response);
-            await logEvent(project_id, 'order', '/orders/evaluate', reason_codes, 200, { risk_score, action, tags: tags.join(',') }, pool);
+            await logEvent(project_id, 'order', '/orders/evaluate', reason_codes, HTTP_STATUS.OK, { risk_score, action, tags: tags.join(',') }, pool);
             return rep.send(response);
         } catch (error) {
             app.log.error({ err: error, request_id }, "An unhandled error occurred in /v1/orders/evaluate");

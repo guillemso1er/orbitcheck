@@ -7,6 +7,7 @@ import type { Redis } from "ioredis";
 import fetch from "node-fetch";
 import type { Pool } from "pg";
 import { env } from "../env";
+import { REASON_CODES } from "../constants";
 
 // Simple PO Box detector for multiple locales
 /**
@@ -101,7 +102,7 @@ export async function validateAddress(
     const norm = await normalizeAddress(addr);
     const po_box = detectPoBox(norm.line1) || detectPoBox(norm.line2 || "");
     if (po_box) {
-        reason_codes.push("address.po_box");
+        reason_codes.push(REASON_CODES.ADDRESS_PO_BOX);
     }
 
     const { rows } = await pool.query(
@@ -110,7 +111,7 @@ export async function validateAddress(
     );
     const postal_city_match = rows.length > 0;
     if (!postal_city_match) {
-        reason_codes.push("address.postal_city_mismatch");
+        reason_codes.push(REASON_CODES.ADDRESS_POSTAL_CITY_MISMATCH);
     }
 
     let geo: any = null;
@@ -156,10 +157,10 @@ export async function validateAddress(
             );
             in_bounds = bboxRows.length > 0;
             if (!in_bounds) {
-                reason_codes.push("address.geo_out_of_bounds");
+                reason_codes.push(REASON_CODES.ADDRESS_GEO_OUT_OF_BOUNDS);
             }
         } else {
-            reason_codes.push("address.geocode_failed");
+            reason_codes.push(REASON_CODES.ADDRESS_GEOCODE_FAILED);
         }
     } catch {
         // ignore geocoding errors

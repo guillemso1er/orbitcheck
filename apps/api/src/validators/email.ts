@@ -1,9 +1,10 @@
-import crypto from "crypto";
 import { isEmailValid } from '@hapi/address';
-import { getDomain as getRegistrableDomain } from 'tldts';
+import crypto from "crypto";
+import type { Redis } from "ioredis";
 import dns from "node:dns/promises";
 import url from 'node:url';
-import type { Redis } from "ioredis";
+import { getDomain as getRegistrableDomain } from 'tldts';
+import { DNS_TIMEOUT_MS, DOMAIN_CACHE_TTL_DAYS, REASON_CODES, TTL_EMAIL } from "../constants";
 
 /**
  * Utility to add timeout to a Promise, preventing long hangs (e.g., for DNS lookups).
@@ -13,7 +14,7 @@ import type { Redis } from "ioredis";
  * @param ms - Timeout duration in milliseconds (default: 1200).
  * @returns {Promise} The raced promise; rejects with 'ETIMEDOUT' if timed out.
  */
-const withTimeout = (p: Promise<any>, ms = 1200) => {
+const withTimeout = (p: Promise<any>, ms = DNS_TIMEOUT_MS) => {
     let timer: NodeJS.Timeout;
 
     // The timeout promise
@@ -83,7 +84,7 @@ export async function validateEmail(
         isFormatValid = isEmailValid(fullNormalized);
 
         if (!isFormatValid) {
-            reason_codes.push('email.invalid_format');
+            reason_codes.push(REASON_CODES.EMAIL_INVALID_FORMAT);
         }
 
         // Network-dependent validations
@@ -119,7 +120,7 @@ export async function validateEmail(
                 }
 
                 if (!mx_found) {
-                    reason_codes.push('email.mx_not_found');
+                    reason_codes.push(REASON_CODES.EMAIL_MX_NOT_FOUND);
                 }
 
                 // REDIS LOOKUP for disposable domains
@@ -129,12 +130,12 @@ export async function validateEmail(
 
                 if (isDisposable) {
                     disposable = true;
-                    reason_codes.push('email.disposable_domain');
+                    reason_codes.push(REASON_CODES.EMAIL_DISPOSABLE_DOMAIN);
                 }
 
                 // Cache domain data
                 domainData = { mx_found, disposable };
-                await redis.set(domainCacheKey, JSON.stringify(domainData), 'EX', 7 * 24 * 3600);
+                await redis.set(domainCacheKey, JSON.stringify(domainData), 'EX', DOMAIN_CACHE_TTL_DAYS * 24 * 3600);
             }
 
             if (!domainData) {
@@ -168,7 +169,7 @@ export async function validateEmail(
         }
     } catch (error) {
         // Global safety net
-        reason_codes.push('email.server_error');
+        reason_codes.push(REASON_CODES.EMAIL_SERVER_ERROR);
     }
 
     const valid = isFormatValid && mx_found && !disposable;
@@ -183,7 +184,7 @@ export async function validateEmail(
     };
 
     if (redis) {
-        await redis.set(cacheKey, JSON.stringify(result), 'EX', 30 * 24 * 3600);
+        await redis.set(cacheKey, JSON.stringify(result), 'EX', TTL_EMAIL);
     }
 
     return result;

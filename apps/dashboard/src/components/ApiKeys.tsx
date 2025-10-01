@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { API_ENDPOINTS, UI_STRINGS, ERROR_MESSAGES, HTTP_STATUS } from '../constants';
 import { useAuth } from '../AuthContext';
 
 interface ApiKey {
@@ -71,11 +72,11 @@ const NewKeyAlert: React.FC<{
 
   return (
     <div className="alert alert-success">
-      <h4>New API Key Created</h4>
+      <h4>{UI_STRINGS.NEW_KEY_CREATED}</h4>
       <div className="key-details">
         <p><strong>Prefix:</strong> <code>{newKey.prefix}</code></p>
         <p><strong>Full Key:</strong> <code>{newKey.full_key}</code></p>
-        <p className="alert-text">Save this securely - it will not be shown again!</p>
+        <p className="alert-text">{UI_STRINGS.SAVE_SECURELY}</p>
       </div>
       <button onClick={onClose} className="btn btn-secondary">Close</button>
     </div>
@@ -116,10 +117,10 @@ const ApiKeysTable: React.FC<{
               {key.status === 'active' && (
                 <div className="action-buttons">
                   <button onClick={() => onRotate(key)} className="btn btn-warning btn-sm" title="Rotate Key" disabled={creating}>
-                    {creating ? 'Rotating...' : 'Rotate'}
+                    {creating ? UI_STRINGS.ROTATING : UI_STRINGS.ROTATE}
                   </button>
                   <button onClick={() => onRevoke(key.id)} className="btn btn-danger btn-sm" title="Revoke Key">
-                    Revoke
+                    {UI_STRINGS.REVOKE}
                   </button>
                 </div>
               )}
@@ -142,13 +143,13 @@ const ApiKeys: React.FC<ApiKeysProps> = ({ token }) => {
   const fetchKeys = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api-keys', {
+      const response = await fetch(API_ENDPOINTS.API_KEYS, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
       });
       if (!response.ok) {
-        throw new Error('Failed to fetch API keys');
+        throw new Error(ERROR_MESSAGES.FETCH_API_KEYS);
       }
       const data = await response.json();
       setKeys(data.data || []);
@@ -166,7 +167,7 @@ const ApiKeys: React.FC<ApiKeysProps> = ({ token }) => {
   const handleCreate = async (name: string) => {
     try {
       setCreating(true);
-      const response = await fetch('/api-keys', {
+      const response = await fetch(API_ENDPOINTS.API_KEYS, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -175,7 +176,7 @@ const ApiKeys: React.FC<ApiKeysProps> = ({ token }) => {
         body: JSON.stringify({ name })
       });
       if (!response.ok) {
-        throw new Error('Failed to create API key');
+        throw new Error(ERROR_MESSAGES.CREATE_API_KEY);
       }
       const data = await response.json();
       setNewKey({ prefix: data.prefix, full_key: data.full_key });
@@ -191,14 +192,14 @@ const ApiKeys: React.FC<ApiKeysProps> = ({ token }) => {
   const handleRevoke = async (id: string) => {
     if (!confirm('Are you sure you want to revoke this API key? This action cannot be undone.')) return;
     try {
-      const response = await fetch(`/api-keys/${id}`, {
+      const response = await fetch(`${API_ENDPOINTS.API_KEYS}/${id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`
         }
       });
       if (!response.ok) {
-        throw new Error('Failed to revoke API key');
+        throw new Error(ERROR_MESSAGES.REVOKE_API_KEY);
       }
       fetchKeys(); // Refresh list
     } catch (err) {
@@ -213,7 +214,7 @@ const ApiKeys: React.FC<ApiKeysProps> = ({ token }) => {
     try {
       setCreating(true);
       // Create new key with same name
-      const createResponse = await fetch('/api-keys', {
+      const createResponse = await fetch(API_ENDPOINTS.API_KEYS, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -222,18 +223,18 @@ const ApiKeys: React.FC<ApiKeysProps> = ({ token }) => {
         body: JSON.stringify({ name })
       });
       if (!createResponse.ok) {
-        throw new Error('Failed to create new API key');
+        throw new Error(ERROR_MESSAGES.CREATE_API_KEY);
       }
       const newData = await createResponse.json();
       // Revoke old key
-      const revokeResponse = await fetch(`/api-keys/${key.id}`, {
+      const revokeResponse = await fetch(`${API_ENDPOINTS.API_KEYS}/${key.id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`
         }
       });
       if (!revokeResponse.ok) {
-        throw new Error('Failed to revoke old API key');
+        throw new Error(ERROR_MESSAGES.REVOKE_API_KEY);
       }
       // Show new key
       setNewKey({ prefix: newData.prefix, full_key: newData.full_key });
@@ -245,15 +246,15 @@ const ApiKeys: React.FC<ApiKeysProps> = ({ token }) => {
     }
   };
 
-  if (loading) return <div className="loading">Loading API keys...</div>;
+  if (loading) return <div className="loading">{UI_STRINGS.LOADING} API keys...</div>;
   if (error) return <div className="alert alert-danger">Error: {error}</div>;
 
   return (
     <div className="api-keys-page">
       <header className="page-header">
-        <h2>API Keys Management</h2>
+        <h2>{UI_STRINGS.API_KEYS_MANAGEMENT}</h2>
         <button onClick={() => setShowCreate(true)} className="btn btn-primary">
-          <span className="btn-icon">+</span> Create New API Key
+          <span className="btn-icon">+</span> {UI_STRINGS.CREATE_NEW_API_KEY}
         </button>
       </header>
 
@@ -267,10 +268,10 @@ const ApiKeys: React.FC<ApiKeysProps> = ({ token }) => {
       <NewKeyAlert newKey={newKey} onClose={() => setNewKey(null)} />
 
       <div className="keys-list">
-        <h3>Your API Keys</h3>
+        <h3>{UI_STRINGS.YOUR_API_KEYS}</h3>
         {keys.length === 0 ? (
           <div className="empty-state">
-            <p>No API keys found. Create one to get started.</p>
+            <p>{UI_STRINGS.NO_API_KEYS}</p>
           </div>
         ) : (
           <ApiKeysTable

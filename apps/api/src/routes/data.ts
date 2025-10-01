@@ -1,6 +1,7 @@
 import { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { Pool } from "pg";
 import { securityHeader, unauthorizedResponse, rateLimitResponse, generateRequestId, sendServerError } from "./utils";
+import { HTTP_STATUS, LOGS_DEFAULT_LIMIT, LOGS_MAX_LIMIT, USAGE_PERIOD, USAGE_DAYS, TOP_REASONS_LIMIT, CACHE_HIT_PLACEHOLDER } from "../constants";
 import { logEvent } from "../hooks";
 
 
@@ -53,7 +54,13 @@ export function registerDataRoutes(app: FastifyInstance, pool: Pool) {
         try {
             const request_id = generateRequestId();
             const project_id = (req as any).project_id;
-            const { reason_code, endpoint, status, limit = 100, offset = 0 } = req.query as any;
+            let limit = (req.query as any).limit || LOGS_DEFAULT_LIMIT;
+            const offset = (req.query as any).offset || 0;
+            const { reason_code, endpoint, status } = req.query as any;
+        
+            if (limit > LOGS_MAX_LIMIT) {
+              limit = LOGS_MAX_LIMIT;
+            }
 
             // Build dynamic WHERE clause
             let whereClauses: string[] = ['project_id = $1'];
@@ -156,7 +163,7 @@ export function registerDataRoutes(app: FastifyInstance, pool: Pool) {
         try {
             const request_id = generateRequestId();
             const project_id = (req as any).project_id;
-            const { rows: dailyRows } = await pool.query("select date, validations, orders from usage_daily where project_id=$1 order by date desc limit 31", [project_id]);
+            const { rows: dailyRows } = await pool.query("select date, validations, orders from usage_daily where project_id=$1 order by date desc limit $2", [project_id, USAGE_DAYS]);
             const totals = dailyRows.reduce((acc: any, r: any) => ({ ...acc, validations: acc.validations + (r.validations || 0), orders: acc.orders + (r.orders || 0) }), { validations: 0, orders: 0 });
 
             // Top reason codes from logs (last 31 days, successful validations)
@@ -164,26 +171,26 @@ export function registerDataRoutes(app: FastifyInstance, pool: Pool) {
                 `SELECT unnest(reason_codes) as code, count(*) as count
                  FROM logs
                  WHERE project_id = $1
-                 AND status = 200
-                 AND created_at > now() - interval '31 days'
+                 AND status = $2
+                 AND created_at > now() - interval '$3 days'
                  GROUP BY code
                  ORDER BY count DESC
-                 LIMIT 10`,
-                [project_id]
+                 LIMIT $4`,
+                [project_id, HTTP_STATUS.OK, USAGE_DAYS, TOP_REASONS_LIMIT]
             );
 
             // Cache hit ratio - placeholder (in production, track cache hits in logs/meta)
             // For now, estimate based on validations vs total requests
             const { rows: logCount } = await pool.query(
-                "SELECT count(*) as total_requests FROM logs WHERE project_id = $1 AND created_at > now() - interval '31 days'",
-                [project_id]
+                "SELECT count(*) as total_requests FROM logs WHERE project_id = $1 AND created_at > now() - interval '$2 days'",
+                [project_id, USAGE_DAYS]
             );
             const totalRequests = parseInt(logCount[0].total_requests) || 1;
-            const estimatedCacheHits = Math.floor(totalRequests * 0.95); // Placeholder 95%
+            const estimatedCacheHits = Math.floor(totalRequests * CACHE_HIT_PLACEHOLDER); // Placeholder 95%
             const cacheHitRatio = (estimatedCacheHits / totalRequests * 100);
 
             return rep.send({
-                period: "month",
+                period: USAGE_PERIOD,
                 totals,
                 by_day: dailyRows,
                 top_reason_codes: topReasons,

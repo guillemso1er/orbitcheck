@@ -4,6 +4,7 @@ import crypto from "crypto";
 import { normalizeAddress } from "../validators/address";
 import { logEvent } from "../hooks";
 import { securityHeader, unauthorizedResponse, rateLimitResponse, validationErrorResponse, generateRequestId, sendServerError } from "./utils";
+import { HTTP_STATUS, ERROR_CODES, ERROR_MESSAGES, MATCH_TYPES, DEDUPE_ACTIONS, MERGE_TYPES, SIMILARITY_EXACT, SIMILARITY_FUZZY_THRESHOLD } from "../constants";
 
 export function registerDedupeRoutes(app: FastifyInstance, pool: Pool) {
     app.post('/v1/dedupe/customer', {
@@ -71,7 +72,7 @@ export function registerDedupeRoutes(app: FastifyInstance, pool: Pool) {
                         matches.push({
                             id: row.id,
                             similarity_score: 1.0,
-                            match_type: 'exact_email',
+                            match_type: MATCH_TYPES.EXACT_EMAIL,
                             data: row
                         });
                     }
@@ -88,7 +89,7 @@ export function registerDedupeRoutes(app: FastifyInstance, pool: Pool) {
                         matches.push({
                             id: row.id,
                             similarity_score: 1.0,
-                            match_type: 'exact_phone',
+                            match_type: MATCH_TYPES.EXACT_PHONE,
                             data: row
                         });
                     }
@@ -113,7 +114,7 @@ export function registerDedupeRoutes(app: FastifyInstance, pool: Pool) {
                         matches.push({
                             id: row.id,
                             similarity_score: score,
-                            match_type: 'fuzzy_name',
+                            match_type: MATCH_TYPES.FUZZY_NAME,
                             data: row
                         });
                     }
@@ -121,23 +122,23 @@ export function registerDedupeRoutes(app: FastifyInstance, pool: Pool) {
             }
             // Sort matches by score descending
             matches.sort((a, b) => b.similarity_score - a.similarity_score);
-
-            let suggested_action = 'create_new';
+        
+            let suggested_action: 'create_new' | 'merge_with' | 'review' = DEDUPE_ACTIONS.CREATE_NEW;
             let canonical_id: string | null = null;
             if (matches.length > 0) {
                 const bestMatch = matches[0];
-                if (bestMatch.similarity_score === 1.0) {
-                    suggested_action = 'merge_with';
+                if (bestMatch.similarity_score === SIMILARITY_EXACT) {
+                    suggested_action = DEDUPE_ACTIONS.MERGE_WITH;
                     canonical_id = bestMatch.id;
-                } else if (bestMatch.similarity_score > 0.85) {
-                    suggested_action = 'review';
+                } else if (bestMatch.similarity_score > SIMILARITY_FUZZY_THRESHOLD) {
+                    suggested_action = DEDUPE_ACTIONS.REVIEW;
                     canonical_id = bestMatch.id; // Suggest the highest score as canonical
                 }
             }
 
             const response = { matches, suggested_action, canonical_id, request_id };
             await (rep as any).saveIdem?.(response);
-            await logEvent(project_id, 'dedupe', '/dedupe/customer', reason_codes, 200, { matches_count: matches.length, suggested_action }, pool);
+            await logEvent(project_id, 'dedupe', '/dedupe/customer', reason_codes, HTTP_STATUS.OK, { matches_count: matches.length, suggested_action }, pool);
             return rep.send(response);
         } catch (error) {
             return sendServerError(req, rep, error, '/v1/dedupe/customer', generateRequestId());
@@ -211,7 +212,7 @@ export function registerDedupeRoutes(app: FastifyInstance, pool: Pool) {
                     matches.push({
                         id: row.id,
                         similarity_score: 1.0,
-                        match_type: 'exact_address',
+                        match_type: MATCH_TYPES.EXACT_ADDRESS,
                         data: row
                     });
                 }
@@ -228,7 +229,7 @@ export function registerDedupeRoutes(app: FastifyInstance, pool: Pool) {
                         matches.push({
                             id: row.id,
                             similarity_score: 1.0,
-                            match_type: 'exact_postal',
+                            match_type: MATCH_TYPES.EXACT_POSTAL,
                             data: row
                         });
                     }
@@ -250,7 +251,7 @@ export function registerDedupeRoutes(app: FastifyInstance, pool: Pool) {
                     matches.push({
                         id: row.id,
                         similarity_score: row.score,
-                        match_type: 'fuzzy_address',
+                        match_type: MATCH_TYPES.FUZZY_ADDRESS,
                         data: row
                     });
                 }
@@ -258,23 +259,23 @@ export function registerDedupeRoutes(app: FastifyInstance, pool: Pool) {
 
             // Sort matches by score descending
             matches.sort((a, b) => b.similarity_score - a.similarity_score);
-
-            let suggested_action = 'create_new';
+        
+            let suggested_action: 'create_new' | 'merge_with' | 'review' = DEDUPE_ACTIONS.CREATE_NEW;
             let canonical_id: string | null = null;
             if (matches.length > 0) {
                 const bestMatch = matches[0];
-                if (bestMatch.similarity_score === 1.0) {
-                    suggested_action = 'merge_with';
+                if (bestMatch.similarity_score === SIMILARITY_EXACT) {
+                    suggested_action = DEDUPE_ACTIONS.MERGE_WITH;
                     canonical_id = bestMatch.id;
-                } else if (bestMatch.similarity_score > 0.85) {
-                    suggested_action = 'review';
+                } else if (bestMatch.similarity_score > SIMILARITY_FUZZY_THRESHOLD) {
+                    suggested_action = DEDUPE_ACTIONS.REVIEW;
                     canonical_id = bestMatch.id; // Suggest the highest score as canonical
                 }
             }
 
             const response = { matches, suggested_action, canonical_id, request_id };
             await (rep as any).saveIdem?.(response);
-            await logEvent(project_id, 'dedupe', '/dedupe/address', reason_codes, 200, { matches_count: matches.length, suggested_action }, pool);
+            await logEvent(project_id, 'dedupe', '/dedupe/address', reason_codes, HTTP_STATUS.OK, { matches_count: matches.length, suggested_action }, pool);
             return rep.send(response);
         } catch (error) {
             return sendServerError(req, rep, error, '/v1/dedupe/address', generateRequestId());
@@ -318,7 +319,7 @@ export function registerDedupeRoutes(app: FastifyInstance, pool: Pool) {
             const request_id = generateRequestId();
             const { type, ids, canonical_id } = req.body as { type: string; ids: string[]; canonical_id: string };
             const project_id = (req as any).project_id;
-            const table = type === 'customer' ? 'customers' : 'addresses';
+            const table = type === MERGE_TYPES.CUSTOMER ? 'customers' : 'addresses';
             const count = ids.length;
 
             // Verify all IDs belong to project
@@ -327,7 +328,7 @@ export function registerDedupeRoutes(app: FastifyInstance, pool: Pool) {
                 [project_id, [...ids, canonical_id]]
             );
             if (verifyRows.length !== count + 1) {
-                return rep.status(400).send({ error: { code: 'invalid_ids', message: 'Invalid or mismatched IDs' } });
+                return rep.status(HTTP_STATUS.BAD_REQUEST).send({ error: { code: ERROR_CODES.INVALID_IDS, message: ERROR_MESSAGES[ERROR_CODES.INVALID_IDS] } });
             }
 
             // Merge: update canonical, mark others as merged (assume merged_to column exists from migration)
@@ -342,7 +343,7 @@ export function registerDedupeRoutes(app: FastifyInstance, pool: Pool) {
 
             const response = { success: true, merged_count: count, canonical_id, request_id };
             await (rep as any).saveIdem?.(response);
-            await logEvent(project_id, 'dedupe', '/dedupe/merge', [], 200, { type, merged_count: count }, pool);
+            await logEvent(project_id, 'dedupe', '/dedupe/merge', [], HTTP_STATUS.OK, { type, merged_count: count }, pool);
             return rep.send(response);
         } catch (error) {
             return sendServerError(req, rep, error, '/v1/dedupe/merge', generateRequestId());

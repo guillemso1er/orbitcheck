@@ -2,6 +2,7 @@ import { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { Pool } from "pg";
 import crypto from "crypto";
 import { errorSchema, securityHeader, unauthorizedResponse, rateLimitResponse, generateRequestId, sendError, sendServerError } from "./utils";
+import { HTTP_STATUS, ERROR_CODES, ERROR_MESSAGES, STATUS, API_KEY_PREFIX } from "../constants";
 
 
 export function registerApiKeysRoutes(app: FastifyInstance, pool: Pool) {
@@ -86,21 +87,21 @@ export function registerApiKeysRoutes(app: FastifyInstance, pool: Pool) {
             const request_id = generateRequestId();
 
             // Generate full key
-            const full_key = "ok_" + crypto.randomBytes(32).toString('hex');
+            const full_key = API_KEY_PREFIX + crypto.randomBytes(32).toString('hex');
             const prefix = full_key.slice(0, 6);
             const keyHash = crypto.createHash('sha256').update(full_key).digest('hex');
 
             const { rows } = await pool.query(
-                "INSERT INTO api_keys (project_id, prefix, hash, status, name) VALUES ($1, $2, $3, 'active', $4) RETURNING id, created_at",
-                [project_id, prefix, keyHash, name || null]
+                "INSERT INTO api_keys (project_id, prefix, hash, status, name) VALUES ($1, $2, $3, $4, $5) RETURNING id, created_at",
+                [project_id, prefix, keyHash, STATUS.ACTIVE, name || null]
             );
 
             const newKey = rows[0];
-            return rep.status(201).send({
+            return rep.status(HTTP_STATUS.CREATED).send({
                 id: newKey.id,
                 prefix,
                 full_key, // Only return full_key once
-                status: 'active',
+                status: STATUS.ACTIVE,
                 created_at: newKey.created_at,
                 request_id
             });
@@ -144,15 +145,15 @@ export function registerApiKeysRoutes(app: FastifyInstance, pool: Pool) {
             const request_id = generateRequestId();
 
             const { rowCount } = await pool.query(
-                "UPDATE api_keys SET status = 'revoked' WHERE id = $1 AND project_id = $2",
-                [id, project_id]
+                "UPDATE api_keys SET status = $3 WHERE id = $1 AND project_id = $2",
+                [id, project_id, STATUS.REVOKED]
             );
 
             if (rowCount === 0) {
-                return sendError(rep, 404, 'not_found', 'API key not found', request_id);
+                return sendError(rep, HTTP_STATUS.NOT_FOUND, ERROR_CODES.NOT_FOUND, ERROR_MESSAGES[ERROR_CODES.NOT_FOUND], request_id);
             }
 
-            return rep.send({ id, status: 'revoked', request_id });
+            return rep.send({ id, status: STATUS.REVOKED, request_id });
         } catch (error) {
             return sendServerError(req, rep, error, '/api-keys/:id', generateRequestId());
         }

@@ -1,4 +1,5 @@
 import crypto from "crypto";
+import { REASON_CODES } from "../constants";
 import { parsePhoneNumber } from "libphonenumber-js";
 import type { Redis } from "ioredis";
 
@@ -48,10 +49,10 @@ export async function validatePhone(
             e164 = parsed.number;
             cc = parsed.country || cc;
         } else {
-            reason_codes.push("phone.invalid_format");
+            reason_codes.push(REASON_CODES.PHONE_INVALID_FORMAT);
         }
     } catch {
-        reason_codes.push("phone.unparseable");
+        reason_codes.push(REASON_CODES.PHONE_UNPARSEABLE);
     }
 
     const valid = reason_codes.length === 0;

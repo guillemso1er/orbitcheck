@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { API_ENDPOINTS, UI_STRINGS, ERROR_MESSAGES } from '../constants';
 import { useAuth } from '../AuthContext';
 import {
   Chart as ChartJS,
@@ -35,9 +36,6 @@ interface UsageData {
   request_id: string;
 }
 
-interface UsageDashboardProps {
-  token: string;
-}
 
 function prepareDailyChartData(data: UsageData) {
   const dailyLabels = data.by_day.map(d => d.date);
@@ -120,17 +118,17 @@ const StatsGrid: React.FC<{ data: UsageData }> = ({ data }) => (
   <div className="stats-grid">
     <div className="stat-card">
       <div className="stat-icon">📊</div>
-      <h3>Total Validations</h3>
+      <h3>{UI_STRINGS.TOTAL_VALIDATIONS}</h3>
       <p className="stat-value">{data.totals.validations.toLocaleString()}</p>
     </div>
     <div className="stat-card">
       <div className="stat-icon">🛒</div>
-      <h3>Total Orders</h3>
+      <h3>{UI_STRINGS.TOTAL_ORDERS}</h3>
       <p className="stat-value">{data.totals.orders.toLocaleString()}</p>
     </div>
     <div className="stat-card">
       <div className="stat-icon">⚡</div>
-      <h3>Cache Hit Ratio</h3>
+      <h3>{UI_STRINGS.CACHE_HIT_RATIO}</h3>
       <p className="stat-value">{data.cache_hit_ratio.toFixed(1)}%</p>
     </div>
   </div>
@@ -140,7 +138,7 @@ const DailyUsageChart: React.FC<{ data: UsageData }> = ({ data }) => {
   const chartData = prepareDailyChartData(data);
   return (
     <div className="chart-card">
-      <h3 className="chart-title">Daily Usage</h3>
+      <h3 className="chart-title">{UI_STRINGS.DAILY_USAGE}</h3>
       <div className="chart-container">
         <Line options={chartOptions} data={chartData} />
       </div>
@@ -152,7 +150,7 @@ const TopReasonCodesChart: React.FC<{ data: UsageData }> = ({ data }) => {
   const chartData = prepareReasonChartData(data);
   return (
     <div className="chart-card">
-      <h3 className="chart-title">Top Reason Codes</h3>
+      <h3 className="chart-title">{UI_STRINGS.TOP_REASON_CODES}</h3>
       <div className="chart-container">
         <Bar options={chartOptions} data={chartData} />
       </div>
@@ -164,7 +162,7 @@ const CacheHitRatioChart: React.FC<{ data: UsageData }> = ({ data }) => {
   const chartData = prepareCacheChartData(data);
   return (
     <div className="chart-card">
-      <h3 className="chart-title">Cache Hit Ratio</h3>
+      <h3 className="chart-title">{UI_STRINGS.CACHE_HIT_RATIO}</h3>
       <div className="chart-container">
         <Pie data={chartData} />
       </div>
@@ -172,7 +170,8 @@ const CacheHitRatioChart: React.FC<{ data: UsageData }> = ({ data }) => {
   );
 };
 
-const UsageDashboard: React.FC<UsageDashboardProps> = ({ token }) => {
+const UsageDashboard: React.FC = () => {
+  const { token } = useAuth();
   const [data, setData] = useState<UsageData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -180,13 +179,13 @@ const UsageDashboard: React.FC<UsageDashboardProps> = ({ token }) => {
   const fetchUsage = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/usage', {
+      const response = await fetch(API_ENDPOINTS.USAGE, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
       });
       if (!response.ok) {
-        throw new Error('Failed to fetch usage data');
+        throw new Error(ERROR_MESSAGES.FETCH_USAGE);
       }
       const usageData = await response.json();
       setData(usageData);
@@ -201,14 +200,14 @@ const UsageDashboard: React.FC<UsageDashboardProps> = ({ token }) => {
     fetchUsage();
   }, [fetchUsage]);
 
-  if (loading) return <div className="loading">Loading usage dashboard...</div>;
+  if (loading) return <div className="loading">{UI_STRINGS.LOADING} usage dashboard...</div>;
   if (error) return <div className="alert alert-danger">Error: {error}</div>;
-  if (!data) return <div className="empty-state">No usage data available.</div>;
+  if (!data) return <div className="empty-state">{UI_STRINGS.NO_DATA}</div>;
 
   return (
     <div className="usage-dashboard">
       <header className="page-header">
-        <h2>Usage Dashboard</h2>
+        <h2>{UI_STRINGS.USAGE_DASHBOARD}</h2>
       </header>
 
       <StatsGrid data={data} />

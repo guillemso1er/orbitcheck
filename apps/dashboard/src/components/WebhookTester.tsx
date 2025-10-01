@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { API_ENDPOINTS, UI_STRINGS, ERROR_MESSAGES } from '../constants';
 import { useAuth } from '../AuthContext';
 
 interface WebhookTestResult {
@@ -13,9 +14,6 @@ interface WebhookTestResult {
   request_id: string;
 }
 
-interface WebhookTesterProps {
-  token: string;
-}
 
 const TestForm: React.FC<{
   url: string;
@@ -79,10 +77,10 @@ const TestForm: React.FC<{
       <button type="submit" className="btn btn-primary" disabled={loading}>
         {loading ? (
           <>
-            <span className="spinner"></span> Sending...
+            <span className="spinner"></span> {UI_STRINGS.SENDING}
           </>
         ) : (
-          'Send Test Payload'
+          UI_STRINGS.SEND_TEST_PAYLOAD
         )}
       </button>
     </div>
@@ -92,11 +90,11 @@ const TestForm: React.FC<{
 const RequestTab: React.FC<{ result: WebhookTestResult }> = ({ result }) => (
   <div className="tab-content">
     <div className="content-section">
-      <h4>Sent To</h4>
+      <h4>{UI_STRINGS.SENT_TO}</h4>
       <p><code>{result.sent_to}</code></p>
     </div>
     <div className="content-section">
-      <h4>Payload</h4>
+      <h4>{UI_STRINGS.PAYLOAD}</h4>
       <pre>{JSON.stringify(result.payload, null, 2)}</pre>
     </div>
   </div>
@@ -105,21 +103,21 @@ const RequestTab: React.FC<{ result: WebhookTestResult }> = ({ result }) => (
 const ResponseTab: React.FC<{ result: WebhookTestResult }> = ({ result }) => (
   <div className="tab-content">
     <div className="content-section">
-      <h4>Status</h4>
+      <h4>{UI_STRINGS.STATUS}</h4>
       <div className={`status-badge status-${result.response.status >= 200 && result.response.status < 300 ? 'success' : 'error'}`}>
         {result.response.status} {result.response.status_text}
       </div>
     </div>
     <div className="content-section">
-      <h4>Headers</h4>
+      <h4>{UI_STRINGS.HEADERS}</h4>
       <pre>{JSON.stringify(result.response.headers, null, 2)}</pre>
     </div>
     <div className="content-section">
-      <h4>Body</h4>
+      <h4>{UI_STRINGS.BODY}</h4>
       <pre>{result.response.body}</pre>
     </div>
     <div className="content-section">
-      <h4>Request ID</h4>
+      <h4>{UI_STRINGS.REQUEST_ID}</h4>
       <p><code>{result.request_id}</code></p>
     </div>
   </div>
@@ -133,8 +131,8 @@ const ResultTabs: React.FC<{
 }> = ({ result, activeTab, onTabChange, onClear }) => (
   <div className="result-section">
     <div className="result-header">
-      <h3>Test Result</h3>
-      <button onClick={onClear} className="btn btn-secondary">Clear</button>
+      <h3>{UI_STRINGS.TEST_RESULT}</h3>
+      <button onClick={onClear} className="btn btn-secondary">{UI_STRINGS.CLEAR}</button>
     </div>
 
     <div className="result-tabs">
@@ -142,13 +140,13 @@ const ResultTabs: React.FC<{
         className={`tab-btn ${activeTab === 'request' ? 'active' : ''}`}
         onClick={() => onTabChange('request')}
       >
-        Request
+        {UI_STRINGS.REQUEST}
       </button>
       <button
         className={`tab-btn ${activeTab === 'response' ? 'active' : ''}`}
         onClick={() => onTabChange('response')}
       >
-        Response
+        {UI_STRINGS.RESPONSE}
       </button>
     </div>
 
@@ -160,7 +158,8 @@ const ResultTabs: React.FC<{
   </div>
 );
 
-const WebhookTester: React.FC<WebhookTesterProps> = ({ token }) => {
+const WebhookTester: React.FC = () => {
+  const { token } = useAuth();
   const [url, setUrl] = useState('');
   const [payloadType, setPayloadType] = useState<'validation' | 'order' | 'custom'>('validation');
   const [customPayload, setCustomPayload] = useState('');
@@ -172,7 +171,7 @@ const WebhookTester: React.FC<WebhookTesterProps> = ({ token }) => {
   const handleTest = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!url) {
-      setError('URL is required');
+      setError(UI_STRINGS.URL_REQUIRED);
       return;
     }
     setError(null);
@@ -183,12 +182,12 @@ const WebhookTester: React.FC<WebhookTesterProps> = ({ token }) => {
         try {
           body.custom_payload = JSON.parse(customPayload);
         } catch {
-          setError('Invalid JSON in custom payload');
+          setError(UI_STRINGS.INVALID_JSON);
           return;
         }
       }
       // Placeholder auth - replace with proper auth in todo 10
-      const response = await fetch('/api/webhooks/test', {
+      const response = await fetch(API_ENDPOINTS.WEBHOOKS_TEST, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -197,7 +196,7 @@ const WebhookTester: React.FC<WebhookTesterProps> = ({ token }) => {
         body: JSON.stringify(body)
       });
       if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        throw new Error(ERROR_MESSAGES.SEND_WEBHOOK);
       }
       const data = await response.json();
       setResult(data);
@@ -213,7 +212,7 @@ const WebhookTester: React.FC<WebhookTesterProps> = ({ token }) => {
   return (
     <div className="webhook-tester">
       <header className="page-header">
-        <h2>Webhook Tester</h2>
+        <h2>{UI_STRINGS.WEBHOOK_TESTER}</h2>
       </header>
 
       <div className="tester-section">

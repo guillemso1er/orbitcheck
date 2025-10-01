@@ -3,6 +3,7 @@ import fetch from "node-fetch";
 import { Pool } from "pg";
 import { logEvent } from "../hooks";
 import { verifyJWT } from "./auth";
+import { HTTP_STATUS, ERROR_CODES, ERROR_MESSAGES, PAYLOAD_TYPES, EVENT_TYPES, REASON_CODES, ORDER_ACTIONS } from "../constants";
 import { generateRequestId, rateLimitResponse, securityHeader, sendError, unauthorizedResponse } from "./utils";
 
 
@@ -66,16 +67,16 @@ export function registerWebhookRoutes(app: FastifyInstance, pool: Pool) {
         }
     }, async (req, rep) => {
         const project_id = (req as any).project_id;
-        const { url, payload_type = 'validation', custom_payload } = req.body as {
+        const { url, payload_type = PAYLOAD_TYPES.VALIDATION, custom_payload } = req.body as {
             url: string;
-            payload_type?: 'validation' | 'order' | 'custom';
+            payload_type?: typeof PAYLOAD_TYPES[keyof typeof PAYLOAD_TYPES];
             custom_payload?: any;
         };
         try {
             const request_id = generateRequestId();
 
             if (!url || !/^https?:\/\//.test(url)) {
-                return sendError(rep, 400, 'invalid_url', 'Valid HTTPS/HTTP URL required', request_id);
+                return sendError(rep, HTTP_STATUS.BAD_REQUEST, ERROR_CODES.INVALID_URL, ERROR_MESSAGES[ERROR_CODES.INVALID_URL], request_id);
             }
 
             let payload: any;
@@ -87,38 +88,38 @@ export function registerWebhookRoutes(app: FastifyInstance, pool: Pool) {
             };
 
             switch (payload_type) {
-                case 'validation':
+                case PAYLOAD_TYPES.VALIDATION:
                     payload = {
                         ...common,
-                        event: 'validation_result',
+                        event: EVENT_TYPES.VALIDATION_RESULT,
                         type: 'email',
                         result: {
                             valid: true,
                             normalized: 'user@example.com',
-                            reason_codes: ['email.valid'],
+                            reason_codes: [], // Use actual reason code if needed
                             meta: { domain: 'example.com' }
                         }
                     };
                     break;
-                case 'order':
+                case PAYLOAD_TYPES.ORDER:
                     payload = {
                         ...common,
-                        event: 'order_evaluated',
+                        event: EVENT_TYPES.ORDER_EVALUATED,
                         order_id: 'test-order-123',
                         risk_score: 25,
-                        action: 'approve',
-                        reason_codes: ['order.approved'],
+                        action: ORDER_ACTIONS.APPROVE,
+                        reason_codes: [], // Use actual reason code if needed
                         tags: ['low_risk']
                     };
                     break;
-                case 'custom':
+                case PAYLOAD_TYPES.CUSTOM:
                     if (!custom_payload) {
-                        return sendError(rep, 400, 'missing_payload', 'Custom payload required for custom type', request_id);
+                        return sendError(rep, HTTP_STATUS.BAD_REQUEST, ERROR_CODES.MISSING_PAYLOAD, ERROR_MESSAGES[ERROR_CODES.MISSING_PAYLOAD], request_id);
                     }
                     payload = { ...common, ...custom_payload };
                     break;
                 default:
-                    return sendError(rep, 400, 'invalid_type', 'Invalid payload_type', request_id);
+                    return sendError(rep, HTTP_STATUS.BAD_REQUEST, ERROR_CODES.INVALID_TYPE, ERROR_MESSAGES[ERROR_CODES.INVALID_TYPE], request_id);
             }
 
             const response = await fetch(url, {
@@ -148,7 +149,7 @@ export function registerWebhookRoutes(app: FastifyInstance, pool: Pool) {
                 request_id
             };
 
-            await logEvent(project_id, 'webhook_test', '/webhooks/test', [], 200, {
+            await logEvent(project_id, 'webhook_test', '/webhooks/test', [], HTTP_STATUS.OK, {
                 url,
                 payload_type,
                 response_status: response.status
@@ -158,13 +159,13 @@ export function registerWebhookRoutes(app: FastifyInstance, pool: Pool) {
         } catch (err) {
             const request_id = generateRequestId();
             const errorMsg = err instanceof Error ? err.message : 'Unknown error';
-            await logEvent(project_id, 'webhook_test', '/webhooks/test', ['webhook.send_failed'], 500, {
+            await logEvent(project_id, 'webhook_test', '/webhooks/test', [REASON_CODES.WEBHOOK_SEND_FAILED], HTTP_STATUS.INTERNAL_SERVER_ERROR, {
                 url,
                 payload_type,
                 error: errorMsg
             }, pool);
 
-            return sendError(rep, 500, 'send_failed', errorMsg, request_id);
+            return sendError(rep, HTTP_STATUS.INTERNAL_SERVER_ERROR, ERROR_CODES.WEBHOOK_SEND_FAILED, errorMsg, request_id);
         }
     });
 }

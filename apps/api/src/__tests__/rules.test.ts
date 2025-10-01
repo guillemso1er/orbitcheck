@@ -64,8 +64,8 @@ describe('Rules Endpoints', () => {
 
             expect(res.statusCode).toBe(200);
             expect(res.body.reason_codes.length).toBeGreaterThan(0);
-            expect(res.body.reason_codes[0].code).toBe('email.invalid_format');
-            expect(res.body.reason_codes[0].severity).toBe('low');
+            expect(res.body.reason_codes[0].code).toBe('address.po_box');
+            expect(res.body.reason_codes[0].severity).toBe('high');
         });
     });
 

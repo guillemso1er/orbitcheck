@@ -4,12 +4,13 @@ import { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { Pool } from "pg";
 import crypto from "crypto";
 import { env } from "../env";
+import { HTTP_STATUS, ERROR_CODES, ERROR_MESSAGES, PG_UNIQUE_VIOLATION, PLAN_TYPES, PROJECT_NAMES, API_KEY_NAMES, JWT_EXPIRES_IN, API_KEY_PREFIX, STATUS } from "../constants";
 import { generateRequestId, sendError, sendServerError } from "./utils";
 
 export async function verifyJWT(req: FastifyRequest, rep: FastifyReply, pool: Pool) {
     const header = req.headers["authorization"];
     if (!header || !header.startsWith("Bearer ")) {
-        return rep.status(401).send({ error: { code: "unauthorized", message: "Missing JWT token" } });
+        return rep.status(HTTP_STATUS.UNAUTHORIZED).send({ error: { code: ERROR_CODES.UNAUTHORIZED, message: ERROR_MESSAGES[ERROR_CODES.UNAUTHORIZED] } });
     }
     const token = header.substring(7).trim();
 
@@ -17,21 +18,21 @@ export async function verifyJWT(req: FastifyRequest, rep: FastifyReply, pool: Po
         const decoded = jwt.verify(token, env.JWT_SECRET) as { user_id: string };
         const { rows } = await pool.query('SELECT id FROM users WHERE id = $1', [decoded.user_id]);
         if (rows.length === 0) {
-            return rep.status(401).send({ error: { code: "invalid_token", message: "Invalid token" } });
+            return rep.status(HTTP_STATUS.UNAUTHORIZED).send({ error: { code: ERROR_CODES.INVALID_TOKEN, message: ERROR_MESSAGES[ERROR_CODES.INVALID_TOKEN] } });
         }
         (req as any).user_id = decoded.user_id;
 
         // Get default project for user
         const { rows: projectRows } = await pool.query(
             'SELECT p.id as project_id FROM projects p WHERE p.user_id = $1 AND p.name = $2',
-            [decoded.user_id, 'Default Project']
+            [decoded.user_id, PROJECT_NAMES.DEFAULT]
         );
         if (projectRows.length === 0) {
-            return rep.status(403).send({ error: { code: "no_project", message: "No default project found" } });
+            return rep.status(HTTP_STATUS.FORBIDDEN).send({ error: { code: ERROR_CODES.NO_PROJECT, message: ERROR_MESSAGES[ERROR_CODES.NO_PROJECT] } });
         }
         (req as any).project_id = projectRows[0].project_id;
     } catch (err) {
-        return rep.status(401).send({ error: { code: "invalid_token", message: "Invalid or expired token" } });
+        return rep.status(HTTP_STATUS.UNAUTHORIZED).send({ error: { code: ERROR_CODES.INVALID_TOKEN, message: "Invalid or expired token" } });
     }
 }
 
@@ -78,7 +79,7 @@ export function registerAuthRoutes(app: FastifyInstance, pool: Pool) {
             );
 
             if (userRows.length === 0) {
-                return sendError(rep, 409, 'user_exists', 'User already exists', request_id);
+                return sendError(rep, HTTP_STATUS.BAD_REQUEST, ERROR_CODES.USER_EXISTS, ERROR_MESSAGES[ERROR_CODES.USER_EXISTS], request_id);
             }
 
             const user = userRows[0];
@@ -86,28 +87,28 @@ export function registerAuthRoutes(app: FastifyInstance, pool: Pool) {
             // Create default project for user
             const { rows: projectRows } = await pool.query(
                 'INSERT INTO projects (name, plan, user_id) VALUES ($1, $2, $3) RETURNING id',
-                ['Default Project', 'dev', user.id]
+                [PROJECT_NAMES.DEFAULT, PLAN_TYPES.DEV, user.id]
             );
 
             const projectId = projectRows[0].id;
 
             // Generate default API key
-            const fullKey = "ok_" + crypto.randomBytes(32).toString('hex');
+            const fullKey = API_KEY_PREFIX + crypto.randomBytes(32).toString('hex');
             const prefix = fullKey.slice(0, 6);
             const keyHash = crypto.createHash('sha256').update(fullKey).digest('hex');
 
             await pool.query(
-                "INSERT INTO api_keys (project_id, prefix, hash, status, name) VALUES ($1, $2, $3, 'active', $4)",
-                [projectId, prefix, keyHash, 'Default API Key']
+                "INSERT INTO api_keys (project_id, prefix, hash, status, name) VALUES ($1, $2, $3, $4, $5)",
+                [projectId, prefix, keyHash, STATUS.ACTIVE, API_KEY_NAMES.DEFAULT]
             );
 
             // Generate JWT
-            const token = jwt.sign({ user_id: user.id }, env.JWT_SECRET, { expiresIn: '7d' });
+            const token = jwt.sign({ user_id: user.id }, env.JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
 
-            return rep.status(201).send({ token, user, request_id });
+            return rep.status(HTTP_STATUS.CREATED).send({ token, user, request_id });
         } catch (err) {
-            if ((err as any).code === '23505') { // Unique violation
-                return sendError(rep, 409, 'user_exists', 'User already exists', generateRequestId());
+            if ((err as any).code === PG_UNIQUE_VIOLATION) { // Unique violation
+                return sendError(rep, HTTP_STATUS.BAD_REQUEST, ERROR_CODES.USER_EXISTS, ERROR_MESSAGES[ERROR_CODES.USER_EXISTS], generateRequestId());
             }
             return sendServerError(req, rep, err, '/auth/register', generateRequestId());
         }
@@ -149,7 +150,7 @@ export function registerAuthRoutes(app: FastifyInstance, pool: Pool) {
             const { rows } = await pool.query('SELECT id, password_hash FROM users WHERE email = $1', [email]);
 
             if (rows.length === 0 || !(await bcrypt.compare(password, rows[0].password_hash))) {
-                return sendError(rep, 401, 'invalid_credentials', 'Invalid email or password', request_id);
+                return sendError(rep, HTTP_STATUS.UNAUTHORIZED, ERROR_CODES.INVALID_CREDENTIALS, ERROR_MESSAGES[ERROR_CODES.INVALID_CREDENTIALS], request_id);
             }
 
             const user = rows[0];

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { API_ENDPOINTS, UI_STRINGS, ERROR_MESSAGES } from '../constants';
 import { useAuth } from '../AuthContext';
 import { FiltersSection, type FiltersState } from './FiltersSection';
 import { PaginationControls } from './PaginationControls';
@@ -11,11 +12,8 @@ interface LogsResponse {
   total_count: number;
 }
 
-interface LogExplorerProps {
-  token: string;
-}
-
-const LogExplorer: React.FC<LogExplorerProps> = ({ token }) => {
+const LogExplorer: React.FC = () => {
+  const { token } = useAuth();
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [totalCount, setTotalCount] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -58,13 +56,13 @@ const LogExplorer: React.FC<LogExplorerProps> = ({ token }) => {
       if (appliedFilters.date_from) paramsObj.date_from = appliedFilters.date_from;
       if (appliedFilters.date_to) paramsObj.date_to = appliedFilters.date_to;
       const params = new URLSearchParams(paramsObj);
-      const response = await fetch(`/api/logs?${params.toString()}`, {
+      const response = await fetch(`${API_ENDPOINTS.LOGS}?${params.toString()}`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
       });
       if (!response.ok) {
-        throw new Error('Failed to fetch logs');
+        throw new Error(ERROR_MESSAGES.FETCH_LOGS);
       }
       const data: LogsResponse = await response.json();
       setLogs(data.data);
@@ -162,16 +160,16 @@ const LogExplorer: React.FC<LogExplorerProps> = ({ token }) => {
     window.URL.revokeObjectURL(url);
   };
 
-  if (loading) return <div className="loading">Loading logs...</div>;
+  if (loading) return <div className="loading">{UI_STRINGS.LOADING} logs...</div>;
   if (error) return <div className="alert alert-danger">Error: {error}</div>;
 
   return (
     <div className="log-explorer">
       <header className="page-header">
-        <h2>Log Explorer</h2>
+        <h2>{UI_STRINGS.LOG_EXPLORER}</h2>
         <div className="header-actions">
           <button onClick={exportToCSV} className="btn btn-success">
-            <span className="btn-icon">📊</span> Export CSV
+            <span className="btn-icon">📊</span> {UI_STRINGS.EXPORT_CSV}
           </button>
         </div>
       </header>
@@ -186,8 +184,8 @@ const LogExplorer: React.FC<LogExplorerProps> = ({ token }) => {
       <div className="table-section">
         <div className="table-header">
           <div className="table-info">
-            <p>Total Logs: <strong>{totalCount.toLocaleString()}</strong></p>
-            <p>Showing {logs.length} of {totalCount} logs</p>
+            <p>{UI_STRINGS.TOTAL_LOGS}: <strong>{totalCount.toLocaleString()}</strong></p>
+            <p>{UI_STRINGS.SHOWING_LOGS.replace('{logsLength}', logs.length.toString()).replace('{totalCount}', totalCount.toString())}</p>
           </div>
           <PaginationControls
             currentPage={currentPage}

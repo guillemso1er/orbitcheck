@@ -2,6 +2,8 @@ import { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { Pool } from "pg";
 import { securityHeader, generateRequestId, sendServerError } from "./utils";
 
+import { REASON_CODES } from "../constants";
+
 interface ReasonCode {
   code: string;
   description: string;
@@ -9,45 +11,39 @@ interface ReasonCode {
   severity: 'low' | 'medium' | 'high';
 }
 
-const reasonCodes: ReasonCode[] = [
-  // Email validation
-  { code: 'email.invalid_format', description: 'Invalid email format', category: 'email', severity: 'low' },
-  { code: 'email.mx_not_found', description: 'No MX records found for domain', category: 'email', severity: 'medium' },
-  { code: 'email.disposable_domain', description: 'Disposable email domain detected', category: 'email', severity: 'high' },
-  { code: 'email.server_error', description: 'Server error during validation', category: 'email', severity: 'high' },
-
-  // Phone validation
-  { code: 'phone.invalid_format', description: 'Invalid phone number format', category: 'phone', severity: 'low' },
-  { code: 'phone.unparseable', description: 'Phone number could not be parsed', category: 'phone', severity: 'medium' },
-  { code: 'phone.otp_sent', description: 'OTP sent successfully', category: 'phone', severity: 'low' },
-  { code: 'phone.otp_send_failed', description: 'Failed to send OTP', category: 'phone', severity: 'high' },
-
-  // Address validation
-  { code: 'address.po_box', description: 'P.O. Box detected', category: 'address', severity: 'high' },
-  { code: 'address.postal_city_mismatch', description: 'Postal code does not match city', category: 'address', severity: 'medium' },
-
-  // Tax ID validation
-  { code: 'taxid.invalid_format', description: 'Invalid tax ID format', category: 'taxid', severity: 'low' },
-  { code: 'taxid.invalid_checksum', description: 'Invalid tax ID checksum', category: 'taxid', severity: 'medium' },
-  { code: 'taxid.vies_invalid', description: 'VAT number invalid per VIES', category: 'taxid', severity: 'high' },
-  { code: 'taxid.vies_unavailable', description: 'VIES service unavailable', category: 'taxid', severity: 'medium' },
-
-  // Order evaluation
-  { code: 'order.customer_dedupe_match', description: 'Potential duplicate customer detected', category: 'order', severity: 'medium' },
-  { code: 'order.address_dedupe_match', description: 'Potential duplicate address detected', category: 'order', severity: 'medium' },
-  { code: 'order.po_box_block', description: 'Order blocked due to P.O. Box', category: 'order', severity: 'high' },
-  { code: 'order.address_mismatch', description: 'Address validation mismatch', category: 'order', severity: 'medium' },
-  { code: 'order.invalid_email', description: 'Invalid email in order', category: 'order', severity: 'medium' },
-  { code: 'order.invalid_phone', description: 'Invalid phone in order', category: 'order', severity: 'medium' },
-  { code: 'order.duplicate_detected', description: 'Duplicate order detected', category: 'order', severity: 'high' },
-  { code: 'order.cod_risk', description: 'Increased risk due to COD payment', category: 'order', severity: 'medium' },
-  { code: 'order.high_value', description: 'High value order flagged', category: 'order', severity: 'low' },
-  { code: 'order.hold_for_review', description: 'Order held for manual review', category: 'order', severity: 'medium' },
-  { code: 'order.server_error', description: 'Server error during order evaluation', category: 'order', severity: 'high' },
-
-  // Deduplication
-  { code: 'dedupe.server_error', description: 'Server error during deduplication', category: 'dedupe', severity: 'high' },
-];
+const reasonCodes: ReasonCode[] = Object.entries(REASON_CODES).map(([key, code]) => {
+  // Map from code to description, category, severity - this is a simplification; in practice, you'd have a full mapping
+  const descriptions: Record<string, {description: string, category: string, severity: 'low' | 'medium' | 'high'}> = {
+    [REASON_CODES.EMAIL_INVALID_FORMAT]: {description: 'Invalid email format', category: 'email', severity: 'low' },
+    [REASON_CODES.EMAIL_MX_NOT_FOUND]: {description: 'No MX records found for domain', category: 'email', severity: 'medium' },
+    [REASON_CODES.EMAIL_DISPOSABLE_DOMAIN]: {description: 'Disposable email domain detected', category: 'email', severity: 'high' },
+    [REASON_CODES.EMAIL_SERVER_ERROR]: {description: 'Server error during validation', category: 'email', severity: 'high' },
+    [REASON_CODES.PHONE_INVALID_FORMAT]: {description: 'Invalid phone number format', category: 'phone', severity: 'low' },
+    [REASON_CODES.PHONE_UNPARSEABLE]: {description: 'Phone number could not be parsed', category: 'phone', severity: 'medium' },
+    [REASON_CODES.PHONE_OTP_SENT]: {description: 'OTP sent successfully', category: 'phone', severity: 'low' },
+    [REASON_CODES.PHONE_OTP_SEND_FAILED]: {description: 'Failed to send OTP', category: 'phone', severity: 'high' },
+    [REASON_CODES.ADDRESS_PO_BOX]: {description: 'P.O. Box detected', category: 'address', severity: 'high' },
+    [REASON_CODES.ADDRESS_POSTAL_CITY_MISMATCH]: {description: 'Postal code does not match city', category: 'address', severity: 'medium' },
+    [REASON_CODES.TAXID_INVALID_FORMAT]: {description: 'Invalid tax ID format', category: 'taxid', severity: 'low' },
+    [REASON_CODES.TAXID_INVALID_CHECKSUM]: {description: 'Invalid tax ID checksum', category: 'taxid', severity: 'medium' },
+    [REASON_CODES.TAXID_VIES_INVALID]: {description: 'VAT number invalid per VIES', category: 'taxid', severity: 'high' },
+    [REASON_CODES.TAXID_VIES_UNAVAILABLE]: {description: 'VIES service unavailable', category: 'taxid', severity: 'medium' },
+    [REASON_CODES.ORDER_CUSTOMER_DEDUPE_MATCH]: {description: 'Potential duplicate customer detected', category: 'order', severity: 'medium' },
+    [REASON_CODES.ORDER_ADDRESS_DEDUPE_MATCH]: {description: 'Potential duplicate address detected', category: 'order', severity: 'medium' },
+    [REASON_CODES.ORDER_PO_BOX_BLOCK]: {description: 'Order blocked due to P.O. Box', category: 'order', severity: 'high' },
+    [REASON_CODES.ORDER_ADDRESS_MISMATCH]: {description: 'Address validation mismatch', category: 'order', severity: 'medium' },
+    [REASON_CODES.ORDER_INVALID_EMAIL]: {description: 'Invalid email in order', category: 'order', severity: 'medium' },
+    [REASON_CODES.ORDER_INVALID_PHONE]: {description: 'Invalid phone in order', category: 'order', severity: 'medium' },
+    [REASON_CODES.ORDER_DUPLICATE_DETECTED]: {description: 'Duplicate order detected', category: 'order', severity: 'high' },
+    [REASON_CODES.ORDER_COD_RISK]: {description: 'Increased risk due to COD payment', category: 'order', severity: 'medium' },
+    [REASON_CODES.ORDER_HIGH_VALUE]: {description: 'High value order flagged', category: 'order', severity: 'low' },
+    [REASON_CODES.ORDER_HOLD_FOR_REVIEW]: {description: 'Order held for manual review', category: 'order', severity: 'medium' },
+    [REASON_CODES.ORDER_SERVER_ERROR]: {description: 'Server error during order evaluation', category: 'order', severity: 'high' },
+    [REASON_CODES.DEDUP_SERVER_ERROR]: {description: 'Server error during deduplication', category: 'dedupe', severity: 'high' },
+  };
+  const desc = descriptions[code];
+  return { code, description: desc ? desc.description : 'Unknown reason code', category: desc ? desc.category : 'unknown', severity: desc ? desc.severity : 'medium' };
+});
 
 export function registerRulesRoutes(app: FastifyInstance, pool: Pool) {
   const rules = [

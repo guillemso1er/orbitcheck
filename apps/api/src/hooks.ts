@@ -3,6 +3,7 @@ import { FastifyRequest, FastifyReply } from "fastify";
 import IORedis from "ioredis";
 import { Pool } from "pg";
 import { env } from "./env";
+import { HTTP_STATUS, ERROR_CODES, ERROR_MESSAGES, STATUS } from "./constants";
 
 
 /**
@@ -19,7 +20,7 @@ import { env } from "./env";
 export async function auth(req: FastifyRequest, rep: FastifyReply, pool: Pool) {
     const header = req.headers["authorization"];
     if (!header || !header.startsWith("Bearer ")) {
-        return rep.status(401).send({ error: { code: "unauthorized", message: "Missing API key" } });
+        return rep.status(HTTP_STATUS.UNAUTHORIZED).send({ error: { code: ERROR_CODES.UNAUTHORIZED, message: ERROR_MESSAGES[ERROR_CODES.UNAUTHORIZED] } });
     }
     const key = header.substring(7).trim();
     const prefix = key.slice(0, 6);
@@ -29,12 +30,12 @@ export async function auth(req: FastifyRequest, rep: FastifyReply, pool: Pool) {
 
     // Query for active key matching full hash and prefix (efficient indexing on hash/prefix)
     const { rows } = await pool.query(
-        "select id, project_id from api_keys where hash=$1 and prefix=$2 and status='active'",
-        [keyHash, prefix]
+        "select id, project_id from api_keys where hash=$1 and prefix=$2 and status=$3",
+        [keyHash, prefix, STATUS.ACTIVE]
     );
 
     if (rows.length === 0) {
-        return rep.status(401).send({ error: { code: "unauthorized", message: "Invalid API key" } });
+        return rep.status(HTTP_STATUS.UNAUTHORIZED).send({ error: { code: ERROR_CODES.UNAUTHORIZED, message: ERROR_MESSAGES[ERROR_CODES.UNAUTHORIZED] } });
     }
 
     // Update usage timestamp for auditing and analytics
@@ -63,7 +64,7 @@ export async function rateLimit(req: FastifyRequest, rep: FastifyReply, redis: I
     const ttl = 60;
     const cnt = await redis.incr(key);
     if (cnt === 1) await redis.expire(key, ttl);
-    if (cnt > limit) return rep.status(429).send({ error: { code: "rate_limited", message: "Rate limit exceeded" } });
+    if (cnt > limit) return rep.status(HTTP_STATUS.BAD_REQUEST).send({ error: { code: ERROR_CODES.RATE_LIMITED, message: ERROR_MESSAGES[ERROR_CODES.RATE_LIMITED] } });
 }
 
 
@@ -88,7 +89,7 @@ export async function idempotency(req: FastifyRequest, rep: FastifyReply, redis:
         return rep.send(JSON.parse(cached));
     }
     (rep as any).saveIdem = async (payload: any) => {
-        await redis.set(cacheKey, JSON.stringify(payload), "EX", 60 * 60 * 24);
+        await redis.set(cacheKey, JSON.stringify(payload), "EX", 24 * 60 * 60);
     };
 }
 
