@@ -143,6 +143,10 @@ const ApiKeys: React.FC<ApiKeysProps> = ({ token }) => {
   const fetchKeys = useCallback(async () => {
     try {
       setLoading(true);
+      if (!token) {
+        setLoading(false);
+        return;
+      }
       const response = await fetch(API_ENDPOINTS.API_KEYS, {
         headers: {
           'Authorization': `Bearer ${token}`

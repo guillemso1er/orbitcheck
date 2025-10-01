@@ -62,7 +62,7 @@ const Login: React.FC = () => {
     setError(null);
 
     try {
-      const endpoint = isRegister ? '/auth/register' : '/auth/login';
+      const endpoint = `/api/auth/${isRegister ? 'register' : 'login'}`;
       const response = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
