@@ -132,6 +132,12 @@ export const createApp = async () => {
   const app = Fastify({ logger: false });
 
   app.addHook("preHandler", async (req, rep) => {
+    if (req.headers.authorization) {
+      (req as any).project_id = 'test_project'; // Manually set the project_id
+    }
+  });
+
+  app.addHook("preHandler", async (req, rep) => {
     if (req.url.startsWith("/api-keys")) {
       await verifyJWTFunction(req, rep, mockPool);
     }

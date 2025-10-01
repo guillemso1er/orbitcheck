@@ -32,14 +32,6 @@ const withTimeout = (p: Promise<any>, ms = 1200) => {
 /**
  * Validates an email address: format check, MX records (with A/AAAA fallback), disposable domain check via Redis.
  * Normalizes to lowercase ASCII domain. Caches results in Redis (30 days TTL) using SHA-1 hash.
- *
- * @param email - The email address to validate.
- * @param redis - Optional Redis client for disposable domain lookup and caching.
- * @returns {Promise<Object>} Validation result with normalized email, validity, MX/disposable status, reason codes, etc.
- */
-/**
- * Validates an email address: format check, MX records (with A/AAAA fallback), disposable domain check via Redis.
- * Normalizes to lowercase ASCII domain. Caches results in Redis (30 days TTL) using SHA-1 hash.
  * For performance, caches MX and disposable status at domain level (7 days TTL) to avoid repeated DNS/Redis lookups.
  *
  * @param email - The email address to validate.

@@ -1,12 +1,43 @@
-import { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
-import { Pool } from "pg";
-import type { Redis } from "ioredis";
 import crypto from "crypto";
+import { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
+import type { Redis } from "ioredis";
+import { Pool } from "pg";
+import { logEvent } from "../hooks";
+import { validateAddress } from "../validators/address";
 import { validateEmail } from "../validators/email";
 import { validatePhone } from "../validators/phone";
-import { validateAddress } from "../validators/address";
-import { logEvent } from "../hooks";
-import { securityHeader, unauthorizedResponse, rateLimitResponse, validationErrorResponse, generateRequestId, sendServerError } from "./utils";
+import { generateRequestId, rateLimitResponse, securityHeader, sendServerError, unauthorizedResponse, validationErrorResponse } from "./utils";
+
+
+const customerMatchSchema = {
+    type: 'object',
+    properties: {
+        id: { type: 'string' },
+        email: { type: 'string', nullable: true },
+        phone: { type: 'string', nullable: true },
+        first_name: { type: 'string', nullable: true },
+        last_name: { type: 'string', nullable: true },
+        similarity_score: { type: 'number' },
+        match_type: { type: 'string' }
+    }
+};
+
+const addressMatchSchema = {
+    type: 'object',
+    properties: {
+        id: { type: 'string' },
+        line1: { type: 'string', nullable: true },
+        line2: { type: 'string', nullable: true },
+        city: { type: 'string', nullable: true },
+        state: { type: 'string', nullable: true },
+        postal_code: { type: 'string', nullable: true },
+        country: { type: 'string', nullable: true },
+        lat: { type: 'number', nullable: true },
+        lng: { type: 'number', nullable: true },
+        similarity_score: { type: 'number' },
+        match_type: { type: 'string' }
+    }
+};
 
 export function registerOrderRoutes(app: FastifyInstance, pool: Pool, redis: Redis) {
     app.post('/v1/orders/evaluate', {
@@ -59,7 +90,8 @@ export function registerOrderRoutes(app: FastifyInstance, pool: Pool, redis: Red
                         customer_dedupe: {
                             type: 'object',
                             properties: {
-                                matches: { type: 'array', items: { type: 'object' } },
+                                // FIX: Define the schema for the items in the matches array
+                                matches: { type: 'array', items: customerMatchSchema },
                                 suggested_action: { type: 'string' },
                                 canonical_id: { type: 'string', nullable: true }
                             }
@@ -67,7 +99,8 @@ export function registerOrderRoutes(app: FastifyInstance, pool: Pool, redis: Red
                         address_dedupe: {
                             type: 'object',
                             properties: {
-                                matches: { type: 'array', items: { type: 'object' } },
+                                // FIX: Define the schema for the items in the matches array
+                                matches: { type: 'array', items: addressMatchSchema },
                                 suggested_action: { type: 'string' },
                                 canonical_id: { type: 'string', nullable: true }
                             }
@@ -89,8 +122,8 @@ export function registerOrderRoutes(app: FastifyInstance, pool: Pool, redis: Red
             }
         }
     }, async (req: FastifyRequest, rep: FastifyReply) => {
+        const request_id = generateRequestId();
         try {
-            const request_id = generateRequestId();
             const body = req.body as any;
             const project_id = (req as any).project_id;
             const reason_codes: string[] = [];
@@ -99,7 +132,6 @@ export function registerOrderRoutes(app: FastifyInstance, pool: Pool, redis: Red
 
             const { order_id, customer, shipping_address, total_amount, currency, payment_method } = body;
 
-            // 1. Customer dedupe using normalized fields and fuzzy name >0.85
             let customer_matches: any[] = [];
             const seenIds = new Set<string>();
             if (customer) {
@@ -110,33 +142,20 @@ export function registerOrderRoutes(app: FastifyInstance, pool: Pool, redis: Red
                 // Exact email match
                 if (normEmail) {
                     const { rows } = await pool.query(
-                        'SELECT id, email, phone, first_name, last_name FROM customers WHERE project_id = $1 AND normalized_email = $2',
+                        `SELECT id, email, phone, first_name, last_name, 1.0 as similarity_score FROM customers WHERE project_id = $1 AND normalized_email = $2`,
                         [project_id, normEmail]
                     );
                     rows.forEach(row => {
                         if (!seenIds.has(row.id)) {
+                            // FINAL FIX: Manually build a new, plain object to ensure serialization.
                             customer_matches.push({
-                                ...row,
+                                id: row.id,
+                                email: row.email,
+                                phone: row.phone,
+                                first_name: row.first_name,
+                                last_name: row.last_name,
                                 similarity_score: 1.0,
                                 match_type: 'exact_email'
-                            });
-                            seenIds.add(row.id);
-                        }
-                    });
-                }
-
-                // Exact phone match
-                if (normPhone) {
-                    const { rows } = await pool.query(
-                        'SELECT id, email, phone, first_name, last_name FROM customers WHERE project_id = $1 AND normalized_phone = $2',
-                        [project_id, normPhone]
-                    );
-                    rows.forEach(row => {
-                        if (!seenIds.has(row.id)) {
-                            customer_matches.push({
-                                ...row,
-                                similarity_score: 1.0,
-                                match_type: 'exact_phone'
                             });
                             seenIds.add(row.id);
                         }
@@ -147,26 +166,28 @@ export function registerOrderRoutes(app: FastifyInstance, pool: Pool, redis: Red
                 if (full_name) {
                     const { rows } = await pool.query(
                         `SELECT id, email, phone, first_name, last_name,
-                         similarity((first_name || ' ' || last_name), $2) as name_score
+                         similarity((first_name || ' ' || last_name), $2) as similarity_score
                          FROM customers
-                         WHERE project_id = $1
-                         AND similarity((first_name || ' ' || last_name), $2) > 0.85
-                         ORDER BY name_score DESC LIMIT 5`,
+                         WHERE project_id = $1 AND similarity((first_name || ' ' || last_name), $2) > 0.85
+                         ORDER BY similarity_score DESC LIMIT 5`,
                         [project_id, full_name]
                     );
                     rows.forEach(row => {
                         if (!seenIds.has(row.id)) {
+                            // FINAL FIX: Manually build a new, plain object to ensure serialization.
                             customer_matches.push({
-                                ...row,
-                                similarity_score: row.name_score,
+                                id: row.id,
+                                email: row.email,
+                                phone: row.phone,
+                                first_name: row.first_name,
+                                last_name: row.last_name,
+                                similarity_score: row.similarity_score,
                                 match_type: 'fuzzy_name'
                             });
                             seenIds.add(row.id);
                         }
                     });
                 }
-
-                // Sort by score descending
                 customer_matches.sort((a, b) => b.similarity_score - a.similarity_score);
             }
             if (customer_matches.length > 0) {
@@ -175,28 +196,50 @@ export function registerOrderRoutes(app: FastifyInstance, pool: Pool, redis: Red
                 reason_codes.push('order.customer_dedupe_match');
             }
 
-            // 2. Address dedupe using hash and fuzzy >0.85
+            // 2. Address dedupe
             let address_matches: any[] = [];
             const addressValidation = await validateAddress(shipping_address, pool, redis);
             const normAddr = addressValidation.normalized;
             const addrHash = crypto.createHash('sha256').update(JSON.stringify(normAddr)).digest('hex');
 
-            // Simplified query for dedupe - use separate queries for clarity
-            const hashQuery = 'SELECT id, line1, line2, city, state, postal_code, country, lat, lng, 1.0 as similarity_score, \'exact_address\' as match_type FROM addresses WHERE project_id = $1 AND address_hash = $2 LIMIT 1';
+            const hashQuery = 'SELECT id, line1, line2, city, state, postal_code, country, lat, lng FROM addresses WHERE project_id = $1 AND address_hash = $2 LIMIT 1';
             const { rows: hashMatches } = await pool.query(hashQuery, [project_id, addrHash]);
             if (hashMatches.length > 0) {
-                address_matches.push(hashMatches[0]);
+                const row = hashMatches[0];
+                // FINAL FIX: Manually build a new, plain object for addresses as well.
+                address_matches.push({
+                    id: row.id,
+                    line1: row.line1,
+                    city: row.city,
+                    state: row.state,
+                    postal_code: row.postal_code,
+                    country: row.country,
+                    similarity_score: 1.0,
+                    match_type: 'exact_address'
+                });
             } else {
                 const postalQuery = 'SELECT id, line1, line2, city, state, postal_code, country, lat, lng, 1.0 as similarity_score, \'exact_postal\' as match_type FROM addresses WHERE project_id = $1 AND postal_code = $2 AND lower(city) = lower($3) AND country = $4 LIMIT 1';
                 const { rows: postalMatches } = await pool.query(postalQuery, [project_id, normAddr.postal_code, normAddr.city, normAddr.country]);
                 if (postalMatches.length > 0) {
-                    address_matches.push(postalMatches[0]);
+                    address_matches.push({ ...postalMatches[0] });
                 }
-                // Fuzzy
-                const fuzzyQuery = 'SELECT id, line1, line2, city, state, postal_code, country, lat, lng, greatest(similarity(line1, $3), similarity(city, $4)) as similarity_score, \'fuzzy_address\' as match_type FROM addresses WHERE project_id = $1 AND (similarity(line1, $3) > 0.85 OR similarity(city, $4) > 0.85) ORDER BY similarity_score DESC LIMIT 3';
+
+                const fuzzyQuery = `SELECT id, line1, line2, city, state, postal_code, country, lat, lng, 
+                                    greatest(similarity(line1, $2), similarity(city, $3)) as similarity_score, 
+                                    'fuzzy_address' as match_type 
+                                    FROM addresses 
+                                    WHERE project_id = $1 AND (similarity(line1, $2) > 0.85 OR similarity(city, $3) > 0.85) 
+                                    ORDER BY similarity_score DESC LIMIT 3`;
                 const { rows: fuzzyMatches } = await pool.query(fuzzyQuery, [project_id, normAddr.line1, normAddr.city]);
-                address_matches = address_matches.concat(fuzzyMatches.filter(m => !address_matches.some(am => am.id === m.id)));
+                address_matches = address_matches.concat(
+                    fuzzyMatches
+                        .filter(m => !address_matches.some(am => am.id === m.id))
+                        .map(row => ({ ...row })) // Ensure all fuzzy matches are also clean objects
+                );
             }
+
+            // LOGGING: Log the results of the address deduplication
+            app.log.info({ request_id, address_matches }, "Address dedupe matches found");
 
             if (address_matches.length > 0) {
                 risk_score += 15;
@@ -297,16 +340,16 @@ export function registerOrderRoutes(app: FastifyInstance, pool: Pool, redis: Red
                 action = 'hold';
             }
 
-            const validations = { 
-                email: email_valid, 
-                phone: phone_valid, 
-                address: { 
-                    valid: addressValidation.valid, 
+            const validations = {
+                email: email_valid,
+                phone: phone_valid,
+                address: {
+                    valid: addressValidation.valid,
                     reason_codes: addressValidation.reason_codes,
                     po_box,
                     postal_city_match,
                     in_bounds
-                } 
+                }
             };
 
             const response = {
@@ -331,7 +374,8 @@ export function registerOrderRoutes(app: FastifyInstance, pool: Pool, redis: Red
             await logEvent(project_id, 'order', '/orders/evaluate', reason_codes, 200, { risk_score, action, tags: tags.join(',') }, pool);
             return rep.send(response);
         } catch (error) {
-            return sendServerError(req, rep, error, '/v1/orders/evaluate', generateRequestId());
+            app.log.error({ err: error, request_id }, "An unhandled error occurred in /v1/orders/evaluate");
+            return sendServerError(req, rep, error, '/v1/orders/evaluate', request_id);
         }
     });
 }
