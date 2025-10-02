@@ -8,21 +8,23 @@ test.describe('Login Flow', () => {
 
     // Navigate to login page
     await page.goto('/login');
-
-    // Register new user
-    await expect(page).toHaveURL(/.*\/login/);
-    await page.getByRole('heading', { name: 'Welcome Back' }).waitFor({ state: 'visible' });
+    await expect(page.getByRole('heading', { name: 'Welcome Back' })).toBeVisible();
 
     // Toggle to register
     await page.getByRole('button', { name: 'Create Account' }).click();
     await expect(page.getByRole('heading', { name: 'Create Account' })).toBeVisible();
 
-    // Fill register form
+    // Fill register form and initiate the API call
     await page.fill('input[type="email"]', email);
     await page.fill('input[type="password"]', password);
-    await page.getByRole('button', { name: 'Create Account' }).click();
 
-    // Wait for navigation to dashboard
+    // *** FIX: Wait for the registration API call to complete before proceeding ***
+    // Start waiting for the response BEFORE clicking the button that triggers it.
+    const registerResponse = page.waitForResponse('**/api/auth/register');
+    await page.getByRole('button', { name: 'Create Account' }).click();
+    await registerResponse; // The test will pause here until the network call is finished
+
+    // Now that the API call is complete, assert the navigation
     await expect(page).toHaveURL(/.*\/api-keys/);
     await expect(page.getByRole('heading', { name: /OrbiCheck/ })).toBeVisible();
 
@@ -33,7 +35,11 @@ test.describe('Login Flow', () => {
     // Login with the same credentials
     await page.fill('input[type="email"]', email);
     await page.fill('input[type="password"]', password);
+
+    // *** FIX: Wait for the login API call to complete ***
+    const loginResponse = page.waitForResponse('**/api/auth/login');
     await page.getByRole('button', { name: 'Sign In' }).click();
+    await loginResponse;
 
     // Should navigate back to dashboard
     await expect(page).toHaveURL(/.*\/api-keys/);
@@ -46,9 +52,13 @@ test.describe('Login Flow', () => {
     // Try login with invalid credentials
     await page.fill('input[type="email"]', 'invalid@example.com');
     await page.fill('input[type="password"]', 'wrongpass');
-    await page.getByRole('button', { name: 'Sign In' }).click();
 
-    // Should show error
+    // *** FIX: Wait for the failed login API call to complete ***
+    const errorResponse = page.waitForResponse('**/api/auth/login');
+    await page.getByRole('button', { name: 'Sign In' }).click();
+    await errorResponse;
+
+    // Now that the API call has finished and the state has updated, check for the error
     await expect(page.locator('.alert-danger')).toBeVisible();
     await expect(page).toHaveURL(/.*\/login/); // Should not navigate away
   });

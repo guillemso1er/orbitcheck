@@ -56,21 +56,131 @@ Orbicheck is a validation and risk assessment API for e-commerce and business op
 ### Usage
 - GET /usage: Project usage dashboard.
 
-## Setup
+## Setup and Running the App
 
-1. Install dependencies: `pnpm install`
-2. Set up environment (.env): DATABASE_URL, REDIS_URL, API keys for LocationIQ/Google/Twilio/VIES.
-3. Run migrations: `pnpm run db:migrate`
-4. Start API: `pnpm run api:dev`
-5. Access dashboard: http://localhost:5173 (separate dev server).
+Orbicheck is a monorepo with two main applications: the API (backend server) and the Dashboard (React frontend).
+
+### Prerequisites
+- Node.js (v20+ recommended)
+- pnpm (package manager)
+- PostgreSQL database
+- Redis (for caching and rate limiting)
+- Optional: Docker/Podman for containerized setup
+
+### 1. Clone and Install Dependencies
+From the root directory:
+```
+pnpm install
+```
+
+### 2. Environment Configuration
+Copy `.env.example` to `.env` (if available) or create `.env` in the root with the following (adjust as needed):
+```
+DATABASE_URL=postgresql://postgres:postgres@localhost:5432/orbicheck
+REDIS_URL=redis://localhost:6379
+PORT=8080
+LOG_LEVEL=info
+LOCATIONIQ_KEY=your_locationiq_key (optional)
+TWILIO_ACCOUNT_SID=your_twilio_sid (for OTP)
+TWILIO_AUTH_TOKEN=your_twilio_token
+TWILIO_PHONE_NUMBER=your_twilio_number
+VIES_DOWN=true (to skip VIES if unavailable)
+RATE_LIMIT_COUNT=30000 (for development)
+S3_ENDPOINT=http://localhost:9000 (if using MinIO)
+S3_ACCESS_KEY=minioadmin
+S3_SECRET_KEY=minioadmin
+S3_BUCKET=orbicheck
+```
+
+Ensure your PostgreSQL and Redis servers are running locally or update the URLs accordingly.
+
+### 3. Database Setup
+Run migrations for the API:
+```
+pnpm --filter @orbicheck/api run migrate
+```
+
+Seed initial data (creates a dev project and API key):
+```
+pnpm --filter @orbicheck/api exec ts-node --require dotenv/config src/seed.ts
+```
+Note the output PROJECT_ID and API_KEY for authentication.
+
+### 4. Running the API (Backend)
+In one terminal, from the root:
+```
+pnpm --filter @orbicheck/api run dev
+```
+The API will start on http://localhost:8080. Access Swagger docs at http://localhost:8080/documentation.
+
+For production build:
+```
+pnpm --filter @orbicheck/api run build
+pnpm --filter @orbicheck/api run start
+```
+
+### 5. Running the Dashboard (Frontend)
+In another terminal, from the root:
+```
+pnpm --filter @orbicheck/dashboard run dev
+```
+The dashboard will start on http://localhost:5173. Use the seeded API key to log in.
+
+For production build:
+```
+pnpm --filter @orbicheck/dashboard run build
+```
+
+### Containerized Setup (Optional)
+Use Docker Compose for full stack (DB, Redis, API, Dashboard):
+```
+podman compose -f infra/compose/dev.compose.yml up -d
+```
+Access API at http://localhost:8080 and Dashboard at http://localhost:5173.
 
 ## Testing
 
-Run `pnpm run test` for unit/integration tests.
+### Unit Tests (API)
+The API uses Jest for unit and integration tests.
+From the root:
+```
+pnpm --filter @orbicheck/api run test
+```
+This runs tests in `apps/api/src/__tests__/`. Coverage reports are generated if configured.
+
+Watch mode:
+```
+pnpm --filter @orbicheck/api run test:watch
+```
+
+### E2E Tests (Dashboard)
+The Dashboard uses Playwright for end-to-end tests.
+From the root (or apps/dashboard):
+```
+pnpm --filter @orbicheck/dashboard exec playwright test
+```
+Tests are in `apps/dashboard/e2e/`. Run specific tests:
+```
+pnpm --filter @orbicheck/dashboard exec playwright test apiKeys.spec.ts
+```
+For UI mode (visual debugging):
+```
+pnpm --filter @orbicheck/dashboard exec playwright test --ui
+```
+
+### Unit Tests (Dashboard)
+Currently, no dedicated unit tests for the Dashboard. Consider adding Jest or Vitest for component testing in the future.
+
+### Load Testing
+Load tests using k6 scripts in `tests/k6/`:
+```
+k6 run tests/k6/email.js
+```
+Adjust scripts for authentication and endpoints as needed.
 
 ## Contributing
 
-See CONTRIBUTING.md.
+See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 
