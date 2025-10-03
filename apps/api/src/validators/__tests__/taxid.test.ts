@@ -223,7 +223,7 @@ describe('Tax ID Validators', () => {
   describe('validateTaxId', () => {
     beforeEach(() => {
       const mockSoap = require('soap') as { createClientAsync: jest.Mock };
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
+       
       mockSoap.createClientAsync.mockResolvedValue({
         checkVatAsync: jest.fn().mockResolvedValue([{ valid: true }]),
       });
@@ -237,7 +237,7 @@ describe('Tax ID Validators', () => {
 
     it('should handle VAT via VIES', async () => {
       const mockSoap = require('soap') as { createClientAsync: jest.Mock };
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
+       
       mockSoap.createClientAsync.mockResolvedValue({
         checkVatAsync: jest.fn().mockResolvedValue([{ valid: true }]),
       });

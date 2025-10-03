@@ -9,10 +9,12 @@ jest.mock('jsonwebtoken', () => ({
   verify: jest.fn(),
 }));
 
+import * as crypto from 'node:crypto';
+
 import * as bcrypt from 'bcryptjs';
 import type { FastifyInstance } from 'fastify';
 import * as jwt from 'jsonwebtoken';
-import * as crypto from 'node:crypto';
+
 import { createApp, mockPool, mockRedisInstance, setupBeforeAll } from './testSetup';
 
 describe('Auth Routes', () => {

@@ -1,7 +1,7 @@
-import { detectPoBox, normalizeAddress } from '../address';
-
+import type { ChildProcess } from 'node:child_process';
 import * as cpModule from 'node:child_process';
-import { ChildProcess } from 'node:child_process';
+
+import { detectPoBox, normalizeAddress } from '../address';
 
 // Mock the entire 'node:child_process' module
 jest.mock('node:child_process');
@@ -51,8 +51,8 @@ postcode: 10001
 country: US`;
 
       // Provide an implementation for the mocked execFile function
-      mockedExecFile.mockImplementation(((...args: any[]): ChildProcess => {
-        const callback = args.pop();
+      mockedExecFile.mockImplementation(((...arguments_: any[]): ChildProcess => {
+        const callback = arguments_.pop();
 
         // FIX: Call the callback with a single object argument to match
         // how promisify(execFile) resolves.
@@ -79,8 +79,8 @@ country: US`;
     });
 
     it('should handle fallback normalization when libpostal fails', async () => {
-      mockedExecFile.mockImplementation(((...args: any[]): ChildProcess => {
-        const callback = args.pop();
+      mockedExecFile.mockImplementation(((...arguments_: any[]): ChildProcess => {
+        const callback = arguments_.pop();
         callback(new Error('Mock libpostal error'), '', ''); // Simulate failure
         return {} as ChildProcess;
       }) as any);
@@ -105,8 +105,8 @@ country: US`;
     });
 
     it('should handle missing fields gracefully', async () => {
-      mockedExecFile.mockImplementation(((...args: any[]): ChildProcess => {
-        const callback = args.pop();
+      mockedExecFile.mockImplementation(((...arguments_: any[]): ChildProcess => {
+        const callback = arguments_.pop();
         callback(new Error('Mock error'), '', ''); // Simulate failure
         return {} as ChildProcess;
       }) as any);

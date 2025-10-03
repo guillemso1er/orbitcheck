@@ -5,7 +5,7 @@ import fastifySwagger from '@fastify/swagger';
 import fastifySwaggerUi from '@fastify/swagger-ui';
 import * as Sentry from '@sentry/node';
 import { Queue, Worker } from 'bullmq';
-import type { FastifyInstance, FastifyReply,FastifyRequest } from "fastify";
+import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import Fastify from "fastify";
 import IORedis from "ioredis";
 import cron from 'node-cron';
@@ -14,6 +14,7 @@ import { Pool } from "pg";
 import { runLogRetention } from './cron/retention';
 import { environment } from "./env";
 import { disposableProcessor } from './jobs/refreshDisposable';
+import startupGuard from './startup-guard';
 import { registerRoutes } from "./web";
 
 /**
@@ -53,7 +54,7 @@ export async function build(pool: Pool, redis: IORedis): Promise<FastifyInstance
         request.log.error({ err: error }, 'Unhandled error');
         reply.status(error.statusCode ?? 500).send({ error: 'internal_error' });
     });
-    
+
     // Register OpenAPI/Swagger for automatic API documentation generation
     await app.register(fastifySwagger, {
         openapi: {
@@ -165,9 +166,37 @@ export async function start(): Promise<void> {
         maxRetriesPerRequest: null // This is required by BullMQ
     });
 
+    function withTimeout<T>(p: Promise<T>, ms: number, message: string) {
+        return new Promise<T>((resolve, reject) => {
+            const t = setTimeout(() => reject(new Error(message)), ms);
+            p.then(
+                (v) => { clearTimeout(t); resolve(v); },
+                (error) => { clearTimeout(t); reject(error); }
+            );
+        });
+    }
+    console.log('All dependencies are connected. Building Fastify app...');
+
     // --- Step 2: Build the App and Start Workers ---
     const app = await build(pool, appRedis);
-
+    if (process.env.NODE_ENV !== 'production') {
+        await app.register(startupGuard);
+    }
+    const timeoutMs = Number(process.env.STARTUP_SMOKETEST_TIMEOUT ?? 2000);
+    try {
+        const res = await withTimeout(
+            app.inject({ method: 'GET', url: '/health' }),
+            timeoutMs,
+            `Startup smoke test timed out after ${timeoutMs}ms. A hook/handler is likely not async or not calling done().`
+        );
+        if (res.statusCode !== 200) {
+            throw new Error(`Startup smoke test failed: /health returned ${res.statusCode}. Body: ${res.body}`);
+        }
+        console.log('Startup smoke test passed.');
+    } catch (error) {
+        console.error('FATAL: Startup check failed:', error);
+        process.exit(1);
+    }
     const disposableQueue = new Queue('disposable', { connection: appRedis });
     const disposableWorker = new Worker('disposable',
         disposableProcessor, { connection: appRedis });

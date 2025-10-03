@@ -4,9 +4,9 @@ jest.mock('../../env', () => ({
   }
 }));
 
+import type { Job } from 'bullmq'; // <-- 1. Import the Job type
 import IORedis from 'ioredis';
 import fetch from 'node-fetch';
-import type { Job } from 'bullmq'; // <-- 1. Import the Job type
 
 import { disposableProcessor } from '../refreshDisposable';
 

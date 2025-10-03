@@ -1,7 +1,7 @@
 // Import the Fastify type for better code quality
 import type { FastifyInstance } from 'fastify';
-import type { CountryCode, ParsedNumber, PhoneNumber } from 'libphonenumber-js';
 import type { Redis } from 'ioredis';
+import type { CountryCode, ParsedNumber, PhoneNumber } from 'libphonenumber-js';
 import request from 'supertest';
 
 // Import the necessary setup functions and mock instances

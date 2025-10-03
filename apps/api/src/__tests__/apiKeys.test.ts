@@ -1,6 +1,7 @@
+import * as crypto from 'node:crypto';
+
 import type { FastifyInstance } from 'fastify';
 import jwt from 'jsonwebtoken';
-import * as crypto from 'node:crypto';
 import request from 'supertest';
 
 import { createApp, mockPool, setupBeforeAll } from './testSetup';
@@ -20,17 +21,17 @@ describe('API Keys Routes (JWT Auth)', () => {
         await setupBeforeAll();
         app = await createApp();
 
-        app.addHook('preHandler', (req, reply, done) => {
-            if (req.url.startsWith('/api-keys')) {
+        app.addHook('preHandler', (request_, reply, done) => {
+            if (request_.url.startsWith('/api-keys')) {
                 try {
-                    if (!req.headers.authorization?.startsWith('Bearer ')) {
+                    if (!request_.headers.authorization?.startsWith('Bearer ')) {
                         return reply.status(401).send({ error: { code: 'missing_token', message: 'Authorization header is missing or invalid.' } });
                     }
-                    const token = req.headers.authorization.split(' ')[1];
+                    const token = request_.headers.authorization.split(' ')[1];
                     mockedJwtVerify(token);
-                    (req as any).project_id = 'test_project';
+                    (request_ as any).project_id = 'test_project';
                     done();
-                } catch (error) {
+                } catch {
                     return reply.status(401).send({ error: { code: 'invalid_token', message: 'The provided token is invalid.' } });
                 }
             } else {

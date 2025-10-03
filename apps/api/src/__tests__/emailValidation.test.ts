@@ -1,10 +1,11 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access */
 
+import crypto from 'node:crypto';
+
 import type { FastifyInstance } from 'fastify'; // Import the type for safety
 import type { Redis } from 'ioredis';
 import request from 'supertest';
 
-import crypto from 'node:crypto';
 import type { ValidationResult } from '../validators/email';
 import { createApp, hapi, mockDns, mockPool, mockRedisInstance, mockValidateEmail, setupBeforeAll } from './testSetup';
 

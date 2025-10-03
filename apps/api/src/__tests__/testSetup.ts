@@ -273,7 +273,7 @@ export const setupBeforeAll = async () => {
     mx_found: true,
     reason_codes: [],
     request_id: 'test-request-id',
-    ttl_seconds: 2592000,
+    ttl_seconds: 2_592_000,
   });
 
   mockValidatePhone.mockResolvedValue({
@@ -349,26 +349,26 @@ describe('testSetup', () => {
 
 // test diagnostics: lifecycle + response logging
 export function enableDiagnostics(app: any) {
-  app.addHook('onRequest', (req: any, _rep: any, done: any) => {
-    console.log(`[onRequest] ${req.method} ${req.url} auth=${req.headers.authorization ?? '<none>'}`);
+  app.addHook('onRequest', (request: any, _rep: any, done: any) => {
+    console.log(`[onRequest] ${request.method} ${request.url} auth=${request.headers.authorization ?? '<none>'}`);
     done();
   });
 
-  app.addHook('preHandler', async (req: any, rep: any) => {
-    console.log(`[preHandler] ${req.method} ${req.url}`);
+  app.addHook('preHandler', async (request: any, rep: any) => {
+    console.log(`[preHandler] ${request.method} ${request.url}`);
   });
 
-  app.addHook('onSend', async (req: any, rep: any, payload: any) => {
+  app.addHook('onSend', async (request: any, rep: any, payload: any) => {
     const status = rep.statusCode;
     if (status >= 400) {
       let bodyText = '';
       try { bodyText = typeof payload === 'string' ? payload : payload?.toString?.() ?? ''; } catch {}
-      console.log(`[onSend] ${req.method} ${req.url} -> ${status} body=${bodyText}`);
+      console.log(`[onSend] ${request.method} ${request.url} -> ${status} body=${bodyText}`);
     }
     return payload;
   });
 
-  app.addHook('onError', async (req: any, rep: any, err: any) => {
-    console.log(`[onError] ${req.method} ${req.url} err=${err?.message} status=${rep.statusCode}`);
+  app.addHook('onError', async (request: any, rep: any, error: any) => {
+    console.log(`[onError] ${request.method} ${request.url} err=${error?.message} status=${rep.statusCode}`);
   });
 }
