@@ -1,5 +1,6 @@
-import { FastifyReply } from "fastify";
-import crypto from "crypto";
+import crypto from "node:crypto";
+
+import type { FastifyReply } from "fastify";
 
 export const errorSchema = {
     type: 'object',
@@ -47,9 +48,9 @@ export function sendError(rep: FastifyReply, code: number, errorCode: string, me
     return rep.status(code).send(response);
 }
 
-export function sendServerError(req: any, rep: FastifyReply, error: unknown, endpoint: string, requestId?: string): FastifyReply {
-    if (req.log) {
-        req.log.error(error, `${endpoint} error`);
+export function sendServerError(request: any, rep: FastifyReply, error: unknown, endpoint: string, requestId?: string): FastifyReply {
+    if (request.log) {
+        request.log.error(error, `${endpoint} error`);
     }
     const response: ErrorResponse = { error: { code: 'server_error', message: 'Internal server error' } };
     if (requestId) {

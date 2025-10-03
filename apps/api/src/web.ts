@@ -1,6 +1,7 @@
-import { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
-import IORedis from "ioredis";
-import { Pool } from "pg";
+import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
+import type IORedis from "ioredis";
+import type { Pool } from "pg";
+
 import { auth, idempotency, rateLimit } from "./hooks";
 import { registerApiKeysRoutes } from './routes/api-keys';
 import { registerAuthRoutes, verifyJWT } from "./routes/auth";
@@ -21,8 +22,8 @@ import { registerWebhookRoutes } from './routes/webhook';
  * @param pool - PostgreSQL connection pool
  * @returns {Promise<void>} Resolves after authentication or sends error response
  */
-async function authenticateRequest(req: FastifyRequest, rep: FastifyReply, pool: Pool) {
-    const url = req.url;
+async function authenticateRequest(request: FastifyRequest, rep: FastifyReply, pool: Pool) : Promise<void> {
+    const url = request.url;
 
     // Skip authentication for public endpoints: health checks, API docs, and auth routes
     if (url.startsWith("/health") || url.startsWith("/documentation") || url.startsWith("/auth")) {
@@ -33,11 +34,7 @@ async function authenticateRequest(req: FastifyRequest, rep: FastifyReply, pool:
     const isDashboardRoute = url.startsWith("/api-keys") || url.startsWith("/webhooks");
 
     // Apply JWT verification for dashboard or API key auth for public API
-    if (isDashboardRoute) {
-        await verifyJWT(req, rep, pool);
-    } else {
-        await auth(req, rep, pool);
-    }
+    await (isDashboardRoute ? verifyJWT(request, rep, pool) : auth(request, rep, pool));
 }
 
 /**
@@ -50,13 +47,13 @@ async function authenticateRequest(req: FastifyRequest, rep: FastifyReply, pool:
  * @param redis - Redis client for rate counters and idempotency storage.
  * @returns {Promise<void>} Resolves after middleware or sends 429/200 replay.
  */
-async function applyRateLimitingAndIdempotency(req: FastifyRequest, rep: FastifyReply, redis: IORedis) {
-    const url = req.url;
+async function applyRateLimitingAndIdempotency(request: FastifyRequest, rep: FastifyReply, redis: IORedis) : Promise<void> {
+    const url = request.url;
     const isDashboardRoute = url.startsWith("/api-keys") || url.startsWith("/webhooks");
 
     if (!isDashboardRoute) {
-        await rateLimit(req, rep, redis);
-        await idempotency(req, rep, redis);
+        await rateLimit(request, rep, redis);
+        await idempotency(request, rep, redis);
     }
 }
 
@@ -70,11 +67,11 @@ async function applyRateLimitingAndIdempotency(req: FastifyRequest, rep: Fastify
  * @param pool - Shared PostgreSQL pool for all route database access.
  * @param redis - Shared Redis client for caching, rate limiting, and idempotency in routes.
  */
-export function registerRoutes(app: FastifyInstance, pool: Pool, redis: IORedis) {
+export function registerRoutes(app: FastifyInstance, pool: Pool, redis: IORedis) : void {
     // Global preHandler hook chain: authentication + rate limiting/idempotency middleware
-    app.addHook("preHandler", async (req, rep) => {
-        await authenticateRequest(req, rep, pool);
-        await applyRateLimitingAndIdempotency(req, rep, redis);
+    app.addHook("preHandler", async (request, rep) => {
+        await authenticateRequest(request, rep, pool);
+        await applyRateLimitingAndIdempotency(request, rep, redis);
     });
 
     // Register modular route groups with shared dependencies

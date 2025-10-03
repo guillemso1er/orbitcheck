@@ -2,12 +2,14 @@ import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 const exec = promisify(execFile);
 
-import crypto from "crypto";
+import crypto from "node:crypto";
+
 import type { Redis } from "ioredis";
 import fetch from "node-fetch";
 import type { Pool } from "pg";
-import { env } from "../env";
+
 import { REASON_CODES } from "../constants";
+import { environment } from "../env";
 
 // Simple PO Box detector for multiple locales
 /**
@@ -19,7 +21,7 @@ import { REASON_CODES } from "../constants";
  */
 export function detectPoBox(line: string): boolean {
     const s = (line || "").toLowerCase();
-    return /\b(?:po\s*box|p\.?o\.?\s*box|apartado(?:\s+postal)?|caixa\s+postal|casilla|cas\.\s*b|box)\b/i.test(s);
+    return /\b(?:p\.?o\.?\s*box|apartado(?:\s+postal)?|caixa\s+postal|casilla|cas\.\s*b|box)\b/i.test(s);
 }
 
 // Use libpostal CLI (installed in image) to normalize; simple wrapper to avoid native bindings complexity
@@ -31,15 +33,24 @@ export function detectPoBox(line: string): boolean {
  * @param addr - Input address object with line1, line2 (optional), city, state (optional), postal_code, country.
  * @returns {Promise<Object>} Normalized address object with structured fields.
  */
-export async function normalizeAddress(addr: { line1: string; line2?: string; city: string; state?: string; postal_code: string; country: string; }): Promise<any> {
+interface NormalizedAddress {
+  line1: string;
+  line2: string;
+  city: string;
+  state: string;
+  postal_code: string;
+  country: string;
+}
+
+export async function normalizeAddress(addr: { line1: string; line2?: string; city: string; state?: string; postal_code: string; country: string; }): Promise<NormalizedAddress> {
     const joined = `${addr.line1}, ${addr.line2 || ""}, ${addr.city}, ${addr.state || ""}, ${addr.postal_code}, ${addr.country}`;
     try {
         const { stdout } = await exec("/usr/local/bin/parse-address", [joined]);
-        const parts: any = {};
-        stdout.split("\n").forEach(line => {
+        const parts: Record<string, string> = {};
+        for (const line of stdout.split("\n")) {
             const [k, v] = line.split(":").map(s => s?.trim());
             if (k && v) parts[k] = v;
-        });
+        }
         return {
             line1: (parts.house_number && parts.road) ? `${parts.house_number} ${parts.road}` : addr.line1,
             line2: parts.unit || addr.line2 || "",
@@ -47,7 +58,7 @@ export async function normalizeAddress(addr: { line1: string; line2?: string; ci
             state: parts.state || addr.state || "",
             postal_code: parts.postcode || addr.postal_code,
             country: (parts.country || addr.country).toUpperCase()
-        };
+        } as NormalizedAddress;
     } catch {
         return {
             line1: addr.line1,
@@ -56,7 +67,7 @@ export async function normalizeAddress(addr: { line1: string; line2?: string; ci
             state: addr.state || "",
             postal_code: addr.postal_code,
             country: addr.country.toUpperCase()
-        };
+        } as NormalizedAddress;
     }
 }
 
@@ -70,17 +81,41 @@ export async function normalizeAddress(addr: { line1: string; line2?: string; ci
  * @param redis - Optional Redis client for caching.
  * @returns {Promise<Object>} Validation result with normalized address, validity, geo coords, reason codes, etc.
  */
+interface GeoLocation {
+  lat: number;
+  lng: number;
+  confidence: number;
+  source: string;
+}
+
+interface LocationResponse {
+  lat: string;
+  lon: string;
+}
+
+interface GoogleGeocodeResponse {
+  status: string;
+  results: Array<{
+    geometry: {
+      location: {
+        lat: number;
+        lng: number;
+      };
+    };
+  }>;
+}
+
 export async function validateAddress(
     addr: { line1: string; line2?: string; city: string; state?: string; postal_code: string; country: string; },
     pool: Pool,
     redis?: Redis
 ): Promise<{
     valid: boolean;
-    normalized: any;
+    normalized: NormalizedAddress;
     po_box: boolean;
     postal_city_match: boolean;
     in_bounds: boolean;
-    geo: any;
+    geo: GeoLocation | null;
     reason_codes: string[];
     request_id: string;
     ttl_seconds: number;
@@ -88,8 +123,6 @@ export async function validateAddress(
     const input = JSON.stringify(addr);
     const hash = crypto.createHash('sha1').update(input).digest('hex');
     const cacheKey = `validator:address:${hash}`;
-
-    let result: any;
 
     if (redis) {
         const cached = await redis.get(cacheKey);
@@ -114,35 +147,35 @@ export async function validateAddress(
         reason_codes.push(REASON_CODES.ADDRESS_POSTAL_CITY_MISMATCH);
     }
 
-    let geo: any = null;
+    let geo: GeoLocation | null = null;
     let in_bounds = true;
     try {
         const q = encodeURIComponent(`${norm.line1} ${norm.city} ${norm.state || ""} ${norm.postal_code} ${norm.country}`);
         let primarySuccess = false;
 
-        if (env.LOCATIONIQ_KEY) {
-            const url = `https://us1.locationiq.com/search.php?key=${env.LOCATIONIQ_KEY}&q=${q}&format=json&addressdetails=1`;
+        if (environment.LOCATIONIQ_KEY) {
+            const url = `https://us1.locationiq.com/search.php?key=${environment.LOCATIONIQ_KEY}&q=${q}&format=json&addressdetails=1`;
             const r = await fetch(url, { headers: { "User-Agent": "Orbicheck/0.1" } });
-            const j = await r.json();
-            if (Array.isArray(j) && j[0]) {
-                geo = { lat: parseFloat(j[0].lat), lng: parseFloat(j[0].lon), confidence: 0.9, source: 'locationiq' };
+            const index: LocationResponse[] = await r.json();
+            if (Array.isArray(index) && index[0]) {
+                geo = { lat: Number.parseFloat(index[0].lat), lng: Number.parseFloat(index[0].lon), confidence: 0.9, source: 'locationiq' };
                 primarySuccess = true;
             }
         } else {
-            const url = `${env.NOMINATIM_URL}/search?format=json&limit=1&q=${q}`;
+            const url = `${environment.NOMINATIM_URL}/search?format=json&limit=1&q=${q}`;
             const r = await fetch(url, { headers: { "User-Agent": "Orbicheck/0.1" } });
-            const j = await r.json();
-            if (Array.isArray(j) && j[0]) {
-                geo = { lat: parseFloat(j[0].lat), lng: parseFloat(j[0].lon), confidence: 0.7, source: 'nominatim' };
+            const index: LocationResponse[] = await r.json();
+            if (Array.isArray(index) && index[0]) {
+                geo = { lat: Number.parseFloat(index[0].lat), lng: Number.parseFloat(index[0].lon), confidence: 0.7, source: 'nominatim' };
                 primarySuccess = true;
             }
         }
 
         // Google fallback if primary failed and enabled
-        if (!primarySuccess && env.USE_GOOGLE_FALLBACK && env.GOOGLE_GEOCODING_KEY) {
-            const googleUrl = `https://maps.googleapis.com/maps/api/geocode/json?address=${q}&key=${env.GOOGLE_GEOCODING_KEY}`;
+        if (!primarySuccess && environment.USE_GOOGLE_FALLBACK && environment.GOOGLE_GEOCODING_KEY) {
+            const googleUrl = `https://maps.googleapis.com/maps/api/geocode/json?address=${q}&key=${environment.GOOGLE_GEOCODING_KEY}`;
             const gr = await fetch(googleUrl, { headers: { "User-Agent": "Orbicheck/0.1" } });
-            const gj = await gr.json();
+            const gj: GoogleGeocodeResponse = await gr.json();
             if (gj.status === 'OK' && gj.results && gj.results[0]) {
                 const loc = gj.results[0].geometry.location;
                 geo = { lat: loc.lat, lng: loc.lng, confidence: 0.8, source: 'google' };
@@ -168,7 +201,7 @@ export async function validateAddress(
     }
 
     const valid = postal_city_match && !po_box && in_bounds;
-    result = {
+    const result = {
         valid,
         normalized: norm,
         po_box,

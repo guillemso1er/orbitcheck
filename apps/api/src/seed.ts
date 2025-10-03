@@ -1,11 +1,12 @@
 import dotenv from 'dotenv';
 dotenv.config();
-import { createHash, randomBytes } from "crypto";
-import { Pool } from "pg";
-import fetch from 'node-fetch';
+import { createHash, randomBytes } from "node:crypto";
+import * as fs from 'node:fs';
+import * as path from 'node:path';
+
 import AdmZip from 'adm-zip';
-import * as fs from 'fs';
-import * as path from 'path';
+import fetch from 'node-fetch';
+import { Pool } from "pg";
 
 console.log('DATABASE_URL:', process.env.DATABASE_URL);
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
@@ -58,7 +59,7 @@ async function downloadAndImport() {
             for (const line of lines) {
                 const [postalCode, placeName, adminName1, adminCode1, lat, lng, accuracy] = line.split('\t');
                 if (postalCode && placeName) { // Skip empty postal codes
-                    batch.push([country, postalCode, placeName, adminName1 || '', adminCode1 || '', parseFloat(lat), parseFloat(lng)]);
+                    batch.push([country, postalCode, placeName, adminName1 || '', adminCode1 || '', Number.parseFloat(lat), Number.parseFloat(lng)]);
 
                     if (batch.length >= batchSize) {
                         await insertBatch(pool, batch);
@@ -128,7 +129,7 @@ async function insertBatch(pool: Pool, batch: (string | number)[][]) {
 
     // Check if geonames_postal is empty and import if needed
     const { rows: countRows } = await pool.query("SELECT COUNT(*) FROM geonames_postal");
-    const count = parseInt(countRows[0].count);
+    const count = Number.parseInt(countRows[0].count);
     if (count === 0) {
         console.log('GeoNames postal data not found, importing...');
         await downloadAndImport();

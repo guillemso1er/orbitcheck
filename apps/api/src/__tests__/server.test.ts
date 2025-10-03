@@ -4,13 +4,22 @@ import Fastify from 'fastify';
 import IORedis from 'ioredis';
 import cron from 'node-cron';
 import { Pool } from 'pg';
+
 import { registerRoutes } from '../web';
 
 // --- Top-level Mocks ---
 
 // Tell Jest to use the manual mock we created in src/__mocks__/env.ts
 // This line MUST come before any imports from '../server' or its dependencies.
-jest.mock('../env');
+jest.mock('../env', () => ({
+  environment: {
+    PORT: 8080,
+    DATABASE_URL: 'postgres://test',
+    REDIS_URL: 'redis://test',
+    SENTRY_DSN: '',
+    LOG_LEVEL: 'info',
+  }
+}));
 
 jest.mock('@sentry/node', () => ({
   init: jest.fn(),
@@ -27,6 +36,7 @@ const mockApp = {
   get: jest.fn(),
   listen: jest.fn().mockResolvedValue(undefined),
   log: { info: jest.fn() },
+  setErrorHandler: jest.fn(),
 };
 jest.mock('fastify', () => jest.fn(() => mockApp));
 
@@ -52,7 +62,7 @@ jest.mock('../web', () => ({
 }));
 
 // Import the mocked env so we can manipulate it in tests
-import { env } from '../env';
+import { environment } from '../env';
 // Re-require the server module to ensure it gets the mocked dependencies
 import { build, start } from '../server';
 
@@ -66,10 +76,10 @@ describe('Server Build', () => {
     jest.clearAllMocks();
     mockPool = {} as any;
     mockRedis = {} as any;
-    (mockApp.register as jest.Mock).mockResolvedValue(undefined);
+    (mockApp.register).mockResolvedValue(undefined);
 
     // Reset env to a default, clean state before each test
-    Object.assign(env, {
+    Object.assign(environment, {
       SENTRY_DSN: '',
       LOG_LEVEL: 'info',
       PORT: 8080,
@@ -78,8 +88,8 @@ describe('Server Build', () => {
 
   it('should build the Fastify app and init Sentry when DSN is set', async () => {
     // 1. Arrange: Modify the imported mock env for this specific test
-    env.SENTRY_DSN = 'test_dsn';
-    env.LOG_LEVEL = 'debug';
+    environment.SENTRY_DSN = 'test_dsn';
+    environment.LOG_LEVEL = 'debug';
 
     // 2. Act: Run the function under test
     const app = await build(mockPool, mockRedis);
@@ -87,10 +97,22 @@ describe('Server Build', () => {
     // 3. Assert: Check the outcomes
     expect(Sentry.init).toHaveBeenCalledWith({
       dsn: 'test_dsn',
-      tracesSampleRate: 1.0,
+      tracesSampleRate: 1,
     });
-    expect(Fastify).toHaveBeenCalledWith({ logger: { level: 'debug' } });
-    expect(mockRegisterRoutes).toHaveBeenCalledWith(app, mockPool, mockRedis);
+    expect(Fastify).toHaveBeenCalledWith({
+      logger: {
+        level: 'debug',
+        transport: {
+          target: 'pino-pretty',
+          options: {
+            colorize: true,
+            translateTime: 'SYS:standard'
+          }
+        }
+      },
+      requestTimeout: 10_000,
+    });
+     expect(mockRegisterRoutes).toHaveBeenCalledWith(app, mockPool, mockRedis);
   });
 });
 
@@ -100,18 +122,32 @@ describe('Server Startup', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    mockPool = { query: jest.fn() } as any;
-    mockRedis = { quit: jest.fn() } as any;
+    mockPool = {
+      query: jest.fn(),
+      connect: jest.fn().mockResolvedValue({
+        query: jest.fn().mockResolvedValue({ rows: [{ value: 1 }] }),
+        release: jest.fn(),
+      }),
+    } as any;
+    mockRedis = {
+      quit: jest.fn().mockResolvedValue(true),
+      status: 'ready' as const,
+      on: jest.fn(),
+      ping: jest.fn().mockResolvedValue('PONG'),
+      sadd: jest.fn().mockResolvedValue(1),
+      del: jest.fn().mockResolvedValue(1),
+      rename: jest.fn().mockResolvedValue('OK'),
+    } as any;
     (Pool as unknown as jest.Mock).mockImplementation(() => mockPool);
     (IORedis as unknown as jest.Mock).mockImplementation(() => mockRedis);
-    (mockQueue.add as jest.Mock).mockResolvedValue({});
+    (mockQueue.add).mockResolvedValue({});
   });
 
   it('should start the server and setup all services', async () => {
     // Arrange: Configure env for the startup process
-    env.PORT = 3000;
-    env.DATABASE_URL = 'postgres://test';
-    env.REDIS_URL = 'redis://test';
+    environment.PORT = 3000;
+    environment.DATABASE_URL = 'postgres://test';
+    environment.REDIS_URL = 'redis://test';
 
     // Act
     await start();
@@ -123,7 +159,7 @@ describe('Server Startup', () => {
     expect(Worker).toHaveBeenCalledWith('disposable', expect.any(Function), { connection: mockRedis });
     expect(cron.schedule).toHaveBeenCalledWith('0 0 * * *', expect.any(Function));
     expect(mockApp.listen).toHaveBeenCalledWith({ port: 3000, host: '0.0.0.0' });
-    expect(mockApp.log.info).toHaveBeenCalledWith(`Orbicheck API server listening on http://0.0.0.0:${env.PORT}`);
+    expect(mockApp.log.info).toHaveBeenCalledWith(`Orbicheck API server listening on http://0.0.0.0:${environment.PORT}`);
   });
 
   it('should handle startup errors', async () => {

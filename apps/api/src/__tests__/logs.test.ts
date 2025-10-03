@@ -1,6 +1,7 @@
+import type { FastifyInstance } from 'fastify'; // Import the type for safety
 import request from 'supertest';
-import { createApp, setupBeforeAll, mockPool } from './testSetup';
-import { FastifyInstance } from 'fastify'; // Import the type for safety
+
+import { createApp, mockPool,setupBeforeAll } from './testSetup';
 
 describe('Logs Retrieval Endpoints', () => {
   let app: FastifyInstance;
@@ -48,14 +49,15 @@ describe('Logs Retrieval Endpoints', () => {
         return Promise.resolve({ rows: [] });
       });
 
-      const res = await request(app.server)
-        .get('/logs')
-        .set('Authorization', 'Bearer valid_key');
+      const response = await request(app.server)
+          .get('/logs')
+          .set('Authorization', 'Bearer valid_key');
 
-      expect(res.statusCode).toBe(200);
-      expect(res.body.data.length).toBe(1);
-      expect(res.body.data[0].id).toBe('log-1');
-      expect(res.body.total_count).toBe(1);
+      expect(response.status).toBe(200);
+      const body = response.body as { data: unknown[]; total_count: number };
+      expect(body.data.length).toBe(1);
+      expect((body.data[0] as { id: string }).id).toBe('log-1');
+      expect(body.total_count).toBe(1);
     });
 
     it('should filter logs by reason_code', async () => {
@@ -76,12 +78,13 @@ describe('Logs Retrieval Endpoints', () => {
         return Promise.resolve({ rows: [] });
       });
 
-      const res = await request(app.server)
-        .get('/logs?reason_code=email.invalid_format')
-        .set('Authorization', 'Bearer valid_key');
+      const response = await request(app.server)
+          .get('/logs?reason_code=email.invalid_format')
+          .set('Authorization', 'Bearer valid_key');
 
-      expect(res.statusCode).toBe(200);
-      expect(res.body.data[0].reason_codes).toContain('email.invalid_format');
+      expect(response.status).toBe(200);
+      const body = response.body as { data: { reason_codes: string[] }[] };
+      expect((body.data[0] as { reason_codes: string[] }).reason_codes).toContain('email.invalid_format');
     });
 
     it('should filter logs by endpoint and status', async () => {
@@ -102,13 +105,14 @@ describe('Logs Retrieval Endpoints', () => {
         return Promise.resolve({ rows: [] });
       });
 
-      const res = await request(app.server)
-        .get('/logs?endpoint=/v1/validate/email&status=400')
-        .set('Authorization', 'Bearer valid_key');
+      const response = await request(app.server)
+          .get('/logs?endpoint=/v1/validate/email&status=400')
+          .set('Authorization', 'Bearer valid_key');
 
-      expect(res.statusCode).toBe(200);
-      expect(res.body.data[0].endpoint).toBe('/v1/validate/email');
-      expect(res.body.data[0].status).toBe(400);
+      expect(response.status).toBe(200);
+      const body = response.body as { data: { endpoint: string; status: number }[] };
+      expect((body.data[0] as { endpoint: string }).endpoint).toBe('/v1/validate/email');
+      expect((body.data[0] as { status: number }).status).toBe(400);
     });
 
     it('should handle pagination with limit and offset', async () => {
@@ -132,15 +136,16 @@ describe('Logs Retrieval Endpoints', () => {
         return Promise.resolve({ rows: [] });
       });
 
-      const res = await request(app.server)
-        .get('/logs?limit=1&offset=1')
-        .set('Authorization', 'Bearer valid_key');
+      const response = await request(app.server)
+          .get('/logs?limit=1&offset=1')
+          .set('Authorization', 'Bearer valid_key');
 
-      expect(res.statusCode).toBe(200);
-      expect(res.body.data.length).toBe(1);
-      expect(res.body.data[0].id).toBe('log-1');
-      expect(res.body.total_count).toBe(2);
-      expect(res.body.next_cursor).toBe('2');
+      expect(response.status).toBe(200);
+      const body = response.body as { data: { id: string }[]; total_count: number; next_cursor: string };
+      expect(body.data.length).toBe(1);
+      expect((body.data[0] as { id: string }).id).toBe('log-1');
+      expect(body.total_count).toBe(2);
+      expect(body.next_cursor).toBe('2');
     });
   });
 });

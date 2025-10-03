@@ -1,5 +1,5 @@
 // This is the mock version of your environment variables.
-export const env = {
+export const environment = {
     SENTRY_DSN: '',
     LOG_LEVEL: 'info',
     DATABASE_URL: '',

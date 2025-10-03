@@ -181,7 +181,7 @@ export const TOP_REASONS_LIMIT = 10 as const;
 
 export const CACHE_HIT_PLACEHOLDER = 0.95 as const;
 
-export const SIMILARITY_EXACT = 1.0 as const;
+export const SIMILARITY_EXACT = 1 as const;
 
 export const SIMILARITY_FUZZY_THRESHOLD = 0.85 as const;
 

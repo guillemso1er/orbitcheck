@@ -1,15 +1,16 @@
-import { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
+import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import fetch from "node-fetch";
-import { Pool } from "pg";
+import type { Pool } from "pg";
+
+import { ERROR_CODES, ERROR_MESSAGES, EVENT_TYPES, HTTP_STATUS, ORDER_ACTIONS,PAYLOAD_TYPES, REASON_CODES } from "../constants";
 import { logEvent } from "../hooks";
 import { verifyJWT } from "./auth";
-import { HTTP_STATUS, ERROR_CODES, ERROR_MESSAGES, PAYLOAD_TYPES, EVENT_TYPES, REASON_CODES, ORDER_ACTIONS } from "../constants";
 import { generateRequestId, rateLimitResponse, securityHeader, sendError, unauthorizedResponse } from "./utils";
 
 
 export function registerWebhookRoutes(app: FastifyInstance, pool: Pool) {
     app.post('/webhooks/test', {
-        preHandler: async (req: FastifyRequest, rep: FastifyReply) => await verifyJWT(req, rep, pool),
+        preHandler: async (request: FastifyRequest, rep: FastifyReply) => verifyJWT(request, rep, pool),
         schema: {
             summary: 'Test Webhook',
             description: 'Sends a sample payload to the provided webhook URL and returns the response. Useful for testing webhook configurations.',
@@ -65,9 +66,9 @@ export function registerWebhookRoutes(app: FastifyInstance, pool: Pool) {
                 500: { description: 'Failed to send request' }
             }
         }
-    }, async (req, rep) => {
-        const project_id = (req as any).project_id;
-        const { url, payload_type = PAYLOAD_TYPES.VALIDATION, custom_payload } = req.body as {
+    }, async (request, rep) => {
+        const project_id = (request as any).project_id;
+        const { url, payload_type = PAYLOAD_TYPES.VALIDATION, custom_payload } = request.body as {
             url: string;
             payload_type?: typeof PAYLOAD_TYPES[keyof typeof PAYLOAD_TYPES];
             custom_payload?: any;
@@ -88,7 +89,7 @@ export function registerWebhookRoutes(app: FastifyInstance, pool: Pool) {
             };
 
             switch (payload_type) {
-                case PAYLOAD_TYPES.VALIDATION:
+                case PAYLOAD_TYPES.VALIDATION: {
                     payload = {
                         ...common,
                         event: EVENT_TYPES.VALIDATION_RESULT,
@@ -101,7 +102,8 @@ export function registerWebhookRoutes(app: FastifyInstance, pool: Pool) {
                         }
                     };
                     break;
-                case PAYLOAD_TYPES.ORDER:
+                }
+                case PAYLOAD_TYPES.ORDER: {
                     payload = {
                         ...common,
                         event: EVENT_TYPES.ORDER_EVALUATED,
@@ -112,14 +114,17 @@ export function registerWebhookRoutes(app: FastifyInstance, pool: Pool) {
                         tags: ['low_risk']
                     };
                     break;
-                case PAYLOAD_TYPES.CUSTOM:
+                }
+                case PAYLOAD_TYPES.CUSTOM: {
                     if (!custom_payload) {
                         return sendError(rep, HTTP_STATUS.BAD_REQUEST, ERROR_CODES.MISSING_PAYLOAD, ERROR_MESSAGES[ERROR_CODES.MISSING_PAYLOAD], request_id);
                     }
                     payload = { ...common, ...custom_payload };
                     break;
-                default:
+                }
+                default: {
                     return sendError(rep, HTTP_STATUS.BAD_REQUEST, ERROR_CODES.INVALID_TYPE, ERROR_MESSAGES[ERROR_CODES.INVALID_TYPE], request_id);
+                }
             }
 
             const response = await fetch(url, {
@@ -133,9 +138,9 @@ export function registerWebhookRoutes(app: FastifyInstance, pool: Pool) {
 
             const responseBody = await response.text();
             const responseHeaders: Record<string, string> = {};
-            response.headers.forEach((value, key) => {
+            for (const [key, value] of response.headers.entries()) {
                 responseHeaders[key] = value;
-            });
+            }
 
             const result = {
                 sent_to: url,
@@ -156,16 +161,16 @@ export function registerWebhookRoutes(app: FastifyInstance, pool: Pool) {
             }, pool);
 
             return rep.send(result);
-        } catch (err) {
+        } catch (error) {
             const request_id = generateRequestId();
-            const errorMsg = err instanceof Error ? err.message : 'Unknown error';
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
             await logEvent(project_id, 'webhook_test', '/webhooks/test', [REASON_CODES.WEBHOOK_SEND_FAILED], HTTP_STATUS.INTERNAL_SERVER_ERROR, {
                 url,
                 payload_type,
-                error: errorMsg
+                error: errorMessage
             }, pool);
 
-            return sendError(rep, HTTP_STATUS.INTERNAL_SERVER_ERROR, ERROR_CODES.WEBHOOK_SEND_FAILED, errorMsg, request_id);
+            return sendError(rep, HTTP_STATUS.INTERNAL_SERVER_ERROR, ERROR_CODES.WEBHOOK_SEND_FAILED, errorMessage, request_id);
         }
     });
 }

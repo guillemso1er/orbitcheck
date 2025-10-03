@@ -1,9 +1,11 @@
-import crypto from "crypto";
-import { FastifyRequest, FastifyReply } from "fastify";
-import IORedis from "ioredis";
-import { Pool } from "pg";
-import { env } from "./env";
-import { HTTP_STATUS, ERROR_CODES, ERROR_MESSAGES, STATUS } from "./constants";
+import crypto from "node:crypto";
+
+import type { FastifyReply,FastifyRequest } from "fastify";
+import type IORedis from "ioredis";
+import type { Pool } from "pg";
+
+import { ERROR_CODES, ERROR_MESSAGES, HTTP_STATUS, STATUS } from "./constants";
+import { environment } from "./env";
 
 
 /**
@@ -17,12 +19,12 @@ import { HTTP_STATUS, ERROR_CODES, ERROR_MESSAGES, STATUS } from "./constants";
  * @param pool - PostgreSQL connection pool for database queries.
  * @returns {Promise<void>} Resolves on success, sends 401 error on failure.
  */
-export async function auth(req: FastifyRequest, rep: FastifyReply, pool: Pool) {
-    const header = req.headers["authorization"];
+export async function auth(request: FastifyRequest, rep: FastifyReply, pool: Pool) {
+    const header = request.headers["authorization"];
     if (!header || !header.startsWith("Bearer ")) {
         return rep.status(HTTP_STATUS.UNAUTHORIZED).send({ error: { code: ERROR_CODES.UNAUTHORIZED, message: ERROR_MESSAGES[ERROR_CODES.UNAUTHORIZED] } });
     }
-    const key = header.substring(7).trim();
+    const key = header.slice(7).trim();
     const prefix = key.slice(0, 6);
 
     // Compute SHA-256 hash for secure storage and comparison (avoids storing plaintext keys)
@@ -45,7 +47,7 @@ export async function auth(req: FastifyRequest, rep: FastifyReply, pool: Pool) {
     );
 
     // Attach project_id to request for downstream route access
-    (req as any).project_id = rows[0].project_id;
+    (request as any).project_id = rows[0].project_id;
 }
 
 /**
@@ -58,9 +60,9 @@ export async function auth(req: FastifyRequest, rep: FastifyReply, pool: Pool) {
  * @param redis - Redis client for atomic increment and expiration.
  * @returns {Promise<void>} Resolves if under limit, sends 429 if exceeded.
  */
-export async function rateLimit(req: FastifyRequest, rep: FastifyReply, redis: IORedis) {
-    const key = `rl:${(req as any).project_id}:${req.ip}`;
-    const limit = env.RATE_LIMIT_COUNT;
+export async function rateLimit(request: FastifyRequest, rep: FastifyReply, redis: IORedis) {
+    const key = `rl:${(request as any).project_id}:${request.ip}`;
+    const limit = environment.RATE_LIMIT_COUNT;
     const ttl = 60;
     const cnt = await redis.incr(key);
     if (cnt === 1) await redis.expire(key, ttl);
@@ -79,10 +81,10 @@ export async function rateLimit(req: FastifyRequest, rep: FastifyReply, redis: I
  * @param redis - Redis client for GET/SET with expiration.
  * @returns {Promise<void|FastifyReply>} Sends cached response if found, otherwise attaches saveIdem.
  */
-export async function idempotency(req: FastifyRequest, rep: FastifyReply, redis: IORedis) {
-    const idem = req.headers["idempotency-key"];
+export async function idempotency(request: FastifyRequest, rep: FastifyReply, redis: IORedis) {
+    const idem = request.headers["idempotency-key"];
     if (!idem || typeof idem !== "string") return;
-    const cacheKey = `idem:${(req as any).project_id}:${idem}`;
+    const cacheKey = `idem:${(request as any).project_id}:${idem}`;
     const cached = await redis.get(cacheKey);
     if (cached) {
         rep.header("x-idempotent-replay", "1");

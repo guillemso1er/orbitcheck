@@ -1,6 +1,7 @@
-import { FastifyInstance } from 'fastify'; // Import the type for safety
+import type { FastifyInstance } from 'fastify'; // Import the type for safety
 import request from 'supertest';
 import * as twilio from 'twilio';
+
 import { createApp, setupBeforeAll } from './testSetup';
 
 jest.mock('twilio');
@@ -35,7 +36,7 @@ describe('Phone OTP Verify', () => {
 
         (twilio as unknown as jest.Mock).mockImplementation(() => mockClient);
 
-        const res = await request(app.server)
+        const response = await request(app.server)
             .post('/v1/verify/phone')
             .set('Authorization', 'Bearer valid_key')
             .send({
@@ -43,9 +44,10 @@ describe('Phone OTP Verify', () => {
                 code: '123456'
             });
 
-        expect(res.statusCode).toBe(200);
-        expect(res.body.valid).toBe(true);
-        expect(res.body.reason_codes).toEqual([]);
+        expect(response.status).toBe(200);
+        const body = response.body as { valid: boolean; reason_codes: string[] };
+        expect(body.valid).toBe(true);
+        expect(body.reason_codes).toEqual([]);
     });
 
     it('should return invalid for wrong OTP', async () => {
@@ -63,7 +65,7 @@ describe('Phone OTP Verify', () => {
 
         (twilio as unknown as jest.Mock).mockImplementation(() => mockClient);
 
-        const res = await request(app.server)
+        const response = await request(app.server)
             .post('/v1/verify/phone')
             .set('Authorization', 'Bearer valid_key')
             .send({
@@ -71,8 +73,9 @@ describe('Phone OTP Verify', () => {
                 code: 'wrongcode'
             });
 
-        expect(res.statusCode).toBe(200);
-        expect(res.body.valid).toBe(false);
-        expect(res.body.reason_codes).toEqual(['phone.otp_invalid']);
+        expect(response.status).toBe(200);
+        const body = response.body as { valid: boolean; reason_codes: string[] };
+        expect(body.valid).toBe(false);
+        expect(body.reason_codes).toEqual(['phone.otp_invalid']);
     });
 });

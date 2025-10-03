@@ -1,10 +1,17 @@
-import { Pool } from 'pg';
+import type { Pool } from 'pg';
+
 import { runLogRetention } from '../retention';
 
 jest.mock('pg', () => ({
   Pool: jest.fn(() => ({
     query: jest.fn(),
   })),
+}));
+
+jest.mock('../../env', () => ({
+  environment: {
+    RETENTION_DAYS: 90,
+  }
 }));
 
 describe('Log Retention Cron Job', () => {
@@ -28,7 +35,7 @@ describe('Log Retention Cron Job', () => {
 
     expect(mockQuery).toHaveBeenCalledWith(
       'DELETE FROM logs WHERE created_at < NOW() - INTERVAL $1',
-      expect.arrayContaining([expect.stringContaining('days')])
+      ['90 days']
     );
     // Console output is mocked, but we can check the call
   });

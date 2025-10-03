@@ -1,7 +1,8 @@
-import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import type { FastifyInstance, FastifyReply,FastifyRequest } from 'fastify';
 import request from 'supertest';
-import { createApp, mockPool, setupBeforeAll } from './testSetup';
+
 import { auth } from '../hooks';
+import { createApp, mockPool, setupBeforeAll } from './testSetup';
 
 describe('Security and Authentication', () => {
   let app: FastifyInstance;
@@ -11,8 +12,8 @@ describe('Security and Authentication', () => {
     await setupBeforeAll();
     app = await createApp(); // Correctly await the async function
 
-    app.addHook('preHandler', async (req: FastifyRequest, rep: FastifyReply) => {
-      await auth(req, rep, mockPool as any);
+    app.addHook('preHandler', async (request_: FastifyRequest, rep: FastifyReply) => {
+      await auth(request_, rep, mockPool as any);
     });
 
     await app.ready();

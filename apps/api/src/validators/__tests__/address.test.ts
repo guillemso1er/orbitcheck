@@ -1,8 +1,13 @@
 import { detectPoBox, normalizeAddress } from '../address';
 
-jest.mock('node:child_process', () => ({
-  execFile: jest.fn(),
-}));
+import * as cpModule from 'node:child_process';
+import { ChildProcess } from 'node:child_process';
+
+// Mock the entire 'node:child_process' module
+jest.mock('node:child_process');
+
+// Create a typed constant for the mocked function
+const mockedExecFile = cpModule.execFile as jest.MockedFunction<typeof cpModule.execFile>;
 
 describe('Address Validators', () => {
   describe('detectPoBox', () => {
@@ -33,7 +38,8 @@ describe('Address Validators', () => {
 
   describe('normalizeAddress', () => {
     beforeEach(() => {
-      jest.clearAllMocks();
+      // Clear any previous mock implementations and calls
+      mockedExecFile.mockClear();
     });
 
     it('should normalize a basic address using libpostal', async () => {
@@ -43,10 +49,17 @@ city: New York
 state: NY
 postcode: 10001
 country: US`;
-      const { execFile } = require('node:child_process');
-      execFile.mockImplementation((command: any, args: any[], callback: any) => {
-        callback(null, { stdout: mockStdout });
-      });
+
+      // Provide an implementation for the mocked execFile function
+      mockedExecFile.mockImplementation(((...args: any[]): ChildProcess => {
+        const callback = args.pop();
+
+        // FIX: Call the callback with a single object argument to match
+        // how promisify(execFile) resolves.
+        callback(null, { stdout: mockStdout, stderr: '' });
+
+        return {} as ChildProcess;
+      }) as any);
 
       const addr = {
         line1: '123 Main Street',
@@ -57,7 +70,7 @@ country: US`;
 
       const result = await normalizeAddress(addr);
 
-      expect(execFile).toHaveBeenCalledWith('/usr/local/bin/parse-address', expect.any(Array), expect.any(Function));
+      expect(mockedExecFile).toHaveBeenCalledWith('/usr/local/bin/parse-address', expect.any(Array), expect.any(Function));
       expect(result.line1).toBe('123 Main St');
       expect(result.city).toBe('New York');
       expect(result.postal_code).toBe('10001');
@@ -66,10 +79,11 @@ country: US`;
     });
 
     it('should handle fallback normalization when libpostal fails', async () => {
-      const { execFile } = require('node:child_process');
-      execFile.mockImplementation((command: any, args: any[], callback: any) => {
-        callback(new Error('Mock libpostal error'));
-      });
+      mockedExecFile.mockImplementation(((...args: any[]): ChildProcess => {
+        const callback = args.pop();
+        callback(new Error('Mock libpostal error'), '', ''); // Simulate failure
+        return {} as ChildProcess;
+      }) as any);
 
       const addr = {
         line1: '123 Main St',
@@ -91,10 +105,11 @@ country: US`;
     });
 
     it('should handle missing fields gracefully', async () => {
-      const { execFile } = require('node:child_process');
-      execFile.mockImplementation((command: any, args: any[], callback: any) => {
-        callback(new Error('Mock error'));
-      });
+      mockedExecFile.mockImplementation(((...args: any[]): ChildProcess => {
+        const callback = args.pop();
+        callback(new Error('Mock error'), '', ''); // Simulate failure
+        return {} as ChildProcess;
+      }) as any);
 
       const addr = {
         line1: '123 Main St',

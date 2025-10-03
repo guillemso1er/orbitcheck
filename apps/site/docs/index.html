@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Docs — Orbicheck</title>
+  <meta name="description" content="Orbicheck developer docs: API-first validation for emails, phones, addresses, EU VAT, ES-LATAM tax IDs; dedupe; rules; webhooks." />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="canonical" href="https://orbicheck.com/docs/" />
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet" />
+  <style>
+    .container-wide { @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8; }
+    .card { @apply bg-white shadow-sm rounded-lg border border-gray-100; }
+    pre, code { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+    pre { @apply bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto text-sm; }
+    .btn { @apply inline-flex items-center justify-center px-4 py-2 rounded-md font-semibold; }
+    .btn-primary { @apply bg-indigo-600 text-white hover:bg-indigo-700; }
+    .navlink { @apply text-gray-700 hover:text-gray-900; }
+  </style>
+</head>
+<body class="bg-gray-50 text-gray-900 antialiased">
+  <header class="bg-white border-b border-gray-100">
+    <div class="container-wide py-4 flex items-center justify-between">
+      <a href="/" class="flex items-center space-x-2">
+        <svg class="w-8 h-8 text-indigo-600" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="10" opacity="0.2"></circle><path d="M12 3a9 9 0 109 9h-9V3z"></path></svg>
+        <span class="font-extrabold text-xl">Orbicheck</span>
+      </a>
+      <nav class="hidden md:flex items-center space-x-6">
+        <a href="/pricing.html" class="navlink">Pricing</a>
+        <a href="/changelog.html" class="navlink">Changelog</a>
+        <a href="/tools/index.html" class="navlink">Free Tools</a>
+      </nav>
+      <a href="APP_SIGNUP_URL" class="btn btn-primary hidden md:inline-flex">Get API key</a>
+    </div>
+  </header>
+
+  <main class="container-wide py-12">
+    <div class="grid lg:grid-cols-4 gap-8">
+      <aside class="lg:col-span-1">
+        <nav class="card p-4 text-sm">
+          <h3 class="font-semibold mb-3">Docs</h3>
+          <ul class="space-y-2">
+            <li><a href="#quickstart" class="navlink">Quickstart</a></li>
+            <li><a href="#auth" class="navlink">Auth</a></li>
+            <li><a href="#validation" class="navlink">Validation API</a></li>
+            <li><a href="#dedupe" class="navlink">Dedupe API</a></li>
+            <li><a href="#rules" class="navlink">Rules & Holds</a></li>
+            <li><a href="#webhooks" class="navlink">Webhooks</a></li>
+            <li><a href="#errors" class="navlink">Errors & Reasons</a></li>
+          </ul>
+        </nav>
+      </aside>
+
+      <section class="lg:col-span-3 space-y-10">
+        <section id="quickstart" class="card p-6">
+          <h1 class="text-2xl font-bold">Quickstart</h1>
+          <p class="mt-2 text-gray-700">Orbicheck is API-first. Get an API key from your dashboard and hit our endpoints from your backend or edge.</p>
+<pre><code># 1) Set your API key
+export ORBICHECK_KEY=oc_live_xxx
+
+# 2) Validate a VAT ID
+curl -s https://api.orbicheck.com/v1/validate/vat \
+  -H "Authorization: Bearer $ORBICHECK_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{ "vat": "ESB12345678" }' | jq .
+
+# 3) Standardize a phone number (E.164)
+curl -s https://api.orbicheck.com/v1/validate/phone \
+  -H "Authorization: Bearer $ORBICHECK_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{ "phone": "600 123 456", "country": "ES" }' | jq .
+
+# 4) Dedupe customer
+curl -s https://api.orbicheck.com/v1/dedupe/customer \
+  -H "Authorization: Bearer $ORBICHECK_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{ "email": "a@b.com", "name": "A B", "phone": "+34600123456" }' | jq .
+</code></pre>
+          <p class="mt-3 text-sm text-gray-600">SDKs are optional; simple JSON in/out. Use connectors for Shopify/Woo/BigCommerce/Magento if needed.</p>
+        </section>
+
+        <section id="auth" class="card p-6">
+          <h2 class="text-xl font-semibold">Authentication</h2>
+          <p class="mt-2 text-gray-700">Bearer tokens via Authorization header. Separate keys per project recommended.</p>
+<pre><code>Authorization: Bearer oc_live_xxx</code></pre>
+        </section>
+
+        <section id="validation" class="card p-6">
+          <h2 class="text-xl font-semibold">Validation API</h2>
+          <h3 class="mt-3 font-semibold">VAT</h3>
+<pre><code>POST /v1/validate/vat
+{
+  "vat": "ESB12345678",
+  "cache_max_age": 86400
+}
+# → { "valid": true, "country": "ES", "source": "VIES|cache|fallback", "reason_codes": [] }
+</code></pre>
+          <h3 class="mt-3 font-semibold">Email/Phone/Address</h3>
+<pre><code>POST /v1/validate/phone
+{ "phone": "(600) 123-456", "country": "ES" }
+# → { "valid": true, "e164": "+34600123456", "reason_codes": [] }
+
+POST /v1/validate/address
+{ "line1": "Calle Mayor 1", "city": "Madrid", "zip": "28013", "country": "ES" }
+# → { "valid": true, "normalized": {...}, "reason_codes": [] }
+</code></pre>
+          <h3 class="mt-3 font-semibold">ES-LATAM Tax IDs</h3>
+<pre><code>POST /v1/validate/id
+{ "id": "123.456.789-09", "country": "BR", "type": "CPF" }
+# → { "valid": true, "normalized": "12345678909", "reason_codes": [] }
+</code></pre>
+        </section>
+
+        <section id="dedupe" class="card p-6">
+          <h2 class="text-xl font-semibold">Dedupe API</h2>
+<pre><code>POST /v1/dedupe/customer
+{
+  "record": {"email":"a@b.com","name":"Ana B","phone":"+34600123456"},
+  "strategy": {"deterministic":["email","phone"], "fuzzy":["name"], "threshold":0.82}
+}
+# → { "matches":[{"id":"cus_123","confidence":0.91}], "suggest_merge": true }
+</code></pre>
+        </section>
+
+        <section id="rules" class="card p-6">
+          <h2 class="text-xl font-semibold">Rules & Holds</h2>
+<pre><code>POST /v1/rules/evaluate
+{
+  "order": {"id":"ord_123","cod":true,"shipping":{"address":{...}}},
+  "customer":{"id":"cus_123","history":{"rto_rate":0.2}}
+}
+# → { "hold": true, "tags": ["COD_RISK"], "reason_codes": ["RTO_HEURISTIC_MATCH"] }
+</code></pre>
+        </section>
+
+        <section id="webhooks" class="card p-6">
+          <h2 class="text-xl font-semibold">Webhooks</h2>
+<pre><code>POST https://yourapp.com/webhooks/orbicheck
+{ "type":"validation.completed", "data":{...}, "project":"proj_123" }
+</code></pre>
+        </section>
+
+        <section id="errors" class="card p-6">
+          <h2 class="text-xl font-semibold">Errors & Reason Codes</h2>
+          <p class="mt-2 text-gray-700">Every response can include <code>reason_codes</code> suitable for exposure at checkout (human-friendly mappings available).</p>
+<pre><code># Example
+{ "valid": false, "reason_codes": ["VAT_NOT_FOUND","ADDRESS_CITY_MISMATCH"] }</code></pre>
+        </section>
+
+        <div class="card p-6">
+          <a href="APP_SIGNUP_URL" class="btn btn-primary">Get an API key</a>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <footer class="border-t border-gray-100 bg-white">
+    <div class="container-wide py-8 text-sm text-gray-600 flex items-center justify-between">
+      <p>© 2025 Orbicheck</p>
+      <a href="/status" class="hover:text-gray-900">Status</a>
+    </div>
+  </footer>
+</body>
+</html>

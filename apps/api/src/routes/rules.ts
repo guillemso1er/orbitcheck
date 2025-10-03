@@ -1,8 +1,8 @@
-import { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
-import { Pool } from "pg";
-import { securityHeader, generateRequestId, sendServerError } from "./utils";
+import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
+import type { Pool } from "pg";
 
 import { REASON_CODES } from "../constants";
+import { generateRequestId, securityHeader, sendServerError } from "./utils";
 
 interface ReasonCode {
   code: string;
@@ -156,7 +156,7 @@ export function registerRulesRoutes(app: FastifyInstance, pool: Pool) {
         },
       },
     },
-  }, async (req: FastifyRequest, rep: FastifyReply) => {
+  }, async (request: FastifyRequest, rep: FastifyReply) => {
     try {
       const request_id = generateRequestId();
       const response = {
@@ -165,7 +165,7 @@ export function registerRulesRoutes(app: FastifyInstance, pool: Pool) {
       };
       return rep.send(response);
     } catch (error) {
-      return sendServerError(req, rep, error, '/v1/rules', generateRequestId());
+      return sendServerError(request, rep, error, '/v1/rules', generateRequestId());
     }
   });
 
@@ -198,7 +198,7 @@ export function registerRulesRoutes(app: FastifyInstance, pool: Pool) {
         },
       },
     },
-  }, async (req: FastifyRequest, rep: FastifyReply) => {
+  }, async (request: FastifyRequest, rep: FastifyReply) => {
     try {
       const request_id = generateRequestId();
       const response = {
@@ -207,7 +207,7 @@ export function registerRulesRoutes(app: FastifyInstance, pool: Pool) {
       };
       return rep.send(response);
     } catch (error) {
-      return sendServerError(req, rep, error, '/v1/rules/catalog', generateRequestId());
+      return sendServerError(request, rep, error, '/v1/rules/catalog', generateRequestId());
     }
   });
 
@@ -249,10 +249,10 @@ export function registerRulesRoutes(app: FastifyInstance, pool: Pool) {
         },
       },
     },
-  }, async (req: FastifyRequest, rep: FastifyReply) => {
+  }, async (request: FastifyRequest, rep: FastifyReply) => {
     try {
-      const project_id = (req as any).project_id;
-      const { rules } = req.body as { rules: any[] };
+      const project_id = (request as any).project_id;
+      const { rules } = request.body as { rules: any[] };
       const request_id = generateRequestId();
 
       // For now, log the registration; in production, store in DB
@@ -266,7 +266,7 @@ export function registerRulesRoutes(app: FastifyInstance, pool: Pool) {
 
       return rep.send(response);
     } catch (error) {
-      return sendServerError(req, rep, error, '/v1/rules/register', generateRequestId());
+      return sendServerError(request, rep, error, '/v1/rules/register', generateRequestId());
     }
   });
 }

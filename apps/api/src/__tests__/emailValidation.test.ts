@@ -1,8 +1,16 @@
-import { FastifyInstance } from 'fastify'; // Import the type for safety
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access */
+
+import type { FastifyInstance } from 'fastify'; // Import the type for safety
+import type { Redis } from 'ioredis';
 import request from 'supertest';
+
+import crypto from 'node:crypto';
+import type { ValidationResult } from '../validators/email';
 import { createApp, hapi, mockDns, mockPool, mockRedisInstance, mockValidateEmail, setupBeforeAll } from './testSetup';
-const { validateEmail } = jest.requireActual('../validators/email');
-import crypto from 'crypto';
+
+
+const actualModule = jest.requireActual('../validators/email');
+const { validateEmail } = actualModule;
 
 describe('Email Validation Endpoints', () => {
     let app: FastifyInstance;
@@ -32,7 +40,9 @@ describe('Email Validation Endpoints', () => {
             disposable: false,
             mx_found: true,
             reason_codes: [],
-        });
+            request_id: 'test-id',
+            ttl_seconds: 2_592_000
+        } as ValidationResult);
 
         // Default mock implementations for API key auth and logging
         mockPool.query.mockImplementation((queryText: string) => {
@@ -47,13 +57,14 @@ describe('Email Validation Endpoints', () => {
         });
 
         // Reset other specific mocks to their default success states
-        mockRedisInstance.sismember.mockResolvedValue(0);
-        mockRedisInstance.get.mockResolvedValue(null);
-        mockRedisInstance.set.mockResolvedValue('OK');
-        hapi.isEmailValid.mockReturnValue(true);
-        mockDns.resolveMx.mockResolvedValue([{ exchange: 'mx.example.com' }]);
-        mockDns.resolve4.mockResolvedValue(['1.2.3.4']);
-        mockDns.resolve6.mockResolvedValue([]);
+        const mockRedis = mockRedisInstance as unknown as jest.Mocked<Redis>;
+        mockRedis.sismember.mockResolvedValue(0);
+        mockRedis.get.mockResolvedValue(null);
+        mockRedis.set.mockResolvedValue('OK');
+        (hapi).isEmailValid.mockReturnValue(true);
+        (mockDns).resolveMx.mockResolvedValue([{ exchange: 'mx.example.com' }]);
+        (mockDns).resolve4.mockResolvedValue(['1.2.3.4']);
+        (mockDns).resolve6.mockResolvedValue([]);
 
         // Mock crypto.randomUUID if needed
         jest.spyOn(crypto, 'randomUUID').mockReturnValue('123e4567-e89b-12d3-a456-426614174000');
@@ -74,7 +85,7 @@ describe('Email Validation Endpoints', () => {
         });
 
         it('should invalidate email with invalid format', async () => {
-            hapi.isEmailValid.mockReturnValue(false);
+            (hapi).isEmailValid.mockReturnValue(false);
 
             const result = await validateEmail('invalid-email');
 
@@ -84,8 +95,8 @@ describe('Email Validation Endpoints', () => {
         });
 
         it('should invalidate email with no MX records, fallback to A/AAAA', async () => {
-            mockDns.resolveMx.mockRejectedValue(new Error('No MX'));
-            mockDns.resolve4.mockResolvedValue(['1.2.3.4']); // Has A record
+            (mockDns).resolveMx.mockRejectedValue(new Error('No MX'));
+            (mockDns).resolve4.mockResolvedValue(['1.2.3.4']); // Has A record
 
             const result = await validateEmail('test@example.com');
 
@@ -95,9 +106,9 @@ describe('Email Validation Endpoints', () => {
         });
 
         it('should invalidate email with no MX and no A/AAAA records', async () => {
-            mockDns.resolveMx.mockRejectedValue(new Error('No MX'));
-            mockDns.resolve4.mockRejectedValue(new Error('No A'));
-            mockDns.resolve6.mockRejectedValue(new Error('No AAAA'));
+            (mockDns).resolveMx.mockRejectedValue(new Error('No MX'));
+            (mockDns).resolve4.mockRejectedValue(new Error('No A'));
+            (mockDns).resolve6.mockRejectedValue(new Error('No AAAA'));
 
             const result = await validateEmail('test@invalid.com');
 
@@ -107,7 +118,7 @@ describe('Email Validation Endpoints', () => {
         });
 
         it('should detect disposable domain with Redis', async () => {
-            const mockRedis = mockRedisInstance as any;
+            const mockRedis = mockRedisInstance as unknown as jest.Mocked<Redis>;
             mockRedis.sismember.mockResolvedValueOnce(1); // disposable
 
             const result = await validateEmail('test@disposable.com', mockRedis);
@@ -119,34 +130,53 @@ describe('Email Validation Endpoints', () => {
         });
 
         it('should use cache from Redis for full email', async () => {
-            const mockRedis = mockRedisInstance as any;
-            const cachedResult = {
+            // --- ARRANGE ---
+            const mockRedis = mockRedisInstance as unknown as jest.Mocked<Redis>;
+            const cachedResult: ValidationResult = {
                 valid: true,
                 normalized: 'cached@example.com',
                 disposable: false,
                 mx_found: true,
                 reason_codes: [],
                 request_id: '123e4567-e89b-12d3-a456-426614174000',
-                ttl_seconds: 2592000
+                ttl_seconds: 2_592_000
             };
-            const hash = crypto.createHash('sha1').update('cached@example.com').digest('hex');
-            mockRedis.get.mockResolvedValueOnce(JSON.stringify(cachedResult));
 
+            // From your testSetup.ts, the mock for crypto.createHash always results in 'test_hash'.
+            // We use this known value to construct the expected cache key.
+            const expectedHash = 'test_hash';
+            const expectedCacheKey = `validator:email:${expectedHash}`;
+
+            // Ensure mocks are clear before this test
+            (mockRedis.get as jest.Mock).mockClear();
+            (hapi.isEmailValid as jest.Mock).mockClear();
+            (mockDns.resolveMx as jest.Mock).mockClear();
+
+            // Mock the Redis 'get' call to return our cached result
+            (mockRedis.get as jest.Mock).mockResolvedValueOnce(JSON.stringify(cachedResult));
+
+            // --- ACT ---
             const result = await validateEmail('cached@example.com', mockRedis);
 
+            // --- ASSERT ---
+            // 1. The result should be the exact object from the cache.
             expect(result).toEqual(cachedResult);
-            expect(mockRedis.get).toHaveBeenCalledWith(`validator:email:${hash}`);
-            // No further validations since cache hit
+
+            // 2. Redis's `get` method should have been called once with the correct key.
+            expect(mockRedis.get).toHaveBeenCalledTimes(1);
+            expect(mockRedis.get).toHaveBeenCalledWith(expectedCacheKey);
+
+            // 3. Because a cached result was found, no further validation should have occurred.
             expect(hapi.isEmailValid).not.toHaveBeenCalled();
             expect(mockDns.resolveMx).not.toHaveBeenCalled();
         });
 
         it('should use domain cache for MX and disposable', async () => {
-            const mockRedis = mockRedisInstance as any;
+            const mockRedis = mockRedisInstance as unknown as jest.Mocked<Redis>;
             const domainData = { mx_found: true, disposable: false };
             mockRedis.get
-              .mockResolvedValueOnce(null)
-              .mockResolvedValueOnce(JSON.stringify(domainData));
+                .mockResolvedValueOnce(null)
+                .mockResolvedValueOnce(JSON.stringify(domainData));
 
             const result = await validateEmail('test@cached-domain.com', mockRedis);
 
@@ -159,9 +189,9 @@ describe('Email Validation Endpoints', () => {
         });
 
         it('should handle DNS timeout', async () => {
-            mockDns.resolveMx.mockRejectedValue(new Error('ETIMEDOUT'));
-            mockDns.resolve4.mockRejectedValue(new Error('ETIMEDOUT'));
-            mockDns.resolve6.mockRejectedValue(new Error('ETIMEDOUT'));
+            (mockDns).resolveMx.mockRejectedValue(new Error('ETIMEDOUT'));
+            (mockDns).resolve4.mockRejectedValue(new Error('ETIMEDOUT'));
+            (mockDns).resolve6.mockRejectedValue(new Error('ETIMEDOUT'));
 
             const result = await validateEmail('test@timeout.com');
 
@@ -172,8 +202,7 @@ describe('Email Validation Endpoints', () => {
 
         it('should handle server error gracefully', async () => {
             // Simulate error in parsing or something
-            const originalSplit = String.prototype.split;
-            String.prototype.split = jest.fn(() => { throw new Error('Parse error'); });
+            const splitMock = jest.spyOn(String.prototype, 'split').mockImplementation(() => { throw new Error('Parse error'); });
 
             const result = await validateEmail('error@example.com');
 
@@ -181,7 +210,7 @@ describe('Email Validation Endpoints', () => {
             expect(result.reason_codes).toContain('email.server_error');
 
             // Restore
-            String.prototype.split = originalSplit;
+            splitMock.mockRestore();
         });
 
         it('should normalize email with ASCII domain', async () => {
@@ -192,22 +221,32 @@ describe('Email Validation Endpoints', () => {
         });
 
         it('should cache result in Redis after computation', async () => {
-            const mockRedis = mockRedisInstance as any;
-            mockRedis.get.mockResolvedValue(null); // No cache
+            // ARRANGE
+            const mockRedis = mockRedisInstance as unknown as jest.Mocked<Redis>;
+            mockRedis.get.mockResolvedValue(null); // Ensure no cache hits
 
+            // ACT
             await validateEmail('uncached@example.com', mockRedis);
 
-            const hash = crypto.createHash('sha1').update('uncached@example.com').digest('hex');
-            expect(mockRedis.set).toHaveBeenCalledWith(
-                `validator:email:${hash}`,
-                expect.stringContaining('uncached@example.com'),
+            // ASSERT
+            // Your test setup guarantees the hash will always be 'test_hash'.
+            const expectedHash = 'test_hash';
+
+            // From your constants file (TTL_EMAIL)
+            const expectedTtl = 2_592_000;
+
+            // The function first caches the domain, then the full email.
+            // We use `toHaveBeenLastCalledWith` to check the final, correct call.
+            expect(mockRedis.set).toHaveBeenLastCalledWith(
+                `validator:email:${expectedHash}`, // Use the predictable mocked hash
+                expect.stringContaining('"normalized":"uncached@example.com"'), // More specific check of the payload
                 'EX',
-                30 * 24 * 3600
+                expectedTtl
             );
         });
 
         it('should cache domain data in Redis', async () => {
-            const mockRedis = mockRedisInstance as any;
+            const mockRedis = mockRedisInstance as unknown as jest.Mocked<Redis>;
             mockRedis.get.mockResolvedValue(null); // No domain cache
 
             await validateEmail('test@newdomain.com', mockRedis);
@@ -224,15 +263,16 @@ describe('Email Validation Endpoints', () => {
     describe('POST /v1/validate/email', () => {
         it('should validate a valid email using default success mocks', async () => {
             // This test relies entirely on the default setup in beforeEach
-            const res = await request(app.server)
+            const response = await request(app.server)
                 .post('/v1/validate/email')
                 .set('Authorization', 'Bearer valid_key')
                 .send({ email: 'test@example.com' });
 
-            expect(res.statusCode).toBe(200);
-            expect(res.body.valid).toBe(true);
-            expect(res.body.disposable).toBe(false);
-            expect(res.body.mx_found).toBe(true);
+            expect(response.status).toBe(200);
+            const body = response.body as ValidationResult;
+            expect(body.valid).toBe(true);
+            expect(body.disposable).toBe(false);
+            expect(body.mx_found).toBe(true);
         });
 
         it('should reject disposable email when Redis finds a match', async () => {
@@ -248,17 +288,20 @@ describe('Email Validation Endpoints', () => {
                 disposable: true,
                 mx_found: true,
                 reason_codes: ['email.disposable_domain'],
-            });
+                request_id: 'test-id',
+                ttl_seconds: 2_592_000
+            } as ValidationResult);
 
-            const res = await request(app.server)
+            const response = await request(app.server)
                 .post('/v1/validate/email')
                 .set('Authorization', 'Bearer valid_key')
                 .send({ email: 'test@disposable.com' });
 
-            expect(res.statusCode).toBe(200);
-            expect(res.body.valid).toBe(false);
-            expect(res.body.disposable).toBe(true);
-            expect(res.body.reason_codes).toContain('email.disposable_domain');
+            expect(response.status).toBe(200);
+            const body = response.body as ValidationResult;
+            expect(body.valid).toBe(false);
+            expect(body.disposable).toBe(true);
+            expect(body.reason_codes).toContain('email.disposable_domain');
         });
 
         it('should handle invalid format when validator returns false', async () => {
@@ -272,16 +315,21 @@ describe('Email Validation Endpoints', () => {
                 disposable: false,
                 mx_found: false,
                 reason_codes: ['email.invalid_format'],
-            });
+                request_id: 'test-id',
+                ttl_seconds: 2_592_000
+            } as ValidationResult);
 
-            const res = await request(app.server)
+            const response = await request(app.server)
                 .post('/v1/validate/email')
                 .set('Authorization', 'Bearer valid_key')
                 .send({ email: 'invalid-email' });
 
-            expect(res.statusCode).toBe(200);
-            expect(res.body.valid).toBe(false);
-            expect(res.body.reason_codes).toContain('email.invalid_format');
+            expect(response.status).toBe(200);
+            const body = response.body as ValidationResult;
+            expect(body.valid).toBe(false);
+            expect(body.reason_codes).toContain('email.invalid_format');
         });
     });
+
+    /* eslint-enable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access */
 });

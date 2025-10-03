@@ -24,7 +24,6 @@ module.exports = {
         "promise",
         "import",
         "security",
-        "sonarjs",
         "regexp",
         "unicorn",
         "eslint-comments",
@@ -36,7 +35,6 @@ module.exports = {
         "plugin:promise/recommended",
         "plugin:import/recommended",
         "plugin:security/recommended",
-        "plugin:sonarjs/recommended",
         "plugin:regexp/recommended",
         "plugin:unicorn/recommended",
         "prettier",
@@ -172,7 +170,7 @@ module.exports = {
             parserOptions: {
                 tsconfigRootDir: __dirname,
                 // use a dedicated tsconfig for linting if you have one; otherwise tsconfig.json
-                project: ["./tsconfig.eslint.json", "./tsconfig.json"].filter(Boolean),
+                project: "./tsconfig.json",
                 sourceType: "module",
                 ecmaVersion: "latest",
             },
@@ -217,6 +215,7 @@ module.exports = {
             rules: {
                 "no-console": "off",
                 "@typescript-eslint/no-floating-promises": "off",
+                "n/no-unpublished-import": "off",
             },
         },
 

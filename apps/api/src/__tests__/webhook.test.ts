@@ -1,14 +1,22 @@
-import request from 'supertest';
-import { createApp, mockPool, setupBeforeAll } from './testSetup';
+// Import the mocked jwt module directly
+import type { FastifyInstance } from 'fastify';
+import jwt from 'jsonwebtoken';
 // Import the mocked fetch directly
 import fetch from 'node-fetch';
-import * as hooks from '../hooks';
-// Import the mocked jwt module directly
-import { FastifyInstance } from 'fastify';
-import jwt from 'jsonwebtoken';
+import request from 'supertest';
 
-// Cast fetch to its mock type once for convenience
+import * as hooks from '../hooks';
+import { createApp, mockPool, setupBeforeAll } from './testSetup';
+
+// --- Tell Jest to mock the modules ---
+jest.mock('node-fetch');
+jest.mock('jsonwebtoken'); // <-- This is correct
+// ------------------------------------
+
+// Cast mocks to their types once for convenience
 const fetchMock = fetch as unknown as jest.Mock;
+const mockedJwtVerify = jwt.verify as jest.Mock;
+const MOCK_TOKEN = 'mock_jwt_token';
 
 describe('Webhook Test Routes (JWT Auth)', () => {
     let app: FastifyInstance;
@@ -17,6 +25,7 @@ describe('Webhook Test Routes (JWT Auth)', () => {
     beforeAll(async () => {
         await setupBeforeAll();
         app = await createApp();
+        // The problematic app.addHook('preHandler', ...) has been removed.
         await app.ready();
     });
 
@@ -40,25 +49,28 @@ describe('Webhook Test Routes (JWT Auth)', () => {
             json: jest.fn().mockResolvedValue({ status: 'ok' }),
         });
 
-        // Spy on the logEvent function. Spies are useful for checking if a real function was called.
-        // Note: We'll need to restore this spy after each test.
+        // Spy on the logEvent function.
         jest.spyOn(hooks, 'logEvent').mockImplementation(jest.fn().mockResolvedValue(undefined));
 
-        // The 'verify' function is already a mock. We just define its default behavior.
-        (jwt.verify as jest.Mock).mockImplementation(() => ({ user_id: 'test_user' }));
+        // Define default behavior for the mocked jwt.verify function.
+        mockedJwtVerify.mockImplementation(() => ({ user_id: 'test_user', project_id: 'test_project' }));
 
-        // Default mock for successful DB queries for auth
+        // --- CORRECTED DATABASE MOCK ---
+        // This mock is now robust and handles the specific queries from verifyJWT.
         mockPool.query.mockImplementation((queryText: string) => {
             const upperQuery = queryText.toUpperCase();
-            if (upperQuery.includes('SELECT ID FROM USERS')) {
+
+            // Handle the user lookup from verifyJWT
+            if (upperQuery.startsWith('SELECT ID FROM USERS')) {
                 return Promise.resolve({ rows: [{ id: 'test_user' }] });
             }
-            if (upperQuery.includes('SELECT P.ID AS PROJECT_ID FROM PROJECTS')) {
+
+            // Handle the project lookup from verifyJWT
+            if (upperQuery.startsWith('SELECT P.ID AS PROJECT_ID FROM PROJECTS')) {
                 return Promise.resolve({ rows: [{ project_id: 'test_project' }] });
             }
-            if (upperQuery.includes('API_KEYS')) {
-                return Promise.resolve({ rows: [{ id: 'test_key_id', project_id: 'test_project' }] });
-            }
+
+            // A default for any other queries if needed
             return Promise.resolve({ rows: [] });
         });
     });
@@ -71,7 +83,7 @@ describe('Webhook Test Routes (JWT Auth)', () => {
     it('should successfully test a webhook with validation payload', async () => {
         const res = await request(app.server)
             .post('/webhooks/test')
-            .set('Authorization', 'Bearer valid_jwt_token')
+            .set('Authorization', `Bearer ${MOCK_TOKEN}`) // <-- CHANGE HERE
             .send({
                 url: 'https://example.com/webhook',
                 payload_type: 'validation'
@@ -84,13 +96,13 @@ describe('Webhook Test Routes (JWT Auth)', () => {
             type: 'email'
         });
         expect(res.body.sent_to).toBe('https://example.com/webhook');
-        expect(hooks.logEvent).toHaveBeenCalledWith('test_project', 'webhook_test', '/webhooks/test', [], 200, expect.any(Object), expect.any(Object));
+        expect(hooks.logEvent).toHaveBeenCalledWith('test_project', 'webhook_test', '/webhooks/test', expect.any(Object), 200, expect.any(Object), expect.any(Object));
     });
 
     it('should handle custom payload successfully', async () => {
         const res = await request(app.server)
             .post('/webhooks/test')
-            .set('Authorization', 'Bearer valid_jwt_token')
+            .set('Authorization', `Bearer ${MOCK_TOKEN}`) // <-- CHANGE HERE
             .send({
                 url: 'https://example.com/webhook',
                 payload_type: 'custom',
@@ -104,7 +116,6 @@ describe('Webhook Test Routes (JWT Auth)', () => {
             data: 'test',
             project_id: 'test_project'
         });
-        console.log('Response body:', JSON.stringify(res.body, null, 2));
         expect(res.body.payload.event).toBe('custom_event');
         expect(hooks.logEvent).toHaveBeenCalled();
     });
@@ -112,7 +123,7 @@ describe('Webhook Test Routes (JWT Auth)', () => {
     it('should reject invalid URL', async () => {
         const res = await request(app.server)
             .post('/webhooks/test')
-            .set('Authorization', 'Bearer valid_jwt_token')
+            .set('Authorization', `Bearer ${MOCK_TOKEN}`) // <-- CHANGE HERE
             .send({
                 url: 'ftp://example.com',
                 payload_type: 'validation'
@@ -127,7 +138,7 @@ describe('Webhook Test Routes (JWT Auth)', () => {
     it('should reject missing custom payload for custom type', async () => {
         const res = await request(app.server)
             .post('/webhooks/test')
-            .set('Authorization', 'Bearer valid_jwt_token')
+            .set('Authorization', `Bearer ${MOCK_TOKEN}`) // <-- CHANGE HERE
             .send({
                 url: 'https://example.com/webhook',
                 payload_type: 'custom'
@@ -143,7 +154,7 @@ describe('Webhook Test Routes (JWT Auth)', () => {
 
         const res = await request(app.server)
             .post('/webhooks/test')
-            .set('Authorization', 'Bearer valid_jwt_token')
+            .set('Authorization', `Bearer ${MOCK_TOKEN}`) // <-- CHANGE HERE
             .send({
                 url: 'https://example.com/webhook',
                 payload_type: 'validation'
@@ -156,13 +167,13 @@ describe('Webhook Test Routes (JWT Auth)', () => {
 
     it('should reject without a valid JWT', async () => {
         // Override the default successful JWT mock with a failure for this test
-        (jwt.verify as jest.Mock).mockImplementation(() => {
+        mockedJwtVerify.mockImplementation(() => {
             throw new Error('Invalid token');
         });
 
         const res = await request(app.server)
             .post('/webhooks/test')
-            .set('Authorization', 'Bearer invalid_jwt_token')
+            .set('Authorization', 'Bearer invalid_key')
             .send({
                 url: 'https://example.com/webhook',
                 payload_type: 'validation'

@@ -1,4 +1,5 @@
-import crypto from "crypto";
+import crypto from "node:crypto";
+
 import type { Redis } from "ioredis";
 
 /**
@@ -8,7 +9,7 @@ import type { Redis } from "ioredis";
  * @param s - Input string (e.g., "123.456.789-09").
  * @returns {string} String containing only digits.
  */
-function onlyDigits(s: string) { return (s || "").replace(/[^0-9]/g, ""); }
+function onlyDigits(s: string) { return (s || "").replaceAll(/\D/g, ""); }
 
 /**
  * Computes mod 11 checksum for validation algorithms.
@@ -18,10 +19,10 @@ function onlyDigits(s: string) { return (s || "").replace(/[^0-9]/g, ""); }
  * @param weights - Array of weights corresponding to each digit position.
  * @returns {number} Modulus result for check digit computation.
  */
-function mod11Checksum(nums: number[], weights: number[]) {
-    const sum = nums.reduce((acc, n, i) => acc + n * weights[i], 0);
-    const mod = sum % 11;
-    return mod;
+function module11Checksum(nums: number[], weights: number[]) {
+    const sum = nums.reduce((accumulator, n, index) => accumulator + n * weights[index], 0);
+    const module_ = sum % 11;
+    return module_;
 }
 
 /**
@@ -44,8 +45,8 @@ export function validateCPF(value: string) {
     if (v.length !== 11) return { valid: false, reason_codes: ["taxid.invalid_format"] };
     if (/^(\d)\1+$/.test(v)) return { valid: false, reason_codes: ["taxid.invalid_format"] };
     const n = v.split("").map(Number);
-    const d1 = (n.slice(0, 9).reduce((acc, cur, idx) => acc + cur * (10 - idx), 0) * 10) % 11 % 10;
-    const d2 = (n.slice(0, 10).reduce((acc, cur, idx) => acc + cur * (11 - idx), 0) * 10) % 11 % 10;
+    const d1 = (n.slice(0, 9).reduce((accumulator, current, index) => accumulator + current * (10 - index), 0) * 10) % 11 % 10;
+    const d2 = (n.slice(0, 10).reduce((accumulator, current, index) => accumulator + current * (11 - index), 0) * 10) % 11 % 10;
     const ok = d1 === n[9] && d2 === n[10];
     return { valid: ok, reason_codes: ok ? [] : ["taxid.invalid_checksum"] };
 }
@@ -72,9 +73,9 @@ export function validateCNPJ(value: string) {
     if (/^(\d)\1+$/.test(v)) return { valid: false, reason_codes: ["taxid.invalid_format"] };
     const n = v.split("").map(Number);
     const w1 = [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2];
-    const w2 = [6].concat(w1);
-    const d1 = 11 - (n.slice(0, 12).reduce((acc, cur, idx) => acc + cur * w1[idx], 0) % 11); const cd1 = d1 > 9 ? 0 : d1;
-    const d2 = 11 - (n.slice(0, 13).reduce((acc, cur, idx) => acc + cur * w2[idx], 0) % 11); const cd2 = d2 > 9 ? 0 : d2;
+    const w2 = [6, ...w1];
+    const d1 = 11 - (n.slice(0, 12).reduce((accumulator, current, index) => accumulator + current * w1[index], 0) % 11); const cd1 = d1 > 9 ? 0 : d1;
+    const d2 = 11 - (n.slice(0, 13).reduce((accumulator, current, index) => accumulator + current * w2[index], 0) % 11); const cd2 = d2 > 9 ? 0 : d2;
     const ok = cd1 === n[12] && cd2 === n[13];
     return { valid: ok, reason_codes: ok ? [] : ["taxid.invalid_checksum"] };
 }
@@ -96,23 +97,19 @@ export function validateCNPJ(value: string) {
  * @returns {Object} Validation result with valid flag and reason codes (format or checksum errors).
  */
 const RFC_CHARS = " 0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ&Ñ";
-const RFC_MAP: Record<string, number> = Object.fromEntries(RFC_CHARS.split("").map((c, i) => [c, i]));
+const RFC_MAP: Record<string, number> = Object.fromEntries([...RFC_CHARS].map((c, index) => [c, index]));
 export function validateRFC(value: string) {
     const v = value.trim().toUpperCase();
-    if (!/^[A-Z&Ñ]{3,4}\d{6}[A-Z0-9&Ñ]{3}$/.test(v)) return { valid: false, reason_codes: ["taxid.invalid_format"] };
+    if (!/^[&A-ZÑ]{3,4}\d{6}[\d&A-ZÑ]{3}$/.test(v)) return { valid: false, reason_codes: ["taxid.invalid_format"] };
     if (v.length !== 12 && v.length !== 13) return { valid: false, reason_codes: ["taxid.invalid_format"] };
     let body: string;
-    if (v.length === 13) {
-      body = v.slice(0, 12);
-    } else {
-      body = v.slice(0, 11);
-    }
+    body = v.length === 13 ? v.slice(0, 12) : v.slice(0, 11);
     const check = v.slice(-1);
     let sum = 0;
     const weights = [13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2];
     const pad = 12 - body.length;
     const padded = " ".repeat(pad) + body;
-    for (let i = 0; i < 12; i++) { sum += (RFC_MAP[padded[i]] || 0) * weights[i]; }
+    for (let index = 0; index < 12; index++) { sum += (RFC_MAP[padded[index]] || 0) * weights[index]; }
     const dg = 11 - (sum % 11);
     const cd = dg === 11 ? "0" : dg === 10 ? "A" : String(dg);
     const ok = cd === check;
@@ -140,9 +137,9 @@ export function validateCUIT(value: string) {
     if (v.length !== 11) return { valid: false, reason_codes: ["taxid.invalid_format"] };
     const w = [5, 4, 3, 2, 7, 6, 5, 4, 3, 2];
     const nums = v.split("").map(Number);
-    const s = nums.slice(0, 10).reduce((acc, cur, idx) => acc + cur * w[idx], 0);
-    const mod = 11 - (s % 11);
-    const cd = mod === 11 ? 0 : mod === 10 ? 9 : mod;
+    const s = nums.slice(0, 10).reduce((accumulator, current, index) => accumulator + current * w[index], 0);
+    const module_ = 11 - (s % 11);
+    const cd = module_ === 11 ? 0 : module_ === 10 ? 9 : module_;
     const ok = cd === nums[10];
     return { valid: ok, reason_codes: ok ? [] : ["taxid.invalid_checksum"] };
 }
@@ -164,12 +161,12 @@ export function validateCUIT(value: string) {
  * @returns {Object} Validation result with valid flag and reason codes (format or checksum errors).
  */
 export function validateRUT(value: string) {
-    const v = value.replace(/\./g, "").replace(/-/g, "").toUpperCase();
+    const v = value.replaceAll('.', "").replaceAll('-', "").toUpperCase();
     const body = v.slice(0, -1); const dv = v.slice(-1);
     if (!/^\d+$/.test(body)) return { valid: false, reason_codes: ["taxid.invalid_format"] };
     let sum = 0, mul = 2;
-    for (let i = body.length - 1; i >= 0; i--) {
-        sum += parseInt(body[i], 10) * mul;
+    for (let index = body.length - 1; index >= 0; index--) {
+        sum += Number.parseInt(body[index], 10) * mul;
         mul = (mul === 7) ? 2 : (mul + 1);
     }
     const res = 11 - (sum % 11);
@@ -199,9 +196,9 @@ export function validateRUC(value: string) {
     if (v.length !== 11) return { valid: false, reason_codes: ["taxid.invalid_format"] };
     const weights = [5, 4, 3, 2, 7, 6, 5, 4, 3, 2];
     const nums = v.split("").map(Number);
-    const s = nums.slice(0, 10).reduce((acc, cur, idx) => acc + cur * weights[idx], 0);
-    const mod = 11 - (s % 11);
-    const cd = (mod === 11) ? 1 : (mod === 10) ? 2 : mod;
+    const s = nums.slice(0, 10).reduce((accumulator, current, index) => accumulator + current * weights[index], 0);
+    const module_ = 11 - (s % 11);
+    const cd = (module_ === 11) ? 1 : (module_ === 10) ? 2 : module_;
     const ok = cd === nums[10];
     return { valid: ok, reason_codes: ok ? [] : ["taxid.invalid_checksum"] };
 }
@@ -227,9 +224,9 @@ export function validateNIT(value: string) {
     const weights = [3, 7, 13, 17, 19, 23, 29, 37, 41, 43];
     const nums = v.slice(0, -1).split("").reverse().map(Number);
     let sum = 0;
-    for (let i = 0; i < nums.length; i++) { sum += nums[i] * (weights[i] || 3); }
-    const mod = sum % 11;
-    const cd = (mod > 1) ? (11 - mod) : 0;
+    for (const [index, number_] of nums.entries()) { sum += number_ * (weights[index] || 3); }
+    const module_ = sum % 11;
+    const cd = (module_ > 1) ? (11 - module_) : 0;
     const ok = cd === Number(v.slice(-1));
     return { valid: ok, reason_codes: ok ? [] : ["taxid.invalid_checksum"] };
 }
@@ -253,13 +250,13 @@ export function validateNIT(value: string) {
 const NIF_LETTERS = "TRWAGMYFPDXBNJZSQVHLCKE";
 export function validateES(value: string) {
     let v = value.trim().toUpperCase();
-    v = v.replace(/\s/g, "");
+    v = v.replaceAll(/\s/g, "");
 
     // NIE: X/Y/Z + 7 digits + letter
-    if (/^[XYZ]\d{7}[A-Z]$/.test(v)) {
+    if (/^[X-Z]\d{7}[A-Z]$/.test(v)) {
         const map: any = { X: "0", Y: "1", Z: "2" };
-        const num = map[v[0]] + v.slice(1, 8);
-        const letter = NIF_LETTERS[parseInt(num, 10) % 23];
+        const number_ = map[v[0]] + v.slice(1, 8);
+        const letter = NIF_LETTERS[Number.parseInt(number_, 10) % 23];
         return {
             valid: letter === v[8],
             reason_codes: letter === v[8] ? [] : ["taxid.invalid_checksum"],
@@ -268,8 +265,8 @@ export function validateES(value: string) {
 
     // NIF: 8 digits + letter
     if (/\d{8}[A-Z]/.test(v)) {
-        const num = parseInt(v.slice(0, 8), 10);
-        const letter = NIF_LETTERS[num % 23];
+        const number_ = Number.parseInt(v.slice(0, 8), 10);
+        const letter = NIF_LETTERS[number_ % 23];
         return {
             valid: letter === v[8],
             reason_codes: letter === v[8] ? [] : ["taxid.invalid_checksum"],
@@ -277,7 +274,7 @@ export function validateES(value: string) {
     }
 
     // CIF simplified: letter + 7 digits + control
-    if (/^[ABCDEFGHJKLMNPQRSUVW]\d{7}[0-9A-J]$/.test(v)) {
+    if (/^[A-HJ-NP-SU-W]\d{7}[\dA-J]$/.test(v)) {
         // Simplified acceptance (full CIF rules are longer)
         return { valid: true, reason_codes: [] };
     }
@@ -384,49 +381,63 @@ async function dispatchValidation(
   value: string,
   country: string
 ): Promise<{ valid: boolean; reason_codes: string[]; source?: string }> {
-  if (t === "CPF") {
+  switch (t) {
+  case "CPF": {
     const res = validateCPF(value);
     return { valid: res.valid, reason_codes: res.reason_codes };
-  } else if (t === "CNPJ") {
+  }
+  case "CNPJ": {
     const res = validateCNPJ(value);
     return { valid: res.valid, reason_codes: res.reason_codes };
-  } else if (t === "RFC") {
+  }
+  case "RFC": {
     const res = validateRFC(value);
     return { valid: res.valid, reason_codes: res.reason_codes };
-  } else if (t === "CUIT") {
+  }
+  case "CUIT": {
     const res = validateCUIT(value);
     return { valid: res.valid, reason_codes: res.reason_codes };
-  } else if (t === "RUT") {
+  }
+  case "RUT": {
     const res = validateRUT(value);
     return { valid: res.valid, reason_codes: res.reason_codes };
-  } else if (t === "RUC") {
+  }
+  case "RUC": {
     const res = validateRUC(value);
     return { valid: res.valid, reason_codes: res.reason_codes };
-  } else if (t === "NIT") {
+  }
+  case "NIT": {
     const res = validateNIT(value);
     return { valid: res.valid, reason_codes: res.reason_codes };
-  } else if (t === "NIF" || t === "NIE" || t === "CIF") {
+  }
+  case "NIF": 
+  case "NIE": 
+  case "CIF": {
     const res = validateES(value);
     return { valid: res.valid, reason_codes: res.reason_codes };
-  } else if (t === "EIN") {
+  }
+  case "EIN": {
     const res = validateEIN(value);
     return { valid: res.valid, reason_codes: res.reason_codes };
-  } else if (t === "VAT") {
+  }
+  case "VAT": {
     const cc = country?.toUpperCase() || value.slice(0, 2);
     const vn = value.replace(/^[A-Z]{2}/, "");
     const res = await validateVATViaVIES(cc, vn);
     return { valid: res.valid, reason_codes: res.reason_codes, source: res.source };
-  } else {
+  }
+  default: {
     return { valid: false, reason_codes: ["taxid.invalid_format"] };
+  }
   }
 }
 
 export async function validateTaxId({ type, value, country, redis }: { type: string, value: string, country: string, redis?: Redis }) {
   const t = type.toUpperCase();
-  const normalizedValue = value.replace(/\s/g, "");
+  const normalizedValue = value.replaceAll(/\s/g, "");
   const input = { type: t, value: normalizedValue, country: country || "" };
-  const keyStr = JSON.stringify(input);
-  const hash = crypto.createHash('sha1').update(keyStr).digest('hex');
+  const keyString = JSON.stringify(input);
+  const hash = crypto.createHash('sha1').update(keyString).digest('hex');
   const cacheKey = `validator:taxid:${hash}`;
 
   const cached = await getCachedResult(redis, cacheKey);

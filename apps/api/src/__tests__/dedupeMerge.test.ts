@@ -1,5 +1,6 @@
-import { FastifyInstance } from 'fastify';
+import type { FastifyInstance } from 'fastify';
 import request from 'supertest';
+
 import { createApp, mockPool, setupBeforeAll } from './testSetup';
 
 describe('Dedupe Merge Endpoint', () => {
@@ -19,7 +20,7 @@ describe('Dedupe Merge Endpoint', () => {
 
     it('should merge customer records successfully', async () => {
         // Mock pool to simulate verification and merge
-        mockPool.query.mockImplementation((query) => {
+        mockPool.query.mockImplementation((query: string) => {
             if (query.includes('SELECT id FROM customers')) {
                 return Promise.resolve({ rows: [
                     { id: 'uuid1' },
@@ -36,7 +37,7 @@ describe('Dedupe Merge Endpoint', () => {
             return Promise.resolve({ rows: [] });
         });
 
-        const res = await request(app.server)
+        const response = await request(app.server)
             .post('/v1/dedupe/merge')
             .set('Authorization', 'Bearer valid_key')
             .send({
@@ -45,15 +46,16 @@ describe('Dedupe Merge Endpoint', () => {
                 canonical_id: 'canonical-uuid'
             });
 
-        expect(res.statusCode).toBe(200);
-        expect(res.body.success).toBe(true);
-        expect(res.body.merged_count).toBe(2);
-        expect(res.body.canonical_id).toBe('canonical-uuid');
+        expect(response.status).toBe(200);
+        const body = response.body as { success: boolean; merged_count: number; canonical_id: string };
+        expect(body.success).toBe(true);
+        expect(body.merged_count).toBe(2);
+        expect(body.canonical_id).toBe('canonical-uuid');
     });
 
     it('should merge address records successfully', async () => {
         // Mock pool for address merge
-        mockPool.query.mockImplementation((query) => {
+        mockPool.query.mockImplementation((query: string) => {
             if (query.includes('SELECT id FROM addresses')) {
                 return Promise.resolve({ rows: [
                     { id: 'uuid3' },
@@ -70,7 +72,7 @@ describe('Dedupe Merge Endpoint', () => {
             return Promise.resolve({ rows: [] });
         });
 
-        const res = await request(app.server)
+        const response = await request(app.server)
             .post('/v1/dedupe/merge')
             .set('Authorization', 'Bearer valid_key')
             .send({
@@ -79,21 +81,22 @@ describe('Dedupe Merge Endpoint', () => {
                 canonical_id: 'canonical-uuid-addr'
             });
 
-        expect(res.statusCode).toBe(200);
-        expect(res.body.success).toBe(true);
-        expect(res.body.merged_count).toBe(2);
-        expect(res.body.canonical_id).toBe('canonical-uuid-addr');
+        expect(response.status).toBe(200);
+        const body = response.body as { success: boolean; merged_count: number; canonical_id: string };
+        expect(body.success).toBe(true);
+        expect(body.merged_count).toBe(2);
+        expect(body.canonical_id).toBe('canonical-uuid-addr');
     });
 
     it('should return error for invalid IDs', async () => {
-        mockPool.query.mockImplementation((query) => {
+        mockPool.query.mockImplementation((query: string) => {
             if (query.includes('SELECT id FROM')) {
                 return Promise.resolve({ rows: [{ id: 'valid' }] }); // Only one ID found
             }
             return Promise.resolve({ rows: [] });
         });
 
-        const res = await request(app.server)
+        const response = await request(app.server)
             .post('/v1/dedupe/merge')
             .set('Authorization', 'Bearer valid_key')
             .send({
@@ -102,7 +105,8 @@ describe('Dedupe Merge Endpoint', () => {
                 canonical_id: 'invalid-canonical'
             });
 
-        expect(res.statusCode).toBe(400);
-        expect(res.body.error.code).toBe('invalid_ids');
+        expect(response.status).toBe(400);
+        const body = response.body as { error: { code: string } };
+        expect(body.error.code).toBe('invalid_ids');
     });
 });

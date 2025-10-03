@@ -1,6 +1,7 @@
+import type { FastifyInstance } from 'fastify'; // Import the type for safety
 import request from 'supertest';
-import { createApp, setupBeforeAll, mockPool } from './testSetup';
-import { FastifyInstance } from 'fastify'; // Import the type for safety
+
+import { createApp, mockPool,setupBeforeAll } from './testSetup';
 
 describe('Usage Stats Endpoints', () => {
   let app: FastifyInstance;

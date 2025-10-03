@@ -1,10 +1,12 @@
-import { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
-import { Pool } from "pg";
-import crypto from "crypto";
-import { normalizeAddress } from "../validators/address";
+import crypto from "node:crypto";
+
+import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
+import type { Pool } from "pg";
+
+import { DEDUPE_ACTIONS, ERROR_CODES, ERROR_MESSAGES, HTTP_STATUS, MATCH_TYPES, MERGE_TYPES, SIMILARITY_EXACT, SIMILARITY_FUZZY_THRESHOLD } from "../constants";
 import { logEvent } from "../hooks";
-import { securityHeader, unauthorizedResponse, rateLimitResponse, validationErrorResponse, generateRequestId, sendServerError } from "./utils";
-import { HTTP_STATUS, ERROR_CODES, ERROR_MESSAGES, MATCH_TYPES, DEDUPE_ACTIONS, MERGE_TYPES, SIMILARITY_EXACT, SIMILARITY_FUZZY_THRESHOLD } from "../constants";
+import { normalizeAddress } from "../validators/address";
+import { generateRequestId, rateLimitResponse, securityHeader, sendServerError,unauthorizedResponse, validationErrorResponse } from "./utils";
 
 export function registerDedupeRoutes(app: FastifyInstance, pool: Pool) {
     app.post('/v1/dedupe/customer', {
@@ -50,33 +52,33 @@ export function registerDedupeRoutes(app: FastifyInstance, pool: Pool) {
                 ...validationErrorResponse
             }
         }
-    }, async (req: FastifyRequest, rep: FastifyReply) => {
+    }, async (request: FastifyRequest, rep: FastifyReply) => {
         try {
             const request_id = generateRequestId();
-            const { email, phone, first_name, last_name } = req.body as any;
-            const project_id = (req as any).project_id;
+            const { email, phone, first_name, last_name } = request.body as any;
+            const project_id = (request as any).project_id;
             const reason_codes: string[] = [];
             const matches: any[] = [];
 
             // Deterministic matches using normalized fields
-            let normEmail = email ? email.trim().toLowerCase() : null;
-            let normPhone = phone ? phone.replace(/[^0-9+]/g, '') : null; // Simple E.164 prep
+            const normEmail = email ? email.trim().toLowerCase() : null;
+            const normPhone = phone ? phone.replaceAll(/[^\d+]/g, '') : null; // Simple E.164 prep
 
             if (normEmail) {
                 const { rows: emailMatches } = await pool.query(
                     'SELECT id, email, phone, first_name, last_name FROM customers WHERE project_id = $2 AND normalized_email = $1',
                     [normEmail, project_id]
                 );
-                emailMatches.forEach(row => {
+                for (const row of emailMatches) {
                     if (row.id) {
                         matches.push({
                             id: row.id,
-                            similarity_score: 1.0,
+                            similarity_score: 1,
                             match_type: MATCH_TYPES.EXACT_EMAIL,
                             data: row
                         });
                     }
-                });
+                }
             }
 
             if (normPhone) {
@@ -84,16 +86,16 @@ export function registerDedupeRoutes(app: FastifyInstance, pool: Pool) {
                     'SELECT id, email, phone, first_name, last_name FROM customers WHERE project_id = $2 AND normalized_phone = $1',
                     [normPhone, project_id]
                 );
-                phoneMatches.forEach(row => {
+                for (const row of phoneMatches) {
                     if (row.id) {
                         matches.push({
                             id: row.id,
-                            similarity_score: 1.0,
+                            similarity_score: 1,
                             match_type: MATCH_TYPES.EXACT_PHONE,
                             data: row
                         });
                     }
-                });
+                }
             }
 
             // Fuzzy matches with 0.85 threshold on name
@@ -108,7 +110,7 @@ export function registerDedupeRoutes(app: FastifyInstance, pool: Pool) {
                      ORDER BY name_score DESC LIMIT 5`,
                     [full_name, project_id]
                 );
-                nameMatches.forEach(row => {
+                for (const row of nameMatches) {
                     const score = row.name_score;
                     if (score > 0.85) {
                         matches.push({
@@ -118,7 +120,7 @@ export function registerDedupeRoutes(app: FastifyInstance, pool: Pool) {
                             data: row
                         });
                     }
-                });
+                }
             }
             // Sort matches by score descending
             matches.sort((a, b) => b.similarity_score - a.similarity_score);
@@ -141,7 +143,7 @@ export function registerDedupeRoutes(app: FastifyInstance, pool: Pool) {
             await logEvent(project_id, 'dedupe', '/dedupe/customer', reason_codes, HTTP_STATUS.OK, { matches_count: matches.length, suggested_action }, pool);
             return rep.send(response);
         } catch (error) {
-            return sendServerError(req, rep, error, '/v1/dedupe/customer', generateRequestId());
+            return sendServerError(request, rep, error, '/v1/dedupe/customer', generateRequestId());
         }
     });
 
@@ -190,11 +192,11 @@ export function registerDedupeRoutes(app: FastifyInstance, pool: Pool) {
                 ...validationErrorResponse
             }
         }
-    }, async (req: FastifyRequest, rep: FastifyReply) => {
+    }, async (request: FastifyRequest, rep: FastifyReply) => {
         try {
             const request_id = generateRequestId();
-            const { line1, line2, city, state, postal_code, country } = req.body as any;
-            const project_id = (req as any).project_id;
+            const { line1, line2, city, state, postal_code, country } = request.body as any;
+            const project_id = (request as any).project_id;
             const reason_codes: string[] = [];
             const matches: any[] = [];
 
@@ -207,16 +209,16 @@ export function registerDedupeRoutes(app: FastifyInstance, pool: Pool) {
                 'SELECT id, line1, line2, city, state, postal_code, country, lat, lng FROM addresses WHERE project_id = $2 AND address_hash = $1',
                 [addrHash, project_id]
             );
-            hashMatches.forEach(row => {
+            for (const row of hashMatches) {
                 if (row.id) {
                     matches.push({
                         id: row.id,
-                        similarity_score: 1.0,
+                        similarity_score: 1,
                         match_type: MATCH_TYPES.EXACT_ADDRESS,
                         data: row
                     });
                 }
-            });
+            }
 
             // Fallback deterministic: exact postal_code + city + country
             if (matches.length === 0) {
@@ -224,16 +226,16 @@ export function registerDedupeRoutes(app: FastifyInstance, pool: Pool) {
                     'SELECT id, line1, line2, city, state, postal_code, country, lat, lng FROM addresses WHERE project_id = $2 AND postal_code = $3 AND lower(city) = lower($4) AND country = $5',
                     [project_id, normAddr.postal_code, normAddr.city, normAddr.country]
                 );
-                exactMatches.forEach(row => {
+                for (const row of exactMatches) {
                     if (row.id && !matches.some(m => m.id === row.id)) {
                         matches.push({
                             id: row.id,
-                            similarity_score: 1.0,
+                            similarity_score: 1,
                             match_type: MATCH_TYPES.EXACT_POSTAL,
                             data: row
                         });
                     }
-                });
+                }
             }
 
             // Fuzzy matches with 0.85 threshold on line1, city
@@ -246,7 +248,7 @@ export function registerDedupeRoutes(app: FastifyInstance, pool: Pool) {
                  ORDER BY score DESC LIMIT 5`,
                 [project_id, normAddr.line1, normAddr.city]
             );
-            fuzzyMatches.forEach(row => {
+            for (const row of fuzzyMatches) {
                 if (row.id && !matches.some(m => m.id === row.id)) {  // Avoid duplicates
                     matches.push({
                         id: row.id,
@@ -255,7 +257,7 @@ export function registerDedupeRoutes(app: FastifyInstance, pool: Pool) {
                         data: row
                     });
                 }
-            });
+            }
 
             // Sort matches by score descending
             matches.sort((a, b) => b.similarity_score - a.similarity_score);
@@ -278,7 +280,7 @@ export function registerDedupeRoutes(app: FastifyInstance, pool: Pool) {
             await logEvent(project_id, 'dedupe', '/dedupe/address', reason_codes, HTTP_STATUS.OK, { matches_count: matches.length, suggested_action }, pool);
             return rep.send(response);
         } catch (error) {
-            return sendServerError(req, rep, error, '/v1/dedupe/address', generateRequestId());
+            return sendServerError(request, rep, error, '/v1/dedupe/address', generateRequestId());
         }
     });
 
@@ -314,11 +316,11 @@ export function registerDedupeRoutes(app: FastifyInstance, pool: Pool) {
                 ...validationErrorResponse
             }
         }
-    }, async (req: FastifyRequest, rep: FastifyReply) => {
+    }, async (request: FastifyRequest, rep: FastifyReply) => {
         try {
             const request_id = generateRequestId();
-            const { type, ids, canonical_id } = req.body as { type: string; ids: string[]; canonical_id: string };
-            const project_id = (req as any).project_id;
+            const { type, ids, canonical_id } = request.body as { type: string; ids: string[]; canonical_id: string };
+            const project_id = (request as any).project_id;
             const table = type === MERGE_TYPES.CUSTOMER ? 'customers' : 'addresses';
             const count = ids.length;
 
@@ -346,7 +348,7 @@ export function registerDedupeRoutes(app: FastifyInstance, pool: Pool) {
             await logEvent(project_id, 'dedupe', '/dedupe/merge', [], HTTP_STATUS.OK, { type, merged_count: count }, pool);
             return rep.send(response);
         } catch (error) {
-            return sendServerError(req, rep, error, '/v1/dedupe/merge', generateRequestId());
+            return sendServerError(request, rep, error, '/v1/dedupe/merge', generateRequestId());
         }
     });
 }

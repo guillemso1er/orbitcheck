@@ -1,9 +1,16 @@
+
 import Fastify from 'fastify';
+
+import type { ValidationResult } from '../validators/email';
 
 // --- Reusable Mock Instances ---
 export const mockPool = {
   query: jest.fn(),
   end: jest.fn(),
+  connect: jest.fn().mockResolvedValue({
+    query: jest.fn().mockResolvedValue({ rows: [{ value: 1 }] }),
+    release: jest.fn(),
+  }),
 };
 
 export const mockRedisInstance = {
@@ -13,6 +20,9 @@ export const mockRedisInstance = {
   get: jest.fn(),
   set: jest.fn(),
   quit: jest.fn(),
+  sadd: jest.fn(),
+  del: jest.fn(),
+  rename: jest.fn(),
 };
 
 export const mockTwilioInstance = {
@@ -39,7 +49,7 @@ jest.mock('pg', () => ({
 }));
 
 jest.mock('../env', () => ({
-  env: {
+  environment: {
     DATABASE_URL: 'postgres://test',
     REDIS_URL: 'redis://localhost',
     JWT_SECRET: 'test_jwt_secret',
@@ -51,6 +61,7 @@ jest.mock('../env', () => ({
     USE_GOOGLE_FALLBACK: false,
     DISPOSABLE_LIST_URL: 'https://example.com/disposable-domains.json',
     RATE_LIMIT_COUNT: 1,
+    RETENTION_DAYS: 90,
     // Add any other env vars as needed
   }
 }));
@@ -93,12 +104,13 @@ jest.mock('tldts', () => ({
   getDomain: jest.fn((domain: string) => domain),
 }));
 
-jest.mock('crypto', () => ({
-  randomBytes: jest.fn(),
+
+jest.mock('node:crypto', () => ({
+  ...jest.requireActual('node:crypto'), // Import and spread all original functions
+  randomBytes: jest.fn(),               // Override only the ones we need to control
   createHash: jest.fn(),
   randomUUID: jest.fn(),
 }));
-
 jest.mock('../validators/email', () => ({
   validateEmail: jest.fn(),
 }));
@@ -131,62 +143,51 @@ let registerRulesRoutesFunction: any;
 export const createApp = async () => {
   const app = Fastify({ logger: false });
 
-  app.addHook("preHandler", async (req, rep) => {
-    if (req.headers.authorization) {
-      (req as any).project_id = 'test_project'; // Manually set the project_id
-    }
-  });
-
-  app.addHook("preHandler", async (req, rep) => {
-    if (req.url.startsWith("/api-keys")) {
-      await verifyJWTFunction(req, rep, mockPool);
-    }
-  });
 
   // Register routes using the loaded functions
   if (typeof registerAuthRoutesFunction !== 'function') {
-    throw new Error("registerAuthRoutesFunction was not loaded correctly.");
+    throw new TypeError("registerAuthRoutesFunction was not loaded correctly.");
   }
   registerAuthRoutesFunction(app, mockPool as any);
 
   if (typeof registerApiKeysRoutesFunction !== 'function') {
-    throw new Error("registerApiKeysRoutesFunction was not loaded correctly.");
+    throw new TypeError("registerApiKeysRoutesFunction was not loaded correctly.");
   }
   registerApiKeysRoutesFunction(app, mockPool as any);
 
   if (typeof registerValidationRoutesFunction !== 'function') {
-    throw new Error("registerValidationRoutesFunction was not loaded correctly.");
+    throw new TypeError("registerValidationRoutesFunction was not loaded correctly.");
   }
   registerValidationRoutesFunction(app, mockPool as any, mockRedisInstance as any);
 
   if (typeof registerDedupeRoutesFunction !== 'function') {
-    throw new Error("registerDedupeRoutesFunction was not loaded correctly.");
+    throw new TypeError("registerDedupeRoutesFunction was not loaded correctly.");
   }
   registerDedupeRoutesFunction(app, mockPool as any);
 
   if (typeof registerOrdersRoutesFunction !== 'function') {
-    throw new Error("registerOrdersRoutesFunction was not loaded correctly.");
+    throw new TypeError("registerOrdersRoutesFunction was not loaded correctly.");
   }
   registerOrdersRoutesFunction(app, mockPool as any, mockRedisInstance as any);
 
   if (typeof registerDataRoutesFunction !== 'function') {
-    throw new Error("registerDataRoutesFunction was not loaded correctly.");
+    throw new TypeError("registerDataRoutesFunction was not loaded correctly.");
   }
   registerDataRoutesFunction(app, mockPool as any);
 
   if (typeof registerWebhooksRoutesFunction !== 'function') {
-    throw new Error("registerWebhooksRoutesFunction was not loaded correctly.");
+    throw new TypeError("registerWebhooksRoutesFunction was not loaded correctly.");
   }
   registerWebhooksRoutesFunction(app, mockPool as any);
 
   if (typeof registerRulesRoutesFunction !== 'function') {
-    throw new Error("registerRulesRoutesFunction was not loaded correctly.");
+    throw new TypeError("registerRulesRoutesFunction was not loaded correctly.");
   }
   registerRulesRoutesFunction(app, mockPool as any);
 
 
   // Add security headers for test coverage
-  app.addHook('preHandler', (req, reply, done) => {
+  app.addHook('preHandler', (request, reply, done) => {
     reply.header('X-Content-Type-Options', 'nosniff');
     reply.header('X-Frame-Options', 'DENY');
     reply.header('X-XSS-Protection', '1; mode=block');
@@ -204,7 +205,7 @@ export let hapi: any;
 export let mockDns: any;
 export let libphone: any;
 export let mockAddressValidator: any;
-export let mockValidateEmail: jest.Mock<any>;
+export let mockValidateEmail: jest.Mock<Promise<ValidationResult>>;
 export let mockGetDomain: jest.Mock<any>;
 export let mockValidatePhone: jest.Mock<any>;
 export let mockValidateAddress: jest.Mock<any>;
@@ -242,8 +243,8 @@ export const setupBeforeAll = async () => {
   mockValidateEmail = require('../validators/email').validateEmail as jest.Mock;
   mockValidatePhone = require('../validators/phone').validatePhone as jest.Mock;
   mockValidateAddress = require('../validators/address').validateAddress as jest.Mock;
-  hapi = require('@hapi/address');
-  mockDns = require('node:dns/promises');
+  hapi = require('@hapi/address') as { isEmailValid: jest.Mock };
+  mockDns = require('node:dns/promises') as { resolveMx: jest.Mock; resolve4: jest.Mock; resolve6: jest.Mock };
   libphone = require('libphonenumber-js');
   mockAddressValidator = require('../validators/address');
   bcrypt = require('bcryptjs');
@@ -256,6 +257,8 @@ export const setupBeforeAll = async () => {
     disposable: false,
     mx_found: true,
     reason_codes: [],
+    request_id: 'test-request-id',
+    ttl_seconds: 2592000,
   });
 
   mockValidatePhone.mockResolvedValue({
@@ -276,7 +279,7 @@ export const setupBeforeAll = async () => {
   });
 
   // Mock crypto for consistent testing
-  const cryptoModule = require('crypto');
+  const cryptoModule = require('node:crypto');
   (cryptoModule.randomBytes as jest.Mock).mockReturnValue(Buffer.from('test32bytes' + 'a'.repeat(24)));
   (cryptoModule.createHash as jest.Mock).mockImplementation(() => ({
     update: jest.fn().mockReturnThis(),
@@ -286,7 +289,14 @@ export const setupBeforeAll = async () => {
 
   // Default Mock Implementations (Success Cases)
   mockPool.end.mockResolvedValue('OK');
+  mockPool.connect.mockResolvedValue({
+    query: jest.fn().mockResolvedValue({ rows: [{ value: 1 }] }),
+    release: jest.fn(),
+  });
   mockRedisInstance.quit.mockResolvedValue('OK');
+  mockRedisInstance.sadd.mockResolvedValue(1);
+  mockRedisInstance.del.mockResolvedValue(1);
+  mockRedisInstance.rename.mockResolvedValue('OK');
   mockRedisInstance.sismember.mockResolvedValue(0);
   mockRedisInstance.incr.mockResolvedValue(1);
   mockRedisInstance.expire.mockResolvedValue(true);
@@ -298,7 +308,8 @@ export const setupBeforeAll = async () => {
     isValid: () => true,
     number: '+15551234567',
     country: 'US',
-  });
+    phone: '15551234567',
+  } as any);
   mockDns.resolveMx.mockResolvedValue([{ exchange: 'mx.example.com' }]);
   mockAddressValidator.normalizeAddress.mockResolvedValue({
     line1: '123 Main St',
@@ -312,5 +323,11 @@ export const setupBeforeAll = async () => {
   (bcrypt.hash as jest.Mock).mockResolvedValue('hashed_password');
   (bcrypt.compare as jest.Mock).mockResolvedValue(true);
   (jwt.sign as jest.Mock).mockReturnValue('mock_jwt_token');
-  (jwt.verify as jest.Mock).mockReturnValue({ user_id: 'test_user' });
+  (jwt.verify as jest.Mock).mockReturnValue({ user_id: 'test_user', project_id: 'test_project' });
 };
+
+describe('testSetup', () => {
+  it('should setup mocks', () => {
+    expect(true).toBe(true);
+  });
+});

@@ -1,6 +1,7 @@
+import type { FastifyInstance } from 'fastify'; // Import the type for safety
 import request from 'supertest';
+
 import { createApp, mockPool, setupBeforeAll } from './testSetup';
-import { FastifyInstance } from 'fastify'; // Import the type for safety
 
 describe('Customer Deduplication Endpoints', () => {
     let app: FastifyInstance;
@@ -65,14 +66,15 @@ describe('Customer Deduplication Endpoints', () => {
                 return Promise.resolve({ rows: [] });
             });
 
-            const res = await request(app.server)
+            const response = await request(app.server)
                 .post('/v1/dedupe/customer')
                 .set('Authorization', 'Bearer valid_key')
                 .send({ email: 'test@example.com', first_name: 'John', last_name: 'Doe' });
 
-            expect(res.statusCode).toBe(200);
-            expect(res.body.matches.length).toBe(1);
-            expect(res.body.suggested_action).toBe('merge_with');
+            expect(response.status).toBe(200);
+            const body = response.body as { matches: unknown[]; suggested_action: string };
+            expect(body.matches.length).toBe(1);
+            expect(body.suggested_action).toBe('merge_with');
         });
 
         it('should find exact phone match', async () => {
@@ -93,15 +95,16 @@ describe('Customer Deduplication Endpoints', () => {
                 return Promise.resolve({ rows: [] });
             });
 
-            const res = await request(app.server)
+            const response = await request(app.server)
                 .post('/v1/dedupe/customer')
                 .set('Authorization', 'Bearer valid_key')
                 .send({ email: 'unique@example.com', phone: '+15551234567', first_name: 'John', last_name: 'Doe' });
 
-            expect(res.statusCode).toBe(200);
-            expect(res.body.matches.length).toBe(1);
-            expect(res.body.matches[0].match_type).toBe('exact_phone');
-            expect(res.body.suggested_action).toBe('merge_with');
+            expect(response.status).toBe(200);
+            const body = response.body as { matches: { match_type: string }[]; suggested_action: string };
+            expect(body.matches.length).toBe(1);
+            expect((body.matches[0] as { match_type: string }).match_type).toBe('exact_phone');
+            expect(body.suggested_action).toBe('merge_with');
         });
 
         it('should suggest review for fuzzy name match', async () => {
@@ -124,26 +127,28 @@ describe('Customer Deduplication Endpoints', () => {
                 return Promise.resolve({ rows: [] });
             });
 
-            const res = await request(app.server)
+            const response = await request(app.server)
                 .post('/v1/dedupe/customer')
                 .set('Authorization', 'Bearer valid_key')
                 .send({ email: 'new@example.com', first_name: 'John', last_name: 'Doe' });
 
-            expect(res.statusCode).toBe(200);
-            expect(res.body.suggested_action).toBe('review');
+            expect(response.status).toBe(200);
+            const body = response.body as { suggested_action: string };
+            expect(body.suggested_action).toBe('review');
         });
 
         it('should suggest create_new if no matches are found', async () => {
             // No override needed. The default mock set up in beforeEach correctly
             // handles this case by returning no matches.
-            const res = await request(app.server)
+            const response = await request(app.server)
                 .post('/v1/dedupe/customer')
                 .set('Authorization', 'Bearer valid_key')
                 .send({ email: 'unique@example.com', first_name: 'Jane', last_name: 'Smith' });
 
-            expect(res.statusCode).toBe(200);
-            expect(res.body.matches.length).toBe(0);
-            expect(res.body.suggested_action).toBe('create_new');
+            expect(response.status).toBe(200);
+            const body = response.body as { matches: unknown[]; suggested_action: string };
+            expect(body.matches.length).toBe(0);
+            expect(body.suggested_action).toBe('create_new');
         });
     });
 
@@ -182,14 +187,15 @@ describe('Customer Deduplication Endpoints', () => {
                 return Promise.resolve({ rows: [] });
             });
 
-            const res = await request(app.server)
+            const response = await request(app.server)
                 .post('/v1/dedupe/address')
                 .set('Authorization', 'Bearer valid_key')
                 .send({ line1: '123 Main St', city: 'New York', postal_code: '10001', country: 'US' });
 
-            expect(res.statusCode).toBe(200);
-            expect(res.body.matches.length).toBe(1);
-            expect(res.body.suggested_action).toBe('merge_with');
+            expect(response.status).toBe(200);
+            const body = response.body as { matches: unknown[]; suggested_action: string };
+            expect(body.matches.length).toBe(1);
+            expect(body.suggested_action).toBe('merge_with');
         });
 
         it('should find exact postal match', async () => {
@@ -206,15 +212,16 @@ describe('Customer Deduplication Endpoints', () => {
                 return Promise.resolve({ rows: [] });
             });
 
-            const res = await request(app.server)
+            const response = await request(app.server)
                 .post('/v1/dedupe/address')
                 .set('Authorization', 'Bearer valid_key')
                 .send({ line1: 'Different Address', city: 'New York', postal_code: '10001', country: 'US' });
 
-            expect(res.statusCode).toBe(200);
-            expect(res.body.matches.length).toBe(1);
-            expect(res.body.matches[0].match_type).toBe('exact_postal');
-            expect(res.body.suggested_action).toBe('merge_with');
+            expect(response.status).toBe(200);
+            const body = response.body as { matches: { match_type: string }[]; suggested_action: string };
+            expect(body.matches.length).toBe(1);
+            expect((body.matches[0] as { match_type: string }).match_type).toBe('exact_postal');
+            expect(body.suggested_action).toBe('merge_with');
         });
 
         it('should suggest review for fuzzy address match', async () => {
@@ -231,25 +238,27 @@ describe('Customer Deduplication Endpoints', () => {
                 return Promise.resolve({ rows: [] });
             });
 
-            const res = await request(app.server)
+            const response = await request(app.server)
                 .post('/v1/dedupe/address')
                 .set('Authorization', 'Bearer valid_key')
                 .send({ line1: '123 Main St', city: 'New York', postal_code: '10001', country: 'US' });
 
-            expect(res.statusCode).toBe(200);
-            expect(res.body.suggested_action).toBe('review');
-            expect(res.body.matches[0].similarity_score).toBe(0.9);
+            expect(response.status).toBe(200);
+            const body = response.body as { suggested_action: string; matches: { similarity_score: number }[] };
+            expect(body.suggested_action).toBe('review');
+            expect((body.matches[0] as { similarity_score: number }).similarity_score).toBe(0.9);
         });
 
         it('should suggest create_new if no address matches', async () => {
-            const res = await request(app.server)
+            const response = await request(app.server)
                 .post('/v1/dedupe/address')
                 .set('Authorization', 'Bearer valid_key')
                 .send({ line1: 'Unique Address', city: 'Unique City', postal_code: '99999', country: 'US' });
 
-            expect(res.statusCode).toBe(200);
-            expect(res.body.matches.length).toBe(0);
-            expect(res.body.suggested_action).toBe('create_new');
+            expect(response.status).toBe(200);
+            const body = response.body as { matches: unknown[]; suggested_action: string };
+            expect(body.matches.length).toBe(0);
+            expect(body.suggested_action).toBe('create_new');
         });
     });
 });

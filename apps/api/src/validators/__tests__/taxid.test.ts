@@ -1,13 +1,13 @@
 import {
-  validateCPF,
   validateCNPJ,
-  validateRFC,
+  validateCPF,
   validateCUIT,
-  validateRUT,
-  validateRUC,
-  validateNIT,
-  validateES,
   validateEIN,
+  validateES,
+  validateNIT,
+  validateRFC,
+  validateRUC,
+  validateRUT,
   validateTaxId,
 } from '../taxid';
 
@@ -222,31 +222,33 @@ describe('Tax ID Validators', () => {
 
   describe('validateTaxId', () => {
     beforeEach(() => {
-      const mockSoap = require('soap');
+      const mockSoap = require('soap') as { createClientAsync: jest.Mock };
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
       mockSoap.createClientAsync.mockResolvedValue({
         checkVatAsync: jest.fn().mockResolvedValue([{ valid: true }]),
       });
     });
 
     it('should validate CPF via type', async () => {
-      const result = await validateTaxId({ type: 'CPF', value: '123.456.789-09', country: 'BR' });
+      const result = await validateTaxId({ type: 'CPF', value: '123.456.789-09', country: 'BR' }) as { valid: boolean; source: string };
       expect(result.valid).toBe(true);
       expect(result.source).toBe('format');
     });
 
     it('should handle VAT via VIES', async () => {
-      const mockSoap = require('soap');
+      const mockSoap = require('soap') as { createClientAsync: jest.Mock };
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
       mockSoap.createClientAsync.mockResolvedValue({
         checkVatAsync: jest.fn().mockResolvedValue([{ valid: true }]),
       });
 
-      const result = await validateTaxId({ type: 'VAT', value: 'DE123456789', country: 'DE' });
+      const result = await validateTaxId({ type: 'VAT', value: 'DE123456789', country: 'DE' }) as { source: string; valid: boolean };
       expect(result.source).toBe('vies');
       expect(result.valid).toBe(true);
     });
 
     it('should invalidate unknown type', async () => {
-      const result = await validateTaxId({ type: 'UNKNOWN', value: '123', country: '' });
+      const result = await validateTaxId({ type: 'UNKNOWN', value: '123', country: '' }) as { valid: boolean; reason_codes: string[] };
       expect(result.valid).toBe(false);
       expect(result.reason_codes).toContain('taxid.invalid_format');
     });

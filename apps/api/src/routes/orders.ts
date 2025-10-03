@@ -1,13 +1,15 @@
-import crypto from "crypto";
-import { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
+import crypto from "node:crypto";
+
+import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import type { Redis } from "ioredis";
-import { Pool } from "pg";
+import type { Pool } from "pg";
+
+import { DEDUPE_ACTIONS, HIGH_VALUE_THRESHOLD,HTTP_STATUS, MATCH_TYPES, ORDER_ACTIONS, ORDER_TAGS, PAYMENT_METHODS, REASON_CODES, RISK_ADDRESS_DEDUPE, RISK_BLOCK_THRESHOLD, RISK_COD, RISK_COD_HIGH, RISK_CUSTOMER_DEDUPE, RISK_GEO_OUT, RISK_GEOCODE_FAIL, RISK_HIGH_VALUE, RISK_HOLD_THRESHOLD, RISK_INVALID_ADDR, RISK_INVALID_EMAIL_PHONE, RISK_PO_BOX, RISK_POSTAL_MISMATCH, SIMILARITY_EXACT, SIMILARITY_FUZZY_THRESHOLD } from "../constants";
 import { logEvent } from "../hooks";
 import { validateAddress } from "../validators/address";
 import { validateEmail } from "../validators/email";
 import { validatePhone } from "../validators/phone";
 import { generateRequestId, rateLimitResponse, securityHeader, sendServerError, unauthorizedResponse, validationErrorResponse } from "./utils";
-import { HTTP_STATUS, REASON_CODES, MATCH_TYPES, DEDUPE_ACTIONS, ORDER_ACTIONS, ORDER_TAGS, PAYMENT_METHODS, SIMILARITY_EXACT, SIMILARITY_FUZZY_THRESHOLD, RISK_BLOCK_THRESHOLD, RISK_HOLD_THRESHOLD, RISK_CUSTOMER_DEDUPE, RISK_ADDRESS_DEDUPE, RISK_PO_BOX, RISK_POSTAL_MISMATCH, RISK_GEO_OUT, RISK_GEOCODE_FAIL, RISK_INVALID_ADDR, RISK_INVALID_EMAIL_PHONE, RISK_COD, RISK_COD_HIGH, RISK_HIGH_VALUE, HIGH_VALUE_THRESHOLD } from "../constants";
 
 
 const customerMatchSchema = {
@@ -122,22 +124,22 @@ export function registerOrderRoutes(app: FastifyInstance, pool: Pool, redis: Red
                 ...validationErrorResponse
             }
         }
-    }, async (req: FastifyRequest, rep: FastifyReply) => {
+    }, async (request: FastifyRequest, rep: FastifyReply) => {
         const request_id = generateRequestId();
         try {
-            const body = req.body as any;
-            const project_id = (req as any).project_id;
+            const body = request.body as any;
+            const project_id = (request as any).project_id;
             const reason_codes: string[] = [];
             const tags: string[] = [];
             let risk_score = 0;
 
             const { order_id, customer, shipping_address, total_amount, currency, payment_method } = body;
 
-            let customer_matches: any[] = [];
+            const customer_matches: any[] = [];
             const seenIds = new Set<string>();
             if (customer) {
                 const normEmail = customer.email ? customer.email.trim().toLowerCase() : null;
-                const normPhone = customer.phone ? customer.phone.replace(/[^0-9+]/g, '') : null;
+                const normPhone = customer.phone ? customer.phone.replaceAll(/[^\d+]/g, '') : null;
                 const full_name = `${customer.first_name || ''} ${customer.last_name || ''}`.trim();
 
                 // Exact email match
@@ -146,7 +148,7 @@ export function registerOrderRoutes(app: FastifyInstance, pool: Pool, redis: Red
                         `SELECT id, email, phone, first_name, last_name, 1.0 as similarity_score FROM customers WHERE project_id = $1 AND normalized_email = $2`,
                         [project_id, normEmail]
                     );
-                    rows.forEach(row => {
+                    for (const row of rows) {
                         if (!seenIds.has(row.id)) {
                             // FINAL FIX: Manually build a new, plain object to ensure serialization.
                             customer_matches.push({
@@ -155,12 +157,12 @@ export function registerOrderRoutes(app: FastifyInstance, pool: Pool, redis: Red
                                 phone: row.phone,
                                 first_name: row.first_name,
                                 last_name: row.last_name,
-                                similarity_score: 1.0,
+                                similarity_score: 1,
                                 match_type: MATCH_TYPES.EXACT_EMAIL
                             });
                             seenIds.add(row.id);
                         }
-                    });
+                    }
                 }
 
                 // Fuzzy name match
@@ -173,7 +175,7 @@ export function registerOrderRoutes(app: FastifyInstance, pool: Pool, redis: Red
                          ORDER BY similarity_score DESC LIMIT 5`,
                         [project_id, full_name]
                     );
-                    rows.forEach(row => {
+                    for (const row of rows) {
                         if (!seenIds.has(row.id)) {
                             // FINAL FIX: Manually build a new, plain object to ensure serialization.
                             customer_matches.push({
@@ -187,7 +189,7 @@ export function registerOrderRoutes(app: FastifyInstance, pool: Pool, redis: Red
                             });
                             seenIds.add(row.id);
                         }
-                    });
+                    }
                 }
                 customer_matches.sort((a, b) => b.similarity_score - a.similarity_score);
             }
@@ -215,7 +217,7 @@ export function registerOrderRoutes(app: FastifyInstance, pool: Pool, redis: Red
                     state: row.state,
                     postal_code: row.postal_code,
                     country: row.country,
-                    similarity_score: 1.0,
+                    similarity_score: 1,
                     match_type: MATCH_TYPES.EXACT_ADDRESS
                 });
             } else {
@@ -303,22 +305,22 @@ export function registerOrderRoutes(app: FastifyInstance, pool: Pool, redis: Red
             let email_valid = { valid: true, reason_codes: [] as string[], disposable: false };
             let phone_valid = { valid: true, reason_codes: [] as string[], country: null as string | null };
             if (customer.email) {
-                const emailVal = await validateEmail(customer.email, redis);
-                email_valid = { valid: emailVal.valid, reason_codes: emailVal.reason_codes, disposable: emailVal.disposable };
-                reason_codes.push(...emailVal.reason_codes);
-                if (!emailVal.valid || emailVal.disposable) {
+                const emailValue = await validateEmail(customer.email, redis);
+                email_valid = { valid: emailValue.valid, reason_codes: emailValue.reason_codes, disposable: emailValue.disposable };
+                reason_codes.push(...emailValue.reason_codes);
+                if (!emailValue.valid || emailValue.disposable) {
                     risk_score += RISK_INVALID_EMAIL_PHONE;
-                    if (emailVal.disposable) {
+                    if (emailValue.disposable) {
                         tags.push(ORDER_TAGS.DISPOSABLE_EMAIL);
                         reason_codes.push(REASON_CODES.ORDER_DISPOSABLE_EMAIL);
                     }
                 }
             }
             if (customer.phone) {
-                const phoneVal = await validatePhone(customer.phone, undefined, redis);
-                phone_valid = { valid: phoneVal.valid, reason_codes: phoneVal.reason_codes, country: phoneVal.country };
-                reason_codes.push(...phoneVal.reason_codes);
-                if (!phoneVal.valid) {
+                const phoneValue = await validatePhone(customer.phone, undefined, redis);
+                phone_valid = { valid: phoneValue.valid, reason_codes: phoneValue.reason_codes, country: phoneValue.country };
+                reason_codes.push(...phoneValue.reason_codes);
+                if (!phoneValue.valid) {
                     risk_score += RISK_INVALID_EMAIL_PHONE;
                     reason_codes.push(REASON_CODES.ORDER_INVALID_PHONE);
                 }
@@ -400,7 +402,7 @@ export function registerOrderRoutes(app: FastifyInstance, pool: Pool, redis: Red
             return rep.send(response);
         } catch (error) {
             app.log.error({ err: error, request_id }, "An unhandled error occurred in /v1/orders/evaluate");
-            return sendServerError(req, rep, error, '/v1/orders/evaluate', request_id);
+            return sendServerError(request, rep, error, '/v1/orders/evaluate', request_id);
         }
     });
 }

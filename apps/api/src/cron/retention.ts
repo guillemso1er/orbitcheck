@@ -1,11 +1,12 @@
-import { Pool } from 'pg';
-import { env } from '../env';
+import type { Pool } from 'pg';
+
+import { environment } from '../env';
 
 export async function runLogRetention(pool: Pool) {
   try {
     const result = await pool.query(
       'DELETE FROM logs WHERE created_at < NOW() - INTERVAL $1',
-      [env.RETENTION_DAYS + ' days']
+      [environment.RETENTION_DAYS + ' days']
     );
     console.log(`Retention job deleted ${result.rowCount} old log entries`);
   } catch (error) {

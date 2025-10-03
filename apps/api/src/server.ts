@@ -1,15 +1,18 @@
+import { once } from 'node:events';
+
 import cors from "@fastify/cors";
 import fastifySwagger from '@fastify/swagger';
 import fastifySwaggerUi from '@fastify/swagger-ui';
 import * as Sentry from '@sentry/node';
 import { Queue, Worker } from 'bullmq';
-import { once } from 'events';
+import type { FastifyInstance, FastifyReply,FastifyRequest } from "fastify";
 import Fastify from "fastify";
 import IORedis from "ioredis";
 import cron from 'node-cron';
 import { Pool } from "pg";
+
 import { runLogRetention } from './cron/retention';
-import { env } from "./env";
+import { environment } from "./env";
 import { disposableProcessor } from './jobs/refreshDisposable';
 import { registerRoutes } from "./web";
 
@@ -23,32 +26,32 @@ import { registerRoutes } from "./web";
  * @param redis - ioredis client for caching, rate limiting, idempotency keys, and session storage.
  * @returns {Promise<FastifyInstance>} Fully configured Fastify application ready for listening.
  */
-export async function build(pool: Pool, redis: IORedis) {
-    if (env.SENTRY_DSN) {
+export async function build(pool: Pool, redis: IORedis): Promise<FastifyInstance> {
+    if (environment.SENTRY_DSN) {
         Sentry.init({
-            dsn: env.SENTRY_DSN,
-            tracesSampleRate: 1.0,
+            dsn: environment.SENTRY_DSN,
+            tracesSampleRate: 1,
         });
     }
 
     const app = Fastify({
         logger: {
-            level: env.LOG_LEVEL,
-            transport: process.env.NODE_ENV !== 'production'
-                ? { target: 'pino-pretty', options: { colorize: true, translateTime: 'SYS:standard' } }
-                : undefined
+            level: environment.LOG_LEVEL,
+            transport: process.env.NODE_ENV === 'production'
+                ? undefined
+                : { target: 'pino-pretty', options: { colorize: true, translateTime: 'SYS:standard' } }
         },
         requestTimeout: 10_000
     });
 
-    app.setErrorHandler((err, req, reply) => {
+    app.setErrorHandler((error: Error & { code?: string; statusCode?: number }, request: FastifyRequest, reply: FastifyReply) => {
         // Fastify throws a specific error when a request times out
-        if ((err as any).code === 'FST_ERR_REQUEST_TIMEOUT' || err.name === 'RequestTimeoutError') {
-            req.log.error({ method: req.method, url: req.url, reqId: req.id }, 'Request timed out — likely stuck in a hook/handler');
+        if (error.code === 'FST_ERR_REQUEST_TIMEOUT' || error.name === 'RequestTimeoutError') {
+            request.log.error({ method: request.method, url: request.url, reqId: request.id }, 'Request timed out — likely stuck in a hook/handler');
             return reply.status(503).send({ error: 'timeout' });
         }
-        req.log.error({ err }, 'Unhandled error');
-        reply.status(err.statusCode ?? 500).send({ error: 'internal_error' });
+        request.log.error({ err: error }, 'Unhandled error');
+        reply.status(error.statusCode ?? 500).send({ error: 'internal_error' });
     });
     
     // Register OpenAPI/Swagger for automatic API documentation generation
@@ -60,7 +63,7 @@ export async function build(pool: Pool, redis: IORedis) {
                 version: '1.0.0'
             },
             servers: [{
-                url: `http://localhost:${env.PORT}`,
+                url: `http://localhost:${environment.PORT}`,
                 description: 'Development server'
             }],
             components: {
@@ -88,17 +91,13 @@ export async function build(pool: Pool, redis: IORedis) {
 
     // Enable CORS restricted to dashboard origin (configure for prod domains)
     await app.register(cors, {
-        origin: (origin, callback) => {
+        origin: (origin: string | undefined): boolean => {
             const allowedOrigins = [
-                `http://localhost:${env.PORT}`, // API itself for health/docs
+                `http://localhost:${environment.PORT}`, // API itself for health/docs
                 'http://localhost:5173', // Vite dev server
                 'https://dashboard.orbicheck.com', // Example prod subdomain
             ];
-            if (!origin || allowedOrigins.includes(origin)) {
-                callback(null, true);
-            } else {
-                callback(new Error('Not allowed by CORS'), false);
-            }
+            return !origin || allowedOrigins.includes(origin);
         },
         credentials: true,
     });
@@ -107,7 +106,7 @@ export async function build(pool: Pool, redis: IORedis) {
     registerRoutes(app, pool, redis);
 
     // Add security headers (equivalent to helmet)
-    app.addHook('onSend', async (_req, reply, payload) => {
+    app.addHook('onSend', async (request: FastifyRequest, reply: FastifyReply, payload: unknown) => {
         reply.header('X-Content-Type-Options', 'nosniff');
         reply.header('X-Frame-Options', 'DENY');
         reply.header('X-XSS-Protection', '1; mode=block');
@@ -119,7 +118,7 @@ export async function build(pool: Pool, redis: IORedis) {
 
 
     // Simple health check endpoint for monitoring and load balancers
-    app.get("/health", async () => ({ ok: true, timestamp: new Date().toISOString() }));
+    app.get("/health", async (): Promise<{ ok: true; timestamp: string }> => ({ ok: true, timestamp: new Date().toISOString() }));
 
     return app;
 }
@@ -132,50 +131,41 @@ export async function build(pool: Pool, redis: IORedis) {
  *
  * @returns {Promise<void>} Starts the server asynchronously; throws on failure.
  */
-export async function start() {
+export async function start(): Promise<void> {
     // --- Step 1: Initialize and Verify Dependencies ---
-    console.log('Initializing dependencies...');
-    const pool = new Pool({ connectionString: env.DATABASE_URL });
+    const pool = new Pool({ connectionString: environment.DATABASE_URL });
 
     try {
-        console.log('Attempting to connect to PostgreSQL...');
         const client = await pool.connect();
-        console.log('PostgreSQL connection successful. Pinging...');
         await client.query('SELECT 1');
         client.release();
-        console.log('PostgreSQL is ready.');
-    } catch (err) {
-        console.error('FATAL: Could not connect to PostgreSQL. Shutting down.', err);
-        process.exit(1);
+    } catch (error) {
+        throw new Error(`FATAL: Could not connect to PostgreSQL. Shutting down. ${error}`);
     }
 
     // --- Create a dedicated client just for the startup check ---
-    const verificationRedis = new IORedis(env.REDIS_URL, {
+    const verificationRedis = new IORedis(environment.REDIS_URL, {
         maxRetriesPerRequest: 3,
         connectTimeout: 5000,
     });
 
     try {
-        console.log('Attempting to connect to Redis for verification...');
         if (verificationRedis.status !== 'ready') {
             await once(verificationRedis, 'ready');
         }
         await verificationRedis.ping();
-        console.log('Redis is ready.');
         // We are done with this client, disconnect it.
         await verificationRedis.quit();
-    } catch (err) {
-        console.error('FATAL: Could not connect to Redis. Shutting down.', err);
-        process.exit(1);
+    } catch (error) {
+        throw new Error(`FATAL: Could not connect to Redis. Shutting down. ${error}`);
     }
 
     // --- Create the main Redis client for the application with BullMQ's required options ---
-    const appRedis = new IORedis(env.REDIS_URL, {
+    const appRedis = new IORedis(environment.REDIS_URL, {
         maxRetriesPerRequest: null // This is required by BullMQ
     });
 
     // --- Step 2: Build the App and Start Workers ---
-    console.log('All dependencies are connected. Building Fastify app...');
     const app = await build(pool, appRedis);
 
     const disposableQueue = new Queue('disposable', { connection: appRedis });
@@ -192,12 +182,11 @@ export async function start() {
     });
 
     // --- Step 3: Start Listening ---
-    console.log('Starting server to listen for connections...');
-    await app.listen({ port: env.PORT, host: "0.0.0.0" });
-    app.log.info(`Orbicheck API server listening on http://0.0.0.0:${env.PORT}`);
+    await app.listen({ port: environment.PORT, host: "0.0.0.0" });
+    app.log.info(`Orbicheck API server listening on http://0.0.0.0:${environment.PORT}`);
 
     // Run initial refresh job in the background now that everything is running
-    disposableQueue.add('refresh', {});
+    void disposableQueue.add('refresh', {});
 }
 
 /**
@@ -205,11 +194,11 @@ export async function start() {
  * Catches startup errors, reports to Sentry if configured, logs to console, and exits with code 1.
  */
 if (require.main === module) {
-    start().catch(err => {
-        if (env.SENTRY_DSN) {
-            Sentry.captureException(err);
+    start().catch(error => {
+        if (environment.SENTRY_DSN) {
+            Sentry.captureException(error);
         }
-        console.error('Failed to start Orbicheck API:', err);
-        process.exit(1);
+        console.error('Failed to start Orbicheck API:', error);
+        process.exit(1); // eslint-disable-line n/no-process-exit
     });
 }

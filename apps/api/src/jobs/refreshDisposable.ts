@@ -1,41 +1,45 @@
+import type { Job } from "bullmq";
 import IORedis from "ioredis";
 import fetch from "node-fetch";
-import { env } from "../env";
+
+import { environment } from "../env";
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-export const disposableProcessor = async (job: any) => {
-    // This connection logic can be improved later, but it's not the cause of the block.
-    const redis = new IORedis(env.REDIS_URL);
+export const disposableProcessor = async (job: Job) => {
+    // Determine if we need to create a new Redis client or use an existing one.
+    const isRedisProvided = !!job.data?.redis;
+    const redis = isRedisProvided ? job.data.redis : new IORedis(environment.REDIS_URL);
+
     try {
         console.log("Refreshing disposable domains list...");
-        const r = await fetch(env.DISPOSABLE_LIST_URL);
-        const list = await r.json(); // This is fast enough, as proven by the logs.
+        const r = await fetch(environment.DISPOSABLE_LIST_URL);
+        const list = await r.json() as string[];
 
         const key = "disposable_domains";
-        const tmp = key + "_tmp";
-        await redis.del(tmp);
+        const temporary = `${key}_tmp`;
+        await redis.del(temporary);
 
         const batchSize = 5000;
         console.log(`Processing ${list.length} domains in batches of ${batchSize}...`);
 
-        for (let i = 0; i < list.length; i += batchSize) {
-            const batch = list.slice(i, i + batchSize);
+        for (let index = 0; index < list.length; index += batchSize) {
+            const batch = list.slice(index, index + batchSize);
             if (batch.length > 0) {
-                // --- THIS IS THE FIX ---
-                // Instead of a pipeline, use a single SADD command with multiple arguments.
-                // The spread syntax (...) unpacks the array into arguments.
-                await redis.sadd(tmp, ...batch);
-                sleep(1); 
-
+                // Use a single SADD command with multiple arguments via spread syntax.
+                await redis.sadd(temporary, ...batch);
+                await sleep(1);
             }
         }
 
-        await redis.rename(tmp, key);
+        await redis.rename(temporary, key);
         console.log(`Successfully loaded ${list.length} disposable domains.`);
     } catch (error) {
         console.error("Failed to refresh disposable domains:", error);
         throw error; // Let BullMQ handle retries
     } finally {
-        await redis.quit();
+        // IMPORTANT: Only quit the connection if this processor created it.
+        if (!isRedisProvided) {
+            await redis.quit();
+        }
     }
 };

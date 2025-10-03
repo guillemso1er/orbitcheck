@@ -1,8 +1,10 @@
-import { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
-import { Pool } from "pg";
-import { securityHeader, unauthorizedResponse, rateLimitResponse, generateRequestId, sendServerError } from "./utils";
-import { HTTP_STATUS, LOGS_DEFAULT_LIMIT, LOGS_MAX_LIMIT, USAGE_PERIOD, USAGE_DAYS, TOP_REASONS_LIMIT, CACHE_HIT_PLACEHOLDER } from "../constants";
+import type { FastifyInstance} from "fastify";
+import { FastifyReply, FastifyRequest } from "fastify";
+import type { Pool } from "pg";
+
+import { CACHE_HIT_PLACEHOLDER,HTTP_STATUS, LOGS_DEFAULT_LIMIT, LOGS_MAX_LIMIT, TOP_REASONS_LIMIT, USAGE_DAYS, USAGE_PERIOD } from "../constants";
 import { logEvent } from "../hooks";
+import { generateRequestId, rateLimitResponse, securityHeader, sendServerError,unauthorizedResponse } from "./utils";
 
 
 export function registerDataRoutes(app: FastifyInstance, pool: Pool) {
@@ -50,47 +52,47 @@ export function registerDataRoutes(app: FastifyInstance, pool: Pool) {
                 ...rateLimitResponse
             }
         }
-    }, async (req, rep) => {
+    }, async (request, rep) => {
         try {
             const request_id = generateRequestId();
-            const project_id = (req as any).project_id;
-            let limit = (req.query as any).limit || LOGS_DEFAULT_LIMIT;
-            const offset = (req.query as any).offset || 0;
-            const { reason_code, endpoint, status } = req.query as any;
+            const project_id = (request as any).project_id;
+            let limit = (request.query as any).limit || LOGS_DEFAULT_LIMIT;
+            const offset = (request.query as any).offset || 0;
+            const { reason_code, endpoint, status } = request.query as any;
         
             if (limit > LOGS_MAX_LIMIT) {
               limit = LOGS_MAX_LIMIT;
             }
 
             // Build dynamic WHERE clause
-            let whereClauses: string[] = ['project_id = $1'];
-            let params: any[] = [project_id];
-            let paramIndex = 2;
+            const whereClauses: string[] = ['project_id = $1'];
+            const parameters: any[] = [project_id];
+            let parameterIndex = 2;
 
             if (reason_code) {
-                whereClauses.push(`reason_codes @> ARRAY[$${paramIndex}]::text[]`);
-                params.push(reason_code);
-                paramIndex++;
+                whereClauses.push(`reason_codes @> ARRAY[$${parameterIndex}]::text[]`);
+                parameters.push(reason_code);
+                parameterIndex++;
             }
 
             if (endpoint) {
-                whereClauses.push(`endpoint = $${paramIndex}`);
-                params.push(endpoint);
-                paramIndex++;
+                whereClauses.push(`endpoint = $${parameterIndex}`);
+                parameters.push(endpoint);
+                parameterIndex++;
             }
 
             if (status !== undefined) {
-                whereClauses.push(`status = $${paramIndex}`);
-                params.push(status);
-                paramIndex++;
+                whereClauses.push(`status = $${parameterIndex}`);
+                parameters.push(status);
+                parameterIndex++;
             }
 
             const whereClause = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
 
             // Count total
             const countQuery = `SELECT COUNT(*) as total FROM logs ${whereClause}`;
-            const { rows: countRows } = await pool.query(countQuery, params);
-            const total_count = parseInt(countRows[0].total);
+            const { rows: countRows } = await pool.query(countQuery, parameters);
+            const total_count = Number.parseInt(countRows[0].total);
 
             // Fetch data
             const dataQuery = `
@@ -98,16 +100,16 @@ export function registerDataRoutes(app: FastifyInstance, pool: Pool) {
                 FROM logs
                 ${whereClause}
                 ORDER BY created_at DESC
-                LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
+                LIMIT $${parameterIndex} OFFSET $${parameterIndex + 1}
             `;
-            params.push(limit, offset);
-            const { rows } = await pool.query(dataQuery, params);
+            parameters.push(limit, offset);
+            const { rows } = await pool.query(dataQuery, parameters);
 
             const next_cursor = rows.length === limit ? (offset + limit).toString() : null;
 
             return rep.send({ data: rows, next_cursor, total_count, request_id });
         } catch (error) {
-            return sendServerError(req, rep, error, '/logs', generateRequestId());
+            return sendServerError(request, rep, error, '/logs', generateRequestId());
         }
     });
 
@@ -159,12 +161,12 @@ export function registerDataRoutes(app: FastifyInstance, pool: Pool) {
                 ...rateLimitResponse
             }
         }
-    }, async (req, rep) => {
+    }, async (request, rep) => {
         try {
             const request_id = generateRequestId();
-            const project_id = (req as any).project_id;
+            const project_id = (request as any).project_id;
             const { rows: dailyRows } = await pool.query("select date, validations, orders from usage_daily where project_id=$1 order by date desc limit $2", [project_id, USAGE_DAYS]);
-            const totals = dailyRows.reduce((acc: any, r: any) => ({ ...acc, validations: acc.validations + (r.validations || 0), orders: acc.orders + (r.orders || 0) }), { validations: 0, orders: 0 });
+            const totals = dailyRows.reduce((accumulator: any, r: any) => ({ ...accumulator, validations: accumulator.validations + (r.validations || 0), orders: accumulator.orders + (r.orders || 0) }), { validations: 0, orders: 0 });
 
             // Top reason codes from logs (last 31 days, successful validations)
             const { rows: topReasons } = await pool.query(
@@ -185,7 +187,7 @@ export function registerDataRoutes(app: FastifyInstance, pool: Pool) {
                 "SELECT count(*) as total_requests FROM logs WHERE project_id = $1 AND created_at > now() - interval '$2 days'",
                 [project_id, USAGE_DAYS]
             );
-            const totalRequests = parseInt(logCount[0].total_requests) || 1;
+            const totalRequests = Number.parseInt(logCount[0].total_requests) || 1;
             const estimatedCacheHits = Math.floor(totalRequests * CACHE_HIT_PLACEHOLDER); // Placeholder 95%
             const cacheHitRatio = (estimatedCacheHits / totalRequests * 100);
 
@@ -198,7 +200,7 @@ export function registerDataRoutes(app: FastifyInstance, pool: Pool) {
                 request_id
             });
         } catch (error) {
-            return sendServerError(req, rep, error, '/usage', generateRequestId());
+            return sendServerError(request, rep, error, '/usage', generateRequestId());
         }
     });
 }
