@@ -34,8 +34,9 @@ const mockApp = {
   register: jest.fn(),
   addHook: jest.fn(),
   get: jest.fn(),
+  inject: jest.fn().mockResolvedValue({ statusCode: 200, body: JSON.stringify({ ok: true, timestamp: 'test' }) }),
   listen: jest.fn().mockResolvedValue(undefined),
-  log: { info: jest.fn() },
+  log: { info: jest.fn(), error: jest.fn() },
   setErrorHandler: jest.fn(),
 };
 jest.mock('fastify', () => jest.fn(() => mockApp));
