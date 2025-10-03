@@ -303,7 +303,9 @@ export const setupBeforeAll = async () => {
 
   // Mock crypto for consistent testing
   const cryptoMod = await import('node:crypto');
-  (cryptoMod.randomBytes as jest.Mock).mockReturnValue(Buffer.from('test32bytes' + 'a'.repeat(24)));
+  (cryptoMod.randomBytes as jest.Mock).mockImplementation((size: number, callback: (err: Error | null, buf: Buffer) => void) => {
+    callback(null, Buffer.from('test32bytes' + 'a'.repeat(24)));
+  });
   const actualCrypto = jest.requireActual('node:crypto');
   (cryptoMod.createHash as jest.Mock).mockImplementation((algorithm) => actualCrypto.createHash(algorithm));
   (cryptoMod.randomUUID as jest.Mock).mockReturnValue('123e4567-e89b-12d3-a456-426614174000');

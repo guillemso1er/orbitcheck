@@ -111,7 +111,9 @@ describe('API Keys Routes (JWT Auth)', () => {
         const buffer = Buffer.from(hexString, 'hex');
 
         // This will now work correctly because mockedRandomBytes is a guaranteed mock function.
-        mockedRandomBytes.mockReturnValue(buffer);
+        mockedRandomBytes.mockImplementation((size: number, callback: (err: Error | null, buf: Buffer) => void) => {
+          callback(null, buffer);
+        });
 
         const mockHash = {
             update: jest.fn().mockReturnThis(),
