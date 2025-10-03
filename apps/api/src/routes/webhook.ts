@@ -170,7 +170,7 @@ export function registerWebhookRoutes(app: FastifyInstance, pool: Pool) {
                 error: errorMessage
             }, pool);
 
-            return sendError(rep, HTTP_STATUS.INTERNAL_SERVER_ERROR, ERROR_CODES.WEBHOOK_SEND_FAILED, errorMessage, request_id);
+            return sendError(rep, HTTP_STATUS.BAD_GATEWAY, ERROR_CODES.WEBHOOK_SEND_FAILED, errorMessage, request_id);
         }
     });
 }

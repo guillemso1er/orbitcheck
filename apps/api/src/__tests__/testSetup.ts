@@ -142,8 +142,23 @@ let registerRulesRoutesFunction: any;
 
 export const createApp = async () => {
   const app = Fastify({ logger: false });
+  enableDiagnostics(app);
 
+  app.addHook('preHandler', async (request, rep) => {
+    const url = request.url;
 
+    // Skip auth for public routes
+    if (url.startsWith('/health') || url.startsWith('/documentation') || url.startsWith('/auth')) {
+      return;
+    }
+
+    // Dashboard routes: require JWT
+    const isDashboardRoute = url.startsWith('/api-keys') || url.startsWith('/webhooks');
+    if (isDashboardRoute) {
+      // verifyJWTFunction was loaded in setupBeforeAll
+      await verifyJWTFunction(request as any, rep as any, mockPool as any);
+    }
+  });
   // Register routes using the loaded functions
   if (typeof registerAuthRoutesFunction !== 'function') {
     throw new TypeError("registerAuthRoutesFunction was not loaded correctly.");
@@ -331,3 +346,29 @@ describe('testSetup', () => {
     expect(true).toBe(true);
   });
 });
+
+// test diagnostics: lifecycle + response logging
+export function enableDiagnostics(app: any) {
+  app.addHook('onRequest', (req: any, _rep: any, done: any) => {
+    console.log(`[onRequest] ${req.method} ${req.url} auth=${req.headers.authorization ?? '<none>'}`);
+    done();
+  });
+
+  app.addHook('preHandler', async (req: any, rep: any) => {
+    console.log(`[preHandler] ${req.method} ${req.url}`);
+  });
+
+  app.addHook('onSend', async (req: any, rep: any, payload: any) => {
+    const status = rep.statusCode;
+    if (status >= 400) {
+      let bodyText = '';
+      try { bodyText = typeof payload === 'string' ? payload : payload?.toString?.() ?? ''; } catch {}
+      console.log(`[onSend] ${req.method} ${req.url} -> ${status} body=${bodyText}`);
+    }
+    return payload;
+  });
+
+  app.addHook('onError', async (req: any, rep: any, err: any) => {
+    console.log(`[onError] ${req.method} ${req.url} err=${err?.message} status=${rep.statusCode}`);
+  });
+}
