@@ -143,9 +143,8 @@ describe('Email Validation Endpoints', () => {
                 ttl_seconds: 2_592_000
             };
 
-            // From your testSetup.ts, the mock for crypto.createHash always results in 'test_hash'.
-            // We use this known value to construct the expected cache key.
-            const expectedHash = 'test_hash';
+            const input = 'cached@example.com';
+            const expectedHash = crypto.createHash('sha1').update(input).digest('hex');
             const expectedCacheKey = `validator:email:${expectedHash}`;
 
             // Ensure mocks are clear before this test
@@ -230,8 +229,8 @@ describe('Email Validation Endpoints', () => {
             await validateEmail('uncached@example.com', mockRedis);
 
             // ASSERT
-            // Your test setup guarantees the hash will always be 'test_hash'.
-            const expectedHash = 'test_hash';
+            const input = 'uncached@example.com';
+            const expectedHash = crypto.createHash('sha1').update(input).digest('hex');
 
             // From your constants file (TTL_EMAIL)
             const expectedTtl = 2_592_000;
@@ -239,7 +238,7 @@ describe('Email Validation Endpoints', () => {
             // The function first caches the domain, then the full email.
             // We use `toHaveBeenLastCalledWith` to check the final, correct call.
             expect(mockRedis.set).toHaveBeenLastCalledWith(
-                `validator:email:${expectedHash}`, // Use the predictable mocked hash
+                `validator:email:${expectedHash}`,
                 expect.stringContaining('"normalized":"uncached@example.com"'), // More specific check of the payload
                 'EX',
                 expectedTtl
