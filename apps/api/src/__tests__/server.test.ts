@@ -1,7 +1,7 @@
 import * as Sentry from '@sentry/node';
 import { Queue, Worker } from 'bullmq';
 import Fastify from 'fastify';
-import IORedis, { type Redis as IORedisType } from 'ioredis';
+import { Redis, type Redis as IORedisType } from 'ioredis';
 import cron from 'node-cron';
 import { Pool } from 'pg';
 
@@ -43,7 +43,9 @@ jest.mock('fastify', () => jest.fn(() => mockApp));
 jest.mock('pg', () => ({
   Pool: jest.fn(),
 }));
-jest.mock('ioredis', () => jest.fn());
+jest.mock('ioredis', () => ({
+  Redis: jest.fn(),
+}));
 
 const mockQueue = {
   add: jest.fn(),
@@ -139,7 +141,7 @@ describe('Server Startup', () => {
       rename: jest.fn().mockResolvedValue('OK'),
     } as any;
     (Pool as unknown as jest.Mock).mockImplementation(() => mockPool);
-    (IORedis as unknown as jest.Mock).mockImplementation(() => mockRedis);
+    (Redis as unknown as jest.Mock).mockImplementation(() => mockRedis);
     (mockQueue.add).mockResolvedValue({});
   });
 

@@ -13,7 +13,9 @@ import {
 
 import soap from 'soap';
 
-jest.mock('soap');
+jest.mock('soap', () => ({
+  createClientAsync: jest.fn(),
+}));
 
 describe('Tax ID Validators', () => {
   describe('validateCPF', () => {
@@ -222,7 +224,7 @@ describe('Tax ID Validators', () => {
 
   describe('validateTaxId', () => {
     beforeEach(() => {
-      jest.spyOn(soap, 'createClientAsync').mockResolvedValue({
+      (soap.createClientAsync as jest.Mock).mockResolvedValue({
         checkVatAsync: jest.fn().mockResolvedValue([{ valid: true }]),
       } as any);
     });

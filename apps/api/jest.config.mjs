@@ -9,6 +9,7 @@ export default {
             'ts-jest',
             {
                 useESM: true,
+                tsconfig: '<rootDir>/tsconfig.jest.json',
                 diagnostics: { ignoreCodes: [1343] },
                 astTransformers: {
                     before: [
