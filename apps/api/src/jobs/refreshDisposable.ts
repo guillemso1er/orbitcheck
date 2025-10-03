@@ -1,5 +1,5 @@
 import type { Job } from "bullmq";
-import IORedis from "ioredis";
+import { Redis } from 'ioredis';
 import fetch from "node-fetch";
 
 import { environment } from "../env.js";
@@ -8,7 +8,7 @@ const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 export const disposableProcessor = async (job: Job) => {
     // Determine if we need to create a new Redis client or use an existing one.
     const isRedisProvided = !!job.data?.redis;
-    const redis = isRedisProvided ? job.data.redis : new IORedis(environment.REDIS_URL);
+    const redis = isRedisProvided ? job.data.redis : new Redis(environment.REDIS_URL);
 
     try {
         console.log("Refreshing disposable domains list...");

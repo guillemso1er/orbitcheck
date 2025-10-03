@@ -5,7 +5,7 @@ jest.mock('../../env', () => ({
 }));
 
 import type { Job } from 'bullmq'; // <-- 1. Import the Job type
-import IORedis from 'ioredis';
+import { Redis as IORedisType } from 'ioredis';
 import fetch from 'node-fetch';
 
 import { disposableProcessor } from '../refreshDisposable.js';
@@ -17,7 +17,7 @@ jest.mock('node-fetch');
 const mockFetch = fetch as jest.MockedFunction<typeof fetch>;
 
 describe('Disposable Domains Refresh Job', () => {
-  let mockRedis: jest.Mocked<IORedis>;
+  let mockRedis: jest.Mocked<IORedisType>;
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -29,7 +29,7 @@ describe('Disposable Domains Refresh Job', () => {
       quit: jest.fn().mockResolvedValue('OK'),
     } as any;
 
-    (IORedis as unknown as jest.Mock).mockImplementation(() => mockRedis);
+    (IORedisType as unknown as jest.Mock).mockImplementation(() => mockRedis);
 
     const mockFetchResponse = {
       json: jest.fn().mockResolvedValue(['disposable1.com', 'disposable2.com']),
@@ -57,7 +57,7 @@ describe('Disposable Domains Refresh Job', () => {
 
     await disposableProcessor(job);
 
-    expect(IORedis).toHaveBeenCalled();
+    expect(mockRedis.del).toHaveBeenCalled();
     expect(mockRedis.quit).toHaveBeenCalled();
   });
 
