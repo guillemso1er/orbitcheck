@@ -3,7 +3,7 @@ import crypto from "node:crypto";
 import type { Redis } from "ioredis";
 import { parsePhoneNumber } from "libphonenumber-js";
 
-import { REASON_CODES } from "../constants";
+import { REASON_CODES } from "../constants.js";
 
 /**
  * Validates a phone number using libphonenumber-js for international format parsing.

@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify'; // Import the type for safety
 import request from 'supertest';
 
-import { createApp, mockPool,setupBeforeAll } from './testSetup';
+import { createApp, mockPool, setupBeforeAll } from './testSetup.js';
 
 describe('Logs Retrieval Endpoints', () => {
   let app: FastifyInstance;
@@ -29,11 +29,11 @@ describe('Logs Retrieval Endpoints', () => {
   describe('GET /logs', () => {
     it('should return logs for the project', async () => {
       const logEntry = { id: 'log-1', type: 'validation', endpoint: '/validate/email', reason_codes: [], status: 200, created_at: new Date().toISOString(), meta: {} };
-      
+
       // Mock the DB to handle all queries for this specific request
       mockPool.query.mockImplementation((queryText: string) => {
         const upperQuery = queryText.toUpperCase();
-        
+
         // Mock the query that gets the total count for pagination
         if (upperQuery.includes('COUNT(*) AS TOTAL FROM LOGS')) {
           return Promise.resolve({ rows: [{ total: 1 }] });
@@ -50,8 +50,8 @@ describe('Logs Retrieval Endpoints', () => {
       });
 
       const response = await request(app.server)
-          .get('/logs')
-          .set('Authorization', 'Bearer valid_key');
+        .get('/logs')
+        .set('Authorization', 'Bearer valid_key');
 
       expect(response.status).toBe(200);
       const body = response.body as { data: unknown[]; total_count: number };
@@ -62,7 +62,7 @@ describe('Logs Retrieval Endpoints', () => {
 
     it('should filter logs by reason_code', async () => {
       const logEntry = { id: 'log-filtered', type: 'validation', endpoint: '/validate/email', reason_codes: ['email.invalid_format'], status: 200, created_at: new Date().toISOString(), meta: {} };
-      
+
       mockPool.query.mockImplementation((queryText: string) => {
         const upperQuery = queryText.toUpperCase();
 
@@ -79,8 +79,8 @@ describe('Logs Retrieval Endpoints', () => {
       });
 
       const response = await request(app.server)
-          .get('/logs?reason_code=email.invalid_format')
-          .set('Authorization', 'Bearer valid_key');
+        .get('/logs?reason_code=email.invalid_format')
+        .set('Authorization', 'Bearer valid_key');
 
       expect(response.status).toBe(200);
       const body = response.body as { data: { reason_codes: string[] }[] };
@@ -89,7 +89,7 @@ describe('Logs Retrieval Endpoints', () => {
 
     it('should filter logs by endpoint and status', async () => {
       const logEntry = { id: 'log-status', type: 'validation', endpoint: '/v1/validate/email', reason_codes: [], status: 400, created_at: new Date().toISOString(), meta: {} };
-      
+
       mockPool.query.mockImplementation((queryText: string) => {
         const upperQuery = queryText.toUpperCase();
 
@@ -106,8 +106,8 @@ describe('Logs Retrieval Endpoints', () => {
       });
 
       const response = await request(app.server)
-          .get('/logs?endpoint=/v1/validate/email&status=400')
-          .set('Authorization', 'Bearer valid_key');
+        .get('/logs?endpoint=/v1/validate/email&status=400')
+        .set('Authorization', 'Bearer valid_key');
 
       expect(response.status).toBe(200);
       const body = response.body as { data: { endpoint: string; status: number }[] };
@@ -137,8 +137,8 @@ describe('Logs Retrieval Endpoints', () => {
       });
 
       const response = await request(app.server)
-          .get('/logs?limit=1&offset=1')
-          .set('Authorization', 'Bearer valid_key');
+        .get('/logs?limit=1&offset=1')
+        .set('Authorization', 'Bearer valid_key');
 
       expect(response.status).toBe(200);
       const body = response.body as { data: { id: string }[]; total_count: number; next_cursor: string };

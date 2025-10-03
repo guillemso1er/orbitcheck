@@ -1,8 +1,8 @@
-import type { FastifyInstance, FastifyReply,FastifyRequest } from 'fastify';
+import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import request from 'supertest';
 
-import { auth } from '../hooks';
-import { createApp, mockPool, setupBeforeAll } from './testSetup';
+import { auth } from '../hooks.js';
+import { createApp, mockPool, setupBeforeAll } from './testSetup.js';
 
 describe('Security and Authentication', () => {
   let app: FastifyInstance;

@@ -4,7 +4,7 @@ import type { FastifyInstance } from 'fastify';
 import jwt from 'jsonwebtoken';
 import request from 'supertest';
 
-import { createApp, mockPool, setupBeforeAll } from './testSetup';
+import { createApp, mockPool, setupBeforeAll } from './testSetup.js';
 
 // Mock the JWT library (the crypto mock is now handled globally)
 jest.mock('jsonwebtoken');
@@ -103,7 +103,7 @@ describe('API Keys Routes (JWT Auth)', () => {
     it('should create a new API key with valid JWT', async () => {
         // --- THE FIX IS HERE ---
         // Dynamically require the mocked module *inside the test* to get the mocked version.
-        const crypto = require('node:crypto');
+        const crypto = await import('node:crypto');
         const mockedRandomBytes = crypto.randomBytes as jest.Mock;
         const mockedCreateHash = crypto.createHash as jest.Mock;
 

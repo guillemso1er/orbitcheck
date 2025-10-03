@@ -4,8 +4,8 @@ import type { FastifyInstance} from "fastify";
 import { FastifyReply, FastifyRequest } from "fastify";
 import type { Pool } from "pg";
 
-import { API_KEY_PREFIX,ERROR_CODES, ERROR_MESSAGES, HTTP_STATUS, STATUS } from "../constants";
-import { errorSchema, generateRequestId, rateLimitResponse, securityHeader, sendError, sendServerError,unauthorizedResponse } from "./utils";
+import { API_KEY_PREFIX,ERROR_CODES, ERROR_MESSAGES, HTTP_STATUS, STATUS } from "../constants.js";
+import { errorSchema, generateRequestId, rateLimitResponse, securityHeader, sendError, sendServerError,unauthorizedResponse } from "./utils.js";
 
 
 export function registerApiKeysRoutes(app: FastifyInstance, pool: Pool) {
@@ -42,7 +42,7 @@ export function registerApiKeysRoutes(app: FastifyInstance, pool: Pool) {
         }
     }, async (request, rep) => {
         try {
-            const project_id = (request as any).project_id;
+            const project_id = request.project_id!;
             const request_id = generateRequestId();
             const { rows } = await pool.query(
                 "SELECT id, prefix, name, status, created_at, last_used_at FROM api_keys WHERE project_id = $1 ORDER BY created_at DESC",
@@ -85,12 +85,18 @@ export function registerApiKeysRoutes(app: FastifyInstance, pool: Pool) {
         }
     }, async (request, rep) => {
         try {
-            const project_id = (request as any).project_id;
+            const project_id = request.project_id!;
             const { name } = request.body as { name?: string };
             const request_id = generateRequestId();
 
             // Generate full key
-            const full_key = API_KEY_PREFIX + crypto.randomBytes(32).toString('hex');
+            const buf = new Promise<Buffer>((resolve, reject) => {
+                crypto.randomBytes(32, (error, buf) => {
+                    if (error) reject(error);
+                    else resolve(buf);
+                });
+            });
+            const full_key = API_KEY_PREFIX + (await buf).toString('hex');
             const prefix = full_key.slice(0, 6);
             const keyHash = crypto.createHash('sha256').update(full_key).digest('hex');
 
@@ -143,7 +149,7 @@ export function registerApiKeysRoutes(app: FastifyInstance, pool: Pool) {
         }
     }, async (request, rep) => {
         try {
-            const project_id = (request as any).project_id;
+            const project_id = request.project_id!;
             const { id } = request.params as { id: string };
             const request_id = generateRequestId();
 

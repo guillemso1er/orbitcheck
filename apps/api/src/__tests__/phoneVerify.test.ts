@@ -2,7 +2,7 @@ import type { FastifyInstance } from 'fastify'; // Import the type for safety
 import request from 'supertest';
 import * as twilio from 'twilio';
 
-import { createApp, setupBeforeAll } from './testSetup';
+import { createApp, setupBeforeAll } from './testSetup.js';
 
 jest.mock('twilio');
 

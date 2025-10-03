@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify'; // Import the type for safety
 import request from 'supertest';
 
-import { createApp, mockPool,setupBeforeAll } from './testSetup';
+import { createApp, mockPool, setupBeforeAll } from './testSetup.js';
 
 describe('Usage Stats Endpoints', () => {
   let app: FastifyInstance;
@@ -31,7 +31,7 @@ describe('Usage Stats Endpoints', () => {
         { date: '2023-01-01', validations: 10, orders: 5 },
         { date: '2023-01-02', validations: 20, orders: 10 },
       ];
-      
+
       // Mock all the necessary DB queries for this specific test case
       mockPool.query.mockImplementation((queryText: string) => {
         const upperQuery = queryText.toUpperCase();
@@ -48,8 +48,8 @@ describe('Usage Stats Endpoints', () => {
           return Promise.resolve({ rows: [{ total_requests: 300 }] });
         }
         if (upperQuery.includes('COUNT(*) AS CACHED_REQUESTS FROM LOGS')) {
-            // Mocking cached requests for cache hit ratio (300 total - 15 non-cached = 285 cached)
-            return Promise.resolve({ rows: [{ cached_requests: 285 }] });
+          // Mocking cached requests for cache hit ratio (300 total - 15 non-cached = 285 cached)
+          return Promise.resolve({ rows: [{ cached_requests: 285 }] });
         }
         if (upperQuery.includes('API_KEYS')) {
           // Mocking the authentication query
@@ -71,7 +71,7 @@ describe('Usage Stats Endpoints', () => {
       expect(res.body.top_reason_codes.length).toBe(1);
       expect(res.body.top_reason_codes[0].code).toBe('email.valid');
       // 285 cached / 300 total = 0.95
-      expect(res.body.cache_hit_ratio).toBeCloseTo(95); 
+      expect(res.body.cache_hit_ratio).toBeCloseTo(95);
     });
 
     it('should handle no usage data gracefully', async () => {
@@ -83,7 +83,7 @@ describe('Usage Stats Endpoints', () => {
           return Promise.resolve({ rows: [{ total_requests: 0 }] });
         }
         if (upperQuery.includes('COUNT(*) AS CACHED_REQUESTS FROM LOGS')) {
-            return Promise.resolve({ rows: [{ cached_requests: 0 }] });
+          return Promise.resolve({ rows: [{ cached_requests: 0 }] });
         }
         if (upperQuery.includes('API_KEYS')) {
           return Promise.resolve({ rows: [{ project_id: 'test_project' }] });
@@ -102,7 +102,7 @@ describe('Usage Stats Endpoints', () => {
       expect(res.body.by_day.length).toBe(0);
       expect(res.body.top_reason_codes.length).toBe(0);
       // 0 / 0 should be handled as 0 in the endpoint logic
-      expect(res.body.cache_hit_ratio).toBe(0); 
+      expect(res.body.cache_hit_ratio).toBe(0);
     });
   });
 });

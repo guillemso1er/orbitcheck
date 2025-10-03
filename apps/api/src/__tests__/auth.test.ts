@@ -15,7 +15,7 @@ import * as bcrypt from 'bcryptjs';
 import type { FastifyInstance } from 'fastify';
 import * as jwt from 'jsonwebtoken';
 
-import { createApp, mockPool, mockRedisInstance, setupBeforeAll } from './testSetup';
+import { createApp, mockPool, mockRedisInstance, setupBeforeAll } from './testSetup.js';
 
 describe('Auth Routes', () => {
   let app: FastifyInstance;

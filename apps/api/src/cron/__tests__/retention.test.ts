@@ -1,6 +1,6 @@
 import type { Pool } from 'pg';
 
-import { runLogRetention } from '../retention';
+import { runLogRetention } from '../retention.js';
 
 jest.mock('pg', () => ({
   Pool: jest.fn(() => ({
@@ -41,7 +41,7 @@ describe('Log Retention Cron Job', () => {
   });
 
   it('should handle query errors gracefully', async () => {
-    const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => { });
     mockQuery.mockRejectedValueOnce(new Error('Database error'));
 
     // Since it logs but doesn't throw, it should resolve

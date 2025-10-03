@@ -2,15 +2,17 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import fetch from "node-fetch";
 import type { Pool } from "pg";
 
-import { ERROR_CODES, ERROR_MESSAGES, EVENT_TYPES, HTTP_STATUS, ORDER_ACTIONS,PAYLOAD_TYPES, REASON_CODES } from "../constants";
-import { logEvent } from "../hooks";
-import { verifyJWT } from "./auth";
-import { generateRequestId, rateLimitResponse, securityHeader, sendError, unauthorizedResponse } from "./utils";
+import { ERROR_CODES, ERROR_MESSAGES, EVENT_TYPES, HTTP_STATUS, ORDER_ACTIONS,PAYLOAD_TYPES, REASON_CODES } from "../constants.js";
+import { logEvent } from "../hooks.js";
+import { verifyJWT } from "./auth.js";
+import { generateRequestId, rateLimitResponse, securityHeader, sendError, unauthorizedResponse } from "./utils.js";
 
 
 export function registerWebhookRoutes(app: FastifyInstance, pool: Pool) {
     app.post('/webhooks/test', {
-        preHandler: async (request: FastifyRequest, rep: FastifyReply) => verifyJWT(request, rep, pool),
+        preHandler: (request: FastifyRequest, rep: FastifyReply, done) => {
+            verifyJWT(request, rep, pool).then(() => done()).catch(done);
+        },
         schema: {
             summary: 'Test Webhook',
             description: 'Sends a sample payload to the provided webhook URL and returns the response. Useful for testing webhook configurations.',
@@ -67,11 +69,11 @@ export function registerWebhookRoutes(app: FastifyInstance, pool: Pool) {
             }
         }
     }, async (request, rep) => {
-        const project_id = (request as any).project_id;
+        const project_id = request.project_id!;
         const { url, payload_type = PAYLOAD_TYPES.VALIDATION, custom_payload } = request.body as {
             url: string;
             payload_type?: typeof PAYLOAD_TYPES[keyof typeof PAYLOAD_TYPES];
-            custom_payload?: any;
+            custom_payload?: Record<string, unknown>;
         };
         try {
             const request_id = generateRequestId();
@@ -80,7 +82,7 @@ export function registerWebhookRoutes(app: FastifyInstance, pool: Pool) {
                 return sendError(rep, HTTP_STATUS.BAD_REQUEST, ERROR_CODES.INVALID_URL, ERROR_MESSAGES[ERROR_CODES.INVALID_URL], request_id);
             }
 
-            let payload: any;
+            let payload: Record<string, unknown>;
             const timestamp = new Date().toISOString();
             const common = {
                 project_id,

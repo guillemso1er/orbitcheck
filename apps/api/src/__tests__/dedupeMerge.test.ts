@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import request from 'supertest';
 
-import { createApp, mockPool, setupBeforeAll } from './testSetup';
+import { createApp, mockPool, setupBeforeAll } from './testSetup.js';
 
 describe('Dedupe Merge Endpoint', () => {
     let app: FastifyInstance;
@@ -22,11 +22,13 @@ describe('Dedupe Merge Endpoint', () => {
         // Mock pool to simulate verification and merge
         mockPool.query.mockImplementation((query: string) => {
             if (query.includes('SELECT id FROM customers')) {
-                return Promise.resolve({ rows: [
-                    { id: 'uuid1' },
-                    { id: 'uuid2' },
-                    { id: 'canonical-uuid' }
-                ] });
+                return Promise.resolve({
+                    rows: [
+                        { id: 'uuid1' },
+                        { id: 'uuid2' },
+                        { id: 'canonical-uuid' }
+                    ]
+                });
             }
             if (query.includes('UPDATE customers')) {
                 return Promise.resolve({ rows: [], rowCount: 2 });
@@ -57,11 +59,13 @@ describe('Dedupe Merge Endpoint', () => {
         // Mock pool for address merge
         mockPool.query.mockImplementation((query: string) => {
             if (query.includes('SELECT id FROM addresses')) {
-                return Promise.resolve({ rows: [
-                    { id: 'uuid3' },
-                    { id: 'uuid4' },
-                    { id: 'canonical-uuid-addr' }
-                ] });
+                return Promise.resolve({
+                    rows: [
+                        { id: 'uuid3' },
+                        { id: 'uuid4' },
+                        { id: 'canonical-uuid-addr' }
+                    ]
+                });
             }
             if (query.includes('UPDATE addresses')) {
                 return Promise.resolve({ rows: [], rowCount: 2 });

@@ -1,19 +1,19 @@
 {
     "name": "@orbicheck/api",
     "version": "0.1.0",
-    "type": "commonjs",
+    "type": "module",
     "main": "dist/server.js",
     "scripts": {
-        "dev": "ts-node-dev --require dotenv/config --transpile-only --respawn src/server.ts",
+        "dev": "tsx watch src/server.ts",
         "infra": "podman compose -f ../../infra/compose/dev.compose.yml up -d",
         "build": "tsc -p tsconfig.json",
-        "start": " node dist/server.js",
+        "start": "node dist/server.js",
         "migrate": "node-pg-migrate -m ./migrations up",
         "migrate:create": "node-pg-migrate create -m ./migrations",
-        "db:init": "ts-node ./src/jobs/refreshDisposable.ts",
+        "db:init": "tsx ./src/jobs/refreshDisposable.ts",
         "test": "jest",
         "test:watch": "jest --watch",
-        "lint": "eslint . --ext .ts"
+        "lint": "eslint src/ --ext .js,.ts --fix"
     },
     "dependencies": {
         "@aws-sdk/client-s3": "^3.896.0",
@@ -58,6 +58,7 @@
         "@types/supertest": "6.0.3",
         "@typescript-eslint/eslint-plugin": "^8.44.1",
         "@typescript-eslint/parser": "^8.44.1",
+        "add-js-extension": "^1.0.4",
         "eslint": "^8.57.1",
         "eslint-config-prettier": "^10.1.8",
         "eslint-import-resolver-typescript": "^4.4.4",

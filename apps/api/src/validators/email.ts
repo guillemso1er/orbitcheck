@@ -6,7 +6,7 @@ import { isEmailValid } from '@hapi/address';
 import type { Redis } from "ioredis";
 import { getDomain as getRegistrableDomain } from 'tldts';
 
-import { DNS_TIMEOUT_MS, DOMAIN_CACHE_TTL_DAYS, REASON_CODES, TTL_EMAIL } from "../constants";
+import { DNS_TIMEOUT_MS, DOMAIN_CACHE_TTL_DAYS, REASON_CODES, TTL_EMAIL } from "../constants.js";
 
 /**
  * Utility to add timeout to a Promise, preventing long hangs (e.g., for DNS lookups).
@@ -42,18 +42,18 @@ const withTimeout = <T>(p: Promise<T>, ms = DNS_TIMEOUT_MS): Promise<T> => {
  * @returns {Promise<Object>} Validation result with normalized email, validity, MX/disposable status, reason codes, etc.
  */
 interface DomainCache {
-  mx_found: boolean;
-  disposable: boolean;
+    mx_found: boolean;
+    disposable: boolean;
 }
 
 export interface ValidationResult {
-  valid: boolean;
-  normalized: string;
-  disposable: boolean;
-  mx_found: boolean;
-  reason_codes: string[];
-  request_id: string;
-  ttl_seconds: number;
+    valid: boolean;
+    normalized: string;
+    disposable: boolean;
+    mx_found: boolean;
+    reason_codes: string[];
+    request_id: string;
+    ttl_seconds: number;
 }
 
 export async function validateEmail(

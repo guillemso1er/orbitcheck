@@ -1,22 +1,19 @@
-import crypto from "node:crypto";
 
-import type { FastifyInstance} from "fastify";
-import { FastifyReply, FastifyRequest } from "fastify";
-import type IORedis from "ioredis";
+import type { FastifyInstance } from "fastify";
 import type { Pool } from "pg";
 import twilio from 'twilio';
 
-import { API_PATHS, ERROR_CODES, ERROR_MESSAGES, HTTP_STATUS, TTL_ADDRESS, TTL_EMAIL, TTL_TAXID, TWILIO_CHANNEL_SMS } from "../constants";
-import { environment } from "../env";
-import { logEvent } from "../hooks";
-import { validateAddress } from "../validators/address";
-import { validateEmail } from "../validators/email";
-import { validatePhone } from "../validators/phone";
-import { validateTaxId } from "../validators/taxid";
-import { generateRequestId, rateLimitResponse, securityHeader, sendError, sendServerError,unauthorizedResponse, validationErrorResponse } from "./utils";
+import { type Redis as IORedisType } from 'ioredis';
+import { API_PATHS, ERROR_CODES, ERROR_MESSAGES, HTTP_STATUS, TWILIO_CHANNEL_SMS } from "../constants.js";
+import { environment } from "../env.js";
+import { logEvent } from "../hooks.js";
+import { validateAddress } from "../validators/address.js";
+import { validateEmail } from "../validators/email.js";
+import { validatePhone } from "../validators/phone.js";
+import { validateTaxId } from "../validators/taxid.js";
+import { generateRequestId, rateLimitResponse, securityHeader, sendServerError, unauthorizedResponse, validationErrorResponse } from "./utils.js";
 
-
-export function registerValidationRoutes(app: FastifyInstance, pool: Pool, redis: IORedis) {
+export function registerValidationRoutes(app: FastifyInstance, pool: Pool, redis: IORedisType) {
     app.post('/v1/validate/email', {
         schema: {
             summary: 'Validate Email Address',
@@ -54,8 +51,10 @@ export function registerValidationRoutes(app: FastifyInstance, pool: Pool, redis
             const request_id = generateRequestId();
             const { email } = request.body as { email: string };
             const out = await validateEmail(email, redis);
-            await (rep as any).saveIdem?.(out);
-            logEvent((request as any).project_id, 'validation', API_PATHS.VALIDATE_EMAIL, out.reason_codes, HTTP_STATUS.OK, {
+            if (rep.saveIdem) {
+                await rep.saveIdem(out);
+            }
+            await logEvent(request.project_id!, 'validation', API_PATHS.VALIDATE_EMAIL, out.reason_codes, HTTP_STATUS.OK, {
                 domain: out.normalized.split('@')[1],
                 disposable: out.disposable,
                 mx_found: out.mx_found,
@@ -124,8 +123,10 @@ export function registerValidationRoutes(app: FastifyInstance, pool: Pool, redis
                 }
             }
             const response = { ...validation, verification_sid };
-            await (rep as any).saveIdem?.(response);
-            logEvent((request as any).project_id, "validation", API_PATHS.VALIDATE_PHONE, response.reason_codes, HTTP_STATUS.OK, { request_otp, otp_status: verification_sid ? 'otp_sent' : 'no_otp' }, pool);
+            if (rep.saveIdem) {
+                await rep.saveIdem(response);
+            }
+            await logEvent(request.project_id!, "validation", API_PATHS.VALIDATE_PHONE, response.reason_codes, HTTP_STATUS.OK, { request_otp, otp_status: verification_sid ? 'otp_sent' : 'no_otp' }, pool);
             return rep.send({ ...response, request_id });
         } catch (error) {
             return sendServerError(request, rep, error, '/v1/validate/phone', generateRequestId());
@@ -181,8 +182,10 @@ export function registerValidationRoutes(app: FastifyInstance, pool: Pool, redis
             const request_id = generateRequestId();
             const { address } = request.body as any; // Cast because Fastify has already validated
             const out = await validateAddress(address, pool, redis);
-            await (rep as any).saveIdem?.(out);
-            logEvent((request as any).project_id, "validation", API_PATHS.VALIDATE_ADDRESS, out.reason_codes, HTTP_STATUS.OK, { po_box: out.po_box, postal_city_match: out.postal_city_match }, pool);
+            if (rep.saveIdem) {
+                await rep.saveIdem(out);
+            }
+            await logEvent(request.project_id!, "validation", API_PATHS.VALIDATE_ADDRESS, out.reason_codes, HTTP_STATUS.OK, { po_box: out.po_box, postal_city_match: out.postal_city_match }, pool);
             return rep.send({ ...out, request_id });
         } catch (error) {
             return sendServerError(request, rep, error, '/v1/validate/address', generateRequestId());
@@ -226,8 +229,10 @@ export function registerValidationRoutes(app: FastifyInstance, pool: Pool, redis
             const request_id = generateRequestId();
             const { type, value, country } = request.body as { type: string; value: string; country?: string };
             const out = await validateTaxId({ type, value, country: country || "", redis });
-            await (rep as any).saveIdem?.(out);
-            logEvent((request as any).project_id, "validation", API_PATHS.VALIDATE_TAXID, out.reason_codes, HTTP_STATUS.OK, { type }, pool);
+            if (rep.saveIdem) {
+                await rep.saveIdem(out);
+            }
+            await logEvent(request.project_id!, "validation", API_PATHS.VALIDATE_TAXID, out.reason_codes, HTTP_STATUS.OK, { type }, pool);
             return rep.send({ ...out, request_id });
         } catch (error) {
             return sendServerError(request, rep, error, '/v1/validate/tax-id', generateRequestId());

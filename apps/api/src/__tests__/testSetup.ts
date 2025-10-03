@@ -1,7 +1,7 @@
 
 import Fastify from 'fastify';
 
-import type { ValidationResult } from '../validators/email';
+import type { ValidationResult } from '../validators/email.js';
 
 // --- Reusable Mock Instances ---
 export const mockPool = {
@@ -48,7 +48,7 @@ jest.mock('pg', () => ({
   Pool: jest.fn(() => mockPool),
 }));
 
-jest.mock('../env', () => ({
+jest.mock('../env.js', () => ({
   environment: {
     DATABASE_URL: 'postgres://test',
     REDIS_URL: 'redis://localhost',
@@ -78,17 +78,17 @@ jest.mock('node:dns/promises', () => ({
   resolve6: jest.fn(),
 }));
 
-jest.mock('../validators/taxid', () => ({
+jest.mock('../validators/taxid.js', () => ({
   validateTaxId: jest.fn(),
 }));
 
-jest.mock('../validators/address', () => ({
+jest.mock('../validators/address.js', () => ({
   validateAddress: jest.fn(),
   normalizeAddress: jest.fn(),
   detectPoBox: jest.fn(),
 }));
 
-jest.mock('../validators/phone', () => ({
+jest.mock('../validators/phone.js', () => ({
   validatePhone: jest.fn(),
 }));
 
@@ -111,7 +111,7 @@ jest.mock('node:crypto', () => ({
   createHash: jest.fn(),
   randomUUID: jest.fn(),
 }));
-jest.mock('../validators/email', () => ({
+jest.mock('../validators/email.js', () => ({
   validateEmail: jest.fn(),
 }));
 
@@ -236,34 +236,42 @@ export const setupBeforeAll = async () => {
   process.env.TWILIO_VERIFY_SERVICE_SID = 'test_verify_sid';
 
   // Load route modules synchronously with require for test environment
-  const authModule = await import('../routes/auth');
+  const authModule = await import('../routes/auth.js');
   registerAuthRoutesFunction = authModule.registerAuthRoutes;
   verifyJWTFunction = authModule.verifyJWT;
-  const apiKeysModule = await import('../routes/api-keys');
+  const apiKeysModule = await import('../routes/api-keys.js');
   registerApiKeysRoutesFunction = apiKeysModule.registerApiKeysRoutes;
-  const validationModule = await import('../routes/validation');
+  const validationModule = await import('../routes/validation.js');
   registerValidationRoutesFunction = validationModule.registerValidationRoutes;
-  const dedupeModule = await import('../routes/dedupe');
+  const dedupeModule = await import('../routes/dedupe.js');
   registerDedupeRoutesFunction = dedupeModule.registerDedupeRoutes;
-  const ordersModule = await import('../routes/orders');
+  const ordersModule = await import('../routes/orders.js');
   registerOrdersRoutesFunction = ordersModule.registerOrderRoutes;
-  const dataModule = await import('../routes/data');
+  const dataModule = await import('../routes/data.js');
   registerDataRoutesFunction = dataModule.registerDataRoutes;
-  const webhooksModule = await import('../routes/webhook');
+  const webhooksModule = await import('../routes/webhook.js');
   registerWebhooksRoutesFunction = webhooksModule.registerWebhookRoutes;
-  const rulesModule = await import('../routes/rules');
+  const rulesModule = await import('../routes/rules.js');
   registerRulesRoutesFunction = rulesModule.registerRulesRoutes;
 
 
-  mockValidateEmail = require('../validators/email').validateEmail as jest.Mock;
-  mockValidatePhone = require('../validators/phone').validatePhone as jest.Mock;
-  mockValidateAddress = require('../validators/address').validateAddress as jest.Mock;
-  hapi = require('@hapi/address') as { isEmailValid: jest.Mock };
-  mockDns = require('node:dns/promises') as { resolveMx: jest.Mock; resolve4: jest.Mock; resolve6: jest.Mock };
-  libphone = require('libphonenumber-js');
-  mockAddressValidator = require('../validators/address');
-  bcrypt = require('bcryptjs');
-  jwt = require('jsonwebtoken');
+  const emailMod = await import('../validators/email.js');
+  mockValidateEmail = emailMod.validateEmail as jest.Mock;
+  const phoneMod = await import('../validators/phone.js');
+  mockValidatePhone = phoneMod.validatePhone as jest.Mock;
+  const addressMod = await import('../validators/address.js');
+  mockValidateAddress = addressMod.validateAddress as jest.Mock;
+  const hapiMod = await import('@hapi/address');
+  hapi = hapiMod as any;
+  const dnsMod = await import('node:dns/promises');
+  mockDns = dnsMod as any;
+  const libphoneMod = await import('libphonenumber-js');
+  libphone = libphoneMod;
+  mockAddressValidator = addressMod;
+  const bcryptMod = await import('bcryptjs');
+  bcrypt = bcryptMod;
+  const jwtMod = await import('jsonwebtoken');
+  jwt = jwtMod;
 
   // Set default mock implementations once
   mockValidateEmail.mockResolvedValue({
@@ -294,13 +302,13 @@ export const setupBeforeAll = async () => {
   });
 
   // Mock crypto for consistent testing
-  const cryptoModule = require('node:crypto');
-  (cryptoModule.randomBytes as jest.Mock).mockReturnValue(Buffer.from('test32bytes' + 'a'.repeat(24)));
-  (cryptoModule.createHash as jest.Mock).mockImplementation(() => ({
+  const cryptoMod = await import('node:crypto');
+  (cryptoMod.randomBytes as jest.Mock).mockReturnValue(Buffer.from('test32bytes' + 'a'.repeat(24)));
+  (cryptoMod.createHash as jest.Mock).mockImplementation(() => ({
     update: jest.fn().mockReturnThis(),
     digest: jest.fn().mockReturnValue('test_hash')
   }));
-  (cryptoModule.randomUUID as jest.Mock).mockReturnValue('123e4567-e89b-12d3-a456-426614174000');
+  (cryptoMod.randomUUID as jest.Mock).mockReturnValue('123e4567-e89b-12d3-a456-426614174000');
 
   // Default Mock Implementations (Success Cases)
   mockPool.end.mockResolvedValue('OK');

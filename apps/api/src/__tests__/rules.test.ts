@@ -1,7 +1,7 @@
-import type { FastifyInstance, FastifyReply,FastifyRequest } from 'fastify'; // Import the type for safety
+import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify'; // Import the type for safety
 import request from 'supertest';
 
-import { createApp, mockPool, setupBeforeAll } from './testSetup';
+import { createApp, mockPool, setupBeforeAll } from './testSetup.js';
 
 describe('Rules Endpoints', () => {
     let app: FastifyInstance;
@@ -12,12 +12,12 @@ describe('Rules Endpoints', () => {
         app = await createApp();  // Correctly await the async function
 
         app.addHook('preHandler', async (request_: FastifyRequest, rep: FastifyReply) => {
-          if (request_.url.startsWith('/v1/rules')) {
-            const authHeader = request_.headers.authorization;
-            if (authHeader === 'Bearer valid_key') {
-              (request_ as any).project_id = 'test_project';
+            if (request_.url.startsWith('/v1/rules')) {
+                const authHeader = request_.headers.authorization;
+                if (authHeader === 'Bearer valid_key') {
+                    (request_ as any).project_id = 'test_project';
+                }
             }
-          }
         });
 
         await app.ready();      // Wait for all plugins to be loaded
@@ -95,8 +95,8 @@ describe('Rules Endpoints', () => {
             expect(response.status).toBe(200);
             const body = response.body as { registered_rules: string[]; message: string };
             expect(mockConsoleLog).toHaveBeenCalledWith(
-              expect.stringContaining('Rules registered for project test_project:'),
-              expect.any(Array)
+                expect.stringContaining('Rules registered for project test_project:'),
+                expect.any(Array)
             );
             expect(body.registered_rules).toEqual(['custom_rule_1']);
             expect(body.message).toBe('Rules registered successfully');

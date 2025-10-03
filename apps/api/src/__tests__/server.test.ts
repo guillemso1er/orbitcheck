@@ -1,16 +1,16 @@
 import * as Sentry from '@sentry/node';
 import { Queue, Worker } from 'bullmq';
 import Fastify from 'fastify';
-import IORedis from 'ioredis';
+import IORedis, { type Redis as IORedisType } from 'ioredis';
 import cron from 'node-cron';
 import { Pool } from 'pg';
 
-import { registerRoutes } from '../web';
+import { registerRoutes } from '../web.js';
 
 // --- Top-level Mocks ---
 
 // Tell Jest to use the manual mock we created in src/__mocks__/env.ts
-// This line MUST come before any imports from '../server' or its dependencies.
+// This line MUST come before any imports from '../server.js' or its dependencies.
 jest.mock('../env', () => ({
   environment: {
     PORT: 8080,
@@ -62,15 +62,15 @@ jest.mock('../web', () => ({
 }));
 
 // Import the mocked env so we can manipulate it in tests
-import { environment } from '../env';
+import { environment } from '../env.js';
 // Re-require the server module to ensure it gets the mocked dependencies
-import { build, start } from '../server';
+import { build, start } from '../server.js';
 
 const mockRegisterRoutes = registerRoutes as jest.Mock;
 
 describe('Server Build', () => {
   let mockPool: jest.Mocked<Pool>;
-  let mockRedis: jest.Mocked<IORedis>;
+  let mockRedis: jest.Mocked<IORedisType>;
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -112,13 +112,13 @@ describe('Server Build', () => {
       },
       requestTimeout: 10_000,
     });
-     expect(mockRegisterRoutes).toHaveBeenCalledWith(app, mockPool, mockRedis);
+    expect(mockRegisterRoutes).toHaveBeenCalledWith(app, mockPool, mockRedis);
   });
 });
 
 describe('Server Startup', () => {
   let mockPool: jest.Mocked<Pool>;
-  let mockRedis: jest.Mocked<IORedis>;
+  let mockRedis: jest.Mocked<IORedisType>;
 
   beforeEach(() => {
     jest.clearAllMocks();

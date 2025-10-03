@@ -5,14 +5,15 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import jwt from 'jsonwebtoken';
 import type { Pool } from "pg";
 
-import { API_KEY_NAMES, API_KEY_PREFIX, ERROR_CODES, ERROR_MESSAGES, HTTP_STATUS, JWT_EXPIRES_IN, PG_UNIQUE_VIOLATION, PLAN_TYPES, PROJECT_NAMES, STATUS } from "../constants";
-import { environment } from "../env";
-import { generateRequestId, sendError, sendServerError } from "./utils";
+import { API_KEY_NAMES, API_KEY_PREFIX, ERROR_CODES, ERROR_MESSAGES, HTTP_STATUS, JWT_EXPIRES_IN, PG_UNIQUE_VIOLATION, PLAN_TYPES, PROJECT_NAMES, STATUS } from "../constants.js";
+import { environment } from "../env.js";
+import { generateRequestId, sendError, sendServerError } from "./utils.js";
 
 export async function verifyJWT(request: FastifyRequest, rep: FastifyReply, pool: Pool) {
     const header = request.headers["authorization"];
     if (!header || !header.startsWith("Bearer ")) {
-        return rep.status(HTTP_STATUS.UNAUTHORIZED).send({ error: { code: ERROR_CODES.UNAUTHORIZED, message: ERROR_MESSAGES[ERROR_CODES.UNAUTHORIZED] } });
+        rep.status(HTTP_STATUS.UNAUTHORIZED).send({ error: { code: ERROR_CODES.UNAUTHORIZED, message: ERROR_MESSAGES[ERROR_CODES.UNAUTHORIZED] } });
+        return;
     }
     const token = header.slice(7).trim();
 
@@ -20,9 +21,11 @@ export async function verifyJWT(request: FastifyRequest, rep: FastifyReply, pool
         const decoded = jwt.verify(token, environment.JWT_SECRET) as { user_id: string };
         const { rows } = await pool.query('SELECT id FROM users WHERE id = $1', [decoded.user_id]);
         if (rows.length === 0) {
-            return rep.status(HTTP_STATUS.UNAUTHORIZED).send({ error: { code: ERROR_CODES.INVALID_TOKEN, message: ERROR_MESSAGES[ERROR_CODES.INVALID_TOKEN] } });
+            rep.status(HTTP_STATUS.UNAUTHORIZED).send({ error: { code: ERROR_CODES.INVALID_TOKEN, message: ERROR_MESSAGES[ERROR_CODES.INVALID_TOKEN] } });
+            return;
         }
-        (request as any).user_id = decoded.user_id;
+        // eslint-disable-next-line require-atomic-updates
+        request.user_id = decoded.user_id;
 
         // Get default project for user
         const { rows: projectRows } = await pool.query(
@@ -30,11 +33,14 @@ export async function verifyJWT(request: FastifyRequest, rep: FastifyReply, pool
             [decoded.user_id, PROJECT_NAMES.DEFAULT]
         );
         if (projectRows.length === 0) {
-            return rep.status(HTTP_STATUS.FORBIDDEN).send({ error: { code: ERROR_CODES.NO_PROJECT, message: ERROR_MESSAGES[ERROR_CODES.NO_PROJECT] } });
+            rep.status(HTTP_STATUS.FORBIDDEN).send({ error: { code: ERROR_CODES.NO_PROJECT, message: ERROR_MESSAGES[ERROR_CODES.NO_PROJECT] } });
+            return;
         }
-        (request as any).project_id = projectRows[0].project_id;
+        // eslint-disable-next-line require-atomic-updates
+        request.project_id = projectRows[0].project_id;
     } catch {
-        return rep.status(HTTP_STATUS.UNAUTHORIZED).send({ error: { code: ERROR_CODES.INVALID_TOKEN, message: "Invalid or expired token" } });
+        rep.status(HTTP_STATUS.UNAUTHORIZED).send({ error: { code: ERROR_CODES.INVALID_TOKEN, message: "Invalid or expired token" } });
+        return;
     }
 }
 
@@ -95,7 +101,13 @@ export function registerAuthRoutes(app: FastifyInstance, pool: Pool) {
             const projectId = projectRows[0].id;
 
             // Generate default API key
-            const fullKey = API_KEY_PREFIX + crypto.randomBytes(32).toString('hex');
+            const buf = new Promise<Buffer>((resolve, reject) => {
+                crypto.randomBytes(32, (error, buf) => {
+                    if (error) reject(error);
+                    else resolve(buf);
+                });
+            });
+            const fullKey = API_KEY_PREFIX + (await buf).toString('hex');
             const prefix = fullKey.slice(0, 6);
             const keyHash = crypto.createHash('sha256').update(fullKey).digest('hex');
 
@@ -109,7 +121,7 @@ export function registerAuthRoutes(app: FastifyInstance, pool: Pool) {
 
             return rep.status(HTTP_STATUS.CREATED).send({ token, user, request_id });
         } catch (error) {
-            if ((error as any).code === PG_UNIQUE_VIOLATION) { // Unique violation
+            if (error && typeof error === 'object' && 'code' in error && (error as { code: string }).code === PG_UNIQUE_VIOLATION) { // Unique violation
                 return sendError(rep, HTTP_STATUS.BAD_REQUEST, ERROR_CODES.USER_EXISTS, ERROR_MESSAGES[ERROR_CODES.USER_EXISTS], generateRequestId());
             }
             return sendServerError(request, rep, error, '/auth/register', generateRequestId());

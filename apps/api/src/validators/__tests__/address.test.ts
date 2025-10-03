@@ -1,7 +1,7 @@
 import type { ChildProcess } from 'node:child_process';
 import * as cpModule from 'node:child_process';
 
-import { detectPoBox, normalizeAddress } from '../address';
+import { detectPoBox, normalizeAddress } from '../address.js';
 
 // Mock the entire 'node:child_process' module
 jest.mock('node:child_process');

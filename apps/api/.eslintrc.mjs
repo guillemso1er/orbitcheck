@@ -1,13 +1,16 @@
 /* eslint-env node */
-module.exports = {
+export default {
     root: true,
     env: {
         node: true,
         es2023: true,
     },
+    parser: "@typescript-eslint/parser",
     parserOptions: {
         ecmaVersion: "latest",
         sourceType: "module",
+        tsconfigRootDir: import.meta.dirname,
+        project: "./tsconfig.json",
     },
     settings: {
         // Set your Node version target so deprecated/unsupported APIs are flagged accurately
@@ -18,7 +21,8 @@ module.exports = {
             typescript: {},
         },
     },
-    ignorePatterns: ["dist", "build", "coverage", ".eslintrc.cjs"],
+    // Make sure to ignore the new file name
+    ignorePatterns: ["dist", "build", "coverage", ".eslintrc.mjs"],
     plugins: [
         "n",
         "promise",
@@ -28,6 +32,8 @@ module.exports = {
         "unicorn",
         "eslint-comments",
         "simple-import-sort",
+        "@typescript-eslint",
+        "deprecation",
     ],
     extends: [
         "eslint:recommended",
@@ -38,6 +44,9 @@ module.exports = {
         "plugin:regexp/recommended",
         "plugin:unicorn/recommended",
         "prettier",
+        "plugin:@typescript-eslint/recommended",
+        "plugin:@typescript-eslint/recommended-requiring-type-checking",
+        "plugin:import/typescript",
     ],
     rules: {
         // Pragmatic Node/Fastify safety
@@ -84,7 +93,8 @@ module.exports = {
         // General correctness
         "no-console": ["warn", { allow: ["warn", "error"] }],
         "no-void": ["error", { allowAsStatement: true }], // allow `void fn()` to mark intentionally un-awaited
-        "no-shadow": "error",
+        "no-shadow": "off",
+        "@typescript-eslint/no-shadow": "error",
         "prefer-const": "error",
         "object-shorthand": "error",
 
@@ -160,54 +170,32 @@ module.exports = {
                     "Use Buffer.from or Buffer.alloc instead of the deprecated Buffer constructor.",
             },
         ],
+
+        // TypeScript-specific safety
+        "@typescript-eslint/no-floating-promises": "error",
+        "@typescript-eslint/no-misused-promises": [
+            "error",
+            { checksVoidReturn: { attributes: false, returns: true } },
+        ],
+        "@typescript-eslint/await-thenable": "error",
+        "@typescript-eslint/no-confusing-void-expression": [
+            "error",
+            { ignoreArrowShorthand: true, ignoreVoidOperator: true },
+        ],
+        "@typescript-eslint/consistent-type-imports": "error",
+        "@typescript-eslint/explicit-function-return-type": [
+            "warn",
+            { allowExpressions: true, allowTypedFunctionExpressions: true },
+        ],
+        "@typescript-eslint/no-unused-vars": [
+            "warn",
+            { argsIgnorePattern: "^_", varsIgnorePattern: "^_" },
+        ],
+        "@typescript-eslint/return-await": ["error", "in-try-catch"],
+        "deprecation/deprecation": "warn",
     },
 
     overrides: [
-        // TypeScript-specific safety (remove this block if you’re JS-only)
-        {
-            files: ["**/*.ts"],
-            parser: "@typescript-eslint/parser",
-            parserOptions: {
-                tsconfigRootDir: __dirname,
-                // use a dedicated tsconfig for linting if you have one; otherwise tsconfig.json
-                project: "./tsconfig.json",
-                sourceType: "module",
-                ecmaVersion: "latest",
-            },
-            plugins: ["@typescript-eslint", "deprecation"],
-            extends: [
-                "plugin:@typescript-eslint/recommended",
-                "plugin:@typescript-eslint/recommended-requiring-type-checking",
-                "plugin:import/typescript",
-            ],
-            rules: {
-                "@typescript-eslint/no-floating-promises": "error",
-                "@typescript-eslint/no-misused-promises": [
-                    "error",
-                    { checksVoidReturn: { attributes: false, returns: true } },
-                ],
-                "@typescript-eslint/await-thenable": "error",
-                "@typescript-eslint/no-confusing-void-expression": [
-                    "error",
-                    { ignoreArrowShorthand: true, ignoreVoidOperator: true },
-                ],
-                "@typescript-eslint/consistent-type-imports": "error",
-                "@typescript-eslint/explicit-function-return-type": [
-                    "warn",
-                    { allowExpressions: true, allowTypedFunctionExpressions: true },
-                ],
-                "@typescript-eslint/no-unused-vars": [
-                    "warn",
-                    { argsIgnorePattern: "^_", varsIgnorePattern: "^_" },
-                ],
-                "@typescript-eslint/return-await": ["error", "in-try-catch"],
-                "deprecation/deprecation": "warn",
-                // Prefer TS versions of base rules where relevant
-                "no-shadow": "off",
-                "@typescript-eslint/no-shadow": "error",
-            },
-        },
-
         // Tests can be looser
         {
             files: ["**/*.test.*", "**/__tests__/**"],

@@ -8,8 +8,8 @@ import type { Redis } from "ioredis";
 import fetch from "node-fetch";
 import type { Pool } from "pg";
 
-import { REASON_CODES } from "../constants";
-import { environment } from "../env";
+import { REASON_CODES } from "../constants.js";
+import { environment } from "../env.js";
 
 // Simple PO Box detector for multiple locales
 /**
@@ -34,12 +34,12 @@ export function detectPoBox(line: string): boolean {
  * @returns {Promise<Object>} Normalized address object with structured fields.
  */
 interface NormalizedAddress {
-  line1: string;
-  line2: string;
-  city: string;
-  state: string;
-  postal_code: string;
-  country: string;
+    line1: string;
+    line2: string;
+    city: string;
+    state: string;
+    postal_code: string;
+    country: string;
 }
 
 export async function normalizeAddress(addr: { line1: string; line2?: string; city: string; state?: string; postal_code: string; country: string; }): Promise<NormalizedAddress> {
@@ -82,27 +82,27 @@ export async function normalizeAddress(addr: { line1: string; line2?: string; ci
  * @returns {Promise<Object>} Validation result with normalized address, validity, geo coords, reason codes, etc.
  */
 interface GeoLocation {
-  lat: number;
-  lng: number;
-  confidence: number;
-  source: string;
+    lat: number;
+    lng: number;
+    confidence: number;
+    source: string;
 }
 
 interface LocationResponse {
-  lat: string;
-  lon: string;
+    lat: string;
+    lon: string;
 }
 
 interface GoogleGeocodeResponse {
-  status: string;
-  results: Array<{
-    geometry: {
-      location: {
-        lat: number;
-        lng: number;
-      };
-    };
-  }>;
+    status: string;
+    results: Array<{
+        geometry: {
+            location: {
+                lat: number;
+                lng: number;
+            };
+        };
+    }>;
 }
 
 export async function validateAddress(

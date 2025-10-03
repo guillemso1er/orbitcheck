@@ -1,6 +1,6 @@
 import crypto from "node:crypto";
 
-import type { FastifyReply } from "fastify";
+import type { FastifyReply,FastifyRequest } from "fastify";
 
 export const errorSchema = {
     type: 'object',
@@ -48,7 +48,7 @@ export function sendError(rep: FastifyReply, code: number, errorCode: string, me
     return rep.status(code).send(response);
 }
 
-export function sendServerError(request: any, rep: FastifyReply, error: unknown, endpoint: string, requestId?: string): FastifyReply {
+export function sendServerError(request: FastifyRequest, rep: FastifyReply, error: unknown, endpoint: string, requestId?: string): FastifyReply {
     if (request.log) {
         request.log.error(error, `${endpoint} error`);
     }

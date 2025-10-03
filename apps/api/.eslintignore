@@ -1,0 +1,16 @@
+# Build and dependency folders
+node_modules/
+dist/
+build/
+coverage/
+
+# Mocks and test-related folders that don't need linting
+src/__mocks__/
+
+# Config files
+*.config.*
+vite.config.*
+vitest.config.*
+
+# The ESLint config itself
+.eslintrc.mjs

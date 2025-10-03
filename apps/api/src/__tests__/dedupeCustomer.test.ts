@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify'; // Import the type for safety
 import request from 'supertest';
 
-import { createApp, mockPool, setupBeforeAll } from './testSetup';
+import { createApp, mockPool, setupBeforeAll } from './testSetup.js';
 
 describe('Customer Deduplication Endpoints', () => {
     let app: FastifyInstance;
@@ -57,12 +57,12 @@ describe('Customer Deduplication Endpoints', () => {
                         rows: [{ id: 'uuid-1', email: 'test@example.com', first_name: 'John', last_name: 'Doe' }]
                     });
                 }
-                
+
                 // Also handle the auth query that runs during the request
                 if (upperQuery.includes('API_KEYS')) {
                     return Promise.resolve({ rows: [{ id: 'test_key_id', project_id: 'test_project' }] });
                 }
-                
+
                 return Promise.resolve({ rows: [] });
             });
 
@@ -118,12 +118,12 @@ describe('Customer Deduplication Endpoints', () => {
                         rows: [{ id: 'uuid-2', first_name: 'Jon', last_name: 'Doe', name_score: 0.9 }]
                     });
                 }
-                
+
                 // Also handle the auth query
                 if (upperQuery.includes('API_KEYS')) {
                     return Promise.resolve({ rows: [{ id: 'test_key_id', project_id: 'test_project' }] });
                 }
-                
+
                 return Promise.resolve({ rows: [] });
             });
 

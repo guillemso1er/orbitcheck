@@ -4,12 +4,12 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import type { Redis } from "ioredis";
 import type { Pool } from "pg";
 
-import { DEDUPE_ACTIONS, HIGH_VALUE_THRESHOLD,HTTP_STATUS, MATCH_TYPES, ORDER_ACTIONS, ORDER_TAGS, PAYMENT_METHODS, REASON_CODES, RISK_ADDRESS_DEDUPE, RISK_BLOCK_THRESHOLD, RISK_COD, RISK_COD_HIGH, RISK_CUSTOMER_DEDUPE, RISK_GEO_OUT, RISK_GEOCODE_FAIL, RISK_HIGH_VALUE, RISK_HOLD_THRESHOLD, RISK_INVALID_ADDR, RISK_INVALID_EMAIL_PHONE, RISK_PO_BOX, RISK_POSTAL_MISMATCH, SIMILARITY_EXACT, SIMILARITY_FUZZY_THRESHOLD } from "../constants";
-import { logEvent } from "../hooks";
-import { validateAddress } from "../validators/address";
-import { validateEmail } from "../validators/email";
-import { validatePhone } from "../validators/phone";
-import { generateRequestId, rateLimitResponse, securityHeader, sendServerError, unauthorizedResponse, validationErrorResponse } from "./utils";
+import { DEDUPE_ACTIONS, HIGH_VALUE_THRESHOLD, HTTP_STATUS, MATCH_TYPES, ORDER_ACTIONS, ORDER_TAGS, PAYMENT_METHODS, REASON_CODES, RISK_ADDRESS_DEDUPE, RISK_BLOCK_THRESHOLD, RISK_COD, RISK_COD_HIGH, RISK_CUSTOMER_DEDUPE, RISK_GEO_OUT, RISK_GEOCODE_FAIL, RISK_HIGH_VALUE, RISK_HOLD_THRESHOLD, RISK_INVALID_ADDR, RISK_INVALID_EMAIL_PHONE, RISK_PO_BOX, RISK_POSTAL_MISMATCH, SIMILARITY_EXACT } from "../constants.js";
+import { logEvent } from "../hooks.js";
+import { validateAddress } from "../validators/address.js";
+import { validateEmail } from "../validators/email.js";
+import { validatePhone } from "../validators/phone.js";
+import { generateRequestId, rateLimitResponse, securityHeader, sendServerError, unauthorizedResponse, validationErrorResponse } from "./utils.js";
 
 
 const customerMatchSchema = {

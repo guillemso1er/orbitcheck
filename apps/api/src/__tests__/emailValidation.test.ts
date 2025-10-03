@@ -6,8 +6,8 @@ import type { FastifyInstance } from 'fastify'; // Import the type for safety
 import type { Redis } from 'ioredis';
 import request from 'supertest';
 
-import type { ValidationResult } from '../validators/email';
-import { createApp, hapi, mockDns, mockPool, mockRedisInstance, mockValidateEmail, setupBeforeAll } from './testSetup';
+import type { ValidationResult } from '../validators/email.js';
+import { createApp, hapi, mockDns, mockPool, mockRedisInstance, mockValidateEmail, setupBeforeAll } from './testSetup.js';
 
 
 const actualModule = jest.requireActual('../validators/email');

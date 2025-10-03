@@ -2,7 +2,7 @@ import type { Job } from "bullmq";
 import IORedis from "ioredis";
 import fetch from "node-fetch";
 
-import { environment } from "../env";
+import { environment } from "../env.js";
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 export const disposableProcessor = async (job: Job) => {

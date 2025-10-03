@@ -2,7 +2,7 @@
 import type { FastifyInstance } from 'fastify';
 import request from 'supertest';
 
-import { createApp, mockPool, mockValidateAddress, mockValidateEmail, mockValidatePhone, setupBeforeAll } from './testSetup';
+import { createApp, mockPool, mockValidateAddress, mockValidateEmail, mockValidatePhone, setupBeforeAll } from './testSetup.js';
 
 
 

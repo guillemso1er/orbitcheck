@@ -1,6 +1,6 @@
 import type { Pool } from 'pg';
 
-import { environment } from '../env';
+import { environment } from '../env.js';
 
 export async function runLogRetention(pool: Pool) {
   try {

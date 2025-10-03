@@ -8,7 +8,7 @@ import type { Job } from 'bullmq'; // <-- 1. Import the Job type
 import IORedis from 'ioredis';
 import fetch from 'node-fetch';
 
-import { disposableProcessor } from '../refreshDisposable';
+import { disposableProcessor } from '../refreshDisposable.js';
 
 // Mock the dependencies
 jest.mock('ioredis');
@@ -62,7 +62,7 @@ describe('Disposable Domains Refresh Job', () => {
   });
 
   it('should handle fetch errors and rethrow', async () => {
-    const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => { });
     const mockError = new Error('Network error');
     mockFetch.mockRejectedValueOnce(mockError);
 
@@ -77,7 +77,7 @@ describe('Disposable Domains Refresh Job', () => {
   });
 
   it('should handle Redis errors and rethrow', async () => {
-    const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => { });
     const mockError = new Error('Redis error');
     (mockRedis.sadd as jest.Mock).mockRejectedValueOnce(mockError);
 

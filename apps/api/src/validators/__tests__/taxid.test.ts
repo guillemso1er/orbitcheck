@@ -9,11 +9,11 @@ import {
   validateRUC,
   validateRUT,
   validateTaxId,
-} from '../taxid';
+} from '../taxid.js';
 
-jest.mock('soap', () => ({
-  createClientAsync: jest.fn(),
-}));
+import soap from 'soap';
+
+jest.mock('soap');
 
 describe('Tax ID Validators', () => {
   describe('validateCPF', () => {
@@ -222,11 +222,9 @@ describe('Tax ID Validators', () => {
 
   describe('validateTaxId', () => {
     beforeEach(() => {
-      const mockSoap = require('soap') as { createClientAsync: jest.Mock };
-       
-      mockSoap.createClientAsync.mockResolvedValue({
+      jest.spyOn(soap, 'createClientAsync').mockResolvedValue({
         checkVatAsync: jest.fn().mockResolvedValue([{ valid: true }]),
-      });
+      } as any);
     });
 
     it('should validate CPF via type', async () => {
@@ -236,12 +234,6 @@ describe('Tax ID Validators', () => {
     });
 
     it('should handle VAT via VIES', async () => {
-      const mockSoap = require('soap') as { createClientAsync: jest.Mock };
-       
-      mockSoap.createClientAsync.mockResolvedValue({
-        checkVatAsync: jest.fn().mockResolvedValue([{ valid: true }]),
-      });
-
       const result = await validateTaxId({ type: 'VAT', value: 'DE123456789', country: 'DE' }) as { source: string; valid: boolean };
       expect(result.source).toBe('vies');
       expect(result.valid).toBe(true);

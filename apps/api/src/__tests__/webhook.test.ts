@@ -5,13 +5,12 @@
 // }
 
 import type { FastifyInstance } from 'fastify';
-import jwt from 'jsonwebtoken'; // Import the library
 import fetch from 'node-fetch';
 import request from 'supertest';
 
-import * as hooks from '../hooks';
-import { verifyJWT } from '../routes/auth';
-import { createApp, mockPool, setupBeforeAll } from './testSetup';
+import * as hooks from '../hooks.js';
+import { verifyJWT } from '../routes/auth.js';
+import { createApp, mockPool, setupBeforeAll } from './testSetup.js';
 
 // --- Tell Jest to mock the modules ---
 jest.mock('node-fetch');

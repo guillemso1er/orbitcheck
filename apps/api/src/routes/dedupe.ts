@@ -3,10 +3,10 @@ import crypto from "node:crypto";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import type { Pool } from "pg";
 
-import { DEDUPE_ACTIONS, ERROR_CODES, ERROR_MESSAGES, HTTP_STATUS, MATCH_TYPES, MERGE_TYPES, SIMILARITY_EXACT, SIMILARITY_FUZZY_THRESHOLD } from "../constants";
-import { logEvent } from "../hooks";
-import { normalizeAddress } from "../validators/address";
-import { generateRequestId, rateLimitResponse, securityHeader, sendServerError,unauthorizedResponse, validationErrorResponse } from "./utils";
+import { DEDUPE_ACTIONS, ERROR_CODES, ERROR_MESSAGES, HTTP_STATUS, MATCH_TYPES, MERGE_TYPES, SIMILARITY_EXACT, SIMILARITY_FUZZY_THRESHOLD } from "../constants.js";
+import { logEvent } from "../hooks.js";
+import { normalizeAddress } from "../validators/address.js";
+import { generateRequestId, rateLimitResponse, securityHeader, sendServerError, unauthorizedResponse, validationErrorResponse } from "./utils.js";
 
 export function registerDedupeRoutes(app: FastifyInstance, pool: Pool) {
     app.post('/v1/dedupe/customer', {
@@ -124,7 +124,7 @@ export function registerDedupeRoutes(app: FastifyInstance, pool: Pool) {
             }
             // Sort matches by score descending
             matches.sort((a, b) => b.similarity_score - a.similarity_score);
-        
+
             let suggested_action: 'create_new' | 'merge_with' | 'review' = DEDUPE_ACTIONS.CREATE_NEW;
             let canonical_id: string | null = null;
             if (matches.length > 0) {
@@ -261,7 +261,7 @@ export function registerDedupeRoutes(app: FastifyInstance, pool: Pool) {
 
             // Sort matches by score descending
             matches.sort((a, b) => b.similarity_score - a.similarity_score);
-        
+
             let suggested_action: 'create_new' | 'merge_with' | 'review' = DEDUPE_ACTIONS.CREATE_NEW;
             let canonical_id: string | null = null;
             if (matches.length > 0) {

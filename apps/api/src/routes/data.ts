@@ -1,10 +1,8 @@
-import type { FastifyInstance} from "fastify";
-import { FastifyReply, FastifyRequest } from "fastify";
+import type { FastifyInstance } from "fastify";
 import type { Pool } from "pg";
 
-import { CACHE_HIT_PLACEHOLDER,HTTP_STATUS, LOGS_DEFAULT_LIMIT, LOGS_MAX_LIMIT, TOP_REASONS_LIMIT, USAGE_DAYS, USAGE_PERIOD } from "../constants";
-import { logEvent } from "../hooks";
-import { generateRequestId, rateLimitResponse, securityHeader, sendServerError,unauthorizedResponse } from "./utils";
+import { CACHE_HIT_PLACEHOLDER, HTTP_STATUS, LOGS_DEFAULT_LIMIT, LOGS_MAX_LIMIT, TOP_REASONS_LIMIT, USAGE_DAYS, USAGE_PERIOD } from "../constants.js";
+import { generateRequestId, rateLimitResponse, securityHeader, sendServerError, unauthorizedResponse } from "./utils.js";
 
 
 export function registerDataRoutes(app: FastifyInstance, pool: Pool) {
@@ -59,9 +57,9 @@ export function registerDataRoutes(app: FastifyInstance, pool: Pool) {
             let limit = (request.query as any).limit || LOGS_DEFAULT_LIMIT;
             const offset = (request.query as any).offset || 0;
             const { reason_code, endpoint, status } = request.query as any;
-        
+
             if (limit > LOGS_MAX_LIMIT) {
-              limit = LOGS_MAX_LIMIT;
+                limit = LOGS_MAX_LIMIT;
             }
 
             // Build dynamic WHERE clause

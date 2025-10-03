@@ -1,29 +1,29 @@
 // Import the Fastify type for better code quality
 import type { FastifyInstance } from 'fastify';
 import type { Redis } from 'ioredis';
-import type { CountryCode, ParsedNumber, PhoneNumber } from 'libphonenumber-js';
+import type { CountryCode, ParsedNumber } from 'libphonenumber-js';
 import request from 'supertest';
 
 // Import the necessary setup functions and mock instances
-import { createApp, libphone, mockPool, mockRedisInstance, mockTwilioInstance, mockValidatePhone, setupBeforeAll } from './testSetup';
+import crypto from 'node:crypto';
+import { createApp, libphone, mockPool, mockRedisInstance, mockTwilioInstance, mockValidatePhone, setupBeforeAll } from './testSetup.js';
 
 type ValidatePhoneResult = {
-  valid: boolean;
-  e164: string;
-  country: string | null;
-  reason_codes: string[];
-  request_id?: string;
-  ttl_seconds?: number;
+    valid: boolean;
+    e164: string;
+    country: string | null;
+    reason_codes: string[];
+    request_id?: string;
+    ttl_seconds?: number;
 };
 
 interface MockParsedNumber extends ParsedNumber {
-  isValid: () => boolean;
-  number: string;
-  country: CountryCode;
+    isValid: () => boolean;
+    number: string;
+    country: CountryCode;
 }
 
 const { validatePhone } = jest.requireActual('../validators/phone');
-import crypto from 'node:crypto';
 
 describe('Phone Validation Endpoints', () => {
     let app: FastifyInstance;
@@ -81,7 +81,7 @@ describe('Phone Validation Endpoints', () => {
     describe('validatePhone function', () => {
         it('should validate a valid phone without country', async () => {
             const result = await validatePhone('+1 555 123 4567');
-    
+
             expect(result.valid).toBe(true);
             expect(result.e164).toBe('+15551234567');
             expect(result.country).toBe('US');
@@ -91,7 +91,7 @@ describe('Phone Validation Endpoints', () => {
 
         it('should validate a valid phone with country hint', async () => {
             const result = await validatePhone('555 123 4567', 'US');
-    
+
             expect(result.valid).toBe(true);
             expect(result.e164).toBe('+15551234567');
             expect(result.country).toBe('US');
@@ -131,9 +131,9 @@ describe('Phone Validation Endpoints', () => {
             const input = JSON.stringify({ phone: '+1 555 123 4567', country: '' });
             const hash = crypto.createHash('sha1').update(input).digest('hex');
             mockRedis.get.mockResolvedValueOnce(JSON.stringify(cachedResult));
-        
+
             const result = await validatePhone('+1 555 123 4567', undefined, mockRedis);
-        
+
             expect(result).toEqual(cachedResult);
             expect(mockRedis.get).toHaveBeenCalledWith(`validator:phone:${hash}`);
             expect(libphone.parsePhoneNumber).not.toHaveBeenCalled();
@@ -142,9 +142,9 @@ describe('Phone Validation Endpoints', () => {
         it('should cache result in Redis after computation', async () => {
             const mockRedis = mockRedisInstance as unknown as jest.Mocked<Redis>;
             mockRedis.get.mockResolvedValue(null);
-        
+
             await validatePhone('+1 555 123 4567', undefined, mockRedis);
-        
+
             const input = JSON.stringify({ phone: '+1 555 123 4567', country: '' });
             const hash = crypto.createHash('sha1').update(input).digest('hex');
             expect(mockRedis.set).toHaveBeenCalledWith(
@@ -162,9 +162,9 @@ describe('Phone Validation Endpoints', () => {
                 country: 'GB',
                 phone: '441234567890',
             } as any);
-    
+
             const result = await validatePhone('+44 1234 567890');
-    
+
             expect(result.country).toBe('GB');
         });
     });
