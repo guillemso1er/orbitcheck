@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import { once } from 'node:events';
 
 import cors from "@fastify/cors";
@@ -226,7 +227,7 @@ export async function start(): Promise<void> {
  * Module entry point: starts the server if run directly (e.g., node server.js).
  * Catches startup errors, reports to Sentry if configured, logs to console, and exits with code 1.
  */
-if (require.main === module) {
+if (process.argv[1] === import.meta.url.slice(7)) {
     start().catch(error => {
         if (environment.SENTRY_DSN) {
             Sentry.captureException(error);
