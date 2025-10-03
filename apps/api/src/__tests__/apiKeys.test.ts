@@ -21,7 +21,7 @@ describe('API Keys Routes (JWT Auth)', () => {
         await setupBeforeAll();
         app = await createApp();
 
-        app.addHook('preHandler', async (request_, reply, done) => {
+        app.addHook('preHandler', async (request_, reply) => {
             if (request_.url.startsWith('/api-keys')) {
                 try {
                     if (!request_.headers.authorization?.startsWith('Bearer ')) {
@@ -30,12 +30,12 @@ describe('API Keys Routes (JWT Auth)', () => {
                     const token = request_.headers.authorization.split(' ')[1];
                     mockedJwtVerify(token);
                     (request_ as any).project_id = 'test_project';
-                    done();
+                    return;
                 } catch {
                     return reply.status(401).send({ error: { code: 'invalid_token', message: 'The provided token is invalid.' } });
                 }
             } else {
-                done();
+                return
             }
         });
 

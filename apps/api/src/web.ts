@@ -72,6 +72,7 @@ export function registerRoutes(app: FastifyInstance, pool: Pool, redis: IORedisT
     app.addHook("preHandler", async (request, rep) => {
         await authenticateRequest(request, rep, pool);
         await applyRateLimitingAndIdempotency(request, rep, redis);
+        return;
     });
 
     // Register modular route groups with shared dependencies

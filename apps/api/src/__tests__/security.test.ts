@@ -14,6 +14,7 @@ describe('Security and Authentication', () => {
 
     app.addHook('preHandler', async (request_: FastifyRequest, rep: FastifyReply) => {
       await auth(request_, rep, mockPool as any);
+      return;
     });
 
     await app.ready();

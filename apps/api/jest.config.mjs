@@ -11,9 +11,21 @@ export default {
     transform: {
         '^.+\\.m?[tj]sx?$': [
             'ts-jest',
+            // Correct: All ts-jest options are in ONE object
             {
                 useESM: true,
-            },
+                diagnostics: {
+                    ignoreCodes: [1343]
+                },
+                astTransformers: {
+                    before: [
+                        {
+                            path: 'ts-jest-mock-import-meta',
+                            options: { metaObjectReplacement: { url: 'https://www.url.com/server.js' } } // Made URL more realistic
+                        }
+                    ]
+                }
+            }
         ],
     },
 

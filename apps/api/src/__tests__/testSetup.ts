@@ -158,6 +158,7 @@ export const createApp = async () => {
       // verifyJWTFunction was loaded in setupBeforeAll
       await verifyJWTFunction(request as any, rep as any, mockPool as any);
     }
+    return
   });
   // Register routes using the loaded functions
   if (typeof registerAuthRoutesFunction !== 'function') {
@@ -202,14 +203,13 @@ export const createApp = async () => {
 
 
   // Add security headers for test coverage
-  app.addHook('preHandler', (request, reply, done) => {
+  app.addHook('preHandler' , async (request, reply) => {
     reply.header('X-Content-Type-Options', 'nosniff');
     reply.header('X-Frame-Options', 'DENY');
     reply.header('X-XSS-Protection', '1; mode=block');
     reply.header('Referrer-Policy', 'strict-origin-when-cross-origin');
     reply.header('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
-    // Call done() to signal the hook is complete.
-    done();
+    return;
   });
 
   return app;
@@ -357,13 +357,14 @@ describe('testSetup', () => {
 
 // test diagnostics: lifecycle + response logging
 export function enableDiagnostics(app: any) {
-  app.addHook('onRequest', async (request: any, _rep: any, done: any) => {
+  app.addHook('onRequest', async (request: any, _rep: any) => {
     console.log(`[onRequest] ${request.method} ${request.url} auth=${request.headers.authorization ?? '<none>'}`);
-    done();
+    return;
   });
 
   app.addHook('preHandler', async (request: any, rep: any) => {
     console.log(`[preHandler] ${request.method} ${request.url}`);
+    return;
   });
 
   app.addHook('onSend', async (request: any, rep: any, payload: any) => {
@@ -378,5 +379,6 @@ export function enableDiagnostics(app: any) {
 
   app.addHook('onError', async (request: any, rep: any, error: any) => {
     console.log(`[onError] ${request.method} ${request.url} err=${error?.message} status=${rep.statusCode}`);
+    return error;
   });
 }

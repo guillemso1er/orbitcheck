@@ -21,6 +21,7 @@ describe('Rules Endpoints', () => {
         });
 
         await app.ready();      // Wait for all plugins to be loaded
+        return;
     });
 
     // Close the app instance once after all tests are finished
