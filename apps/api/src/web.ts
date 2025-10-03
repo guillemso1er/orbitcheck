@@ -1,6 +1,7 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import type { Pool } from "pg";
 
+import { type Redis as IORedisType } from 'ioredis';
 import { auth, idempotency, rateLimit } from "./hooks.js";
 import { registerApiKeysRoutes } from './routes/api-keys.js';
 import { registerAuthRoutes, verifyJWT } from "./routes/auth.js";
@@ -10,8 +11,6 @@ import { registerOrderRoutes } from './routes/orders.js';
 import { registerRulesRoutes } from './routes/rules.js';
 import { registerValidationRoutes } from './routes/validation.js';
 import { registerWebhookRoutes } from './routes/webhook.js';
-import IORedis from 'ioredis';
-import { type Redis as IORedisType } from 'ioredis';
 /**
  * Determines the appropriate authentication hook based on the request URL.
  * For dashboard routes, uses JWT verification; for API routes, uses API key auth.
@@ -26,9 +25,7 @@ async function authenticateRequest(request: FastifyRequest, rep: FastifyReply, p
     const url = request.url;
 
     // Skip authentication for public endpoints: health checks, API docs, and auth routes
-    if (url.startsWith("/health") || url.startsWith("/documentation") || url.startsWith("/auth")) {
-        return;
-    }
+    if (url.startsWith('/health') || url.startsWith('/documentation') || url.startsWith('/auth')) return;
 
     // Dashboard routes require JWT authentication (user session)
     const isDashboardRoute = url.startsWith("/api-keys") || url.startsWith("/webhooks");
@@ -49,8 +46,11 @@ async function authenticateRequest(request: FastifyRequest, rep: FastifyReply, p
  */
 async function applyRateLimitingAndIdempotency(request: FastifyRequest, rep: FastifyReply, redis: IORedisType): Promise<void> {
     const url = request.url;
-    const isDashboardRoute = url.startsWith("/api-keys") || url.startsWith("/webhooks");
 
+    // Skip middleware for health, docs, and auth
+    if (url.startsWith('/health') || url.startsWith('/documentation') || url.startsWith('/auth')) return;
+
+    const isDashboardRoute = url.startsWith('/api-keys') || url.startsWith('/webhooks');
     if (!isDashboardRoute) {
         await rateLimit(request, rep, redis);
         await idempotency(request, rep, redis);

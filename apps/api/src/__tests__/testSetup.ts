@@ -357,7 +357,7 @@ describe('testSetup', () => {
 
 // test diagnostics: lifecycle + response logging
 export function enableDiagnostics(app: any) {
-  app.addHook('onRequest', (request: any, _rep: any, done: any) => {
+  app.addHook('onRequest', async (request: any, _rep: any, done: any) => {
     console.log(`[onRequest] ${request.method} ${request.url} auth=${request.headers.authorization ?? '<none>'}`);
     done();
   });

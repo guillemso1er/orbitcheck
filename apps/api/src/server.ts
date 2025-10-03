@@ -45,7 +45,9 @@ export async function build(pool: Pool, redis: IORedisType): Promise<FastifyInst
         },
         requestTimeout: 10_000
     });
-
+    if (process.env.NODE_ENV !== 'production') {
+        await app.register(startupGuard);
+    }
     app.setErrorHandler(async (error: Error & { code?: string; statusCode?: number }, request: FastifyRequest, reply: FastifyReply) => {
         // Fastify throws a specific error when a request times out
         if (error.code === 'FST_ERR_REQUEST_TIMEOUT' || error.name === 'RequestTimeoutError') {
@@ -93,13 +95,17 @@ export async function build(pool: Pool, redis: IORedisType): Promise<FastifyInst
 
     // Enable CORS restricted to dashboard origin (configure for prod domains)
     await app.register(cors, {
-        origin: (origin: string | undefined): boolean => {
-            const allowedOrigins = [
+        origin(origin, cb) {
+            const allowedOrigins = new Set([
                 `http://localhost:${environment.PORT}`, // API itself for health/docs
-                'http://localhost:5173', // Vite dev server
-                'https://dashboard.orbicheck.com', // Example prod subdomain
-            ];
-            return !origin || allowedOrigins.includes(origin);
+                'http://localhost:5173',                // Vite dev server
+                'https://dashboard.orbicheck.com',
+                'https://api.orbicheck.com'
+            ]);
+
+            // Allow no Origin (e.g., curl/app.inject) or explicitly whitelisted origins
+            const allowed = !origin || allowedOrigins.has(origin);
+            cb(null, allowed);
         },
         credentials: true,
     });
@@ -108,15 +114,14 @@ export async function build(pool: Pool, redis: IORedisType): Promise<FastifyInst
     registerRoutes(app, pool, redis);
 
     // Add security headers (equivalent to helmet)
-    app.addHook('onSend', (request: FastifyRequest, reply: FastifyReply, payload: unknown) => {
-        void reply.header('X-Content-Type-Options', 'nosniff');
-        void reply.header('X-Frame-Options', 'DENY');
-        void reply.header('X-XSS-Protection', '1; mode=block');
-        void reply.header('Referrer-Policy', 'strict-origin-when-cross-origin');
-        void reply.header('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+    app.addHook('onSend', async (request, reply, payload) => {
+        reply.header('X-Content-Type-Options', 'nosniff');
+        reply.header('X-Frame-Options', 'DENY');
+        reply.header('X-XSS-Protection', '1; mode=block');
+        reply.header('Referrer-Policy', 'strict-origin-when-cross-origin');
+        reply.header('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
         return payload;
     });
-
 
 
     // Simple health check endpoint for monitoring and load balancers
@@ -185,9 +190,13 @@ export async function start(): Promise<void> {
     const app = await build(pool, appRedis);
     app.log.info('All dependencies are connected. Building Fastify app...');
 
-    if (process.env.NODE_ENV !== 'production') {
-        await app.register(startupGuard);
+    // Ensure Redis is ready for hooks during startup smoke test
+    if (appRedis.status !== 'ready') {
+        await once(appRedis, 'ready');
     }
+    await appRedis.ping();
+
+
     const timeoutMs = Number(process.env.STARTUP_SMOKETEST_TIMEOUT ?? 2000);
     try {
         const response = await withTimeout(

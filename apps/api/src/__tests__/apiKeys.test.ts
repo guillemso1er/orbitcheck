@@ -21,7 +21,7 @@ describe('API Keys Routes (JWT Auth)', () => {
         await setupBeforeAll();
         app = await createApp();
 
-        app.addHook('preHandler', (request_, reply, done) => {
+        app.addHook('preHandler', async (request_, reply, done) => {
             if (request_.url.startsWith('/api-keys')) {
                 try {
                     if (!request_.headers.authorization?.startsWith('Bearer ')) {
