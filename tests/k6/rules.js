@@ -37,9 +37,10 @@ export default function () {
 
     // Second request for cache HIT.
     res = http.get(`${BASE_URL}/rules`, { headers: HEADERS });
+    console.log('Headers for second request:', JSON.stringify(res.headers));
     check(res, {
         '[Rules] status 200 HIT': (r) => r.status === 200,
-        '[Rules] cache HIT': (r) => r.headers['X-Cache-Status'] === 'HIT',
+        '[Rules] cache HIT': (r) => (r.headers['Cache-Status'] || '').toLowerCase().includes('hit'),
     });
 
     sleep(0.1);

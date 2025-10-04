@@ -57,7 +57,7 @@ export default function () {
     res = http.post(`${BASE_URL}/orders/evaluate`, lowRiskPayload, { headers: HEADERS });
     check(res, {
         '[Low Risk] status 200 HIT': (r) => r.status === 200,
-        '[Low Risk] cache HIT': (r) => r.headers['X-Cache-Status'] === 'HIT',
+        '[Low Risk] cache HIT': (r) => (r.headers['Cache-Status'] || '').toLowerCase().includes('hit'),
     });
 
     // Scenario 2: Test high-risk order (PO box, high value, COD)
@@ -103,7 +103,7 @@ export default function () {
     res = http.post(`${BASE_URL}/orders/evaluate`, highRiskPayload, { headers: HEADERS });
     check(res, {
         '[High Risk] status 200 HIT': (r) => r.status === 200,
-        '[High Risk] cache HIT': (r) => r.headers['X-Cache-Status'] === 'HIT',
+        '[High Risk] cache HIT': (r) => (r.headers['Cache-Status'] || '').toLowerCase().includes('hit'),
     });
 
     // Scenario 3: Test medium-risk order (hold)
@@ -141,7 +141,7 @@ export default function () {
     res = http.post(`${BASE_URL}/orders/evaluate`, mediumRiskPayload, { headers: HEADERS });
     check(res, {
         '[Medium Risk] status 200 HIT': (r) => r.status === 200,
-        '[Medium Risk] cache HIT': (r) => r.headers['X-Cache-Status'] === 'HIT',
+        '[Medium Risk] cache HIT': (r) => (r.headers['Cache-Status'] || '').toLowerCase().includes('hit'),
     });
 
     sleep(0.1);

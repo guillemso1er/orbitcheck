@@ -35,7 +35,7 @@ export default function () {
     res = http.post(`${BASE_URL}/validate/phone`, validPayload, { headers: HEADERS });
     check(res, {
         '[Valid Phone] status 200 HIT': (r) => r.status === 200,
-        '[Valid Phone] cache HIT': (r) => r.headers['X-Cache-Status'] === 'HIT',
+        '[Valid Phone] cache HIT': (r) => (r.headers['Cache-Status'] || '').toLowerCase().includes('hit'),
     });
 
     // Scenario 2: Test valid phone with country hint
@@ -51,7 +51,7 @@ export default function () {
     res = http.post(`${BASE_URL}/validate/phone`, validWithCountryPayload, { headers: HEADERS });
     check(res, {
         '[Valid with Country] status 200 HIT': (r) => r.status === 200,
-        '[Valid with Country] cache HIT': (r) => r.headers['X-Cache-Status'] === 'HIT',
+        '[Valid with Country] cache HIT': (r) => (r.headers['Cache-Status'] || '').toLowerCase().includes('hit'),
     });
 
     // Scenario 3: Test invalid phone format
@@ -70,7 +70,7 @@ export default function () {
     res = http.post(`${BASE_URL}/validate/phone`, invalidPayload, { headers: HEADERS });
     check(res, {
         '[Invalid Format] status 200 HIT': (r) => r.status === 200,
-        '[Invalid Format] cache HIT': (r) => r.headers['X-Cache-Status'] === 'HIT',
+        '[Invalid Format] cache HIT': (r) => (r.headers['Cache-Status'] || '').toLowerCase().includes('hit'),
     });
 
     // Scenario 4: Test invalid phone with country hint
@@ -89,7 +89,7 @@ export default function () {
     res = http.post(`${BASE_URL}/validate/phone`, invalidWithCountryPayload, { headers: HEADERS });
     check(res, {
         '[Invalid with Country] status 200 HIT': (r) => r.status === 200,
-        '[Invalid with Country] cache HIT': (r) => r.headers['X-Cache-Status'] === 'HIT',
+        '[Invalid with Country] cache HIT': (r) => (r.headers['Cache-Status'] || '').toLowerCase().includes('hit'),
     });
 
     sleep(0.1);

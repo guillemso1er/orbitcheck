@@ -39,7 +39,7 @@ export default function () {
     res = http.post(`${BASE_URL}/dedupe/customer`, noMatchPayload, { headers: HEADERS });
     check(res, {
         '[No Match] status 200 HIT': (r) => r.status === 200,
-        '[No Match] cache HIT': (r) => r.headers['X-Cache-Status'] === 'HIT',
+        '[No Match] cache HIT': (r) => (r.headers['Cache-Status'] || '').toLowerCase().includes('hit'),
     });
 
     // Scenario 2: Test dedupe with potential fuzzy match
@@ -61,7 +61,7 @@ export default function () {
     res = http.post(`${BASE_URL}/dedupe/customer`, fuzzyPayload, { headers: HEADERS });
     check(res, {
         '[Fuzzy] status 200 HIT': (r) => r.status === 200,
-        '[Fuzzy] cache HIT': (r) => r.headers['X-Cache-Status'] === 'HIT',
+        '[Fuzzy] cache HIT': (r) => (r.headers['Cache-Status'] || '').toLowerCase().includes('hit'),
     });
 
     // Scenario 3: Test dedupe with exact email match
@@ -84,7 +84,7 @@ export default function () {
     res = http.post(`${BASE_URL}/dedupe/customer`, exactPayload, { headers: HEADERS });
     check(res, {
         '[Exact] status 200 HIT': (r) => r.status === 200,
-        '[Exact] cache HIT': (r) => r.headers['X-Cache-Status'] === 'HIT',
+        '[Exact] cache HIT': (r) => (r.headers['Cache-Status'] || '').toLowerCase().includes('hit'),
     });
 
     sleep(0.1);

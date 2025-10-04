@@ -38,7 +38,7 @@ export default function () {
     res = http.post(`${BASE_URL}/validate/tax-id`, vatPayload, { headers: HEADERS });
     check(res, {
         '[VAT] status 200 HIT': (r) => r.status === 200,
-        '[VAT] cache HIT': (r) => r.headers['X-Cache-Status'] === 'HIT',
+        '[VAT] cache HIT': (r) => (r.headers['Cache-Status'] || '').toLowerCase().includes('hit'),
     });
 
     // Scenario 2: Test invalid VAT format
@@ -61,7 +61,7 @@ export default function () {
     res = http.post(`${BASE_URL}/validate/tax-id`, invalidVatPayload, { headers: HEADERS });
     check(res, {
         '[Invalid VAT] status 200 HIT': (r) => r.status === 200,
-        '[Invalid VAT] cache HIT': (r) => r.headers['X-Cache-Status'] === 'HIT',
+        '[Invalid VAT] cache HIT': (r) => (r.headers['Cache-Status'] || '').toLowerCase().includes('hit'),
     });
 
     // Scenario 3: Test valid Brazilian CNPJ
@@ -83,7 +83,7 @@ export default function () {
     res = http.post(`${BASE_URL}/validate/tax-id`, validCnpjPayload, { headers: HEADERS });
     check(res, {
         '[Valid CNPJ] status 200 HIT': (r) => r.status === 200,
-        '[Valid CNPJ] cache HIT': (r) => r.headers['X-Cache-Status'] === 'HIT',
+        '[Valid CNPJ] cache HIT': (r) => (r.headers['Cache-Status'] || '').toLowerCase().includes('hit'),
     });
 
     // Scenario 4: Test invalid CNPJ
@@ -105,7 +105,7 @@ export default function () {
     res = http.post(`${BASE_URL}/validate/tax-id`, invalidCnpjPayload, { headers: HEADERS });
     check(res, {
         '[Invalid CNPJ] status 200 HIT': (r) => r.status === 200,
-        '[Invalid CNPJ] cache HIT': (r) => r.headers['X-Cache-Status'] === 'HIT',
+        '[Invalid CNPJ] cache HIT': (r) => (r.headers['Cache-Status'] || '').toLowerCase().includes('hit'),
     });
 
     sleep(0.1);

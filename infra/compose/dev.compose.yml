@@ -42,16 +42,21 @@ services:
       timeout: 20s
       retries: 3
 
-  edge:
-    image: openresty/openresty:alpine
-    ports:
-      - "8081:80"
-    volumes:
-      - ../../apps/edge/nginx.conf:/usr/local/openresty/nginx/conf/nginx.conf:ro
-      - nginx_cache:/tmp/nginx_cache
-    depends_on:
-      api:
-        condition: service_healthy # Changed from service_started
+  caddy:
+      build: ./caddy
+      ports:
+        - "8081:80"
+      volumes:
+        - ./dev.Caddyfile:/etc/caddy/Caddyfile
+        - caddy_data:/data
+        - caddy_config:/config
+      depends_on:
+        api:
+          condition: service_healthy
+        postgres:
+          condition: service_healthy
+        valkey:
+          condition: service_healthy
 
   api:
     build:
@@ -136,7 +141,7 @@ services:
       - uptime_kuma_data:/app/data
     restart: always
     depends_on:
-      - edge
+      - caddy
 
 volumes:
   pg_data: {}
@@ -144,6 +149,7 @@ volumes:
   grafana_data: {}
   loki_data: {}
   infisical_data: {}
-  nginx_cache: {}
+  caddy_data: {}
+  caddy_config: {}
   statping_data: {}
   uptime_kuma_data: {}

@@ -24,7 +24,7 @@ export default function () {
         address: {
             line1: "1600 Amphitheatre Pkwy",
             city: "Mountain View",
-            postal_code: "94043",
+            postal_code: "90210",
             state: "CA",
             country: "US"
         }
@@ -41,7 +41,7 @@ export default function () {
     res = http.post(`${BASE_URL}/validate/address`, addressWithMismatchPayload, { headers: HEADERS });
     check(res, {
         '[Mismatch] status 200 HIT': (r) => r.status === 200,
-        '[Mismatch] cache HIT': (r) => r.headers['X-Cache-Status'] === 'HIT',
+        '[Mismatch] cache HIT': (r) => (r.headers['Cache-Status'] || '').toLowerCase().includes('hit'),
     });
 
 
@@ -68,7 +68,7 @@ export default function () {
     res = http.post(`${BASE_URL}/validate/address`, poBoxPayload, { headers: HEADERS });
     check(res, {
         '[PO Box] status 200 HIT': (r) => r.status === 200,
-        '[PO Box] cache HIT': (r) => r.headers['X-Cache-Status'] === 'HIT',
+        '[PO Box] cache HIT': (r) => (r.headers['Cache-Status'] || '').toLowerCase().includes('hit'),
     });
 
 
@@ -94,7 +94,7 @@ export default function () {
     res = http.post(`${BASE_URL}/validate/address`, invalidCityPayload, { headers: HEADERS });
     check(res, {
         '[Invalid City] status 200 HIT': (r) => r.status === 200,
-        '[Invalid City] cache HIT': (r) => r.headers['X-Cache-Status'] === 'HIT',
+        '[Invalid City] cache HIT': (r) => (r.headers['Cache-Status'] || '').toLowerCase().includes('hit'),
     });
 
     sleep(0.1);

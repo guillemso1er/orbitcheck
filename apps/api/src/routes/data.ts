@@ -6,7 +6,7 @@ import { generateRequestId, rateLimitResponse, securityHeader, sendServerError, 
 
 
 export function registerDataRoutes(app: FastifyInstance, pool: Pool) {
-    app.get("/logs", {
+    app.get("/v1/logs", {
         schema: {
             summary: 'Get Event Logs',
             description: 'Retrieves event logs for the project with optional filters by reason code, endpoint, and status. Supports pagination via limit and offset.',

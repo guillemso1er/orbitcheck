@@ -36,7 +36,7 @@ export default function () {
     res = http.get(`${BASE_URL}/usage`, { headers: HEADERS });
     check(res, {
         '[Usage] status 200 HIT': (r) => r.status === 200,
-        '[Usage] cache HIT': (r) => r.headers['X-Cache-Status'] === 'HIT',
+        '[Usage] cache HIT': (r) => (r.headers['Cache-Status'] || '').toLowerCase().includes('hit'),
     });
 
     sleep(0.1);

@@ -239,11 +239,11 @@ export function registerOrderRoutes(app: FastifyInstance, pool: Pool, redis: Red
                     });
                 }
 
-                const fuzzyQuery = `SELECT id, line1, line2, city, state, postal_code, country, lat, lng, 
-                                    greatest(similarity(line1, $2), similarity(city, $3)) as similarity_score, 
-                                    MATCH_TYPES.FUZZY_ADDRESS as match_type
-                                    FROM addresses 
-                                    WHERE project_id = $1 AND (similarity(line1, $2) > 0.85 OR similarity(city, $3) > 0.85) 
+                const fuzzyQuery = `SELECT id, line1, line2, city, state, postal_code, country, lat, lng,
+                                    greatest(similarity(line1, $2), similarity(city, $3)) as similarity_score,
+                                    'fuzzy_address' as match_type
+                                    FROM addresses
+                                    WHERE project_id = $1 AND (similarity(line1, $2) > 0.85 OR similarity(city, $3) > 0.85)
                                     ORDER BY similarity_score DESC LIMIT 3`;
                 const { rows: fuzzyMatches } = await pool.query(fuzzyQuery, [project_id, normAddr.line1, normAddr.city]);
                 address_matches = address_matches.concat(
