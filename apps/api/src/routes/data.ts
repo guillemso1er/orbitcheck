@@ -111,7 +111,7 @@ export function registerDataRoutes(app: FastifyInstance, pool: Pool) {
         }
     });
 
-    app.get("/usage", {
+    app.get("/v1/usage", {
         schema: {
             summary: 'Get Usage Statistics',
             description: 'Retrieves usage statistics for the last 31 days for the project associated with the API key.',
@@ -172,7 +172,7 @@ export function registerDataRoutes(app: FastifyInstance, pool: Pool) {
                  FROM logs
                  WHERE project_id = $1
                  AND status = $2
-                 AND created_at > now() - interval '$3 days'
+                 AND created_at > now() - ($3 * interval '1 day')
                  GROUP BY code
                  ORDER BY count DESC
                  LIMIT $4`,
@@ -182,7 +182,7 @@ export function registerDataRoutes(app: FastifyInstance, pool: Pool) {
             // Cache hit ratio - placeholder (in production, track cache hits in logs/meta)
             // For now, estimate based on validations vs total requests
             const { rows: logCount } = await pool.query(
-                "SELECT count(*) as total_requests FROM logs WHERE project_id = $1 AND created_at > now() - interval '$2 days'",
+                "SELECT count(*) as total_requests FROM logs WHERE project_id = $1 AND created_at > now() - ($2 * interval '1 day')",
                 [project_id, USAGE_DAYS]
             );
             const totalRequests = Number.parseInt(logCount[0].total_requests) || 1;

@@ -1,0 +1,16 @@
+.git/
+node_modules/
+.venv/
+dist/
+build/
+target/
+.next/
+.cache/
+coverage/
+logs/
+*.log
+.min.
+/fixtures/
+/ snapshots/
+large_data/**
+.DS_Store

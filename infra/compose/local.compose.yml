@@ -42,13 +42,20 @@ services:
       timeout: 20s
       retries: 3
 
-  edge:
-    image: openresty/openresty:alpine
-    ports:
-      - "8081:80"
-    volumes:
-      - ../../apps/edge/nginx.conf:/usr/local/openresty/nginx/conf/nginx.conf:ro
-      - nginx_cache:/tmp/nginx_cache
+  caddy:
+      build: ./caddy
+      ports:
+        - "8081:80"
+      volumes:
+        - ./dev.Caddyfile:/etc/caddy/Caddyfile
+        - caddy_data:/data
+        - caddy_config:/config
+      depends_on:
+        postgres:
+          condition: service_healthy
+        valkey:
+          condition: service_healthy
+
 
   prom:
     image: prom/prometheus:latest
@@ -100,7 +107,7 @@ services:
       - uptime_kuma_data:/app/data
     restart: always
     depends_on:
-      - edge
+      - caddy
 
 volumes:
   pg_data: {}
@@ -108,6 +115,7 @@ volumes:
   grafana_data: {}
   loki_data: {}
   infisical_data: {}
-  nginx_cache: {}
   statping_data: {}
   uptime_kuma_data: {}
+  caddy_data: {}
+  caddy_config: {}
