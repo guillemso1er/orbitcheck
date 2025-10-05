@@ -1,16 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { API_ENDPOINTS, UI_STRINGS, ERROR_MESSAGES } from '../constants';
+import { UI_STRINGS } from '../constants';
 import { useAuth } from '../AuthContext';
+import { createApiClient } from '@orbicheck/contracts';
 import { FiltersSection, type FiltersState } from './FiltersSection';
 import { PaginationControls } from './PaginationControls';
 import { LogsTable, type LogEntry } from './LogsTable';
 import './LogExplorer.css';
 
-interface LogsResponse {
-  data: LogEntry[];
-  next_cursor: string | null;
-  total_count: number;
-}
 
 const LogExplorer: React.FC = () => {
   const { token } = useAuth();
@@ -43,31 +39,32 @@ const LogExplorer: React.FC = () => {
   const fetchLogs = useCallback(async (offset: number = 0, page: number = 1) => {
     try {
       setLoading(true);
-      const paramsObj: Record<string, string> = {
-        limit: String(limit),
-        offset: String(offset),
-        sort_by: sortBy,
-        sort_dir: sortDir,
-      };
-      if (appliedFilters.reason_code) paramsObj.reason_code = appliedFilters.reason_code;
-      if (appliedFilters.endpoint) paramsObj.endpoint = appliedFilters.endpoint;
-      if (appliedFilters.status) paramsObj.status = appliedFilters.status;
-      if (appliedFilters.type) paramsObj.type = appliedFilters.type;
-      if (appliedFilters.date_from) paramsObj.date_from = appliedFilters.date_from;
-      if (appliedFilters.date_to) paramsObj.date_to = appliedFilters.date_to;
-      const params = new URLSearchParams(paramsObj);
-      const response = await fetch(`${API_ENDPOINTS.LOGS}?${params.toString()}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+      const apiClient = createApiClient({
+        baseURL: '', // Use relative path since we're proxying
+        token: token || ''
       });
-      if (!response.ok) {
-        throw new Error(ERROR_MESSAGES.FETCH_LOGS);
-      }
-      const data: LogsResponse = await response.json();
-      setLogs(data.data);
-      setTotalCount(data.total_count);
-      setNextCursor(data.next_cursor);
+      
+      const params = {
+        limit,
+        offset,
+        reason_code: appliedFilters.reason_code,
+        endpoint: appliedFilters.endpoint,
+        status: appliedFilters.status ? parseInt(appliedFilters.status) : undefined,
+      };
+      
+      const data = await apiClient.getLogs(params);
+      setLogs((data.data || []).map(log => ({
+        ...log,
+        id: log.id || '',
+        type: log.type || '',
+        endpoint: log.endpoint || '',
+        reason_codes: log.reason_codes || [],
+        status: log.status || 200,
+        created_at: log.created_at || '',
+        meta: log.meta || {}
+      })));
+      setTotalCount(data.total_count || 0);
+      setNextCursor(data.next_cursor || null);
       setCurrentPage(page);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error');

@@ -1,13 +1,14 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { API_ENDPOINTS, ERROR_MESSAGES, UI_STRINGS } from '../constants';
+import { UI_STRINGS } from '../constants';
+import { createApiClient } from '@orbicheck/contracts';
 
 interface ApiKey {
-  id: string;
-  prefix: string;
+  id?: string;
+  prefix?: string;
   name?: string;
-  status: 'active' | 'revoked';
-  created_at: string;
-  last_used_at?: string;
+  status?: 'active' | 'revoked' | string;
+  created_at?: string | null;
+  last_used_at?: string | null;
 }
 
 interface ApiKeysProps {
@@ -64,7 +65,7 @@ const CreateApiKeyModal: React.FC<{
 };
 
 const NewKeyAlert: React.FC<{
-  newKey: { prefix: string; full_key: string } | null;
+  newKey: { prefix?: string; full_key?: string } | null;
   onClose: () => void;
 }> = ({ newKey, onClose }) => {
   if (!newKey) return null;
@@ -73,8 +74,8 @@ const NewKeyAlert: React.FC<{
     <div className="alert alert-success">
       <h4>{UI_STRINGS.NEW_KEY_CREATED}</h4>
       <div className="key-details">
-        <p><strong>Prefix:</strong> <code>{newKey.prefix}</code></p>
-        <p><strong>Full Key:</strong> <code>{newKey.full_key}</code></p>
+        <p><strong>Prefix:</strong> <code>{newKey.prefix || ''}</code></p>
+        <p><strong>Full Key:</strong> <code>{newKey.full_key || ''}</code></p>
         <p className="alert-text">{UI_STRINGS.SAVE_SECURELY}</p>
       </div>
       <button onClick={onClose} className="btn btn-secondary">Close</button>
@@ -106,19 +107,19 @@ const ApiKeysTable: React.FC<{
             <td>{key.name || 'Unnamed'}</td>
             <td><code>{key.prefix}</code></td>
             <td>
-              <span className={`badge badge-${key.status === 'active' ? 'success' : 'danger'}`}>
-                {key.status.toUpperCase()}
+              <span className={`badge badge-${(key.status === 'active') ? 'success' : 'danger'}`}>
+                {key.status?.toUpperCase() || 'UNKNOWN'}
               </span>
             </td>
-            <td>{new Date(key.created_at).toLocaleDateString()}</td>
-            <td>{key.last_used_at ? new Date(key.last_used_at).toLocaleDateString() : 'Never'}</td>
+            <td>{key.created_at && key.created_at !== null ? new Date(key.created_at).toLocaleDateString() : 'Never'}</td>
+            <td>{key.last_used_at && key.last_used_at !== null ? new Date(key.last_used_at).toLocaleDateString() : 'Never'}</td>
             <td>
               {key.status === 'active' && (
                 <div className="action-buttons">
                   <button onClick={() => onRotate(key)} className="btn btn-warning btn-sm" title="Rotate Key" disabled={creating}>
                     {creating ? UI_STRINGS.ROTATING : UI_STRINGS.ROTATE}
                   </button>
-                  <button onClick={() => onRevoke(key.id)} className="btn btn-danger btn-sm" title="Revoke Key">
+                  <button onClick={() => onRevoke(key.id || '')} className="btn btn-danger btn-sm" title="Revoke Key">
                     {UI_STRINGS.REVOKE}
                   </button>
                 </div>
@@ -146,16 +147,17 @@ const ApiKeys: React.FC<ApiKeysProps> = ({ token }) => {
         setLoading(false);
         return;
       }
-      const response = await fetch(API_ENDPOINTS.API_KEYS, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+      const apiClient = createApiClient({
+        baseURL: '', // Use relative path since we're proxying
+        token: token
       });
-      if (!response.ok) {
-        throw new Error(ERROR_MESSAGES.FETCH_API_KEYS);
-      }
-      const data = await response.json();
-      setKeys(data.data || []);
+      const data = await apiClient.listApiKeys();
+      setKeys((data.data || []).map(key => ({
+        ...key,
+        status: key.status as 'active' | 'revoked' | undefined,
+        created_at: key.created_at,
+        last_used_at: key.last_used_at
+      })));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error');
     } finally {
@@ -170,19 +172,12 @@ const ApiKeys: React.FC<ApiKeysProps> = ({ token }) => {
   const handleCreate = async (name: string) => {
     try {
       setCreating(true);
-      const response = await fetch(API_ENDPOINTS.API_KEYS, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ name })
+      const apiClient = createApiClient({
+        baseURL: '', // Use relative path since we're proxying
+        token: token
       });
-      if (!response.ok) {
-        throw new Error(ERROR_MESSAGES.CREATE_API_KEY);
-      }
-      const data = await response.json();
-      setNewKey({ prefix: data.prefix, full_key: data.full_key });
+      const data = await apiClient.createApiKey(name);
+      setNewKey({ prefix: data.prefix || '', full_key: data.full_key || '' });
       setShowCreate(false);
       fetchKeys(); // Refresh list
     } catch (err) {
@@ -195,15 +190,11 @@ const ApiKeys: React.FC<ApiKeysProps> = ({ token }) => {
   const handleRevoke = async (id: string) => {
     if (!confirm('Are you sure you want to revoke this API key? This action cannot be undone.')) return;
     try {
-      const response = await fetch(`${API_ENDPOINTS.API_KEYS}/${id}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+      const apiClient = createApiClient({
+        baseURL: '', // Use relative path since we're proxying
+        token: token
       });
-      if (!response.ok) {
-        throw new Error(ERROR_MESSAGES.REVOKE_API_KEY);
-      }
+      await apiClient.revokeApiKey(id);
       fetchKeys(); // Refresh list
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error');
@@ -216,31 +207,16 @@ const ApiKeys: React.FC<ApiKeysProps> = ({ token }) => {
     if (!confirm(message)) return;
     try {
       setCreating(true);
+      const apiClient = createApiClient({
+        baseURL: '', // Use relative path since we're proxying
+        token: token
+      });
       // Create new key with same name
-      const createResponse = await fetch(API_ENDPOINTS.API_KEYS, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ name })
-      });
-      if (!createResponse.ok) {
-        throw new Error(ERROR_MESSAGES.CREATE_API_KEY);
-      }
-      const newData = await createResponse.json();
+      const newData = await apiClient.createApiKey(name);
       // Revoke old key
-      const revokeResponse = await fetch(`${API_ENDPOINTS.API_KEYS}/${key.id}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      if (!revokeResponse.ok) {
-        throw new Error(ERROR_MESSAGES.REVOKE_API_KEY);
-      }
+      await apiClient.revokeApiKey(key.id || '');
       // Show new key
-      setNewKey({ prefix: newData.prefix, full_key: newData.full_key });
+      setNewKey({ prefix: newData.prefix || '', full_key: newData.full_key || '' });
       fetchKeys(); // Refresh list
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error');

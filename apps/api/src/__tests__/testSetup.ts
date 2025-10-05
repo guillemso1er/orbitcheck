@@ -153,7 +153,9 @@ export const createApp = async () => {
     }
 
     // Dashboard routes: require JWT
-    const isDashboardRoute = url.startsWith('/api/keys') || url.startsWith('/webhooks');
+    const isDashboardRoute = url.startsWith('/api-keys') || url.startsWith('/api/webhooks') ||
+        url.startsWith('/v1/api-keys') || url.startsWith('/v1/webhooks') ||
+        url.startsWith('/v1/usage') || url.startsWith('/v1/logs');
     if (isDashboardRoute) {
       // verifyJWTFunction was loaded in setupBeforeAll
       await verifyJWTFunction(request as any, rep as any, mockPool as any);

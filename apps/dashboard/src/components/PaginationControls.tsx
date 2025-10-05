@@ -17,7 +17,6 @@ export const PaginationControls: React.FC<PaginationControlsProps> = ({
   onPrevPage,
   onNextPage,
   onGoToPage,
-  limit,
 }) => (
   <div className="pagination-controls">
     <button

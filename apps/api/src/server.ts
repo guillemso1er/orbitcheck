@@ -16,6 +16,7 @@ import { runLogRetention } from './cron/retention.js';
 import { environment } from "./env.js";
 import { disposableProcessor } from './jobs/refreshDisposable.js';
 import startupGuard from './startup-guard.js';
+import { openapiValidation } from "./plugins/openapi.js";
 import { registerRoutes } from "./web.js";
 
 /**
@@ -109,6 +110,9 @@ export async function build(pool: Pool, redis: IORedisType): Promise<FastifyInst
         },
         credentials: true,
     });
+
+    // Register OpenAPI validation
+    await openapiValidation(app);
 
     // Register all API routes with shared pool and redis instances
     registerRoutes(app, pool, redis);

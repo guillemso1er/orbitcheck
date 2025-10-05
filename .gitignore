@@ -83,3 +83,5 @@ apps/dashboard/test-results
 apps/dashboard/test-results/.last-run.json
 apps/api/test-results/.last-run.json
 apps/api/.eslint.tt
+packages/contracts/node_modules
+packages/contracts/dist

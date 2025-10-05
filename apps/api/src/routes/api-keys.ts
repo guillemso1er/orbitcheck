@@ -8,7 +8,7 @@ import { errorSchema, generateRequestId, rateLimitResponse, securityHeader, send
 
 
 export function registerApiKeysRoutes(app: FastifyInstance, pool: Pool) {
-    app.get('/api/keys', {
+    app.get('/api-keys', {
         schema: {
             summary: 'List API Keys',
             description: 'Retrieves a list of API keys for the authenticated project, showing only the prefix (first 6 characters) for security.',
@@ -53,7 +53,7 @@ export function registerApiKeysRoutes(app: FastifyInstance, pool: Pool) {
         }
     });
 
-    app.post('/api/keys/:id', {
+    app.post('/api-keys', {
         schema: {
             summary: 'Create New API Key',
             description: 'Generates a new API key for the authenticated project.',
@@ -118,7 +118,7 @@ export function registerApiKeysRoutes(app: FastifyInstance, pool: Pool) {
         }
     });
 
-    app.delete('/api/keys/:id', {
+    app.delete('/api-keys/:id', {
         schema: {
             summary: 'Revoke API Key',
             description: 'Revokes an API key by setting its status to revoked. Cannot be undone.',

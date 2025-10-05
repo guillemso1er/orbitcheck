@@ -1,6 +1,12 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
+import { createApiClient } from '@orbicheck/contracts';
+
+interface User {
+  id: string;
+  email: string;
+}
 
 /**
  * Login form state interface: Defines structure for email and password fields.
@@ -62,25 +68,31 @@ const Login: React.FC = () => {
     setError(null);
 
     try {
-      const endpoint = `/api/auth/${isRegister ? 'register' : 'login'}`;
-      const response = await fetch(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: form.email.trim().toLowerCase(),
-          password: form.password,
-        }),
+      const apiClient = createApiClient({
+        baseURL: '', // Use relative path since we're proxying
+        token: '' // No token needed for auth
       });
 
-      if (!response.ok) {
-        const data = await response.json().catch(() => ({}));
-        const message = data.error?.message || 'Authentication failed. Please try again.';
-        throw new Error(message);
+      let data;
+      if (isRegister) {
+        data = await apiClient.registerUser({
+          email: form.email.trim().toLowerCase(),
+          password: form.password,
+        });
+      } else {
+        data = await apiClient.loginUser({
+          email: form.email.trim().toLowerCase(),
+          password: form.password,
+        });
       }
 
-      const data = await response.json();
       if (data.token && data.user) {
-        login(data.token, data.user);
+        // Ensure the user object matches the expected interface
+        const user: User = {
+          id: data.user.id || '',
+          email: data.user.email || ''
+        };
+        login(data.token, user);
         navigate('/api-keys');
       } else {
         throw new Error('Invalid response from server');

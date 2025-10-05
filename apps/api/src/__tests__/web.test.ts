@@ -105,8 +105,8 @@ describe('Web Authentication', () => {
       expect(mockAuth).not.toHaveBeenCalled();
     });
 
-    it('should use JWT verification for /v1/api/keys endpoints', async () => {
-      const request = createMockRequest('/v1/api/keys');
+    it('should use JWT verification for /v1/api-keys endpoints', async () => {
+      const request = createMockRequest('/v1/api-keys');
       const reply = createMockReply();
 
       await hookHandler(request, reply);
@@ -115,8 +115,8 @@ describe('Web Authentication', () => {
       expect(mockAuth).not.toHaveBeenCalled();
     });
 
-    it('should use JWT verification for /webhooks endpoints', async () => {
-      const request = createMockRequest('/webhooks');
+    it('should use JWT verification for /api/webhooks endpoints', async () => {
+      const request = createMockRequest('/api/webhooks');
       const reply = createMockReply();
 
       await hookHandler(request, reply);
@@ -178,8 +178,8 @@ describe('Web Authentication', () => {
     it('should skip rate limiting for dashboard routes', async () => {
       const dashboardRoutes = [
         '/api/keys',
-        '/v1/api/keys',
-        '/webhooks',
+        '/v1/api-keys',
+        '/api/webhooks',
         '/v1/webhooks',
         '/v1/usage',
         '/v1/logs'

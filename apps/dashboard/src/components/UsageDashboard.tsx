@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { API_ENDPOINTS, UI_STRINGS, ERROR_MESSAGES } from '../constants';
+import { UI_STRINGS } from '../constants';
 import { useAuth } from '../AuthContext';
+import { createApiClient } from '@orbicheck/contracts';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -179,16 +180,29 @@ const UsageDashboard: React.FC = () => {
   const fetchUsage = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await fetch(API_ENDPOINTS.USAGE, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+      const apiClient = createApiClient({
+        baseURL: '', // Use relative path since we're proxying
+        token: token || ''
       });
-      if (!response.ok) {
-        throw new Error(ERROR_MESSAGES.FETCH_USAGE);
-      }
-      const usageData = await response.json();
-      setData(usageData);
+      const usageData = await apiClient.getUsage();
+      setData({
+        period: usageData.period || '',
+        totals: {
+          validations: usageData.totals?.validations || 0,
+          orders: usageData.totals?.orders || 0
+        },
+        by_day: (usageData.by_day || []).map(day => ({
+          date: day.date || '',
+          validations: day.validations || 0,
+          orders: day.orders || 0
+        })),
+        top_reason_codes: (usageData.top_reason_codes || []).map(code => ({
+          code: code.code || '',
+          count: code.count || 0
+        })),
+        cache_hit_ratio: usageData.cache_hit_ratio || 0,
+        request_id: usageData.request_id || ''
+      });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error');
     } finally {

@@ -487,7 +487,7 @@ describe('ProtectedRoute Component', () => {
   });
 
   it('should show loading when authentication is in progress', () => {
-    const { rerender } = render(
+    const { } = render(
       <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <AuthProvider>
           <App />

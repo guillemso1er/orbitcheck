@@ -1,5 +1,5 @@
 export const API_ENDPOINTS = {
-  API_KEYS: '/api/keys',
+  API_KEYS: '/api-keys',
   USAGE: '/v1/usage',
   LOGS: '/v1/logs',
   WEBHOOKS_TEST: '/api/webhooks/test',

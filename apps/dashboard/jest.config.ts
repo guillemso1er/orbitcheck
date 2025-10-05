@@ -8,6 +8,7 @@ const config: Config = {
     '^@/(.*)$': '<rootDir>/src/$1',
     '\\.(css|less|sass|scss)$': '<rootDir>/__mocks__/styleMock.js',
     'canvas': '<rootDir>/__mocks__/canvasMock.js',
+    '^@orbicheck/contracts$': '<rootDir>/../../packages/contracts/src/index.ts',
   },
   setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
   testPathIgnorePatterns: ['<rootDir>/node_modules/'],

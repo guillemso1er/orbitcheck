@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { API_ENDPOINTS, UI_STRINGS, ERROR_MESSAGES } from '../constants';
+import { UI_STRINGS } from '../constants';
 import { useAuth } from '../AuthContext';
+import { createApiClient } from '@orbicheck/contracts';
 
 interface WebhookTestResult {
   sent_to: string;
@@ -177,29 +178,13 @@ const WebhookTester: React.FC = () => {
     setError(null);
     setLoading(true);
     try {
-      const body: Record<string, unknown> = { url, payload_type: payloadType };
-      if (payloadType === 'custom' && customPayload) {
-        try {
-          body.custom_payload = JSON.parse(customPayload);
-        } catch {
-          setError(UI_STRINGS.INVALID_JSON);
-          return;
-        }
-      }
-      // Placeholder auth - replace with proper auth in todo 10
-      const response = await fetch(API_ENDPOINTS.WEBHOOKS_TEST, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(body)
+      const apiClient = createApiClient({
+        baseURL: '', // Use relative path since we're proxying
+        token: token || ''
       });
-      if (!response.ok) {
-        throw new Error(ERROR_MESSAGES.SEND_WEBHOOK);
-      }
-      const data = await response.json();
-      setResult(data);
+      
+      const data = await apiClient.testWebhook(url, payloadType, payloadType === 'custom' && customPayload ? JSON.parse(customPayload) : undefined);
+      setResult(data as WebhookTestResult);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error');
     } finally {
