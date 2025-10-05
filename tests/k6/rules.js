@@ -1,4 +1,4 @@
-import { check, sleep } from 'k6';
+import {  check as k6check, sleep } from 'k6';
 import http from 'k6/http';
 
 export const options = {
@@ -16,7 +16,10 @@ const HEADERS = {
     'Authorization': `Bearer ${KEY}`
 };
 
-export default function () {
+export default function (check) {
+    // 3. If check is not provided (when running this file directly),
+    //    use the original k6check as a fallback.
+    check = check || k6check;
     // Scenario 1: Test GET rules
     let res = http.get(`${BASE_URL}/rules`, { headers: HEADERS });
     check(res, {

@@ -1,4 +1,4 @@
-import { check, sleep } from 'k6';
+import { check as k6check, sleep } from 'k6';
 import http from 'k6/http';
 
 export const options = {
@@ -18,7 +18,10 @@ const HEADERS = {
 };
 
 
-export default function () {
+export default function (check) {
+    // 3. If check is not provided (when running this file directly),
+    //    use the original k6check as a fallback.
+    check = check || k6check;
     sleep(5);
     // --- Test Case 1: Valid Email (first request - MISS) ---
     // Should be valid, not disposable, with MX records found.

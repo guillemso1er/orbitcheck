@@ -2,7 +2,9 @@
   "name": "orbicheck-monorepo",
   "private": true,
   "scripts": {
-    "api": "pnpm --filter @orbicheck/api"
+    "api": "pnpm --filter @orbicheck/api dev",
+    "k9": "k6 run -e KEY=ok_test_a450e23f007460bc2a01e5ec715a12a76952 --vus 1 --iterations 1 tests/k6/main.js",
+    "k9full": "k6 run -e KEY=ok_test_a450e23f007460bc2a01e5ec715a12a76952  tests/k6/main.js"
   },
   "devDependencies": {
     "@types/adm-zip": "^0.5.7",

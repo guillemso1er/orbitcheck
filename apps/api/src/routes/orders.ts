@@ -93,7 +93,6 @@ export function registerOrderRoutes(app: FastifyInstance, pool: Pool, redis: Red
                         customer_dedupe: {
                             type: 'object',
                             properties: {
-                                // FIX: Define the schema for the items in the matches array
                                 matches: { type: 'array', items: customerMatchSchema },
                                 suggested_action: { type: 'string' },
                                 canonical_id: { type: 'string', nullable: true }
@@ -102,7 +101,6 @@ export function registerOrderRoutes(app: FastifyInstance, pool: Pool, redis: Red
                         address_dedupe: {
                             type: 'object',
                             properties: {
-                                // FIX: Define the schema for the items in the matches array
                                 matches: { type: 'array', items: addressMatchSchema },
                                 suggested_action: { type: 'string' },
                                 canonical_id: { type: 'string', nullable: true }
@@ -135,6 +133,17 @@ export function registerOrderRoutes(app: FastifyInstance, pool: Pool, redis: Red
 
             const { order_id, customer, shipping_address, total_amount, currency, payment_method } = body;
 
+            // FIX: Perform the duplicate order check *before* other logic and insertion.
+            const { rows: orderMatch } = await pool.query(
+                'SELECT id FROM orders WHERE project_id = $1 AND order_id = $2',
+                [project_id, order_id]
+            );
+            if (orderMatch.length > 0) {
+                risk_score += 50; // Or a specific constant for duplicate risk
+                tags.push(ORDER_TAGS.DUPLICATE_ORDER);
+                reason_codes.push(REASON_CODES.ORDER_DUPLICATE_DETECTED);
+            }
+
             const customer_matches: any[] = [];
             const seenIds = new Set<string>();
             if (customer) {
@@ -142,7 +151,6 @@ export function registerOrderRoutes(app: FastifyInstance, pool: Pool, redis: Red
                 const normPhone = customer.phone ? customer.phone.replaceAll(/[^\d+]/g, '') : null;
                 const full_name = `${customer.first_name || ''} ${customer.last_name || ''}`.trim();
 
-                // Exact email match
                 if (normEmail) {
                     const { rows } = await pool.query(
                         `SELECT id, email, phone, first_name, last_name, 1.0 as similarity_score FROM customers WHERE project_id = $1 AND normalized_email = $2`,
@@ -150,7 +158,6 @@ export function registerOrderRoutes(app: FastifyInstance, pool: Pool, redis: Red
                     );
                     for (const row of rows) {
                         if (!seenIds.has(row.id)) {
-                            // FINAL FIX: Manually build a new, plain object to ensure serialization.
                             customer_matches.push({
                                 id: row.id,
                                 email: row.email,
@@ -165,7 +172,6 @@ export function registerOrderRoutes(app: FastifyInstance, pool: Pool, redis: Red
                     }
                 }
 
-                // Fuzzy name match
                 if (full_name) {
                     const { rows } = await pool.query(
                         `SELECT id, email, phone, first_name, last_name,
@@ -177,7 +183,6 @@ export function registerOrderRoutes(app: FastifyInstance, pool: Pool, redis: Red
                     );
                     for (const row of rows) {
                         if (!seenIds.has(row.id)) {
-                            // FINAL FIX: Manually build a new, plain object to ensure serialization.
                             customer_matches.push({
                                 id: row.id,
                                 email: row.email,
@@ -199,7 +204,6 @@ export function registerOrderRoutes(app: FastifyInstance, pool: Pool, redis: Red
                 reason_codes.push(REASON_CODES.ORDER_CUSTOMER_DEDUPE_MATCH);
             }
 
-            // 2. Address dedupe
             let address_matches: any[] = [];
             const addressValidation = await validateAddress(shipping_address, pool, redis);
             const normAddr = addressValidation.normalized;
@@ -209,7 +213,6 @@ export function registerOrderRoutes(app: FastifyInstance, pool: Pool, redis: Red
             const { rows: hashMatches } = await pool.query(hashQuery, [project_id, addrHash]);
             if (hashMatches.length > 0) {
                 const row = hashMatches[0];
-                // FINAL FIX: Manually build a new, plain object for addresses as well.
                 address_matches.push({
                     id: row.id,
                     line1: row.line1,
@@ -261,11 +264,10 @@ export function registerOrderRoutes(app: FastifyInstance, pool: Pool, redis: Red
                             lng: row.lng,
                             similarity_score: row.similarity_score,
                             match_type: MATCH_TYPES.FUZZY_ADDRESS
-                        })) // Ensure all fuzzy matches are also clean objects
+                        }))
                 );
             }
 
-            // LOGGING: Log the results of the address deduplication
             app.log.info({ request_id, address_matches }, "Address dedupe matches found");
 
             if (address_matches.length > 0) {
@@ -274,7 +276,6 @@ export function registerOrderRoutes(app: FastifyInstance, pool: Pool, redis: Red
                 reason_codes.push(REASON_CODES.ORDER_ADDRESS_DEDUPE_MATCH);
             }
 
-            // 3. Full address validation
             const { po_box, postal_city_match, in_bounds, geo, reason_codes: addrReasons, valid } = addressValidation;
             reason_codes.push(...addrReasons);
             if (po_box) {
@@ -301,7 +302,6 @@ export function registerOrderRoutes(app: FastifyInstance, pool: Pool, redis: Red
                 reason_codes.push(REASON_CODES.ORDER_INVALID_ADDRESS);
             }
 
-            // 4. Full customer validation
             let email_valid = { valid: true, reason_codes: [] as string[], disposable: false };
             let phone_valid = { valid: true, reason_codes: [] as string[], country: null as string | null };
             if (customer.email) {
@@ -326,23 +326,10 @@ export function registerOrderRoutes(app: FastifyInstance, pool: Pool, redis: Red
                 }
             }
 
-            // 5. Order dedupe (exact order_id)
-            const { rows: orderMatch } = await pool.query(
-                'SELECT id FROM orders WHERE project_id = $1 AND order_id = $2',
-                [project_id, order_id]
-            );
-            if (orderMatch.length > 0) {
-                risk_score += 50;
-                tags.push(ORDER_TAGS.DUPLICATE_ORDER);
-                reason_codes.push(REASON_CODES.ORDER_DUPLICATE_DETECTED);
-            }
-
-            // 6. Business rules and heuristics
             if (payment_method === PAYMENT_METHODS.COD) {
                 risk_score += RISK_COD;
                 tags.push(ORDER_TAGS.COD_ORDER);
                 reason_codes.push(REASON_CODES.ORDER_COD_RISK);
-                // Full COD/RTO heuristic: new customer + COD + mismatch region + throwaway email
                 const isNewCustomer = customer_matches.length === 0;
                 const hasMismatch = !postal_city_match || (phone_valid.country && phone_valid.country !== normAddr.country);
                 const isThrowaway = email_valid.disposable;
@@ -359,12 +346,19 @@ export function registerOrderRoutes(app: FastifyInstance, pool: Pool, redis: Red
                 reason_codes.push(REASON_CODES.ORDER_HIGH_VALUE);
             }
 
-            // 7. Determine action
             let action: 'approve' | 'hold' | 'block' = ORDER_ACTIONS.APPROVE;
-            if (risk_score > RISK_BLOCK_THRESHOLD) {
+            if (risk_score >= RISK_BLOCK_THRESHOLD) {
                 action = ORDER_ACTIONS.BLOCK;
-            } else if (risk_score > RISK_HOLD_THRESHOLD) {
+            } else if (risk_score >= RISK_HOLD_THRESHOLD) {
                 action = ORDER_ACTIONS.HOLD;
+            }
+
+            // FIX: Only insert the order if it wasn't already found.
+            if (orderMatch.length === 0) {
+                await pool.query(
+                    'INSERT INTO orders (project_id, order_id, customer_email, customer_phone, shipping_address, total_amount, currency, status) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) ON CONFLICT (order_id) DO NOTHING',
+                    [project_id, order_id, customer.email, customer.phone, shipping_address, total_amount, currency, action]
+                );
             }
 
             const validations = {
@@ -384,21 +378,17 @@ export function registerOrderRoutes(app: FastifyInstance, pool: Pool, redis: Red
                 risk_score: Math.min(risk_score, 100),
                 action,
                 tags,
-                reason_codes,
+                reason_codes: [...new Set(reason_codes)], // De-duplicate reason codes
                 customer_dedupe: { matches: customer_matches, suggested_action: customer_matches.length > 0 ? (customer_matches[0].similarity_score === SIMILARITY_EXACT ? DEDUPE_ACTIONS.MERGE_WITH : DEDUPE_ACTIONS.REVIEW) : DEDUPE_ACTIONS.CREATE_NEW, canonical_id: customer_matches.length > 0 ? customer_matches[0].id : null },
                 address_dedupe: { matches: address_matches, suggested_action: address_matches.length > 0 ? (address_matches[0].similarity_score === SIMILARITY_EXACT ? DEDUPE_ACTIONS.MERGE_WITH : DEDUPE_ACTIONS.REVIEW) : DEDUPE_ACTIONS.CREATE_NEW, canonical_id: address_matches.length > 0 ? address_matches[0].id : null },
                 validations,
                 request_id
             };
 
-            // Log the order for dedupe (insert if new)
-            await pool.query(
-                'INSERT INTO orders (project_id, order_id, customer_email, customer_phone, shipping_address, total_amount, currency, status) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) ON CONFLICT (order_id) DO NOTHING',
-                [project_id, order_id, customer.email, customer.phone, shipping_address, total_amount, currency, action]
-            );
-
-            await (rep as any).saveIdem?.(response);
             await logEvent(project_id, 'order', '/orders/evaluate', reason_codes, HTTP_STATUS.OK, { risk_score, action, tags: tags.join(',') }, pool);
+            
+            // FIX: Save for idempotency at the very end before sending.
+            await (rep as any).saveIdem?.(response);
             return rep.send(response);
         } catch (error) {
             app.log.error({ err: error, request_id }, "An unhandled error occurred in /v1/orders/evaluate");

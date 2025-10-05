@@ -59,7 +59,7 @@ describe('Usage Stats Endpoints', () => {
       });
 
       const res = await request(app.server)
-        .get('/usage')
+        .get('/v1/usage')
         .set('Authorization', 'Bearer valid_key');
 
       expect(res.statusCode).toBe(200);
@@ -93,7 +93,7 @@ describe('Usage Stats Endpoints', () => {
       });
 
       const res = await request(app.server)
-        .get('/usage')
+        .get('/v1/usage')
         .set('Authorization', 'Bearer valid_key');
 
       expect(res.statusCode).toBe(200);
