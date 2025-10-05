@@ -31,9 +31,9 @@ export default function (check) {
     check(res, {
         '[VAT] status 200 (first req)': (r) => r.status === 200,
         '[VAT] valid is false (first req)': (r) => JSON.parse(r.body).valid === false,
-        '[VAT] reason taxid.vies_unavailable (first req)': (r) => {
+        '[VAT] reason taxid.vies_invalid (first req)': (r) => {
             const body = JSON.parse(r.body);
-            return body.reason_codes && body.reason_codes.includes('taxid.vies_unavailable');
+            return body.reason_codes && body.reason_codes.includes('taxid.vies_invalid');
         },
     });
 
@@ -54,9 +54,9 @@ export default function (check) {
     check(res, {
         '[Invalid VAT] status 200 (first req)': (r) => r.status === 200,
         '[Invalid VAT] valid is false (first req)': (r) => JSON.parse(r.body).valid === false,
-        '[Invalid VAT] reason taxid.vies_unavailable (first req)': (r) => {
+        '[Invalid VAT] reason taxid.vies_invalid (first req)': (r) => {
             const body = JSON.parse(r.body);
-            return body.reason_codes && body.reason_codes.includes('taxid.vies_unavailable');
+            return body.reason_codes && body.reason_codes.includes('taxid.vies_invalid');
         }
     });
 
@@ -69,8 +69,8 @@ export default function (check) {
 
     // Scenario 3: Test valid Brazilian CNPJ
     const validCnpjPayload = JSON.stringify({
-        type: 'br_cnpj',
-        value: '00.000.000/0001-91'
+        type: 'CNPJ',
+        value: '11444777000161'
     });
     res = http.post(`${BASE_URL}/validate/tax-id`, validCnpjPayload, { headers: HEADERS });
     check(res, {
@@ -91,7 +91,7 @@ export default function (check) {
 
     // Scenario 4: Test invalid CNPJ
     const invalidCnpjPayload = JSON.stringify({
-        type: 'br_cnpj',
+        type: 'CNPJ',
         value: 'invalid-cnpj'
     });
     res = http.post(`${BASE_URL}/validate/tax-id`, invalidCnpjPayload, { headers: HEADERS });

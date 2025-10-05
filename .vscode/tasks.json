@@ -1,0 +1,23 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Start React App",
+            "type": "npm",
+            "script": "dev",
+            "path": "apps/dashboard/",
+            "isBackground": true,
+            "problemMatcher": {
+                "owner": "vite",
+                "pattern": {
+                    "regexp": "VITE v\\d+\\.\\d+\\.\\d+ +ready in +\\d+ ms"
+                },
+                "background": {
+                    "activeOnStart": true,
+                    "beginsPattern": "VITE v\\d+\\.\\d+\\.\\d+ +ready in +\\d+ ms",
+                    "endsPattern": "something that never matches"
+                }
+            }
+        }
+    ]
+}

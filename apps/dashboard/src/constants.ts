@@ -1,7 +1,7 @@
 export const API_ENDPOINTS = {
-  API_KEYS: '/api/api-keys',
-  USAGE: '/api/usage',
-  LOGS: '/api/logs',
+  API_KEYS: '/v1/api-keys',
+  USAGE: '/v1/usage',
+  LOGS: '/v1/logs',
   WEBHOOKS_TEST: '/api/webhooks/test',
 } as const;
 

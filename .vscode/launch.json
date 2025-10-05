@@ -1,21 +1,32 @@
 {
-    "version": "0.2.0",
-    "configurations": [
-        {
-            "name": "Debug Jest Tests (pnpm)",
-            "type": "node",
-            "request": "launch",
-            "runtimeExecutable": "pnpm",
-            "args": [
-                "run",
-                "test",
-                "--",
-                "--runInBand",
-                "${file}"
-            ],
-            "cwd": "${workspaceFolder}/apps/api", // IMPORTANT: Point to the correct workspace
-            "console": "integratedTerminal",
-            "internalConsoleOptions": "neverOpen"
-        }
-    ]
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Debug Fastify API",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["run", "dev"],
+      "cwd": "${workspaceFolder}/apps/api",
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen",
+      "autoAttachChildProcesses": true,
+      "skipFiles": ["<node_internals>/**", "node_modules/**"]
+    },
+    {
+      "type": "chrome",
+      "request": "launch",
+      "name": "Debug React App",
+      "url": "http://localhost:5173",
+      "webRoot": "${workspaceFolder}/apps/dashboard",
+      "preLaunchTask": "Start React App"
+    }
+  ],
+  "compounds": [
+    {
+      "name": "Debug Full Stack",
+      "configurations": ["Debug Fastify API", "Debug React App"],
+      "stopAll": true
+    }
+  ]
 }

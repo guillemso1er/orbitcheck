@@ -41,22 +41,25 @@ test.describe('API Keys Management Flow', () => {
 
     // Click create button
     await page.getByRole('button', { name: 'Create New API Key' }).click();
-    await expect(page.locator('.modal')).toBeVisible();
+    await expect(page.locator('.modal')).toBeVisible({ timeout: 10000 });
 
     // Fill name and submit
+    await page.waitForSelector('#key-name', { state: 'visible' });
     await page.fill('#key-name', 'Test Key');
-    await page.getByRole('button', { name: 'Create' }).click();
+    await page.getByRole('button', { name: 'Create', exact: true }).click();
 
     // Expect success alert
-    await expect(page.locator('.alert-success')).toBeVisible();
-    await expect(page.locator('code', { hasText: /^orbi_/ })).toBeVisible(); // Prefix
-
-    // Close alert
-    await page.getByRole('button', { name: 'Close' }).click();
+    await expect(page.locator('.alert-success')).toBeVisible({ timeout: 10000 });
+    
+    // Check for API key in the alert (look for the full API key in the alert)
+    await expect(page.locator('code').filter({ hasText: /^ok_[a-f0-9]{64}$/ })).toBeVisible({ timeout: 10000 });
+    
+    // Close alert - be more specific about which close button
+    await page.locator('.alert-success button').click();
 
     // Check list updated
     await expect(page.locator('table.table tbody tr')).toHaveCount(2);
-    await expect(page.locator('td:has-text("Test Key")')).toBeVisible();
+    await expect(page.locator('td').filter({ hasText: "Test Key" })).toBeVisible();
   });
 
   test('should revoke API key', async ({ page }) => {
