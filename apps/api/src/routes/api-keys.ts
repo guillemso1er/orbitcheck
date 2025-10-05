@@ -1,15 +1,14 @@
 import crypto from "node:crypto";
 
-import type { FastifyInstance} from "fastify";
-import { FastifyReply, FastifyRequest } from "fastify";
+import type { FastifyInstance } from "fastify";
 import type { Pool } from "pg";
 
-import { API_KEY_PREFIX,ERROR_CODES, ERROR_MESSAGES, HTTP_STATUS, STATUS } from "../constants.js";
-import { errorSchema, generateRequestId, rateLimitResponse, securityHeader, sendError, sendServerError,unauthorizedResponse } from "./utils.js";
+import { API_KEY_PREFIX, ERROR_CODES, ERROR_MESSAGES, HTTP_STATUS, STATUS } from "../constants.js";
+import { errorSchema, generateRequestId, rateLimitResponse, securityHeader, sendError, sendServerError, unauthorizedResponse } from "./utils.js";
 
 
 export function registerApiKeysRoutes(app: FastifyInstance, pool: Pool) {
-    app.get('/api-keys', {
+    app.get('/api/keys', {
         schema: {
             summary: 'List API Keys',
             description: 'Retrieves a list of API keys for the authenticated project, showing only the prefix (first 6 characters) for security.',
@@ -50,11 +49,11 @@ export function registerApiKeysRoutes(app: FastifyInstance, pool: Pool) {
             );
             return rep.send({ data: rows, request_id });
         } catch (error) {
-            return sendServerError(request, rep, error, '/api-keys', generateRequestId());
+            return sendServerError(request, rep, error, '/api/keys', generateRequestId());
         }
     });
 
-    app.post('/api-keys', {
+    app.post('/api/keys/:id', {
         schema: {
             summary: 'Create New API Key',
             description: 'Generates a new API key for the authenticated project.',
@@ -115,11 +114,11 @@ export function registerApiKeysRoutes(app: FastifyInstance, pool: Pool) {
                 request_id
             });
         } catch (error) {
-            return sendServerError(request, rep, error, '/api-keys', generateRequestId());
+            return sendServerError(request, rep, error, '/api/keys', generateRequestId());
         }
     });
 
-    app.delete('/api-keys/:id', {
+    app.delete('/api/keys/:id', {
         schema: {
             summary: 'Revoke API Key',
             description: 'Revokes an API key by setting its status to revoked. Cannot be undone.',
@@ -164,7 +163,7 @@ export function registerApiKeysRoutes(app: FastifyInstance, pool: Pool) {
 
             return rep.send({ id, status: STATUS.REVOKED, request_id });
         } catch (error) {
-            return sendServerError(request, rep, error, '/api-keys/:id', generateRequestId());
+            return sendServerError(request, rep, error, '/api/keys/:id', generateRequestId());
         }
     });
 }

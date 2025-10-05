@@ -1,6 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { API_ENDPOINTS, UI_STRINGS, ERROR_MESSAGES, HTTP_STATUS } from '../constants';
-import { useAuth } from '../AuthContext';
+import React, { useCallback, useEffect, useState } from 'react';
+import { API_ENDPOINTS, ERROR_MESSAGES, UI_STRINGS } from '../constants';
 
 interface ApiKey {
   id: string;

@@ -14,11 +14,11 @@ test.describe('Log Explorer Flow', () => {
     await page.fill('input[type="email"]', testEmail);
     await page.fill('input[type="password"]', password);
     await page.getByRole('button', { name: 'Create Account' }).click();
-    await expect(page).toHaveURL(/.*\/api-keys/);
+    await expect(page).toHaveURL(/.*\/api\/keys/);
   });
 
   test('should view logs in explorer', async ({ page }) => {
-    // Already logged in from beforeEach, at /api-keys
+    // Already logged in from beforeEach, at /api/keys
 
     // Navigate to logs
     await page.goto('/logs');

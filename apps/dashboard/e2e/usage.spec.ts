@@ -14,16 +14,16 @@ test.describe('Usage Dashboard Flow', () => {
     await page.fill('input[type="email"]', testEmail);
     await page.fill('input[type="password"]', password);
     await page.getByRole('button', { name: 'Create Account' }).click();
-    await expect(page).toHaveURL(/.*\/api-keys/);
+    await expect(page).toHaveURL(/.*\/api\/keys/);
   });
 
   test('should view usage dashboard', async ({ page }) => {
-    // Already logged in from beforeEach, at /api-keys
+    // Already logged in from beforeEach, at /api/keys
 
     // Navigate to usage
     await page.goto('/usage');
     await expect(page).toHaveURL(/.*\/usage/);
-    
+
     // Wait for page to load
     await page.waitForLoadState('networkidle');
 

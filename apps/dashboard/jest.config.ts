@@ -6,6 +6,8 @@ const config: Config = {
   moduleNameMapper: {
     // Handle module aliases (this will be automatically configured for you based on tsconfig.json paths)
     '^@/(.*)$': '<rootDir>/src/$1',
+    '\\.(css|less|sass|scss)$': '<rootDir>/__mocks__/styleMock.js',
+    'canvas': '<rootDir>/__mocks__/canvasMock.js',
   },
   setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
   testPathIgnorePatterns: ['<rootDir>/node_modules/'],

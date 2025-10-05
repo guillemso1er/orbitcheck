@@ -153,7 +153,7 @@ export const createApp = async () => {
     }
 
     // Dashboard routes: require JWT
-    const isDashboardRoute = url.startsWith('/api-keys') || url.startsWith('/webhooks');
+    const isDashboardRoute = url.startsWith('/api/keys') || url.startsWith('/webhooks');
     if (isDashboardRoute) {
       // verifyJWTFunction was loaded in setupBeforeAll
       await verifyJWTFunction(request as any, rep as any, mockPool as any);
@@ -203,7 +203,7 @@ export const createApp = async () => {
 
 
   // Add security headers for test coverage
-  app.addHook('preHandler' , async (request, reply) => {
+  app.addHook('preHandler', async (request, reply) => {
     reply.header('X-Content-Type-Options', 'nosniff');
     reply.header('X-Frame-Options', 'DENY');
     reply.header('X-XSS-Protection', '1; mode=block');
@@ -371,7 +371,7 @@ export function enableDiagnostics(app: any) {
     const status = rep.statusCode;
     if (status >= 400) {
       let bodyText = '';
-      try { bodyText = typeof payload === 'string' ? payload : payload?.toString?.() ?? ''; } catch {}
+      try { bodyText = typeof payload === 'string' ? payload : payload?.toString?.() ?? ''; } catch { }
       console.log(`[onSend] ${request.method} ${request.url} -> ${status} body=${bodyText}`);
     }
     return payload;

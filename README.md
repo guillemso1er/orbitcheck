@@ -46,9 +46,9 @@ Orbicheck is a validation and risk assessment API for e-commerce and business op
 
 ### Auth/Dashboard
 - POST /auth/login: JWT login.
-- GET /api-keys: List API keys.
-- POST /api-keys: Create API key.
-- DELETE /api-keys/:id: Delete API key.
+- GET /api/keys: List API keys.
+- POST /api/keys: Create API key.
+- DELETE /api/keys/:id: Delete API key.
 - POST /webhooks: Create webhook.
 - GET /webhooks: List webhooks.
 - DELETE /webhooks/:id: Delete webhook.

@@ -25,7 +25,7 @@ test.describe('Login Flow', () => {
     await registerResponse; // The test will pause here until the network call is finished
 
     // Now that the API call is complete, assert the navigation
-    await expect(page).toHaveURL(/.*\/api-keys/);
+    await expect(page).toHaveURL(/.*\/api\/keys/);
     await expect(page.getByRole('heading', { name: /OrbiCheck/ })).toBeVisible();
 
     // Logout to test login
@@ -42,7 +42,7 @@ test.describe('Login Flow', () => {
     await loginResponse;
 
     // Should navigate back to dashboard
-    await expect(page).toHaveURL(/.*\/api-keys/);
+    await expect(page).toHaveURL(/.*\/api\/keys/);
     await expect(page.locator('.nav-link.active .nav-label')).toHaveText('API Keys Management');
   });
 

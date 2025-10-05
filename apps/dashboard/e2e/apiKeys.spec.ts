@@ -15,11 +15,11 @@ test.describe('API Keys Management Flow', () => {
     await page.fill('input[type="password"]', password);
     await page.getByRole('button', { name: 'Create Account' }).click();
     await page.waitForResponse(resp => resp.url().includes('/auth/register') && resp.status() === 201);
-    await expect(page).toHaveURL(/.*\/api-keys/);
+    await expect(page).toHaveURL(/.*\/api\/keys/);
   });
 
   test('should view API keys list', async ({ page }) => {
-    // Already on /api-keys after registration
+    // Already on /api/keys after registration
 
     // Wait for load
     await page.waitForLoadState('networkidle');
@@ -34,7 +34,7 @@ test.describe('API Keys Management Flow', () => {
   });
 
   test('should create new API key', async ({ page }) => {
-    // Already on /api-keys
+    // Already on /api/keys
 
     // Wait for load
     await page.waitForLoadState('networkidle');
@@ -50,10 +50,10 @@ test.describe('API Keys Management Flow', () => {
 
     // Expect success alert
     await expect(page.locator('.alert-success')).toBeVisible({ timeout: 10000 });
-    
+
     // Check for API key in the alert (look for the full API key in the alert)
     await expect(page.locator('code').filter({ hasText: /^ok_[a-f0-9]{64}$/ })).toBeVisible({ timeout: 10000 });
-    
+
     // Close alert - be more specific about which close button
     await page.locator('.alert-success button').click();
 
@@ -63,7 +63,7 @@ test.describe('API Keys Management Flow', () => {
   });
 
   test('should revoke API key', async ({ page }) => {
-    // Already on /api-keys
+    // Already on /api/keys
 
     // Wait for load
     await page.waitForLoadState('networkidle');

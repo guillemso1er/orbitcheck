@@ -1,9 +1,9 @@
-import { registerRoutes } from '../web.js';
-import { verifyJWT } from '../routes/auth.js';
-import { auth, rateLimit, idempotency } from '../hooks.js';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
-import type { Pool } from 'pg';
 import type { Redis as IORedisType } from 'ioredis';
+import type { Pool } from 'pg';
+import { auth, idempotency, rateLimit } from '../hooks.js';
+import { verifyJWT } from '../routes/auth.js';
+import { registerRoutes } from '../web.js';
 
 // Mock dependencies
 jest.mock('../routes/auth');
@@ -95,8 +95,8 @@ describe('Web Authentication', () => {
       expect(mockAuth).not.toHaveBeenCalled();
     });
 
-    it('should use JWT verification for /api-keys endpoints', async () => {
-      const request = createMockRequest('/api-keys');
+    it('should use JWT verification for /api/keys endpoints', async () => {
+      const request = createMockRequest('/api/keys');
       const reply = createMockReply();
 
       await hookHandler(request, reply);
@@ -105,8 +105,8 @@ describe('Web Authentication', () => {
       expect(mockAuth).not.toHaveBeenCalled();
     });
 
-    it('should use JWT verification for /v1/api-keys endpoints', async () => {
-      const request = createMockRequest('/v1/api-keys');
+    it('should use JWT verification for /v1/api/keys endpoints', async () => {
+      const request = createMockRequest('/v1/api/keys');
       const reply = createMockReply();
 
       await hookHandler(request, reply);
@@ -177,8 +177,8 @@ describe('Web Authentication', () => {
 
     it('should skip rate limiting for dashboard routes', async () => {
       const dashboardRoutes = [
-        '/api-keys',
-        '/v1/api-keys',
+        '/api/keys',
+        '/v1/api/keys',
         '/webhooks',
         '/v1/webhooks',
         '/v1/usage',

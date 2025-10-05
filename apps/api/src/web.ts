@@ -29,8 +29,8 @@ async function authenticateRequest(request: FastifyRequest, rep: FastifyReply, p
 
     // Dashboard routes require JWT authentication (user session)
     const isDashboardRoute = url.startsWith("/api-keys") || url.startsWith("/webhooks") ||
-                           url.startsWith("/v1/api-keys") || url.startsWith("/v1/webhooks") ||
-                           url.startsWith("/v1/usage") || url.startsWith("/v1/logs");
+        url.startsWith("/v1/api-keys") || url.startsWith("/v1/webhooks") ||
+        url.startsWith("/v1/usage") || url.startsWith("/v1/logs");
 
     // Apply JWT verification for dashboard or API key auth for public API
     await (isDashboardRoute ? verifyJWT(request, rep, pool) : auth(request, rep, pool));
@@ -53,8 +53,8 @@ async function applyRateLimitingAndIdempotency(request: FastifyRequest, rep: Fas
     if (url.startsWith('/health') || url.startsWith('/documentation') || url.startsWith('/auth')) return;
 
     const isDashboardRoute = url.startsWith('/api-keys') || url.startsWith('/webhooks') ||
-                           url.startsWith('/v1/api-keys') || url.startsWith('/v1/webhooks') ||
-                           url.startsWith('/v1/usage') || url.startsWith('/v1/logs');
+        url.startsWith('/v1/api-keys') || url.startsWith('/v1/webhooks') ||
+        url.startsWith('/v1/usage') || url.startsWith('/v1/logs');
     if (!isDashboardRoute) {
         await rateLimit(request, rep, redis);
         await idempotency(request, rep, redis);
