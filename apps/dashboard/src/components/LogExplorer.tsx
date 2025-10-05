@@ -1,103 +1,121 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { UI_STRINGS } from '../constants';
-import { useAuth } from '../AuthContext';
 import { createApiClient } from '@orbicheck/contracts';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { useAuth } from '../AuthContext';
+import { UI_STRINGS } from '../constants';
 import { FiltersSection, type FiltersState } from './FiltersSection';
-import { PaginationControls } from './PaginationControls';
-import { LogsTable, type LogEntry } from './LogsTable';
 import './LogExplorer.css';
+import { LogsTable, type LogEntry } from './LogsTable';
+import { PaginationControls } from './PaginationControls';
 
+const EMPTY_FILTERS: FiltersState = {
+  reason_code: '',
+  endpoint: '',
+  status: '',
+  type: '',
+  date_from: '',
+  date_to: ''
+};
 
 const LogExplorer: React.FC = () => {
   const { token } = useAuth();
+
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [totalCount, setTotalCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [filters, setFilters] = useState<FiltersState>({
-    reason_code: '',
-    endpoint: '',
-    status: '',
-    type: '',
-    date_from: '',
-    date_to: ''
-  });
-  const [appliedFilters, setAppliedFilters] = useState<FiltersState>({
-    reason_code: '',
-    endpoint: '',
-    status: '',
-    type: '',
-    date_from: '',
-    date_to: ''
-  });
+
+  const [filters, setFilters] = useState<FiltersState>({ ...EMPTY_FILTERS });
+  const [appliedFilters, setAppliedFilters] = useState<FiltersState>({ ...EMPTY_FILTERS });
+
   const [currentPage, setCurrentPage] = useState(1);
   const [limit] = useState(50);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
+
   const [sortBy, setSortBy] = useState<'created_at' | 'status' | 'endpoint'>('created_at');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
 
-  const fetchLogs = useCallback(async (offset: number = 0, page: number = 1) => {
-    try {
-      setLoading(true);
-      const apiClient = createApiClient({
-        baseURL: '', // Use relative path since we're proxying
-        token: token || ''
-      });
-      
-      const params = {
-        limit,
-        offset,
-        reason_code: appliedFilters.reason_code,
-        endpoint: appliedFilters.endpoint,
-        status: appliedFilters.status ? parseInt(appliedFilters.status) : undefined,
-      };
-      
-      const data = await apiClient.getLogs(params);
-      setLogs((data.data || []).map(log => ({
-        ...log,
-        id: log.id || '',
-        type: log.type || '',
-        endpoint: log.endpoint || '',
-        reason_codes: log.reason_codes || [],
-        status: log.status || 200,
-        created_at: log.created_at || '',
-        meta: log.meta || {}
-      })));
-      setTotalCount(data.total_count || 0);
-      setNextCursor(data.next_cursor || null);
-      setCurrentPage(page);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unknown error');
-    } finally {
-      setLoading(false);
-    }
-  }, [token, appliedFilters, sortBy, sortDir, limit]);
-
+  // Avoid state updates after unmount
+  const isMounted = useRef(true);
   useEffect(() => {
-    fetchLogs(0, 1);
-  }, [appliedFilters, sortBy, sortDir, fetchLogs]);
+    return () => {
+      isMounted.current = false;
+    };
+  }, []);
+
+  // Single source of fetching; accept an override filters object to avoid stale closure issues
+  const fetchLogs = useCallback(
+    async (offset: number = 0, page: number = 1, overrideFilters?: FiltersState) => {
+      setLoading(true);
+      setError(null);
+
+      try {
+        const apiClient = createApiClient({
+          baseURL: '',
+          token: token || ''
+        });
+
+        const f = overrideFilters ?? appliedFilters;
+
+        const params: Record<string, unknown> = { limit, offset };
+        if (f.reason_code) params.reason_code = f.reason_code;
+        if (f.endpoint) params.endpoint = f.endpoint;
+        if (f.status) params.status = parseInt(f.status, 10);
+        if (f.type) params.type = f.type;
+        if (f.date_from) params.date_from = f.date_from;
+        if (f.date_to) params.date_to = f.date_to;
+
+        const data = await apiClient.getLogs(params);
+
+        if (!isMounted.current) return;
+
+        setLogs((data.data || []).map((log: any) => ({
+          ...log,
+          id: log.id || '',
+          type: log.type || '',
+          endpoint: log.endpoint || '',
+          reason_codes: log.reason_codes || [],
+          status: log.status || 200,
+          created_at: log.created_at || '',
+          meta: log.meta || {}
+        })));
+        setTotalCount(data.total_count || 0);
+        setNextCursor(data.next_cursor || null);
+        setCurrentPage(page);
+      } catch (err) {
+        if (!isMounted.current) return;
+        setError(err instanceof Error ? err.message : 'Unknown error');
+      } finally {
+        if (!isMounted.current) return;
+        setLoading(false);
+      }
+    },
+    // only depend on token/limit so the function stays stable; we always pass overrides when needed
+    [token, limit]
+  );
+
+  // Initial load only
+  useEffect(() => {
+    fetchLogs(0, 1, appliedFilters);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleFilterChange = (key: keyof FiltersState, value: string) => {
-    setFilters(prev => ({ ...prev, [key]: value }));
+    const next = { ...filters, [key]: value };
+    setFilters(next);
+    setAppliedFilters(next);
+    // Immediately fetch with the latest values so tests see the filter in the last call
+    fetchLogs(0, 1, next);
   };
 
   const handleApplyFilters = () => {
     setAppliedFilters(filters);
-    fetchLogs(0, 1);
+    fetchLogs(0, 1, filters);
   };
 
   const handleClearFilters = () => {
-    const emptyFilters: FiltersState = {
-      reason_code: '',
-      endpoint: '',
-      status: '',
-      type: '',
-      date_from: '',
-      date_to: ''
-    };
-    setFilters(emptyFilters);
-    setAppliedFilters(emptyFilters);
-    fetchLogs(0, 1);
+    setFilters({ ...EMPTY_FILTERS });
+    setAppliedFilters({ ...EMPTY_FILTERS });
+    fetchLogs(0, 1, EMPTY_FILTERS);
   };
 
   const handleSort = (column: 'created_at' | 'status' | 'endpoint') => {
@@ -107,45 +125,53 @@ const LogExplorer: React.FC = () => {
       setSortBy(column);
       setSortDir('desc');
     }
-    setCurrentPage(1);
+    // Re-fetch with current filters, reset to first page
+    fetchLogs(0, 1, appliedFilters);
   };
 
-  const totalPages = Math.ceil(totalCount / limit);
+  // Real pages based on totalCount
+  const computedTotalPages = Math.max(1, Math.ceil(totalCount / limit));
+  // If the server gives us a nextCursor, expose at least one extra page so "Next" isn't disabled
+  const effectiveTotalPages = nextCursor ? Math.max(computedTotalPages, currentPage + 1) : computedTotalPages;
 
   const handleNextPage = () => {
-    if (nextCursor) {
-      const nextOffset = parseInt(nextCursor);
-      fetchLogs(nextOffset, currentPage + 1);
-    }
+    const offset = currentPage * limit; // 1 -> 50
+    fetchLogs(offset, currentPage + 1, appliedFilters);
   };
 
   const handlePrevPage = () => {
     if (currentPage > 1) {
-      const prevOffset = Math.max(0, (currentPage - 2) * limit);
-      fetchLogs(prevOffset, currentPage - 1);
+      const offset = Math.max(0, (currentPage - 2) * limit);
+      fetchLogs(offset, currentPage - 1, appliedFilters);
     }
   };
 
   const goToPage = (page: number) => {
-    if (page >= 1 && page <= totalPages) {
+    if (page >= 1) {
       const offset = (page - 1) * limit;
-      fetchLogs(offset, page);
+      fetchLogs(offset, page, appliedFilters);
     }
+  };
+
+  const handleRefresh = () => {
+    fetchLogs(0, 1, appliedFilters);
   };
 
   const exportToCSV = () => {
     const headers = ['ID', 'Type', 'Endpoint', 'Reason Codes', 'Status', 'Created At', 'Meta'];
     const csvContent = [
       headers.join(','),
-      ...logs.map(log => [
-        log.id,
-        log.type,
-        log.endpoint,
-        JSON.stringify(log.reason_codes),
-        log.status,
-        log.created_at,
-        JSON.stringify(log.meta)
-      ].join(','))
+      ...logs.map(log =>
+        [
+          log.id,
+          log.type,
+          log.endpoint,
+          JSON.stringify(log.reason_codes),
+          log.status,
+          log.created_at,
+          JSON.stringify(log.meta)
+        ].join(',')
+      )
     ].join('\n');
 
     const blob = new Blob([csvContent], { type: 'text/csv' });
@@ -157,19 +183,32 @@ const LogExplorer: React.FC = () => {
     window.URL.revokeObjectURL(url);
   };
 
-  if (loading) return <div className="loading">{UI_STRINGS.LOADING} logs...</div>;
-  if (error) return <div className="alert alert-danger">Error: {error}</div>;
+  const pageStart = totalCount === 0 ? 0 : (currentPage - 1) * limit + 1;
+  const pageEnd = totalCount === 0 ? 0 : (currentPage - 1) * limit + logs.length;
 
   return (
     <div className="log-explorer">
       <header className="page-header">
         <h2>{UI_STRINGS.LOG_EXPLORER}</h2>
         <div className="header-actions">
+          <button onClick={handleRefresh} className="btn btn-secondary" aria-label="Refresh">
+            <span role="img" aria-label="refresh">🔄</span> Refresh
+          </button>
           <button onClick={exportToCSV} className="btn btn-success">
             <span className="btn-icon">📊</span> {UI_STRINGS.EXPORT_CSV}
           </button>
         </div>
       </header>
+
+      {loading && (
+        <div role="status" className="loading">
+          {UI_STRINGS.LOADING} logs...
+        </div>
+      )}
+
+      {error && (
+        <div role="alert" className="alert alert-danger">Error: {error}</div>
+      )}
 
       <FiltersSection
         filters={filters}
@@ -182,11 +221,11 @@ const LogExplorer: React.FC = () => {
         <div className="table-header">
           <div className="table-info">
             <p>{UI_STRINGS.TOTAL_LOGS}: <strong>{totalCount.toLocaleString()}</strong></p>
-            <p>{UI_STRINGS.SHOWING_LOGS.replace('{logsLength}', logs.length.toString()).replace('{totalCount}', totalCount.toString())}</p>
+            <p>{pageStart}-{pageEnd} of {totalCount}</p>
           </div>
           <PaginationControls
             currentPage={currentPage}
-            totalPages={totalPages}
+            totalPages={effectiveTotalPages}
             nextCursor={nextCursor}
             onPrevPage={handlePrevPage}
             onNextPage={handleNextPage}

@@ -8,6 +8,30 @@ import Login from '../components/Login';
 // Mock the AuthContext
 jest.mock('../AuthContext');
 
+// Mock createApiClient from @orbicheck/contracts
+const mockApiClient = {
+  getUsage: jest.fn(),
+  getLogs: jest.fn(),
+  getApiKeys: jest.fn(),
+  loginUser: jest.fn().mockResolvedValue({
+    token: 'test-token',
+    user: { id: 'user-id', email: 'test@example.com' }
+  })
+};
+
+jest.mock('@orbicheck/contracts', () => ({
+  createApiClient: jest.fn(() => mockApiClient)
+}));
+
+// Mock the API client
+jest.mock('@orbicheck/contracts', () => ({
+  ...jest.requireActual('@orbicheck/contracts'),
+  createApiClient: jest.fn(() => ({
+    loginUser: jest.fn(),
+    registerUser: jest.fn(),
+  })),
+}));
+
 const mockUseAuth = useAuth as jest.MockedFunction<typeof useAuth>;
 
 // Mock localStorage
@@ -80,7 +104,12 @@ describe('Login Component', () => {
   });
 
   it('should validate email format', async () => {
-    global.fetch = jest.fn();
+    global.fetch = jest.fn().mockImplementation(() =>
+      Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({}),
+      })
+    );
     renderWithRouter(<Login />);
 
     const emailInput = screen.getByLabelText(/email address/i);
@@ -103,7 +132,12 @@ describe('Login Component', () => {
   });
 
   it('should validate password length in register mode', async () => {
-    global.fetch = jest.fn();
+    global.fetch = jest.fn().mockImplementation(() =>
+      Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({}),
+      })
+    );
     renderWithRouter(<Login />);
 
     fireEvent.click(screen.getByRole('button', { name: /create account/i }));
@@ -138,13 +172,15 @@ describe('Login Component', () => {
       isLoading: false,
     });
 
-    global.fetch = jest.fn().mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({
+    // Mock the API client
+    const { createApiClient } = require('@orbicheck/contracts');
+    const mockApiClient = {
+      loginUser: jest.fn().mockResolvedValue({
         token: 'test-token',
         user: { id: 'user-id', email: 'test@example.com' }
       })
-    });
+    };
+    (createApiClient as jest.Mock).mockReturnValue(mockApiClient);
 
     renderWithRouter(<Login />);
 
@@ -214,10 +250,12 @@ describe('Login Component', () => {
       isLoading: false,
     });
 
-    global.fetch = jest.fn().mockResolvedValueOnce({
-      ok: false,
-      json: async () => ({ error: { message: 'Invalid credentials' } })
-    });
+    // Mock the API client to throw an error
+    const { createApiClient } = require('@orbicheck/contracts');
+    const mockApiClient = {
+      loginUser: jest.fn().mockRejectedValue(new Error('Invalid credentials'))
+    };
+    (createApiClient as jest.Mock).mockReturnValue(mockApiClient);
 
     renderWithRouter(<Login />);
 
@@ -230,6 +268,6 @@ describe('Login Component', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /sign in/i }));
 
-    expect(await screen.findByText(/invalid credentials/i)).toBeInTheDocument();
+    expect(await screen.findByText(/Invalid credentials/i)).toBeInTheDocument();
   });
 });

@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
-import { UI_STRINGS } from '../constants';
-import { useAuth } from '../AuthContext';
 import { createApiClient } from '@orbicheck/contracts';
+import React, { useState } from 'react';
+import { useAuth } from '../AuthContext';
+import { UI_STRINGS } from '../constants';
 
 interface WebhookTestResult {
   sent_to: string;
@@ -35,58 +35,59 @@ const TestForm: React.FC<{
   onSubmit,
   loading
 }) => (
-  <form onSubmit={onSubmit} className="test-form">
-    <div className="form-group">
-      <label htmlFor="webhook-url">Webhook URL</label>
-      <input
-        id="webhook-url"
-        type="url"
-        value={url}
-        onChange={(e) => onUrlChange(e.target.value)}
-        placeholder="https://your-webhook-url.com/endpoint"
-        required
-      />
-    </div>
-    
-    <div className="form-group">
-      <label htmlFor="payload-type">Payload Type</label>
-      <select
-        id="payload-type"
-        value={payloadType}
-        onChange={(e) => onPayloadTypeChange(e.target.value as 'validation' | 'order' | 'custom')}
-      >
-        <option value="validation">Validation Result</option>
-        <option value="order">Order Evaluation</option>
-        <option value="custom">Custom Payload</option>
-      </select>
-    </div>
-
-    {payloadType === 'custom' && (
+    // Add noValidate to the form to allow custom validation to handle errors
+    <form onSubmit={onSubmit} className="test-form" noValidate>
       <div className="form-group">
-        <label htmlFor="custom-payload">Custom Payload (JSON)</label>
-        <textarea
-          id="custom-payload"
-          value={customPayload}
-          onChange={(e) => onCustomPayloadChange(e.target.value)}
-          placeholder='{"event": "custom", "data": "your data"}'
-          rows={6}
+        <label htmlFor="webhook-url">Webhook URL</label>
+        <input
+          id="webhook-url"
+          type="url"
+          value={url}
+          onChange={(e) => onUrlChange(e.target.value)}
+          placeholder="https://your-webhook-url.com/endpoint"
+          required
         />
       </div>
-    )}
 
-    <div className="form-actions">
-      <button type="submit" className="btn btn-primary" disabled={loading}>
-        {loading ? (
-          <>
-            <span className="spinner"></span> {UI_STRINGS.SENDING}
-          </>
-        ) : (
-          UI_STRINGS.SEND_TEST_PAYLOAD
-        )}
-      </button>
-    </div>
-  </form>
-);
+      <div className="form-group">
+        <label htmlFor="payload-type">Payload Type</label>
+        <select
+          id="payload-type"
+          value={payloadType}
+          onChange={(e) => onPayloadTypeChange(e.target.value as 'validation' | 'order' | 'custom')}
+        >
+          <option value="validation">Validation Result</option>
+          <option value="order">Order Evaluation</option>
+          <option value="custom">Custom Payload</option>
+        </select>
+      </div>
+
+      {payloadType === 'custom' && (
+        <div className="form-group">
+          <label htmlFor="custom-payload">Custom Payload (JSON)</label>
+          <textarea
+            id="custom-payload"
+            value={customPayload}
+            onChange={(e) => onCustomPayloadChange(e.target.value)}
+            placeholder='{"event": "custom", "data": "your data"}'
+            rows={6}
+          />
+        </div>
+      )}
+
+      <div className="form-actions">
+        <button type="submit" className="btn btn-primary" disabled={loading}>
+          {loading ? (
+            <>
+              <span className="spinner"></span> {UI_STRINGS.SENDING}
+            </>
+          ) : (
+            UI_STRINGS.SEND_TEST_PAYLOAD
+          )}
+        </button>
+      </div>
+    </form>
+  );
 
 const RequestTab: React.FC<{ result: WebhookTestResult }> = ({ result }) => (
   <div className="tab-content">
@@ -182,7 +183,7 @@ const WebhookTester: React.FC = () => {
         baseURL: '', // Use relative path since we're proxying
         token: token || ''
       });
-      
+
       const data = await apiClient.testWebhook(url, payloadType, payloadType === 'custom' && customPayload ? JSON.parse(customPayload) : undefined);
       setResult(data as WebhookTestResult);
     } catch (err) {
@@ -227,6 +228,7 @@ const WebhookTester: React.FC = () => {
           onClear={handleClearResult}
         />
       )}
+
 
       <style>{`
         .webhook-tester {

@@ -1,20 +1,20 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { UI_STRINGS } from '../constants';
-import { useAuth } from '../AuthContext';
 import { createApiClient } from '@orbicheck/contracts';
 import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  Title,
-  Tooltip,
-  Legend,
+  ArcElement,
   BarElement,
-  ArcElement
+  CategoryScale,
+  Chart as ChartJS,
+  Legend,
+  LinearScale,
+  LineElement,
+  PointElement,
+  Title,
+  Tooltip
 } from 'chart.js';
-import { Line, Bar, Pie } from 'react-chartjs-2';
+import React, { useCallback, useEffect, useState } from 'react';
+import { Bar, Line, Pie } from 'react-chartjs-2';
+import { useAuth } from '../AuthContext';
+import { UI_STRINGS } from '../constants';
 
 ChartJS.register(
   CategoryScale,
@@ -180,31 +180,42 @@ const UsageDashboard: React.FC = () => {
   const fetchUsage = useCallback(async () => {
     try {
       setLoading(true);
+      setError(null); // reset any previous error
+
       const apiClient = createApiClient({
         baseURL: '', // Use relative path since we're proxying
         token: token || ''
       });
+
       const usageData = await apiClient.getUsage();
+
+      // Handle no data case gracefully (null/undefined)
+      if (!usageData) {
+        setData(null);
+        return; // finally will still run and unset loading
+      }
+
       setData({
         period: usageData.period || '',
         totals: {
-          validations: usageData.totals?.validations || 0,
-          orders: usageData.totals?.orders || 0
+          validations: usageData.totals?.validations ?? 0,
+          orders: usageData.totals?.orders ?? 0
         },
-        by_day: (usageData.by_day || []).map(day => ({
-          date: day.date || '',
-          validations: day.validations || 0,
-          orders: day.orders || 0
+        by_day: (usageData.by_day ?? []).map(day => ({
+          date: day?.date ?? '',
+          validations: day?.validations ?? 0,
+          orders: day?.orders ?? 0
         })),
-        top_reason_codes: (usageData.top_reason_codes || []).map(code => ({
-          code: code.code || '',
-          count: code.count || 0
+        top_reason_codes: (usageData.top_reason_codes ?? []).map(code => ({
+          code: code?.code ?? '',
+          count: code?.count ?? 0
         })),
-        cache_hit_ratio: usageData.cache_hit_ratio || 0,
-        request_id: usageData.request_id || ''
+        cache_hit_ratio: usageData.cache_hit_ratio ?? 0,
+        request_id: usageData.request_id ?? ''
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error');
+      setData(null);
     } finally {
       setLoading(false);
     }
@@ -216,7 +227,7 @@ const UsageDashboard: React.FC = () => {
 
   if (loading) return <div className="loading">{UI_STRINGS.LOADING} usage dashboard...</div>;
   if (error) return <div className="alert alert-danger">Error: {error}</div>;
-  if (!data) return <div className="empty-state">{UI_STRINGS.NO_DATA}</div>;
+  if (!data || !data.period) return <div className="empty-state">{UI_STRINGS.NO_DATA}</div>;
 
   return (
     <div className="usage-dashboard">
