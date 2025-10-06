@@ -2,6 +2,8 @@ import 'dotenv/config';
 import { once } from 'node:events';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import yaml from 'js-yaml';
 
 import cors from "@fastify/cors";
 import fastifySwagger from '@fastify/swagger';
@@ -62,7 +64,8 @@ export async function build(pool: Pool, redis: IORedisType): Promise<FastifyInst
     });
 
     // Load OpenAPI spec from contracts package
-    const openapiSpec = JSON.parse(JSON.stringify(require('@orbicheck/contracts/openapi.yaml')));
+    const openapiPath = join(process.cwd(), '..', '..', 'packages', 'contracts', 'openapi.yaml');
+    const openapiSpec = yaml.load(readFileSync(openapiPath, 'utf8'));
 
     // Register OpenAPI/Swagger for automatic API documentation generation
     await app.register(fastifySwagger, {

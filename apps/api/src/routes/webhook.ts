@@ -10,7 +10,7 @@ import { generateRequestId, rateLimitResponse, securityHeader, sendError, unauth
 // Import route constants from contracts package
 // TODO: Update to use @orbicheck/contracts export once build issues are resolved
 const ROUTES = {
-  WEBHOOKS_TEST: DASHBOARD_ROUTES.WEBHOOKS.TEST,
+  WEBHOOKS_TEST: DASHBOARD_ROUTES.TEST_WEBHOOK,
 };
 
 
@@ -159,7 +159,7 @@ export function registerWebhookRoutes(app: FastifyInstance, pool: Pool) {
                 request_id
             };
 
-            await logEvent(project_id, 'webhook_test', DASHBOARD_ROUTES.WEBHOOKS.TEST, [], HTTP_STATUS.OK, {
+            await logEvent(project_id, 'webhook_test', DASHBOARD_ROUTES.TEST_WEBHOOK, [], HTTP_STATUS.OK, {
                 url,
                 payload_type,
                 response_status: response.status
@@ -169,7 +169,7 @@ export function registerWebhookRoutes(app: FastifyInstance, pool: Pool) {
         } catch (error) {
             const request_id = generateRequestId();
             const errorMessage = error instanceof globalThis.Error ? (error as globalThis.Error).message : 'Unknown error';
-            await logEvent(project_id, 'webhook_test', DASHBOARD_ROUTES.WEBHOOKS.TEST, [REASON_CODES.WEBHOOK_SEND_FAILED], HTTP_STATUS.INTERNAL_SERVER_ERROR, {
+            await logEvent(project_id, 'webhook_test', DASHBOARD_ROUTES.TEST_WEBHOOK, [REASON_CODES.WEBHOOK_SEND_FAILED], HTTP_STATUS.INTERNAL_SERVER_ERROR, {
                 url,
                 payload_type,
                 error: errorMessage

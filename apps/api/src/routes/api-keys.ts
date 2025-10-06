@@ -9,7 +9,7 @@ import { errorSchema, generateRequestId, rateLimitResponse, securityHeader, send
 
 
 export function registerApiKeysRoutes(app: FastifyInstance, pool: Pool) {
-    app.get(DASHBOARD_ROUTES.API_KEYS, {
+    app.get(DASHBOARD_ROUTES.LIST_API_KEYS, {
         schema: {
             summary: 'List API Keys',
             description: 'Retrieves a list of API keys for the authenticated project, showing only the prefix (first 6 characters) for security.',
@@ -51,11 +51,11 @@ export function registerApiKeysRoutes(app: FastifyInstance, pool: Pool) {
             const response: any = { data: rows, request_id };
             return rep.send(response);
         } catch (error) {
-            return sendServerError(request, rep, error, DASHBOARD_ROUTES.API_KEYS, generateRequestId());
+            return sendServerError(request, rep, error, DASHBOARD_ROUTES.LIST_API_KEYS, generateRequestId());
         }
     });
 
-    app.post(DASHBOARD_ROUTES.API_KEYS, {
+    app.post(DASHBOARD_ROUTES.CREATE_API_KEY, {
         schema: {
             summary: 'Create New API Key',
             description: 'Generates a new API key for the authenticated project.',
@@ -118,11 +118,11 @@ export function registerApiKeysRoutes(app: FastifyInstance, pool: Pool) {
             };
             return rep.status(HTTP_STATUS.CREATED).send(response);
         } catch (error) {
-            return sendServerError(request, rep, error, DASHBOARD_ROUTES.API_KEYS, generateRequestId());
+            return sendServerError(request, rep, error, DASHBOARD_ROUTES.LIST_API_KEYS, generateRequestId());
         }
     });
 
-    app.delete(`${DASHBOARD_ROUTES.API_KEYS}/:id`, {
+    app.delete(DASHBOARD_ROUTES.REVOKE_API_KEY, {
         schema: {
             summary: 'Revoke API Key',
             description: 'Revokes an API key by setting its status to revoked. Cannot be undone.',
@@ -168,7 +168,7 @@ export function registerApiKeysRoutes(app: FastifyInstance, pool: Pool) {
             const response: any = { id, status: STATUS.REVOKED, request_id };
             return rep.send(response);
         } catch (error) {
-            return sendServerError(request, rep, error, `${DASHBOARD_ROUTES.API_KEYS}/:id`, generateRequestId());
+            return sendServerError(request, rep, error, `${DASHBOARD_ROUTES.LIST_API_KEYS}/:id`, generateRequestId());
         }
     });
 }

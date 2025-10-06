@@ -9,11 +9,11 @@ import { API_V1_ROUTES } from "@orbicheck/contracts";
 // Import route constants from contracts package
 // TODO: Update to use @orbicheck/contracts export once build issues are resolved
 const ROUTES = {
-  VALIDATE_EMAIL: API_V1_ROUTES.VALIDATION.EMAIL,
-  VALIDATE_PHONE: API_V1_ROUTES.VALIDATION.PHONE,
-  VALIDATE_ADDRESS: API_V1_ROUTES.VALIDATION.ADDRESS,
-  VALIDATE_TAXID: API_V1_ROUTES.VALIDATION.TAX_ID,
-  VERIFY_PHONE: API_V1_ROUTES.VALIDATION.VERIFY_PHONE,
+  VALIDATE_EMAIL: API_V1_ROUTES.VALIDATE.VALIDATE_EMAIL_ADDRESS,
+  VALIDATE_PHONE: API_V1_ROUTES.VALIDATE.VALIDATE_PHONE_NUMBER,
+  VALIDATE_ADDRESS: API_V1_ROUTES.VALIDATE.VALIDATE_ADDRESS,
+  VALIDATE_TAXID: API_V1_ROUTES.VALIDATE.VALIDATE_TAX_ID,
+  VERIFY_PHONE: API_V1_ROUTES.VERIFY.VERIFY_PHONE_OTP,
 };
 import { environment } from "../env.js";
 import { logEvent } from "../hooks.js";
@@ -24,7 +24,7 @@ import { validateTaxId } from "../validators/taxid.js";
 import { generateRequestId, rateLimitResponse, securityHeader, sendServerError, unauthorizedResponse, validationErrorResponse } from "./utils.js";
 
 export function registerValidationRoutes(app: FastifyInstance, pool: Pool, redis: IORedisType) {
-    app.post(API_V1_ROUTES.VALIDATION.EMAIL, {
+    app.post(API_V1_ROUTES.VALIDATE.VALIDATE_EMAIL_ADDRESS, {
         schema: {
             summary: 'Validate Email Address',
             description: 'Performs a comprehensive validation of an email address, checking for format, domain reachability (MX records), and whether it belongs to a disposable email provider.',
@@ -65,7 +65,7 @@ export function registerValidationRoutes(app: FastifyInstance, pool: Pool, redis
             if (rep.saveIdem) {
                 await rep.saveIdem(out);
             }
-            await logEvent(request.project_id!, 'validation', API_V1_ROUTES.VALIDATION.EMAIL, out.reason_codes, HTTP_STATUS.OK, {
+            await logEvent(request.project_id!, 'validation', API_V1_ROUTES.VALIDATE.VALIDATE_EMAIL_ADDRESS, out.reason_codes, HTTP_STATUS.OK, {
                 domain: out.normalized.split('@')[1],
                 disposable: out.disposable,
                 mx_found: out.mx_found,
@@ -74,11 +74,11 @@ export function registerValidationRoutes(app: FastifyInstance, pool: Pool, redis
             return rep.send(response);
         } catch (error) {
             console.error('Email validation error:', error);
-            return sendServerError(request, rep, error, API_V1_ROUTES.VALIDATION.EMAIL, generateRequestId());
+            return sendServerError(request, rep, error, API_V1_ROUTES.VALIDATE.VALIDATE_EMAIL_ADDRESS, generateRequestId());
         }
     });
 
-    app.post(API_V1_ROUTES.VALIDATION.PHONE, {
+    app.post(API_V1_ROUTES.VALIDATE.VALIDATE_PHONE_NUMBER, {
         schema: {
             summary: 'Validate Phone Number',
             description: 'Validates a phone number and returns it in E.164 format. An optional country code can be provided as a hint.',
@@ -139,15 +139,15 @@ export function registerValidationRoutes(app: FastifyInstance, pool: Pool, redis
             if (rep.saveIdem) {
                 await rep.saveIdem(response);
             }
-            await logEvent(request.project_id!, "validation", API_V1_ROUTES.VALIDATION.PHONE, response.reason_codes, HTTP_STATUS.OK, { request_otp, otp_status: verification_sid ? 'otp_sent' : 'no_otp' }, pool);
+            await logEvent(request.project_id!, "validation", API_V1_ROUTES.VALIDATE.VALIDATE_PHONE_NUMBER, response.reason_codes, HTTP_STATUS.OK, { request_otp, otp_status: verification_sid ? 'otp_sent' : 'no_otp' }, pool);
             const phoneResponse: any = { ...response, request_id };
             return rep.send(phoneResponse);
         } catch (error) {
-            return sendServerError(request, rep, error, API_V1_ROUTES.VALIDATION.PHONE, generateRequestId());
+            return sendServerError(request, rep, error, API_V1_ROUTES.VALIDATE.VALIDATE_PHONE_NUMBER, generateRequestId());
         }
     });
 
-    app.post(API_V1_ROUTES.VALIDATION.ADDRESS, {
+    app.post(API_V1_ROUTES.VALIDATE.VALIDATE_ADDRESS, {
         schema: {
             summary: 'Validate Physical Address',
             description: 'Validates a physical address by normalizing it, checking for P.O. boxes, and verifying the postal code and city combination.',
@@ -200,15 +200,15 @@ export function registerValidationRoutes(app: FastifyInstance, pool: Pool, redis
             if (rep.saveIdem) {
                 await rep.saveIdem(out);
             }
-            await logEvent(request.project_id!, "validation", API_V1_ROUTES.VALIDATION.ADDRESS, out.reason_codes, HTTP_STATUS.OK, { po_box: out.po_box, postal_city_match: out.postal_city_match }, pool);
+            await logEvent(request.project_id!, "validation", API_V1_ROUTES.VALIDATE.VALIDATE_ADDRESS, out.reason_codes, HTTP_STATUS.OK, { po_box: out.po_box, postal_city_match: out.postal_city_match }, pool);
             const response: any = { ...out, request_id };
             return rep.send(response);
         } catch (error) {
-            return sendServerError(request, rep, error, API_V1_ROUTES.VALIDATION.ADDRESS, generateRequestId());
+            return sendServerError(request, rep, error, API_V1_ROUTES.VALIDATE.VALIDATE_ADDRESS, generateRequestId());
         }
     });
 
-    app.post(API_V1_ROUTES.VALIDATION.TAX_ID, {
+    app.post(API_V1_ROUTES.VALIDATE.VALIDATE_TAX_ID, {
         schema: {
             summary: 'Validate Tax ID',
             description: 'Validates a given tax ID number for a specified type and country.',
@@ -249,15 +249,15 @@ export function registerValidationRoutes(app: FastifyInstance, pool: Pool, redis
             if (rep.saveIdem) {
                 await rep.saveIdem(out);
             }
-            await logEvent(request.project_id!, "validation", API_V1_ROUTES.VALIDATION.TAX_ID, out.reason_codes, HTTP_STATUS.OK, { type }, pool);
+            await logEvent(request.project_id!, "validation", API_V1_ROUTES.VALIDATE.VALIDATE_TAX_ID, out.reason_codes, HTTP_STATUS.OK, { type }, pool);
             const response: any = { ...out, request_id };
             return rep.send(response);
         } catch (error) {
-            return sendServerError(request, rep, error, API_V1_ROUTES.VALIDATION.TAX_ID, generateRequestId());
+            return sendServerError(request, rep, error, API_V1_ROUTES.VALIDATE.VALIDATE_TAX_ID, generateRequestId());
         }
     });
     // New endpoint for verifying OTP with Twilio Verify
-    app.post(API_V1_ROUTES.VALIDATION.VERIFY_PHONE, {
+    app.post(API_V1_ROUTES.VERIFY.VERIFY_PHONE_OTP, {
         schema: {
             summary: 'Verify Phone OTP',
             description: 'Verifies the OTP sent to the phone number using Twilio Verify.',
@@ -301,10 +301,10 @@ export function registerValidationRoutes(app: FastifyInstance, pool: Pool, redis
             const reason_codes = valid ? [] : ['phone.otp_invalid'];
             const response: any = { valid, reason_codes, request_id };
             await (rep as any).saveIdem?.(response);
-            await logEvent((request as any).project_id, "verification", API_V1_ROUTES.VALIDATION.VERIFY_PHONE, reason_codes, valid ? HTTP_STATUS.OK : HTTP_STATUS.BAD_REQUEST, { verified: valid }, pool);
+            await logEvent((request as any).project_id, "verification", API_V1_ROUTES.VERIFY.VERIFY_PHONE_OTP, reason_codes, valid ? HTTP_STATUS.OK : HTTP_STATUS.BAD_REQUEST, { verified: valid }, pool);
             return rep.send(response);
         } catch (error) {
-            return sendServerError(request, rep, error, API_V1_ROUTES.VALIDATION.VERIFY_PHONE, generateRequestId());
+            return sendServerError(request, rep, error, API_V1_ROUTES.VERIFY.VERIFY_PHONE_OTP, generateRequestId());
         }
     });
 }

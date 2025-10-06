@@ -49,7 +49,7 @@ export async function verifyJWT(request: FastifyRequest, rep: FastifyReply, pool
 }
 
 export function registerAuthRoutes(app: FastifyInstance, pool: Pool) {
-    app.post(API_V1_ROUTES.AUTH.REGISTER, {
+    app.post(API_V1_ROUTES.AUTH.REGISTER_NEW_USER, {
         schema: {
             body: {
                 type: 'object',
@@ -135,7 +135,7 @@ export function registerAuthRoutes(app: FastifyInstance, pool: Pool) {
         }
     });
 
-    app.post(API_V1_ROUTES.AUTH.LOGIN, {
+    app.post(API_V1_ROUTES.AUTH.USER_LOGIN, {
         schema: {
             body: {
                 type: 'object',
@@ -182,7 +182,7 @@ export function registerAuthRoutes(app: FastifyInstance, pool: Pool) {
             const response: any = { token, user: { id: user.id, email }, request_id };
             return rep.send(response);
         } catch (error) {
-            return sendServerError(request, rep, error, API_V1_ROUTES.AUTH.LOGIN, generateRequestId());
+            return sendServerError(request, rep, error, API_V1_ROUTES.AUTH.USER_LOGIN, generateRequestId());
         }
     });
 }

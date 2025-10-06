@@ -7,13 +7,13 @@ import { generateRequestId, rateLimitResponse, securityHeader, sendServerError, 
 // Import route constants from contracts package
 // TODO: Update to use @orbicheck/contracts export once build issues are resolved
 const ROUTES = {
-  LOGS: API_V1_ROUTES.DATA.LOGS,
-  USAGE: API_V1_ROUTES.DATA.USAGE,
+  LOGS: API_V1_ROUTES.DATA.GET_EVENT_LOGS,
+  USAGE: API_V1_ROUTES.DATA.GET_USAGE_STATISTICS,
 };
 
 
 export function registerDataRoutes(app: FastifyInstance, pool: Pool) {
-    app.get(API_V1_ROUTES.DATA.LOGS, {
+    app.get(ROUTES.LOGS, {
         schema: {
             summary: 'Get Event Logs',
             description: 'Retrieves event logs for the project with optional filters by reason code, endpoint, and status. Supports pagination via limit and offset.',
@@ -121,11 +121,11 @@ export function registerDataRoutes(app: FastifyInstance, pool: Pool) {
             };
             return rep.send(response);
         } catch (error) {
-            return sendServerError(request, rep, error, API_V1_ROUTES.DATA.LOGS, generateRequestId());
+            return sendServerError(request, rep, error, ROUTES.LOGS, generateRequestId());
         }
     });
 
-    app.get(API_V1_ROUTES.DATA.USAGE, {
+    app.get(ROUTES.USAGE, {
         schema: {
             summary: 'Get Usage Statistics',
             description: 'Retrieves usage statistics for the last 31 days for the project associated with the API key.',
@@ -213,7 +213,7 @@ export function registerDataRoutes(app: FastifyInstance, pool: Pool) {
             };
             return rep.send(response);
         } catch (error) {
-            return sendServerError(request, rep, error, API_V1_ROUTES.DATA.USAGE, generateRequestId());
+            return sendServerError(request, rep, error, ROUTES.USAGE, generateRequestId());
         }
     });
 }

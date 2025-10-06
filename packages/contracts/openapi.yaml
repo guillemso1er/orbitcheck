@@ -846,7 +846,7 @@ paths:
                 $ref: '#/components/schemas/Error'
 
   # Data Retrieval
-  /logs:
+  /data/logs:
     get:
       tags:
         - Data Retrieval
@@ -912,7 +912,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
-  /usage:
+  /data/usage:
     get:
       tags:
         - Data Retrieval
