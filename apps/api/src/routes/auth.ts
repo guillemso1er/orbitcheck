@@ -131,7 +131,7 @@ export function registerAuthRoutes(app: FastifyInstance, pool: Pool) {
             if (error && typeof error === 'object' && 'code' in error && (error as { code: string }).code === PG_UNIQUE_VIOLATION) { // Unique violation
                 return sendError(rep, HTTP_STATUS.BAD_REQUEST, ERROR_CODES.USER_EXISTS, ERROR_MESSAGES[ERROR_CODES.USER_EXISTS], generateRequestId());
             }
-            return sendServerError(request, rep, error, API_V1_ROUTES.AUTH.REGISTER, generateRequestId());
+            return sendServerError(request, rep, error, API_V1_ROUTES.AUTH.REGISTER_NEW_USER, generateRequestId());
         }
     });
 

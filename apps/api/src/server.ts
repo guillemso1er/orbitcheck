@@ -100,11 +100,11 @@ export async function build(pool: Pool, redis: IORedisType): Promise<FastifyInst
         credentials: true,
     });
 
-    // Register OpenAPI validation
-    await openapiValidation(app);
-
     // Register all API routes with shared pool and redis instances
     registerRoutes(app, pool, redis);
+
+    // Register OpenAPI validation (after routes are registered)
+    await openapiValidation(app);
 
     // Add security headers (equivalent to helmet)
     app.addHook('onSend', async (request, reply, payload) => {
