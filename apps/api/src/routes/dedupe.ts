@@ -7,20 +7,10 @@ import { DEDUPE_ACTIONS, ERROR_CODES, ERROR_MESSAGES, HTTP_STATUS, MATCH_TYPES, 
 import { logEvent } from "../hooks.js";
 import { normalizeAddress } from "../validators/address.js";
 import { generateRequestId, rateLimitResponse, securityHeader, sendServerError, unauthorizedResponse, validationErrorResponse } from "./utils.js";
-import type {
-  DedupeCustomerBody,
-  DedupeCustomer200,
-  DedupeAddressBody,
-  DedupeAddress200,
-  MergeDeduplicatedBody,
-  MergeDeduplicated200,
-  CustomerMatch,
-  AddressMatch,
-  Error
-} from "@orbicheck/contracts";
+import { API_V1_ROUTES } from "@orbicheck/contracts";
 
 export function registerDedupeRoutes(app: FastifyInstance, pool: Pool) {
-    app.post('/v1/dedupe/customer', {
+    app.post(API_V1_ROUTES.DEDUPE.DEDUPLICATE_CUSTOMER, {
         schema: {
             summary: 'Deduplicate Customer',
             description: 'Searches for existing customers using deterministic (exact) and fuzzy matching on email, phone, and name.',
@@ -66,7 +56,7 @@ export function registerDedupeRoutes(app: FastifyInstance, pool: Pool) {
     }, async (request: FastifyRequest, rep: FastifyReply) => {
         try {
             const request_id = generateRequestId();
-            const body = request.body as DedupeCustomerBody;
+            const body = request.body as any;
             const { email, phone, first_name, last_name } = body;
             const project_id = (request as any).project_id;
             const reason_codes: string[] = [];
@@ -150,7 +140,7 @@ export function registerDedupeRoutes(app: FastifyInstance, pool: Pool) {
                 }
             }
 
-            const response: DedupeCustomer200 = { matches, suggested_action, canonical_id, request_id };
+            const response: any = { matches, suggested_action, canonical_id, request_id };
             await (rep as any).saveIdem?.(response);
             await logEvent(project_id, 'dedupe', '/dedupe/customer', reason_codes, HTTP_STATUS.OK, { matches_count: matches.length, suggested_action }, pool);
             return rep.send(response);
@@ -159,7 +149,7 @@ export function registerDedupeRoutes(app: FastifyInstance, pool: Pool) {
         }
     });
 
-    app.post('/v1/dedupe/address', {
+    app.post(API_V1_ROUTES.DEDUPE.DEDUPLICATE_ADDRESS, {
         schema: {
             summary: 'Deduplicate Address',
             description: 'Searches for existing addresses using deterministic (exact postal/city/country) and fuzzy matching on address components.',
@@ -207,7 +197,7 @@ export function registerDedupeRoutes(app: FastifyInstance, pool: Pool) {
     }, async (request: FastifyRequest, rep: FastifyReply) => {
         try {
             const request_id = generateRequestId();
-            const body = request.body as DedupeAddressBody;
+            const body = request.body as any;
             const { line1, line2, city, state, postal_code, country } = body;
             const project_id = (request as any).project_id;
             const reason_codes: string[] = [];
@@ -288,7 +278,7 @@ export function registerDedupeRoutes(app: FastifyInstance, pool: Pool) {
                 }
             }
 
-            const response: DedupeAddress200 = { matches, suggested_action, canonical_id, request_id };
+            const response: any = { matches, suggested_action, canonical_id, request_id };
             await (rep as any).saveIdem?.(response);
             await logEvent(project_id, 'dedupe', '/dedupe/address', reason_codes, HTTP_STATUS.OK, { matches_count: matches.length, suggested_action }, pool);
             return rep.send(response);
@@ -298,7 +288,7 @@ export function registerDedupeRoutes(app: FastifyInstance, pool: Pool) {
     });
 
     // New endpoint for merging deduplicated records
-    app.post('/v1/dedupe/merge', {
+    app.post(API_V1_ROUTES.DEDUPE.MERGE_DEDUPLICATED_RECORDS, {
         schema: {
             summary: 'Merge Deduplicated Records',
             description: 'Merges multiple customer or address records into a canonical one. Updates the canonical with latest data, marks others as merged.',
@@ -332,7 +322,7 @@ export function registerDedupeRoutes(app: FastifyInstance, pool: Pool) {
     }, async (request: FastifyRequest, rep: FastifyReply) => {
         try {
             const request_id = generateRequestId();
-            const body = request.body as MergeDeduplicatedBody;
+            const body = request.body as any;
             const { type, ids, canonical_id } = body;
             const project_id = (request as any).project_id;
             const table = type === MERGE_TYPES.CUSTOMER ? 'customers' : 'addresses';
@@ -357,12 +347,12 @@ export function registerDedupeRoutes(app: FastifyInstance, pool: Pool) {
                 [canonical_id, ids, project_id]
             );
 
-            const response: MergeDeduplicated200 = { success: true, merged_count: count, canonical_id, request_id };
+            const response: any = { success: true, merged_count: count, canonical_id, request_id };
             await (rep as any).saveIdem?.(response);
             await logEvent(project_id, 'dedupe', '/dedupe/merge', [], HTTP_STATUS.OK, { type, merged_count: count }, pool);
             return rep.send(response);
         } catch (error) {
-            return sendServerError(request, rep, error, '/v1/dedupe/merge', generateRequestId());
+            return sendServerError(request, rep, error, API_V1_ROUTES.DEDUPE.MERGE_DEDUPLICATED_RECORDS, generateRequestId());
         }
     });
 }

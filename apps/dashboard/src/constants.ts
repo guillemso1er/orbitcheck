@@ -1,8 +1,10 @@
+import { DASHBOARD_ROUTES, API_V1_ROUTES } from "@orbicheck/contracts";
+
 export const API_ENDPOINTS = {
-  API_KEYS: '/api-keys',
-  USAGE: '/v1/usage',
-  LOGS: '/v1/logs',
-  WEBHOOKS_TEST: '/api/webhooks/test',
+  API_KEYS: DASHBOARD_ROUTES.API_KEYS,
+  USAGE: API_V1_ROUTES.DATA.USAGE,
+  LOGS: API_V1_ROUTES.DATA.LOGS,
+  WEBHOOKS_TEST: DASHBOARD_ROUTES.WEBHOOKS,
 } as const;
 
 

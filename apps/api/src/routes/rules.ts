@@ -3,16 +3,9 @@ import type { Pool } from "pg";
 
 import { REASON_CODES } from "../constants.js";
 import { generateRequestId, securityHeader, sendServerError } from "./utils.js";
-import type {
-  Rule,
-  ReasonCode,
-  GetRules200,
-  GetReasonCodeCatalog200,
-  RegisterCustomRules200,
-  Error
-} from "@orbicheck/contracts";
+import { API_V1_ROUTES } from "@orbicheck/contracts";
 
-const reasonCodes: ReasonCode[] = Object.entries(REASON_CODES).map(([key, code]) => {
+const reasonCodes: any[] = Object.entries(REASON_CODES).map(([key, code]) => {
   // Map from code to description, category, severity - this is a simplification; in practice, you'd have a full mapping
   const descriptions: Record<string, { description: string, category: string, severity: 'low' | 'medium' | 'high' }> = {
     [REASON_CODES.EMAIL_INVALID_FORMAT]: { description: 'Invalid email format', category: 'email', severity: 'low' },
@@ -47,7 +40,7 @@ const reasonCodes: ReasonCode[] = Object.entries(REASON_CODES).map(([key, code])
 });
 
 export function registerRulesRoutes(app: FastifyInstance, pool: Pool) {
-  const rules: Rule[] = [
+  const rules: any[] = [
     {
       id: 'email_format',
       name: 'Email Format Validation',
@@ -160,7 +153,7 @@ export function registerRulesRoutes(app: FastifyInstance, pool: Pool) {
   }, async (request: FastifyRequest, rep: FastifyReply) => {
     try {
       const request_id = generateRequestId();
-      const response: GetRules200 = {
+      const response: any = {
         rules,
         request_id,
       };
@@ -202,7 +195,7 @@ export function registerRulesRoutes(app: FastifyInstance, pool: Pool) {
   }, async (request: FastifyRequest, rep: FastifyReply) => {
     try {
       const request_id = generateRequestId();
-      const response: GetReasonCodeCatalog200 = {
+      const response: any = {
         reason_codes: reasonCodes,
         request_id,
       };
@@ -259,7 +252,7 @@ export function registerRulesRoutes(app: FastifyInstance, pool: Pool) {
       // For now, log the registration; in production, store in DB
       console.log(`Rules registered for project ${project_id}:`, rules);
 
-      const response: RegisterCustomRules200 = {
+      const response: any = {
         message: 'Rules registered successfully',
         registered_rules: rules.map((r: any) => r.id),
         request_id,

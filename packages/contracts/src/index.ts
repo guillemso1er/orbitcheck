@@ -10,3 +10,9 @@ export { afterResponse } from './hooks/afterResponse';
 
 // Export the OpenAPI types
 export type * from './openapi-types';
+
+// Export route constants
+export { API_ROUTES, DASHBOARD_ROUTES, API_V1_ROUTES } from './routes';
+
+// Export the route constants
+export * from './routes';

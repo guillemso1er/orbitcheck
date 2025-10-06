@@ -2,18 +2,18 @@ import type { FastifyInstance } from "fastify";
 import type { Pool } from "pg";
 
 import { CACHE_HIT_PLACEHOLDER, HTTP_STATUS, LOGS_DEFAULT_LIMIT, LOGS_MAX_LIMIT, TOP_REASONS_LIMIT, USAGE_DAYS, USAGE_PERIOD } from "../constants.js";
+import { API_V1_ROUTES } from "@orbicheck/contracts";
 import { generateRequestId, rateLimitResponse, securityHeader, sendServerError, unauthorizedResponse } from "./utils.js";
-import type {
-  LogEntry,
-  GetLogsParams,
-  GetLogs200,
-  GetUsage200,
-  Error
-} from "@orbicheck/contracts";
+// Import route constants from contracts package
+// TODO: Update to use @orbicheck/contracts export once build issues are resolved
+const ROUTES = {
+  LOGS: API_V1_ROUTES.DATA.LOGS,
+  USAGE: API_V1_ROUTES.DATA.USAGE,
+};
 
 
 export function registerDataRoutes(app: FastifyInstance, pool: Pool) {
-    app.get("/v1/logs", {
+    app.get(API_V1_ROUTES.DATA.LOGS, {
         schema: {
             summary: 'Get Event Logs',
             description: 'Retrieves event logs for the project with optional filters by reason code, endpoint, and status. Supports pagination via limit and offset.',
@@ -63,7 +63,7 @@ export function registerDataRoutes(app: FastifyInstance, pool: Pool) {
             const project_id = (request as any).project_id;
             let limit = (request.query as any).limit || LOGS_DEFAULT_LIMIT;
             const offset = (request.query as any).offset || 0;
-            const query = request.query as GetLogsParams;
+            const query = request.query as any;
             const { reason_code, endpoint, status } = query;
 
             if (limit > LOGS_MAX_LIMIT) {
@@ -113,19 +113,19 @@ export function registerDataRoutes(app: FastifyInstance, pool: Pool) {
 
             const next_cursor = rows.length === limit ? (offset + limit).toString() : null;
 
-            const response: GetLogs200 = {
-                data: rows as LogEntry[],
+            const response: any = {
+                data: rows as any[],
                 next_cursor,
                 total_count,
                 request_id
             };
             return rep.send(response);
         } catch (error) {
-            return sendServerError(request, rep, error, '/logs', generateRequestId());
+            return sendServerError(request, rep, error, API_V1_ROUTES.DATA.LOGS, generateRequestId());
         }
     });
 
-    app.get("/v1/usage", {
+    app.get(API_V1_ROUTES.DATA.USAGE, {
         schema: {
             summary: 'Get Usage Statistics',
             description: 'Retrieves usage statistics for the last 31 days for the project associated with the API key.',
@@ -203,7 +203,7 @@ export function registerDataRoutes(app: FastifyInstance, pool: Pool) {
             const estimatedCacheHits = Math.floor(totalRequests * CACHE_HIT_PLACEHOLDER); // Placeholder 95%
             const cacheHitRatio = (estimatedCacheHits / totalRequests * 100);
 
-            const response: GetUsage200 = {
+            const response: any = {
                 period: USAGE_PERIOD,
                 totals,
                 by_day: dailyRows,
@@ -213,7 +213,7 @@ export function registerDataRoutes(app: FastifyInstance, pool: Pool) {
             };
             return rep.send(response);
         } catch (error) {
-            return sendServerError(request, rep, error, '/usage', generateRequestId());
+            return sendServerError(request, rep, error, API_V1_ROUTES.DATA.USAGE, generateRequestId());
         }
     });
 }

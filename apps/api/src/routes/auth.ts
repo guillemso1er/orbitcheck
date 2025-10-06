@@ -5,16 +5,13 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import jwt from 'jsonwebtoken';
 import type { Pool } from "pg";
 
+import { API_V1_ROUTES, DASHBOARD_ROUTES } from "@orbicheck/contracts";
 import { API_KEY_NAMES, API_KEY_PREFIX, ERROR_CODES, ERROR_MESSAGES, HTTP_STATUS, JWT_EXPIRES_IN, PG_UNIQUE_VIOLATION, PLAN_TYPES, PROJECT_NAMES, STATUS } from "../constants.js";
 import { environment } from "../env.js";
-import { generateRequestId, sendError, sendServerError, errorSchema } from "./utils.js";
-import type {
-  RegisterUserBody,
-  RegisterUser201,
-  LoginUserBody,
-  LoginUser200,
-  Error
-} from "@orbicheck/contracts";
+import { errorSchema, generateRequestId, sendError, sendServerError } from "./utils.js";
+
+// Define auth routes since they're not in the contracts
+
 
 export async function verifyJWT(request: FastifyRequest, rep: FastifyReply, pool: Pool) {
     const header = request.headers["authorization"];
@@ -52,7 +49,7 @@ export async function verifyJWT(request: FastifyRequest, rep: FastifyReply, pool
 }
 
 export function registerAuthRoutes(app: FastifyInstance, pool: Pool) {
-    app.post('/auth/register', {
+    app.post(API_V1_ROUTES.AUTH.REGISTER, {
         schema: {
             body: {
                 type: 'object',
@@ -85,7 +82,7 @@ export function registerAuthRoutes(app: FastifyInstance, pool: Pool) {
     }, async (request, rep) => {
         try {
             const request_id = generateRequestId();
-            const body = request.body as RegisterUserBody;
+            const body = request.body as any;
             const { email, password } = body;
             const hashedPassword = await bcrypt.hash(password, 12);
 
@@ -128,17 +125,17 @@ export function registerAuthRoutes(app: FastifyInstance, pool: Pool) {
             // Generate JWT
             const token = jwt.sign({ user_id: user.id }, environment.JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
 
-            const response: RegisterUser201 = { token, user, request_id };
+            const response: any = { token, user, request_id };
             return rep.status(HTTP_STATUS.CREATED).send(response);
         } catch (error) {
             if (error && typeof error === 'object' && 'code' in error && (error as { code: string }).code === PG_UNIQUE_VIOLATION) { // Unique violation
                 return sendError(rep, HTTP_STATUS.BAD_REQUEST, ERROR_CODES.USER_EXISTS, ERROR_MESSAGES[ERROR_CODES.USER_EXISTS], generateRequestId());
             }
-            return sendServerError(request, rep, error, '/auth/register', generateRequestId());
+            return sendServerError(request, rep, error, API_V1_ROUTES.AUTH.REGISTER, generateRequestId());
         }
     });
 
-    app.post('/auth/login', {
+    app.post(API_V1_ROUTES.AUTH.LOGIN, {
         schema: {
             body: {
                 type: 'object',
@@ -170,7 +167,7 @@ export function registerAuthRoutes(app: FastifyInstance, pool: Pool) {
     }, async (request, rep) => {
         try {
             const request_id = generateRequestId();
-            const body = request.body as LoginUserBody;
+            const body = request.body as any;
             const { email, password } = body;
 
             const { rows } = await pool.query('SELECT id, password_hash FROM users WHERE email = $1', [email]);
@@ -182,10 +179,10 @@ export function registerAuthRoutes(app: FastifyInstance, pool: Pool) {
             const user = rows[0];
             const token = jwt.sign({ user_id: user.id }, environment.JWT_SECRET, { expiresIn: '7d' });
 
-            const response: LoginUser200 = { token, user: { id: user.id, email }, request_id };
+            const response: any = { token, user: { id: user.id, email }, request_id };
             return rep.send(response);
         } catch (error) {
-            return sendServerError(request, rep, error, '/auth/login', generateRequestId());
+            return sendServerError(request, rep, error, API_V1_ROUTES.AUTH.LOGIN, generateRequestId());
         }
     });
 }

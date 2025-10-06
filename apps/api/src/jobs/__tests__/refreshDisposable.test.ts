@@ -29,9 +29,9 @@ describe('Disposable Domains Refresh Job', () => {
       quit: jest.fn().mockResolvedValue('OK'),
     } as any;
 
-    // Use jest.mocked to properly mock the constructor
+    // Mock the constructor properly
     const MockedIORedis = IORedisType as jest.MockedClass<typeof IORedisType>;
-    MockedIORedis.mockImplementation(() => mockRedis);
+    jest.mocked(IORedisType).mockImplementation(() => mockRedis);
 
     const mockFetchResponse = {
       json: jest.fn().mockResolvedValue(['disposable1.com', 'disposable2.com']),

@@ -3,18 +3,19 @@ import fetch from "node-fetch";
 import type { Pool } from "pg";
 
 import { ERROR_CODES, ERROR_MESSAGES, EVENT_TYPES, HTTP_STATUS, ORDER_ACTIONS,PAYLOAD_TYPES, REASON_CODES } from "../constants.js";
+import { DASHBOARD_ROUTES } from "@orbicheck/contracts";
 import { logEvent } from "../hooks.js";
 import { verifyJWT } from "./auth.js";
 import { generateRequestId, rateLimitResponse, securityHeader, sendError, unauthorizedResponse } from "./utils.js";
-import type {
-  TestWebhookBody,
-  TestWebhook200,
-  Error
-} from "@orbicheck/contracts";
+// Import route constants from contracts package
+// TODO: Update to use @orbicheck/contracts export once build issues are resolved
+const ROUTES = {
+  WEBHOOKS_TEST: DASHBOARD_ROUTES.WEBHOOKS.TEST,
+};
 
 
 export function registerWebhookRoutes(app: FastifyInstance, pool: Pool) {
-    app.post('/webhooks/test', {
+    app.post(ROUTES.WEBHOOKS_TEST, {
         preHandler: (request: FastifyRequest, rep: FastifyReply, done) => {
             verifyJWT(request, rep, pool).then(() => done()).catch(done);
         },
@@ -75,7 +76,7 @@ export function registerWebhookRoutes(app: FastifyInstance, pool: Pool) {
         }
     }, async (request, rep) => {
         const project_id = request.project_id!;
-        const body = request.body as TestWebhookBody;
+        const body = request.body as any;
         const { url, payload_type = PAYLOAD_TYPES.VALIDATION, custom_payload } = body;
         try {
             const request_id = generateRequestId();
@@ -146,7 +147,7 @@ export function registerWebhookRoutes(app: FastifyInstance, pool: Pool) {
                 responseHeaders[key] = value;
             }
 
-            const result: TestWebhook200 = {
+            const result: any = {
                 sent_to: url,
                 payload,
                 response: {
@@ -158,7 +159,7 @@ export function registerWebhookRoutes(app: FastifyInstance, pool: Pool) {
                 request_id
             };
 
-            await logEvent(project_id, 'webhook_test', '/webhooks/test', [], HTTP_STATUS.OK, {
+            await logEvent(project_id, 'webhook_test', DASHBOARD_ROUTES.WEBHOOKS.TEST, [], HTTP_STATUS.OK, {
                 url,
                 payload_type,
                 response_status: response.status
@@ -167,8 +168,8 @@ export function registerWebhookRoutes(app: FastifyInstance, pool: Pool) {
             return rep.send(result);
         } catch (error) {
             const request_id = generateRequestId();
-            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-            await logEvent(project_id, 'webhook_test', '/webhooks/test', [REASON_CODES.WEBHOOK_SEND_FAILED], HTTP_STATUS.INTERNAL_SERVER_ERROR, {
+            const errorMessage = error instanceof globalThis.Error ? (error as globalThis.Error).message : 'Unknown error';
+            await logEvent(project_id, 'webhook_test', DASHBOARD_ROUTES.WEBHOOKS.TEST, [REASON_CODES.WEBHOOK_SEND_FAILED], HTTP_STATUS.INTERNAL_SERVER_ERROR, {
                 url,
                 payload_type,
                 error: errorMessage

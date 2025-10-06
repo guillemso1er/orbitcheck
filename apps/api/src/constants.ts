@@ -233,12 +233,7 @@ export const TTL_TAXID = TAXID_VALIDATION_TTL_DAYS * 24 * 3600;
 
 export const TTL_PHONE = PHONE_VALIDATION_TTL_DAYS * 24 * 3600;
 
-export const API_PATHS = {
-  VALIDATE_EMAIL: '/v1/validate/email',
-  VALIDATE_PHONE: '/v1/validate/phone',
-  VALIDATE_ADDRESS: '/v1/validate/address',
-  VALIDATE_TAXID: '/v1/validate/tax-id',
-  VERIFY_PHONE: '/v1/verify/phone',
-} as const;
+
+
 
 export const TWILIO_CHANNEL_SMS = 'sms' as const;

@@ -8,6 +8,7 @@
     "generate:types": "openapi-typescript openapi.yaml -o src/openapi-types.ts",
     "generate:client": "orval",
     "generate:openapi": "node generate-openapi.js",
+    "generate:routes": "node generate-routes.js",
     "validate": "openapi-typescript openapi.yaml --strict",
     "lint": "eslint src/ --ext .ts --fix",
     "build": "tsc"
@@ -15,12 +16,14 @@
   "devDependencies": {
     "@types/node": "^24.5.2",
     "eslint": "^8.57.1",
+    "js-yaml": "^4.1.0",
     "openapi-typescript": "^7.4.0",
     "orval": "^7.0.1",
     "typescript": "5.9.2"
   },
   "files": [
     "src/",
+    "dist/",
     "openapi.yaml"
   ]
 }

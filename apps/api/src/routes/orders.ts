@@ -10,13 +10,7 @@ import { validateAddress } from "../validators/address.js";
 import { validateEmail } from "../validators/email.js";
 import { validatePhone } from "../validators/phone.js";
 import { generateRequestId, rateLimitResponse, securityHeader, sendServerError, unauthorizedResponse, validationErrorResponse } from "./utils.js";
-import type {
-  EvaluateOrderBody,
-  EvaluateOrder200,
-  CustomerMatch,
-  AddressMatch,
-  Error
-} from "@orbicheck/contracts";
+import { API_V1_ROUTES } from "@orbicheck/contracts";
 
 
 const customerMatchSchema = {
@@ -50,7 +44,7 @@ const addressMatchSchema = {
 };
 
 export function registerOrderRoutes(app: FastifyInstance, pool: Pool, redis: Redis) {
-    app.post('/v1/orders/evaluate', {
+    app.post(API_V1_ROUTES.ORDERS.EVALUATE_ORDER_FOR_RISK_AND_RULES, {
         schema: {
             summary: 'Evaluate Order for Risk and Rules',
             description: 'Evaluates an order for deduplication, validation, and applies business rules like P.O. box blocking, fraud scoring, and auto-hold/tagging. Returns risk assessment and action recommendations.',
@@ -132,7 +126,7 @@ export function registerOrderRoutes(app: FastifyInstance, pool: Pool, redis: Red
     }, async (request: FastifyRequest, rep: FastifyReply) => {
         const request_id = generateRequestId();
         try {
-            const body = request.body as EvaluateOrderBody;
+            const body = request.body as any;
             const project_id = (request as any).project_id;
             const reason_codes: string[] = [];
             const tags: string[] = [];
@@ -387,7 +381,7 @@ export function registerOrderRoutes(app: FastifyInstance, pool: Pool, redis: Red
                 }
             };
 
-            const response: EvaluateOrder200 = {
+            const response: any = {
                 order_id,
                 risk_score: Math.min(risk_score, 100),
                 action,
