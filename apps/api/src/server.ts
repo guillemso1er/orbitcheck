@@ -70,7 +70,7 @@ export async function build(pool: Pool, redis: IORedisType): Promise<FastifyInst
     // Register OpenAPI/Swagger for automatic API documentation generation
     await app.register(fastifySwagger, {
         openapi: {
-            ...openapiSpec,
+            ...(openapiSpec as Record<string, unknown>),
             servers: [{
                 url: `http://localhost:${environment.PORT}`,
                 description: 'Development server'

@@ -11,22 +11,23 @@ const openapiDoc = yaml.load(fs.readFileSync(openapiPath, 'utf8'));
 // Extract paths and generate route constants
 const paths = openapiDoc.paths;
 const routeGroups = {};
+const dashboardGroups = ['api-keys', 'webhooks', 'data'];
 
 // Group routes by their first path segment
 Object.entries(paths).forEach(([path, methods]) => {
     // Remove leading slash and split into segments
     const segments = path.replace(/^\//, '').split('/');
     const firstSegment = segments[0];
-    
+
     if (!routeGroups[firstSegment]) {
         routeGroups[firstSegment] = {};
     }
-    
+
     // Process each method
     Object.entries(methods).forEach(([method, methodConfig]) => {
         const operationId = methodConfig.operationId || `${method}_${path.replace(/\//g, '_').replace(/^\//, '')}`;
         const summary = methodConfig.summary || operationId;
-        
+
         // Create a clean constant name
         const constantName = summary
             .replace(/[^a-zA-Z0-9]/g, '_')
@@ -34,9 +35,9 @@ Object.entries(paths).forEach(([path, methods]) => {
             .toUpperCase()
             .replace(/^_/, '')
             .replace(/_$/, '');
-        
-        // Store the route info with v1 prefix if not already present
-        const fullPath = path.startsWith('/v1') ? path : `/v1${path}`;
+
+        // Store the route info with v1 prefix for non-dashboard routes if not already present
+        const fullPath = dashboardGroups.includes(firstSegment) ? path : (path.startsWith('/v1') ? path : `/v1${path}`);
         routeGroups[firstSegment][constantName] = {
             path: fullPath,
             method: method.toUpperCase(),
@@ -57,9 +58,10 @@ const generateRouteConstants = () => {
 `;
 
     // Generate DASHBOARD_ROUTES (for dashboard-specific endpoints)
+    const dashboardGroups = ['api-keys', 'webhooks', 'data'];
     const dashboardRoutes = {};
     Object.entries(routeGroups).forEach(([group, routes]) => {
-        if (['api-keys', 'webhooks', 'usage', 'logs'].includes(group)) {
+        if (dashboardGroups.includes(group)) {
             Object.entries(routes).forEach(([constant, route]) => {
                 const cleanConstant = constant.replace(/_GET|_POST|_PUT|_DELETE|_PATCH/, '');
                 dashboardRoutes[cleanConstant] = route.path;
@@ -80,14 +82,14 @@ const generateRouteConstants = () => {
     output += `export const API_V1_ROUTES = {\n`;
 
     Object.entries(routeGroups).forEach(([group, routes]) => {
-        if (!['api-keys', 'webhooks', 'usage', 'logs'].includes(group)) {
+        if (!dashboardGroups.includes(group)) {
             output += `  ${group.toUpperCase()}: {\n`;
-            
+
             Object.entries(routes).forEach(([constant, route]) => {
                 const cleanConstant = constant.replace(/_GET|_POST|_PUT|_DELETE|_PATCH/, '');
                 output += `    ${cleanConstant}: '${route.path}',\n`;
             });
-            
+
             output += `  },\n`;
         }
     });

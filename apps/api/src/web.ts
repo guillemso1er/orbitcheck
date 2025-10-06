@@ -6,9 +6,9 @@ import { type Redis as IORedisType } from 'ioredis';
 import { auth, idempotency, rateLimit } from "./hooks.js";
 // Import route constants from contracts package
 import { API_V1_ROUTES, DASHBOARD_ROUTES, API_ROUTES } from "@orbicheck/contracts";
-const WEBHOOKS_TEST = '/webhooks/test';
-const USAGE = API_V1_ROUTES.DATA.GET_USAGE_STATISTICS;
-const LOGS = API_V1_ROUTES.DATA.GET_EVENT_LOGS;
+const WEBHOOKS_TEST = DASHBOARD_ROUTES.TEST_WEBHOOK;
+const USAGE = DASHBOARD_ROUTES.GET_USAGE_STATISTICS;
+const LOGS = DASHBOARD_ROUTES.GET_EVENT_LOGS;
 const AUTH_REGISTER = API_ROUTES.REGISTER_NEW_USER;
 const AUTH_LOGIN = API_ROUTES.USER_LOGIN;
 import { registerApiKeysRoutes } from './routes/api-keys.js';
@@ -37,9 +37,8 @@ async function authenticateRequest(request: FastifyRequest, rep: FastifyReply, p
     if (url.startsWith('/health') || url.startsWith('/documentation') || url.startsWith(AUTH_REGISTER) || url.startsWith(AUTH_LOGIN)) return;
 
     // Dashboard routes require JWT authentication (user session)
-    // Fixed: Added /api/keys to match test expectations
-    const isDashboardRoute = url.startsWith(DASHBOARD_ROUTES.LIST_API_KEYS) || url.startsWith(WEBHOOKS_TEST) ||
-        url.startsWith(API_V1_ROUTES.DATA.GET_EVENT_LOGS) || url.startsWith(API_V1_ROUTES.DATA.GET_USAGE_STATISTICS);
+    const isDashboardRoute = url.startsWith(DASHBOARD_ROUTES.LIST_API_KEYS) || url.startsWith(DASHBOARD_ROUTES.TEST_WEBHOOK) ||
+        url.startsWith(DASHBOARD_ROUTES.GET_EVENT_LOGS) || url.startsWith(DASHBOARD_ROUTES.GET_USAGE_STATISTICS);
 
     // Apply JWT verification for dashboard or API key auth for public API
     await (isDashboardRoute ? verifyJWT(request, rep, pool) : auth(request, rep, pool));
@@ -61,9 +60,8 @@ async function applyRateLimitingAndIdempotency(request: FastifyRequest, rep: Fas
     // Skip middleware for health, docs, and auth
     if (url.startsWith('/health') || url.startsWith('/documentation') || url.startsWith(AUTH_REGISTER) || url.startsWith(AUTH_LOGIN)) return;
 
-    // Fixed: Added /api/keys to match test expectations
-    const isDashboardRoute = url.startsWith(DASHBOARD_ROUTES.LIST_API_KEYS) || url.startsWith(WEBHOOKS_TEST) ||
-        url.startsWith(API_V1_ROUTES.DATA.GET_EVENT_LOGS) || url.startsWith(API_V1_ROUTES.DATA.GET_USAGE_STATISTICS);
+    const isDashboardRoute = url.startsWith(DASHBOARD_ROUTES.LIST_API_KEYS) || url.startsWith(DASHBOARD_ROUTES.TEST_WEBHOOK) ||
+        url.startsWith(DASHBOARD_ROUTES.GET_EVENT_LOGS) || url.startsWith(DASHBOARD_ROUTES.GET_USAGE_STATISTICS);
 
     if (!isDashboardRoute) {
         await rateLimit(request, rep, redis);

@@ -15,7 +15,7 @@ import type {
   RevokeApiKey200,
   TestWebhook200,
   TestWebhookBody
-} from './api-client/orbiCheckAPI';
+} from './api-client/orbiCheckAPI.js';
 
 import {
   createApiKey,
@@ -26,7 +26,7 @@ import {
   registerUser,
   revokeApiKey,
   testWebhook
-} from './api-client/orbiCheckAPI';
+} from './api-client/orbiCheckAPI.js';
 
 export interface ApiClientConfig {
   baseURL: string;

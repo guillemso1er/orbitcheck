@@ -2,13 +2,13 @@ import type { FastifyInstance } from "fastify";
 import type { Pool } from "pg";
 
 import { CACHE_HIT_PLACEHOLDER, HTTP_STATUS, LOGS_DEFAULT_LIMIT, LOGS_MAX_LIMIT, TOP_REASONS_LIMIT, USAGE_DAYS, USAGE_PERIOD } from "../constants.js";
-import { API_V1_ROUTES } from "@orbicheck/contracts";
+import { DASHBOARD_ROUTES } from "@orbicheck/contracts";
 import { generateRequestId, rateLimitResponse, securityHeader, sendServerError, unauthorizedResponse } from "./utils.js";
 // Import route constants from contracts package
 // TODO: Update to use @orbicheck/contracts export once build issues are resolved
 const ROUTES = {
-  LOGS: API_V1_ROUTES.DATA.GET_EVENT_LOGS,
-  USAGE: API_V1_ROUTES.DATA.GET_USAGE_STATISTICS,
+  LOGS: DASHBOARD_ROUTES.GET_EVENT_LOGS,
+  USAGE: DASHBOARD_ROUTES.GET_USAGE_STATISTICS,
 };
 
 
