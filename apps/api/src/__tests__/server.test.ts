@@ -38,6 +38,7 @@ const mockApp = {
   listen: jest.fn().mockResolvedValue(undefined),
   log: { info: jest.fn(), error: jest.fn() },
   setErrorHandler: jest.fn(),
+  hasRoute: jest.fn().mockReturnValue(true),
 };
 jest.mock('fastify', () => jest.fn(() => mockApp));
 

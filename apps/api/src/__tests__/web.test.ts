@@ -1,18 +1,21 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import type { Redis as IORedisType } from 'ioredis';
 import type { Pool } from 'pg';
+import * as jwt from 'jsonwebtoken';
 import { auth, idempotency, rateLimit } from '../hooks.js';
 import { verifyJWT } from '../routes/auth.js';
 import { registerRoutes } from '../web.js';
 
-// Mock dependencies
+ // Mock dependencies
 jest.mock('../routes/auth');
 jest.mock('../hooks');
+jest.mock('jsonwebtoken');
 
 const mockVerifyJWT = verifyJWT as jest.MockedFunction<typeof verifyJWT>;
 const mockAuth = auth as jest.MockedFunction<typeof auth>;
 const mockRateLimit = rateLimit as jest.MockedFunction<typeof rateLimit>;
 const mockIdempotency = idempotency as jest.MockedFunction<typeof idempotency>;
+const mockJwtVerify = jwt.verify as jest.Mock;
 
 // Mock Fastify
 const mockAddHook = jest.fn();
@@ -86,7 +89,7 @@ describe('Web Authentication', () => {
     });
 
     it('should skip authentication for auth endpoints', async () => {
-      const request = createMockRequest('/auth/login');
+      const request = createMockRequest('/v1/auth/login');
       const reply = createMockReply();
 
       await hookHandler(request, reply);
@@ -95,8 +98,8 @@ describe('Web Authentication', () => {
       expect(mockAuth).not.toHaveBeenCalled();
     });
 
-    it('should use JWT verification for /api/keys endpoints', async () => {
-      const request = createMockRequest('/api/keys');
+    it('should use JWT verification for /api-keys endpoints', async () => {
+      const request = createMockRequest('/api-keys', { authorization: 'Bearer token' });
       const reply = createMockReply();
 
       await hookHandler(request, reply);
@@ -105,8 +108,8 @@ describe('Web Authentication', () => {
       expect(mockAuth).not.toHaveBeenCalled();
     });
 
-    it('should use JWT verification for /v1/api-keys endpoints', async () => {
-      const request = createMockRequest('/v1/api-keys');
+    it('should use JWT verification for /webhooks/test endpoints', async () => {
+      const request = createMockRequest('/webhooks/test');
       const reply = createMockReply();
 
       await hookHandler(request, reply);
@@ -115,8 +118,8 @@ describe('Web Authentication', () => {
       expect(mockAuth).not.toHaveBeenCalled();
     });
 
-    it('should use JWT verification for /api/webhooks endpoints', async () => {
-      const request = createMockRequest('/api/webhooks');
+    it('should use JWT verification for /data/usage endpoints', async () => {
+      const request = createMockRequest('/data/usage');
       const reply = createMockReply();
 
       await hookHandler(request, reply);
@@ -125,28 +128,8 @@ describe('Web Authentication', () => {
       expect(mockAuth).not.toHaveBeenCalled();
     });
 
-    it('should use JWT verification for /v1/webhooks endpoints', async () => {
-      const request = createMockRequest('/v1/webhooks');
-      const reply = createMockReply();
-
-      await hookHandler(request, reply);
-
-      expect(mockVerifyJWT).toHaveBeenCalled();
-      expect(mockAuth).not.toHaveBeenCalled();
-    });
-
-    it('should use JWT verification for /v1/usage endpoints', async () => {
-      const request = createMockRequest('/v1/usage');
-      const reply = createMockReply();
-
-      await hookHandler(request, reply);
-
-      expect(mockVerifyJWT).toHaveBeenCalled();
-      expect(mockAuth).not.toHaveBeenCalled();
-    });
-
-    it('should use JWT verification for /v1/logs endpoints', async () => {
-      const request = createMockRequest('/v1/logs');
+    it('should use JWT verification for /data/logs endpoints', async () => {
+      const request = createMockRequest('/data/logs');
       const reply = createMockReply();
 
       await hookHandler(request, reply);
@@ -177,12 +160,10 @@ describe('Web Authentication', () => {
 
     it('should skip rate limiting for dashboard routes', async () => {
       const dashboardRoutes = [
-        '/api/keys',
-        '/v1/api-keys',
-        '/api/webhooks',
-        '/v1/webhooks',
-        '/v1/usage',
-        '/v1/logs'
+        '/api-keys',
+        '/webhooks/test',
+        '/data/usage',
+        '/data/logs'
       ];
 
       for (const route of dashboardRoutes) {

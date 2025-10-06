@@ -55,11 +55,15 @@ describe('Usage Stats Endpoints', () => {
           // Mocking the authentication query
           return Promise.resolve({ rows: [{ project_id: 'test_project' }] });
         }
+        // Mock the projects query for JWT auth
+        if (upperQuery.includes('FROM PROJECTS') && upperQuery.includes('WHERE P.USER_ID')) {
+          return Promise.resolve({ rows: [{ project_id: 'test_project' }] });
+        }
         return Promise.resolve({ rows: [] });
       });
 
       const res = await request(app.server)
-        .get('/v1/usage')
+        .get('/data/usage')
         .set('Authorization', 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoidGVzdF91c2VyIiwicHJvamVjdF9pZCI6InRlc3RfcHJvamVjdCJ9.test');
 
       expect(res.statusCode).toBe(200);
@@ -88,12 +92,16 @@ describe('Usage Stats Endpoints', () => {
         if (upperQuery.includes('API_KEYS')) {
           return Promise.resolve({ rows: [{ project_id: 'test_project' }] });
         }
+        // Mock the projects query for JWT auth
+        if (upperQuery.includes('FROM projects') && upperQuery.includes('WHERE p.user_id')) {
+          return Promise.resolve({ rows: [{ project_id: 'test_project' }] });
+        }
         // For all other queries (usage_daily, reason_codes), return empty rows
         return Promise.resolve({ rows: [] });
       });
 
       const res = await request(app.server)
-        .get('/v1/usage')
+        .get('/data/usage')
         .set('Authorization', 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoidGVzdF91c2VyIiwicHJvamVjdF9pZCI6InRlc3RfcHJvamVjdCJ9.test');
 
       expect(res.statusCode).toBe(200);

@@ -46,11 +46,15 @@ describe('Logs Retrieval Endpoints', () => {
         if (upperQuery.includes('API_KEYS')) {
           return Promise.resolve({ rows: [{ project_id: 'test_project' }] });
         }
+        // Mock the projects query for JWT auth
+        if (upperQuery.includes('FROM PROJECTS') && upperQuery.includes('WHERE P.USER_ID')) {
+          return Promise.resolve({ rows: [{ project_id: 'test_project' }] });
+        }
         return Promise.resolve({ rows: [] });
       });
 
       const response = await request(app.server)
-        .get('/v1/logs')
+        .get('/data/logs')
         .set('Authorization', 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoidGVzdF91c2VyIiwicHJvamVjdF9pZCI6InRlc3RfcHJvamVjdCJ9.test');
 
       expect(response.status).toBe(200);
@@ -79,7 +83,7 @@ describe('Logs Retrieval Endpoints', () => {
       });
 
       const response = await request(app.server)
-        .get('/v1/logs?reason_code=email.invalid_format')
+        .get('/data/logs?reason_code=email.invalid_format')
         .set('Authorization', 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoidGVzdF91c2VyIiwicHJvamVjdF9pZCI6InRlc3RfcHJvamVjdCJ9.test');
 
       expect(response.status).toBe(200);
@@ -106,7 +110,7 @@ describe('Logs Retrieval Endpoints', () => {
       });
 
       const response = await request(app.server)
-        .get('/v1/logs?endpoint=/v1/validate/email&status=400')
+        .get('/data/logs?endpoint=/v1/validate/email&status=400')
         .set('Authorization', 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoidGVzdF91c2VyIiwicHJvamVjdF9pZCI6InRlc3RfcHJvamVjdCJ9.test');
 
       expect(response.status).toBe(200);
@@ -137,7 +141,7 @@ describe('Logs Retrieval Endpoints', () => {
       });
 
       const response = await request(app.server)
-        .get('/v1/logs?limit=1&offset=1')
+        .get('/data/logs?limit=1&offset=1')
         .set('Authorization', 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoidGVzdF91c2VyIiwicHJvamVjdF9pZCI6InRlc3RfcHJvamVjdCJ9.test');
 
       expect(response.status).toBe(200);

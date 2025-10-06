@@ -191,7 +191,7 @@ export const createApp = async () => {
         (request as any).project_id = projectResult.rows[0].project_id;
         (request as any).user_id = payload.user_id;
       } catch (error) {
-        return rep.code(401).send({ error: 'Unauthorized' });
+        return rep.code(401).send({ error: { code: 'invalid_token', message: 'Invalid token' } });
       }
     }
     return;
