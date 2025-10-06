@@ -28,7 +28,7 @@ describe('Dashboard Authentication - /api-keys endpoint', () => {
         jest.clearAllMocks();
         // Mock successful JWT verification
         mockedJwtVerify.mockImplementation(() => ({ user_id: 'test_user' }));
-        
+
         // Mock database queries - use the same patterns as the working tests
         mockPool.query.mockImplementation((queryText: string) => {
             const upperQuery = queryText.toUpperCase();
@@ -58,7 +58,7 @@ describe('Dashboard Authentication - /api-keys endpoint', () => {
 
     it('should successfully access /api-keys with valid JWT token', async () => {
         const validToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.test';
-        
+
         const response = await request(app.server)
             .get('/api-keys')
             .set('Authorization', `Bearer ${validToken}`);
@@ -70,11 +70,11 @@ describe('Dashboard Authentication - /api-keys endpoint', () => {
         expect(body.request_id).toBeDefined();
     });
 
-    it('should return 401 when Authorization header is missing', async () => {
+    it('should return 400 when Authorization header is missing', async () => {
         const response = await request(app.server)
             .get('/api-keys');
 
-        expect(response.status).toBe(400); // Actually returns 400 for missing auth
+        expect(response.status).toBe(400);
         expect(response.body.error).toBeDefined();
     });
 
@@ -124,14 +124,14 @@ describe('Dashboard Authentication - /api-keys endpoint', () => {
         const jwtResponse = await request(app.server)
             .get('/api-keys')
             .set('Authorization', `Bearer ${jwtToken}`);
-        
+
         expect(jwtResponse.status).toBe(200);
 
         // Test that /v1/validate/email does not use JWT auth (should return 404 since route doesn't exist)
         const apiResponse = await request(app.server)
             .get('/v1/validate/email')
             .set('Authorization', `Bearer ${jwtToken}`);
-        
+
         // Should not be 401 (unauthorized) since it would use API key auth, not JWT
         expect(apiResponse.status).not.toBe(401);
     });

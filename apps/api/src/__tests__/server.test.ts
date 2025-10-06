@@ -64,6 +64,17 @@ jest.mock('../web', () => ({
   registerRoutes: jest.fn(),
 }));
 
+// Mock the OpenAPI spec for tests
+jest.mock('@orbicheck/contracts/openapi.yaml', () => ({
+  openapi: '3.0.3',
+  info: {
+    title: 'OrbiCheck API',
+    description: 'API for validation, deduplication, and risk assessment services',
+    version: '1.0.0'
+  },
+  paths: {}
+}));
+
 // Import the mocked env so we can manipulate it in tests
 import { environment } from '../env.js';
 // Re-require the server module to ensure it gets the mocked dependencies

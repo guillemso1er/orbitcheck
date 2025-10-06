@@ -7,7 +7,14 @@ import type { Pool } from "pg";
 
 import { API_KEY_NAMES, API_KEY_PREFIX, ERROR_CODES, ERROR_MESSAGES, HTTP_STATUS, JWT_EXPIRES_IN, PG_UNIQUE_VIOLATION, PLAN_TYPES, PROJECT_NAMES, STATUS } from "../constants.js";
 import { environment } from "../env.js";
-import { generateRequestId, sendError, sendServerError } from "./utils.js";
+import { generateRequestId, sendError, sendServerError, errorSchema } from "./utils.js";
+import type {
+  RegisterUserBody,
+  RegisterUser201,
+  LoginUserBody,
+  LoginUser200,
+  Error
+} from "@orbicheck/contracts";
 
 export async function verifyJWT(request: FastifyRequest, rep: FastifyReply, pool: Pool) {
     const header = request.headers["authorization"];
@@ -57,6 +64,7 @@ export function registerAuthRoutes(app: FastifyInstance, pool: Pool) {
             },
             response: {
                 201: {
+                    description: 'User registered successfully',
                     type: 'object',
                     properties: {
                         token: { type: 'string' },
@@ -70,14 +78,15 @@ export function registerAuthRoutes(app: FastifyInstance, pool: Pool) {
                         request_id: { type: 'string' }
                     }
                 },
-                400: { description: 'Invalid input' },
-                409: { description: 'User already exists' }
+                400: { description: 'Invalid input data', ...errorSchema },
+                409: { description: 'User already exists', ...errorSchema }
             }
         }
     }, async (request, rep) => {
         try {
             const request_id = generateRequestId();
-            const { email, password } = request.body as { email: string; password: string };
+            const body = request.body as RegisterUserBody;
+            const { email, password } = body;
             const hashedPassword = await bcrypt.hash(password, 12);
 
             // Create user
@@ -119,7 +128,8 @@ export function registerAuthRoutes(app: FastifyInstance, pool: Pool) {
             // Generate JWT
             const token = jwt.sign({ user_id: user.id }, environment.JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
 
-            return rep.status(HTTP_STATUS.CREATED).send({ token, user, request_id });
+            const response: RegisterUser201 = { token, user, request_id };
+            return rep.status(HTTP_STATUS.CREATED).send(response);
         } catch (error) {
             if (error && typeof error === 'object' && 'code' in error && (error as { code: string }).code === PG_UNIQUE_VIOLATION) { // Unique violation
                 return sendError(rep, HTTP_STATUS.BAD_REQUEST, ERROR_CODES.USER_EXISTS, ERROR_MESSAGES[ERROR_CODES.USER_EXISTS], generateRequestId());
@@ -140,6 +150,7 @@ export function registerAuthRoutes(app: FastifyInstance, pool: Pool) {
             },
             response: {
                 200: {
+                    description: 'Login successful',
                     type: 'object',
                     properties: {
                         token: { type: 'string' },
@@ -153,13 +164,14 @@ export function registerAuthRoutes(app: FastifyInstance, pool: Pool) {
                         request_id: { type: 'string' }
                     }
                 },
-                401: { description: 'Invalid credentials' }
+                401: { description: 'Invalid credentials', ...errorSchema }
             }
         }
     }, async (request, rep) => {
         try {
             const request_id = generateRequestId();
-            const { email, password } = request.body as { email: string; password: string };
+            const body = request.body as LoginUserBody;
+            const { email, password } = body;
 
             const { rows } = await pool.query('SELECT id, password_hash FROM users WHERE email = $1', [email]);
 
@@ -170,7 +182,8 @@ export function registerAuthRoutes(app: FastifyInstance, pool: Pool) {
             const user = rows[0];
             const token = jwt.sign({ user_id: user.id }, environment.JWT_SECRET, { expiresIn: '7d' });
 
-            return rep.send({ token, user: { id: user.id, email }, request_id });
+            const response: LoginUser200 = { token, user: { id: user.id, email }, request_id };
+            return rep.send(response);
         } catch (error) {
             return sendServerError(request, rep, error, '/auth/login', generateRequestId());
         }

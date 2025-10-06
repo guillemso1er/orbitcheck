@@ -5,6 +5,13 @@ import type { Pool } from "pg";
 
 import { API_KEY_PREFIX, ERROR_CODES, ERROR_MESSAGES, HTTP_STATUS, STATUS } from "../constants.js";
 import { errorSchema, generateRequestId, rateLimitResponse, securityHeader, sendError, sendServerError, unauthorizedResponse } from "./utils.js";
+import type {
+  CreateApiKeyBody,
+  CreateApiKey201,
+  ListApiKeys200,
+  RevokeApiKey200,
+  Error
+} from "@orbicheck/contracts";
 
 
 export function registerApiKeysRoutes(app: FastifyInstance, pool: Pool) {
@@ -47,7 +54,8 @@ export function registerApiKeysRoutes(app: FastifyInstance, pool: Pool) {
                 "SELECT id, prefix, name, status, created_at, last_used_at FROM api_keys WHERE project_id = $1 ORDER BY created_at DESC",
                 [project_id]
             );
-            return rep.send({ data: rows, request_id });
+            const response: ListApiKeys200 = { data: rows, request_id };
+            return rep.send(response);
         } catch (error) {
             return sendServerError(request, rep, error, '/api/keys', generateRequestId());
         }
@@ -85,7 +93,8 @@ export function registerApiKeysRoutes(app: FastifyInstance, pool: Pool) {
     }, async (request, rep) => {
         try {
             const project_id = request.project_id!;
-            const { name } = request.body as { name?: string };
+            const body = request.body as CreateApiKeyBody;
+            const { name } = body;
             const request_id = generateRequestId();
 
             // Generate full key
@@ -105,14 +114,15 @@ export function registerApiKeysRoutes(app: FastifyInstance, pool: Pool) {
             );
 
             const newKey = rows[0];
-            return rep.status(HTTP_STATUS.CREATED).send({
+            const response: CreateApiKey201 = {
                 id: newKey.id,
                 prefix,
                 full_key, // Only return full_key once
                 status: STATUS.ACTIVE,
                 created_at: newKey.created_at,
                 request_id
-            });
+            };
+            return rep.status(HTTP_STATUS.CREATED).send(response);
         } catch (error) {
             return sendServerError(request, rep, error, '/api/keys', generateRequestId());
         }
@@ -161,7 +171,8 @@ export function registerApiKeysRoutes(app: FastifyInstance, pool: Pool) {
                 return sendError(rep, HTTP_STATUS.NOT_FOUND, ERROR_CODES.NOT_FOUND, ERROR_MESSAGES[ERROR_CODES.NOT_FOUND], request_id);
             }
 
-            return rep.send({ id, status: STATUS.REVOKED, request_id });
+            const response: RevokeApiKey200 = { id, status: STATUS.REVOKED, request_id };
+            return rep.send(response);
         } catch (error) {
             return sendServerError(request, rep, error, '/api/keys/:id', generateRequestId());
         }

@@ -1,5 +1,7 @@
 import 'dotenv/config';
 import { once } from 'node:events';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 
 import cors from "@fastify/cors";
 import fastifySwagger from '@fastify/swagger';
@@ -59,33 +61,17 @@ export async function build(pool: Pool, redis: IORedisType): Promise<FastifyInst
         return reply.status(error.statusCode ?? 500).send({ error: 'internal_error' });
     });
 
+    // Load OpenAPI spec from contracts package
+    const openapiSpec = JSON.parse(JSON.stringify(require('@orbicheck/contracts/openapi.yaml')));
+
     // Register OpenAPI/Swagger for automatic API documentation generation
     await app.register(fastifySwagger, {
         openapi: {
-            info: {
-                title: 'Orbicheck API',
-                description: 'Validation and risk assessment API for emails, phones, addresses, tax IDs, and orders.',
-                version: '1.0.0'
-            },
+            ...openapiSpec,
             servers: [{
                 url: `http://localhost:${environment.PORT}`,
                 description: 'Development server'
-            }],
-            components: {
-                securitySchemes: {
-                    bearerAuth: {
-                        type: 'http',
-                        scheme: 'bearer',
-                        bearerFormat: 'Bearer',
-                        description: 'Enter "Bearer" followed by your API key (e.g., Bearer ok_abcdef...)'
-                    }
-                }
-            },
-            security: [
-                {
-                    "bearerAuth": []
-                }
-            ]
+            }]
         }
     });
 

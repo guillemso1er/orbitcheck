@@ -7,6 +7,17 @@ import { DEDUPE_ACTIONS, ERROR_CODES, ERROR_MESSAGES, HTTP_STATUS, MATCH_TYPES, 
 import { logEvent } from "../hooks.js";
 import { normalizeAddress } from "../validators/address.js";
 import { generateRequestId, rateLimitResponse, securityHeader, sendServerError, unauthorizedResponse, validationErrorResponse } from "./utils.js";
+import type {
+  DedupeCustomerBody,
+  DedupeCustomer200,
+  DedupeAddressBody,
+  DedupeAddress200,
+  MergeDeduplicatedBody,
+  MergeDeduplicated200,
+  CustomerMatch,
+  AddressMatch,
+  Error
+} from "@orbicheck/contracts";
 
 export function registerDedupeRoutes(app: FastifyInstance, pool: Pool) {
     app.post('/v1/dedupe/customer', {
@@ -55,7 +66,8 @@ export function registerDedupeRoutes(app: FastifyInstance, pool: Pool) {
     }, async (request: FastifyRequest, rep: FastifyReply) => {
         try {
             const request_id = generateRequestId();
-            const { email, phone, first_name, last_name } = request.body as any;
+            const body = request.body as DedupeCustomerBody;
+            const { email, phone, first_name, last_name } = body;
             const project_id = (request as any).project_id;
             const reason_codes: string[] = [];
             const matches: any[] = [];
@@ -138,7 +150,7 @@ export function registerDedupeRoutes(app: FastifyInstance, pool: Pool) {
                 }
             }
 
-            const response = { matches, suggested_action, canonical_id, request_id };
+            const response: DedupeCustomer200 = { matches, suggested_action, canonical_id, request_id };
             await (rep as any).saveIdem?.(response);
             await logEvent(project_id, 'dedupe', '/dedupe/customer', reason_codes, HTTP_STATUS.OK, { matches_count: matches.length, suggested_action }, pool);
             return rep.send(response);
@@ -195,7 +207,8 @@ export function registerDedupeRoutes(app: FastifyInstance, pool: Pool) {
     }, async (request: FastifyRequest, rep: FastifyReply) => {
         try {
             const request_id = generateRequestId();
-            const { line1, line2, city, state, postal_code, country } = request.body as any;
+            const body = request.body as DedupeAddressBody;
+            const { line1, line2, city, state, postal_code, country } = body;
             const project_id = (request as any).project_id;
             const reason_codes: string[] = [];
             const matches: any[] = [];
@@ -275,7 +288,7 @@ export function registerDedupeRoutes(app: FastifyInstance, pool: Pool) {
                 }
             }
 
-            const response = { matches, suggested_action, canonical_id, request_id };
+            const response: DedupeAddress200 = { matches, suggested_action, canonical_id, request_id };
             await (rep as any).saveIdem?.(response);
             await logEvent(project_id, 'dedupe', '/dedupe/address', reason_codes, HTTP_STATUS.OK, { matches_count: matches.length, suggested_action }, pool);
             return rep.send(response);
@@ -319,7 +332,8 @@ export function registerDedupeRoutes(app: FastifyInstance, pool: Pool) {
     }, async (request: FastifyRequest, rep: FastifyReply) => {
         try {
             const request_id = generateRequestId();
-            const { type, ids, canonical_id } = request.body as { type: string; ids: string[]; canonical_id: string };
+            const body = request.body as MergeDeduplicatedBody;
+            const { type, ids, canonical_id } = body;
             const project_id = (request as any).project_id;
             const table = type === MERGE_TYPES.CUSTOMER ? 'customers' : 'addresses';
             const count = ids.length;
@@ -343,7 +357,7 @@ export function registerDedupeRoutes(app: FastifyInstance, pool: Pool) {
                 [canonical_id, ids, project_id]
             );
 
-            const response = { success: true, merged_count: count, canonical_id, request_id };
+            const response: MergeDeduplicated200 = { success: true, merged_count: count, canonical_id, request_id };
             await (rep as any).saveIdem?.(response);
             await logEvent(project_id, 'dedupe', '/dedupe/merge', [], HTTP_STATUS.OK, { type, merged_count: count }, pool);
             return rep.send(response);

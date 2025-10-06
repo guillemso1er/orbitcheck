@@ -60,7 +60,7 @@ describe('Usage Stats Endpoints', () => {
 
       const res = await request(app.server)
         .get('/v1/usage')
-        .set('Authorization', 'Bearer valid_key');
+        .set('Authorization', 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoidGVzdF91c2VyIiwicHJvamVjdF9pZCI6InRlc3RfcHJvamVjdCJ9.test');
 
       expect(res.statusCode).toBe(200);
       // Sum of validations from usageData
@@ -94,7 +94,7 @@ describe('Usage Stats Endpoints', () => {
 
       const res = await request(app.server)
         .get('/v1/usage')
-        .set('Authorization', 'Bearer valid_key');
+        .set('Authorization', 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoidGVzdF91c2VyIiwicHJvamVjdF9pZCI6InRlc3RfcHJvamVjdCJ9.test');
 
       expect(res.statusCode).toBe(200);
       expect(res.body.totals.validations).toBe(0);

@@ -12,6 +12,19 @@ import { validateEmail } from "../validators/email.js";
 import { validatePhone } from "../validators/phone.js";
 import { validateTaxId } from "../validators/taxid.js";
 import { generateRequestId, rateLimitResponse, securityHeader, sendServerError, unauthorizedResponse, validationErrorResponse } from "./utils.js";
+import type {
+  ValidateEmailBody,
+  ValidateEmail200,
+  ValidatePhoneBody,
+  ValidatePhone200,
+  ValidateAddressBody,
+  ValidateAddress200,
+  ValidateTaxIdBody,
+  ValidateTaxId200,
+  VerifyPhoneOtpBody,
+  VerifyPhoneOtp200,
+  Error
+} from "@orbicheck/contracts";
 
 export function registerValidationRoutes(app: FastifyInstance, pool: Pool, redis: IORedisType) {
     app.post('/v1/validate/email', {
@@ -49,7 +62,8 @@ export function registerValidationRoutes(app: FastifyInstance, pool: Pool, redis
     }, async (request, rep) => {
         try {
             const request_id = generateRequestId();
-            const { email } = request.body as { email: string };
+            const body = request.body as ValidateEmailBody;
+            const { email } = body;
             const out = await validateEmail(email, redis);
             if (rep.saveIdem) {
                 await rep.saveIdem(out);
@@ -59,7 +73,8 @@ export function registerValidationRoutes(app: FastifyInstance, pool: Pool, redis
                 disposable: out.disposable,
                 mx_found: out.mx_found,
             }, pool);
-            return rep.send({ ...out, request_id });
+            const response: ValidateEmail200 = { ...out, request_id };
+            return rep.send(response);
         } catch (error) {
             console.error('Email validation error:', error);
             return sendServerError(request, rep, error, '/v1/validate/email', generateRequestId());
@@ -103,7 +118,8 @@ export function registerValidationRoutes(app: FastifyInstance, pool: Pool, redis
     }, async (request, rep) => {
         try {
             const request_id = generateRequestId();
-            const { phone, country, request_otp = false } = request.body as { phone: string; country?: string; request_otp?: boolean };
+            const body = request.body as ValidatePhoneBody;
+            const { phone, country, request_otp = false } = body;
             const validation = await validatePhone(phone, country, redis);
             let verification_sid: string | null = null;
             if (validation.valid && request_otp && validation.e164 && environment.TWILIO_ACCOUNT_SID && environment.TWILIO_AUTH_TOKEN && environment.TWILIO_VERIFY_SERVICE_SID) {
@@ -127,7 +143,8 @@ export function registerValidationRoutes(app: FastifyInstance, pool: Pool, redis
                 await rep.saveIdem(response);
             }
             await logEvent(request.project_id!, "validation", API_PATHS.VALIDATE_PHONE, response.reason_codes, HTTP_STATUS.OK, { request_otp, otp_status: verification_sid ? 'otp_sent' : 'no_otp' }, pool);
-            return rep.send({ ...response, request_id });
+            const phoneResponse: ValidatePhone200 = { ...response, request_id };
+            return rep.send(phoneResponse);
         } catch (error) {
             return sendServerError(request, rep, error, '/v1/validate/phone', generateRequestId());
         }
@@ -180,13 +197,15 @@ export function registerValidationRoutes(app: FastifyInstance, pool: Pool, redis
     }, async (request, rep) => {
         try {
             const request_id = generateRequestId();
-            const { address } = request.body as any; // Cast because Fastify has already validated
+            const body = request.body as ValidateAddressBody;
+            const { address } = body;
             const out = await validateAddress(address, pool, redis);
             if (rep.saveIdem) {
                 await rep.saveIdem(out);
             }
             await logEvent(request.project_id!, "validation", API_PATHS.VALIDATE_ADDRESS, out.reason_codes, HTTP_STATUS.OK, { po_box: out.po_box, postal_city_match: out.postal_city_match }, pool);
-            return rep.send({ ...out, request_id });
+            const response: ValidateAddress200 = { ...out, request_id };
+            return rep.send(response);
         } catch (error) {
             return sendServerError(request, rep, error, '/v1/validate/address', generateRequestId());
         }
@@ -227,13 +246,15 @@ export function registerValidationRoutes(app: FastifyInstance, pool: Pool, redis
     }, async (request, rep) => {
         try {
             const request_id = generateRequestId();
-            const { type, value, country } = request.body as { type: string; value: string; country?: string };
+            const body = request.body as ValidateTaxIdBody;
+            const { type, value, country } = body;
             const out = await validateTaxId({ type, value, country: country || "", redis });
             if (rep.saveIdem) {
                 await rep.saveIdem(out);
             }
             await logEvent(request.project_id!, "validation", API_PATHS.VALIDATE_TAXID, out.reason_codes, HTTP_STATUS.OK, { type }, pool);
-            return rep.send({ ...out, request_id });
+            const response: ValidateTaxId200 = { ...out, request_id };
+            return rep.send(response);
         } catch (error) {
             return sendServerError(request, rep, error, '/v1/validate/tax-id', generateRequestId());
         }
@@ -271,7 +292,8 @@ export function registerValidationRoutes(app: FastifyInstance, pool: Pool, redis
     }, async (request, rep) => {
         try {
             const request_id = generateRequestId();
-            const { verification_sid, code } = request.body as { verification_sid: string; code: string };
+            const body = request.body as VerifyPhoneOtpBody;
+            const { verification_sid, code } = body;
             if (!environment.TWILIO_ACCOUNT_SID || !environment.TWILIO_AUTH_TOKEN || !environment.TWILIO_VERIFY_SERVICE_SID) {
                 return rep.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).send({ error: { code: ERROR_CODES.SERVER_ERROR, message: ERROR_MESSAGES[ERROR_CODES.SERVER_ERROR] } });
             }
@@ -280,7 +302,7 @@ export function registerValidationRoutes(app: FastifyInstance, pool: Pool, redis
             const verificationCheck = await verify.verificationChecks.create({ code, to: verification_sid });
             const valid = verificationCheck.status === 'approved';
             const reason_codes = valid ? [] : ['phone.otp_invalid'];
-            const response = { valid, reason_codes, request_id };
+            const response: VerifyPhoneOtp200 = { valid, reason_codes, request_id };
             await (rep as any).saveIdem?.(response);
             await logEvent((request as any).project_id, "verification", API_PATHS.VERIFY_PHONE, reason_codes, valid ? HTTP_STATUS.OK : HTTP_STATUS.BAD_REQUEST, { verified: valid }, pool);
             return rep.send(response);

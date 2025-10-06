@@ -3,6 +3,13 @@ import type { Pool } from "pg";
 
 import { CACHE_HIT_PLACEHOLDER, HTTP_STATUS, LOGS_DEFAULT_LIMIT, LOGS_MAX_LIMIT, TOP_REASONS_LIMIT, USAGE_DAYS, USAGE_PERIOD } from "../constants.js";
 import { generateRequestId, rateLimitResponse, securityHeader, sendServerError, unauthorizedResponse } from "./utils.js";
+import type {
+  LogEntry,
+  GetLogsParams,
+  GetLogs200,
+  GetUsage200,
+  Error
+} from "@orbicheck/contracts";
 
 
 export function registerDataRoutes(app: FastifyInstance, pool: Pool) {
@@ -56,7 +63,8 @@ export function registerDataRoutes(app: FastifyInstance, pool: Pool) {
             const project_id = (request as any).project_id;
             let limit = (request.query as any).limit || LOGS_DEFAULT_LIMIT;
             const offset = (request.query as any).offset || 0;
-            const { reason_code, endpoint, status } = request.query as any;
+            const query = request.query as GetLogsParams;
+            const { reason_code, endpoint, status } = query;
 
             if (limit > LOGS_MAX_LIMIT) {
                 limit = LOGS_MAX_LIMIT;
@@ -105,7 +113,13 @@ export function registerDataRoutes(app: FastifyInstance, pool: Pool) {
 
             const next_cursor = rows.length === limit ? (offset + limit).toString() : null;
 
-            return rep.send({ data: rows, next_cursor, total_count, request_id });
+            const response: GetLogs200 = {
+                data: rows as LogEntry[],
+                next_cursor,
+                total_count,
+                request_id
+            };
+            return rep.send(response);
         } catch (error) {
             return sendServerError(request, rep, error, '/logs', generateRequestId());
         }
@@ -189,14 +203,15 @@ export function registerDataRoutes(app: FastifyInstance, pool: Pool) {
             const estimatedCacheHits = Math.floor(totalRequests * CACHE_HIT_PLACEHOLDER); // Placeholder 95%
             const cacheHitRatio = (estimatedCacheHits / totalRequests * 100);
 
-            return rep.send({
+            const response: GetUsage200 = {
                 period: USAGE_PERIOD,
                 totals,
                 by_day: dailyRows,
                 top_reason_codes: topReasons,
                 cache_hit_ratio: cacheHitRatio,
                 request_id
-            });
+            };
+            return rep.send(response);
         } catch (error) {
             return sendServerError(request, rep, error, '/usage', generateRequestId());
         }

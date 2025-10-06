@@ -10,6 +10,13 @@ import { validateAddress } from "../validators/address.js";
 import { validateEmail } from "../validators/email.js";
 import { validatePhone } from "../validators/phone.js";
 import { generateRequestId, rateLimitResponse, securityHeader, sendServerError, unauthorizedResponse, validationErrorResponse } from "./utils.js";
+import type {
+  EvaluateOrderBody,
+  EvaluateOrder200,
+  CustomerMatch,
+  AddressMatch,
+  Error
+} from "@orbicheck/contracts";
 
 
 const customerMatchSchema = {
@@ -125,7 +132,7 @@ export function registerOrderRoutes(app: FastifyInstance, pool: Pool, redis: Red
     }, async (request: FastifyRequest, rep: FastifyReply) => {
         const request_id = generateRequestId();
         try {
-            const body = request.body as any;
+            const body = request.body as EvaluateOrderBody;
             const project_id = (request as any).project_id;
             const reason_codes: string[] = [];
             const tags: string[] = [];
@@ -205,7 +212,14 @@ export function registerOrderRoutes(app: FastifyInstance, pool: Pool, redis: Red
             }
 
             let address_matches: any[] = [];
-            const addressValidation = await validateAddress(shipping_address, pool, redis);
+            const addressValidation = await validateAddress({
+                line1: shipping_address.line1!,
+                line2: shipping_address.line2,
+                city: shipping_address.city!,
+                state: shipping_address.state,
+                postal_code: shipping_address.postal_code!,
+                country: shipping_address.country!
+            }, pool, redis);
             const normAddr = addressValidation.normalized;
             const addrHash = crypto.createHash('sha256').update(JSON.stringify(normAddr)).digest('hex');
 
@@ -373,7 +387,7 @@ export function registerOrderRoutes(app: FastifyInstance, pool: Pool, redis: Red
                 }
             };
 
-            const response = {
+            const response: EvaluateOrder200 = {
                 order_id,
                 risk_score: Math.min(risk_score, 100),
                 action,

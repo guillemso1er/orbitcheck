@@ -50,8 +50,8 @@ describe('Logs Retrieval Endpoints', () => {
       });
 
       const response = await request(app.server)
-        .get('/logs')
-        .set('Authorization', 'Bearer valid_key');
+        .get('/v1/logs')
+        .set('Authorization', 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoidGVzdF91c2VyIiwicHJvamVjdF9pZCI6InRlc3RfcHJvamVjdCJ9.test');
 
       expect(response.status).toBe(200);
       const body = response.body as { data: unknown[]; total_count: number };
@@ -79,8 +79,8 @@ describe('Logs Retrieval Endpoints', () => {
       });
 
       const response = await request(app.server)
-        .get('/logs?reason_code=email.invalid_format')
-        .set('Authorization', 'Bearer valid_key');
+        .get('/v1/logs?reason_code=email.invalid_format')
+        .set('Authorization', 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoidGVzdF91c2VyIiwicHJvamVjdF9pZCI6InRlc3RfcHJvamVjdCJ9.test');
 
       expect(response.status).toBe(200);
       const body = response.body as { data: { reason_codes: string[] }[] };
@@ -106,8 +106,8 @@ describe('Logs Retrieval Endpoints', () => {
       });
 
       const response = await request(app.server)
-        .get('/logs?endpoint=/v1/validate/email&status=400')
-        .set('Authorization', 'Bearer valid_key');
+        .get('/v1/logs?endpoint=/v1/validate/email&status=400')
+        .set('Authorization', 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoidGVzdF91c2VyIiwicHJvamVjdF9pZCI6InRlc3RfcHJvamVjdCJ9.test');
 
       expect(response.status).toBe(200);
       const body = response.body as { data: { endpoint: string; status: number }[] };
@@ -137,8 +137,8 @@ describe('Logs Retrieval Endpoints', () => {
       });
 
       const response = await request(app.server)
-        .get('/logs?limit=1&offset=1')
-        .set('Authorization', 'Bearer valid_key');
+        .get('/v1/logs?limit=1&offset=1')
+        .set('Authorization', 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoidGVzdF91c2VyIiwicHJvamVjdF9pZCI6InRlc3RfcHJvamVjdCJ9.test');
 
       expect(response.status).toBe(200);
       const body = response.body as { data: { id: string }[]; total_count: number; next_cursor: string };

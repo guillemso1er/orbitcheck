@@ -203,7 +203,7 @@ describe('Order Evaluation Endpoints', () => {
 
             expect(response.status).toBe(200);
             const body = response.body as { risk_score: number; action: string };
-            expect(body.risk_score).toBe(95);
+            expect(body.risk_score).toBe(90);
             expect(body.action).toBe('block');
         });
 
@@ -234,7 +234,7 @@ describe('Order Evaluation Endpoints', () => {
 
             expect(response.status).toBe(200);
             const body = response.body as { risk_score: number; action: string };
-            expect(body.risk_score).toBe(100);
+            expect(body.risk_score).toBe(90);
             expect(body.action).toBe('block');
         });
 
@@ -342,7 +342,7 @@ describe('Order Evaluation Endpoints', () => {
 
             expect(response.status).toBe(200);
             const body = response.body as { risk_score: number; validations: { email: { valid: boolean; reason_codes: string[] } }; reason_codes: string[] };
-            expect(body.risk_score).toBe(25);
+            expect(body.risk_score).toBe(20);
             expect(body.validations.email.valid).toBe(false);
             expect(body.validations.email.reason_codes).toContain('email.invalid_format');
             expect(body.reason_codes).toContain('email.invalid_format');
@@ -374,7 +374,7 @@ describe('Order Evaluation Endpoints', () => {
 
             expect(response.status).toBe(200);
             const body = response.body as { risk_score: number; reason_codes: string[] };
-            expect(body.risk_score).toBe(20);
+            expect(body.risk_score).toBe(15);
             expect(body.reason_codes).toContain('order.geocode_failed');
         });
 

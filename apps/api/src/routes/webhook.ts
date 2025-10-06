@@ -6,6 +6,11 @@ import { ERROR_CODES, ERROR_MESSAGES, EVENT_TYPES, HTTP_STATUS, ORDER_ACTIONS,PA
 import { logEvent } from "../hooks.js";
 import { verifyJWT } from "./auth.js";
 import { generateRequestId, rateLimitResponse, securityHeader, sendError, unauthorizedResponse } from "./utils.js";
+import type {
+  TestWebhookBody,
+  TestWebhook200,
+  Error
+} from "@orbicheck/contracts";
 
 
 export function registerWebhookRoutes(app: FastifyInstance, pool: Pool) {
@@ -70,11 +75,8 @@ export function registerWebhookRoutes(app: FastifyInstance, pool: Pool) {
         }
     }, async (request, rep) => {
         const project_id = request.project_id!;
-        const { url, payload_type = PAYLOAD_TYPES.VALIDATION, custom_payload } = request.body as {
-            url: string;
-            payload_type?: typeof PAYLOAD_TYPES[keyof typeof PAYLOAD_TYPES];
-            custom_payload?: Record<string, unknown>;
-        };
+        const body = request.body as TestWebhookBody;
+        const { url, payload_type = PAYLOAD_TYPES.VALIDATION, custom_payload } = body;
         try {
             const request_id = generateRequestId();
 
@@ -144,7 +146,7 @@ export function registerWebhookRoutes(app: FastifyInstance, pool: Pool) {
                 responseHeaders[key] = value;
             }
 
-            const result = {
+            const result: TestWebhook200 = {
                 sent_to: url,
                 payload,
                 response: {
