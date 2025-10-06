@@ -1005,7 +1005,7 @@ export const getLogs = <TData = AxiosResponse<GetLogs200>>(
     params?: GetLogsParams, options?: AxiosRequestConfig
  ): Promise<TData> => {
     return axios.get(
-      `/logs`,{
+      `/data/logs`,{
     ...options,
         params: {...params, ...options?.params},}
     );
@@ -1019,7 +1019,7 @@ export const getUsage = <TData = AxiosResponse<GetUsage200>>(
      options?: AxiosRequestConfig
  ): Promise<TData> => {
     return axios.get(
-      `/usage`,options
+      `/data/usage`,options
     );
   }
 

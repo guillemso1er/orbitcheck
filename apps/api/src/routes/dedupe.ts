@@ -145,7 +145,7 @@ export function registerDedupeRoutes(app: FastifyInstance, pool: Pool) {
             await logEvent(project_id, 'dedupe', '/dedupe/customer', reason_codes, HTTP_STATUS.OK, { matches_count: matches.length, suggested_action }, pool);
             return rep.send(response);
         } catch (error) {
-            return sendServerError(request, rep, error, '/v1/dedupe/customer', generateRequestId());
+            return sendServerError(request, rep, error, API_V1_ROUTES.DEDUPE.DEDUPLICATE_CUSTOMER, generateRequestId());
         }
     });
 
@@ -283,7 +283,7 @@ export function registerDedupeRoutes(app: FastifyInstance, pool: Pool) {
             await logEvent(project_id, 'dedupe', '/dedupe/address', reason_codes, HTTP_STATUS.OK, { matches_count: matches.length, suggested_action }, pool);
             return rep.send(response);
         } catch (error) {
-            return sendServerError(request, rep, error, '/v1/dedupe/address', generateRequestId());
+            return sendServerError(request, rep, error, API_V1_ROUTES.DEDUPE.DEDUPLICATE_ADDRESS, generateRequestId());
         }
     });
 

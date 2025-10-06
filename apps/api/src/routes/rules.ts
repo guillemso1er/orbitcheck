@@ -121,7 +121,7 @@ export function registerRulesRoutes(app: FastifyInstance, pool: Pool) {
   ];
 
   // Rules list endpoint
-  app.get('/v1/rules', {
+  app.get(API_V1_ROUTES.RULES.GET_AVAILABLE_RULES, {
     schema: {
       summary: 'Get Available Rules',
       description: 'Returns a list of all available validation and risk assessment rules.',
@@ -159,12 +159,12 @@ export function registerRulesRoutes(app: FastifyInstance, pool: Pool) {
       };
       return rep.send(response);
     } catch (error) {
-      return sendServerError(request, rep, error, '/v1/rules', generateRequestId());
+      return sendServerError(request, rep, error, API_V1_ROUTES.RULES.GET_AVAILABLE_RULES, generateRequestId());
     }
   });
 
   // Reason code catalog endpoint
-  app.get('/v1/rules/catalog', {
+  app.get(API_V1_ROUTES.RULES.GET_REASON_CODE_CATALOG, {
     schema: {
       summary: 'Get Reason Code Catalog',
       description: 'Returns a comprehensive list of all possible reason codes with descriptions and severity levels.',
@@ -201,12 +201,12 @@ export function registerRulesRoutes(app: FastifyInstance, pool: Pool) {
       };
       return rep.send(response);
     } catch (error) {
-      return sendServerError(request, rep, error, '/v1/rules/catalog', generateRequestId());
+      return sendServerError(request, rep, error, API_V1_ROUTES.RULES.GET_REASON_CODE_CATALOG, generateRequestId());
     }
   });
 
   // Placeholder for register rules route (to be implemented)
-  app.post('/v1/rules/register', {
+  app.post(API_V1_ROUTES.RULES.REGISTER_CUSTOM_RULES, {
     schema: {
       summary: 'Register Custom Rules',
       description: 'Registers custom business rules for the project.',
@@ -260,7 +260,7 @@ export function registerRulesRoutes(app: FastifyInstance, pool: Pool) {
 
       return rep.send(response);
     } catch (error) {
-      return sendServerError(request, rep, error, '/v1/rules/register', generateRequestId());
+      return sendServerError(request, rep, error, API_V1_ROUTES.RULES.REGISTER_CUSTOM_RULES, generateRequestId());
     }
   });
 }

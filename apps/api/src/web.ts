@@ -38,7 +38,7 @@ async function authenticateRequest(request: FastifyRequest, rep: FastifyReply, p
 
     // Dashboard routes require JWT authentication (user session)
     // Fixed: Added /api/keys to match test expectations
-    const isDashboardRoute = url.startsWith('/v1/api-keys') || url.startsWith(WEBHOOKS_TEST) ||
+    const isDashboardRoute = url.startsWith(DASHBOARD_ROUTES.LIST_API_KEYS) || url.startsWith(WEBHOOKS_TEST) ||
         url.startsWith(API_V1_ROUTES.DATA.GET_EVENT_LOGS) || url.startsWith(API_V1_ROUTES.DATA.GET_USAGE_STATISTICS);
 
     // Apply JWT verification for dashboard or API key auth for public API
@@ -62,7 +62,7 @@ async function applyRateLimitingAndIdempotency(request: FastifyRequest, rep: Fas
     if (url.startsWith('/health') || url.startsWith('/documentation') || url.startsWith(AUTH_REGISTER) || url.startsWith(AUTH_LOGIN)) return;
 
     // Fixed: Added /api/keys to match test expectations
-    const isDashboardRoute = url.startsWith('/v1/api-keys') || url.startsWith(WEBHOOKS_TEST) ||
+    const isDashboardRoute = url.startsWith(DASHBOARD_ROUTES.LIST_API_KEYS) || url.startsWith(WEBHOOKS_TEST) ||
         url.startsWith(API_V1_ROUTES.DATA.GET_EVENT_LOGS) || url.startsWith(API_V1_ROUTES.DATA.GET_USAGE_STATISTICS);
 
     if (!isDashboardRoute) {

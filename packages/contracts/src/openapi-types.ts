@@ -268,7 +268,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/logs": {
+    "/data/logs": {
         parameters: {
             query?: never;
             header?: never;
@@ -288,7 +288,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/usage": {
+    "/data/usage": {
         parameters: {
             query?: never;
             header?: never;

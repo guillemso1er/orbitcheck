@@ -400,7 +400,7 @@ export function registerOrderRoutes(app: FastifyInstance, pool: Pool, redis: Red
             return rep.send(response);
         } catch (error) {
             app.log.error({ err: error, request_id }, "An unhandled error occurred in /v1/orders/evaluate");
-            return sendServerError(request, rep, error, '/v1/orders/evaluate', request_id);
+            return sendServerError(request, rep, error, API_V1_ROUTES.ORDERS.EVALUATE_ORDER_FOR_RISK_AND_RULES, request_id);
         }
     });
 }
