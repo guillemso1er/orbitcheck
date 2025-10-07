@@ -108,6 +108,7 @@ jest.mock('@hapi/address', () => ({
 
 jest.mock('libphonenumber-js', () => ({
   parsePhoneNumber: jest.fn(),
+  parsePhoneNumberWithError: jest.fn(),
 }));
 
 jest.mock('tldts', () => ({
@@ -165,7 +166,7 @@ export const createApp = async (): Promise<Fastify.FastifyInstance> => {
     const isDashboardRoute = url.startsWith('/api-keys') || url.startsWith('/api/webhooks') ||
       url.startsWith('/v1/api-keys') || url.startsWith('/v1/webhooks') ||
       url.startsWith('/v1/usage') || url.startsWith('/v1/logs');
-    
+
     if (isDashboardRoute) {
       const authHeader = request.headers.authorization;
       if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -173,21 +174,21 @@ export const createApp = async (): Promise<Fastify.FastifyInstance> => {
       }
 
       const token = authHeader.split(' ')[1];
-      
+
       try {
         // Actually call jwt.verify so our mocks work
         const payload = jwt.verify(token, process.env.JWT_SECRET || 'test_jwt_secret');
-        
+
         // Check if user has a project
         const projectResult = await mockPool.query(
           "SELECT p.id AS project_id FROM projects p WHERE p.user_id = $1",
           [payload.user_id]
         );
-        
+
         if (!projectResult.rows || projectResult.rows.length === 0) {
           return rep.code(401).send({ error: 'Unauthorized' });
         }
-        
+
         (request as any).project_id = projectResult.rows[0].project_id;
         (request as any).user_id = payload.user_id;
       } catch {
@@ -342,7 +343,15 @@ export const setupBeforeAll = async (): Promise<void> => {
 
   // Mock crypto for consistent testing
   const cryptoModule = await import('node:crypto');
-  (cryptoModule.randomBytes as jest.Mock).mockReturnValue(Buffer.from('test32bytes' + 'a'.repeat(24)));
+  // eslint-disable-next-line promise/prefer-await-to-callbacks
+  (cryptoModule.randomBytes as jest.Mock).mockImplementation((size, callback) => {
+    if (callback) {
+      // eslint-disable-next-line promise/prefer-await-to-callbacks
+      callback(null, Buffer.from('test32bytes' + 'a'.repeat(24)));
+    } else {
+      return Buffer.from('test32bytes' + 'a'.repeat(24));
+    }
+  });
   const actualCrypto = jest.requireActual('node:crypto');
   (cryptoModule.createHash as jest.Mock).mockImplementation((algorithm) => actualCrypto.createHash(algorithm));
   (cryptoModule.randomUUID as jest.Mock).mockReturnValue('123e4567-e89b-12d3-a456-426614174000');
@@ -365,6 +374,12 @@ export const setupBeforeAll = async (): Promise<void> => {
   mockTwilioInstance.messages.create.mockResolvedValue({ sid: 'test_sid' });
   hapi.isEmailValid.mockReturnValue(true);
   libphone.parsePhoneNumber.mockReturnValue({
+    isValid: () => true,
+    number: '+15551234567',
+    country: 'US',
+    phone: '15551234567',
+  } as any);
+  libphone.parsePhoneNumberWithError.mockReturnValue({
     isValid: () => true,
     number: '+15551234567',
     country: 'US',

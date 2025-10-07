@@ -82,7 +82,7 @@ describe('Webhook Test Routes (JWT Auth)', () => {
     });
 
     it('should successfully test a webhook with validation payload', async () => {
-        const _result = await request(app.server)
+        const res = await request(app.server)
             .post('/webhooks/test')
             .set('Authorization', `Bearer ${MOCK_JWT}`)
             .send({
@@ -101,7 +101,7 @@ describe('Webhook Test Routes (JWT Auth)', () => {
     });
 
     it('should handle custom payload successfully', async () => {
-        const _result = await request(app.server)
+        const res = await request(app.server)
             .post('/webhooks/test')
             .set('Authorization', `Bearer ${MOCK_JWT}`)
             .send({
@@ -119,7 +119,7 @@ describe('Webhook Test Routes (JWT Auth)', () => {
     });
 
     it('should reject invalid URL', async () => {
-        const _result = await request(app.server)
+        const res = await request(app.server)
             .post('/webhooks/test')
             .set('Authorization', `Bearer ${MOCK_JWT}`)
             .send({
@@ -132,7 +132,7 @@ describe('Webhook Test Routes (JWT Auth)', () => {
     });
 
     it('should reject missing custom payload for custom type', async () => {
-        const _result = await request(app.server)
+        const res = await request(app.server)
             .post('/webhooks/test')
             .set('Authorization', `Bearer ${MOCK_JWT}`)
             .send({
@@ -147,7 +147,7 @@ describe('Webhook Test Routes (JWT Auth)', () => {
     it('should handle fetch error', async () => {
         fetchMock.mockRejectedValue(new Error('Network error'));
 
-        const _result = await request(app.server)
+        const res = await request(app.server)
             .post('/webhooks/test')
             .set('Authorization', `Bearer ${MOCK_JWT}`)
             .send({
@@ -166,7 +166,7 @@ describe('Webhook Test Routes (JWT Auth)', () => {
         });
 
 
-        const _result = await request(app.server)
+        const res = await request(app.server)
             .post('/webhooks/test')
             .set('Authorization', `Bearer ${MOCK_JWT}`)
             .send({

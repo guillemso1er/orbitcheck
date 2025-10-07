@@ -62,6 +62,17 @@ describe('Auth Routes', () => {
     mockRedisInstance.set.mockResolvedValue('OK');
     mockRedisInstance.quit.mockResolvedValue('OK');
 
+    // eslint-disable-next-line promise/prefer-await-to-callbacks
+    (crypto.randomBytes as jest.Mock).mockImplementation((size, callback) => {
+      // eslint-disable-next-line promise/prefer-await-to-callbacks
+      callback(null, Buffer.from('test32bytes' + 'a'.repeat(24)));
+    });
+    // Mock crypto.createHash
+    (crypto.createHash as jest.Mock).mockImplementation(() => ({
+      update: jest.fn().mockReturnThis(),
+      digest: jest.fn().mockReturnValue('test_hash')
+    }));
+
     // Default mock for DB queries
     mockPool.query.mockImplementation((queryText: string) => {
       const upperQuery = queryText.toUpperCase();

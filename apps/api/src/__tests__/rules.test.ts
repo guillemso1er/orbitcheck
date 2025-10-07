@@ -75,7 +75,7 @@ describe('Rules Endpoints', () => {
 
     describe('POST /v1/rules/register', () => {
         it('should register custom rules successfully', async () => {
-            const mockConsoleLog = jest.spyOn(console, 'log').mockImplementation(() => { });
+            const mockConsoleWarn = jest.spyOn(console, 'warn').mockImplementation(() => { });
 
             const response = await request(app.server)
                 .post('/v1/rules/register')
@@ -95,14 +95,14 @@ describe('Rules Endpoints', () => {
 
             expect(response.status).toBe(200);
             const body = response.body as { registered_rules: string[]; message: string };
-            expect(mockConsoleLog).toHaveBeenCalledWith(
+            expect(mockConsoleWarn).toHaveBeenCalledWith(
                 expect.stringContaining('Rules registered for project test_project:'),
                 expect.any(Array)
             );
             expect(body.registered_rules).toEqual(['custom_rule_1']);
             expect(body.message).toBe('Rules registered successfully');
 
-            mockConsoleLog.mockRestore();
+            mockConsoleWarn.mockRestore();
         });
 
         it('should handle empty rules array', async () => {

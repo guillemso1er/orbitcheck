@@ -48,7 +48,7 @@ describe('Phone Validation Endpoints', () => {
         jest.clearAllMocks();
 
         // Default success mock for libphonenumber-js
-        libphone.parsePhoneNumber.mockReturnValue({
+        libphone.parsePhoneNumberWithError.mockReturnValue({
             isValid: () => true,
             number: '+15551234567',
             country: 'US',
@@ -87,7 +87,7 @@ describe('Phone Validation Endpoints', () => {
             expect(result.e164).toBe('+15551234567');
             expect(result.country).toBe('US');
             expect(result.reason_codes).toEqual([]);
-            expect(libphone.parsePhoneNumber).toHaveBeenCalledWith('+1 555 123 4567');
+            expect(libphone.parsePhoneNumberWithError).toHaveBeenCalledWith('+1 555 123 4567');
         });
 
         it('should validate a valid phone with country hint', async () => {
@@ -96,11 +96,11 @@ describe('Phone Validation Endpoints', () => {
             expect(result.valid).toBe(true);
             expect(result.e164).toBe('+15551234567');
             expect(result.country).toBe('US');
-            expect(libphone.parsePhoneNumber).toHaveBeenCalledWith('555 123 4567', 'US');
+            expect(libphone.parsePhoneNumberWithError).toHaveBeenCalledWith('555 123 4567', 'US');
         });
 
         it('should invalidate phone with invalid format', async () => {
-            libphone.parsePhoneNumber.mockReturnValueOnce(null);
+            libphone.parsePhoneNumberWithError.mockReturnValueOnce(null);
 
             const result = await validatePhone('invalid');
 
@@ -111,7 +111,7 @@ describe('Phone Validation Endpoints', () => {
         });
 
         it('should handle unparseable phone', async () => {
-            libphone.parsePhoneNumber.mockImplementation(() => { throw new Error('Parse error'); });
+            libphone.parsePhoneNumberWithError.mockImplementation(() => { throw new Error('Parse error'); });
 
             const result = await validatePhone('unparseable');
 
@@ -137,7 +137,7 @@ describe('Phone Validation Endpoints', () => {
 
             expect(result).toEqual(cachedResult);
             expect(mockRedis.get).toHaveBeenCalledWith(`validator:phone:${hash}`);
-            expect(libphone.parsePhoneNumber).not.toHaveBeenCalled();
+            expect(libphone.parsePhoneNumberWithError).not.toHaveBeenCalled();
         });
 
         it('should cache result in Redis after computation', async () => {
@@ -157,7 +157,7 @@ describe('Phone Validation Endpoints', () => {
         });
 
         it('should use country from parsed number if no hint provided', async () => {
-            libphone.parsePhoneNumber.mockReturnValueOnce({
+            libphone.parsePhoneNumberWithError.mockReturnValueOnce({
                 isValid: () => true,
                 number: '+441234567890',
                 country: 'GB',

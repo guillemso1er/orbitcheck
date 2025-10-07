@@ -1,4 +1,4 @@
-jest.mock('../../env', () => ({
+jest.mock('../../environment', () => ({
   environment: {
     DISPOSABLE_LIST_URL: 'https://example.com/disposable-domains.json',
   }

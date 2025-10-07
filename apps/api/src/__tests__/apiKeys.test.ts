@@ -110,8 +110,11 @@ describe('API Keys Routes (JWT Auth)', () => {
         const hexString = '74657374' + '00'.repeat(28); // 'test....'
         const buffer = Buffer.from(hexString, 'hex');
 
-        // This will now work correctly because mockedRandomBytes is a guaranteed mock function.
-        mockedRandomBytes.mockReturnValue(buffer);
+        // eslint-disable-next-line promise/prefer-await-to-callbacks
+        mockedRandomBytes.mockImplementation((size, callback) => {
+            // eslint-disable-next-line promise/prefer-await-to-callbacks
+            callback(null, buffer);
+        });
 
         const mockHash = {
             update: jest.fn().mockReturnThis(),

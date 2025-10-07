@@ -8,7 +8,7 @@ jest.mock('pg', () => ({
   })),
 }));
 
-jest.mock('../../env', () => ({
+jest.mock('../../environment', () => ({
   environment: {
     RETENTION_DAYS: 90,
   }

@@ -1,7 +1,7 @@
 // This file will run automatically before all tests
 
-jest.mock('./env', () => ({
-    env: {
+jest.mock('./environment', () => ({
+    environment: {
         // Provide a default set of mock values for your entire test suite
         JWT_SECRET: 'a-default-test-secret-for-all-tests',
         LOCATIONIQ_KEY: '',

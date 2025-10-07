@@ -9,9 +9,9 @@ import { registerRoutes } from '../web.js';
 
 // --- Top-level Mocks ---
 
-// Tell Jest to use the manual mock we created in src/__mocks__/env.ts
+// Tell Jest to use the manual mock we created in src/__mocks__/environment.ts
 // This line MUST come before any imports from '../server.js' or its dependencies.
-jest.mock('../env', () => ({
+jest.mock('../environment', () => ({
   environment: {
     PORT: 8080,
     DATABASE_URL: 'postgres://test',
