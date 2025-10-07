@@ -68,7 +68,7 @@ async function validateEndpointCoverage(app: FastifyInstance): Promise<void> {
       const httpMethod = method.toUpperCase();
       const isDashboardRoute = dashboardGroups.some(group => path.startsWith(group));
       const fullPath = isDashboardRoute ? path : basePath + path; // Don't add basePath for dashboard routes
-      const routePath = fullPath; // Keep OpenAPI param format {id} as Fastify accepts it
+      const routePath = fullPath.replace(/\{([^}]+)\}/g, ':$1'); // Convert OpenAPI {param} to Fastify :param
 
       // Check if route exists
       const routeExists = app.hasRoute({ method: httpMethod, url: routePath });

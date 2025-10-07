@@ -37,7 +37,7 @@ Object.entries(paths).forEach(([path, methods]) => {
             .replace(/_$/, '');
 
         // Store the route info with v1 prefix for non-dashboard routes if not already present
-        const fullPath = dashboardGroups.includes(firstSegment) ? path : (path.startsWith('/v1') ? path : `/v1${path}`);
+        const fullPath = dashboardGroups.includes(firstSegment) ? path.replace(/\{([^}]+)\}/g, ':$1') : (path.startsWith('/v1') ? path : `/v1${path}`);
         routeGroups[firstSegment][constantName] = {
             path: fullPath,
             method: method.toUpperCase(),

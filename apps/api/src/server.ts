@@ -246,23 +246,21 @@ export async function start(): Promise<void> {
         void disposableQueue.add('refresh', {});
 
     } catch (error) {
-        // This outer catch block handles any error from dependency init or the re-thrown smoke test error.
-        const logger = app?.log || console;
-        logger.error('Failed to start Orbicheck API:', error);
+        if (app?.log) {
+            app.log.error({ err: error }, 'Failed to start Orbicheck API');
+        } else {
+            console.error('Failed to start Orbicheck API:', error);
+        }
 
         if (environment.SENTRY_DSN) {
             Sentry.captureException(error);
         }
 
         // *** THE FIX: GUARANTEE PROCESS TERMINATION ***
-        // This is a safeguard. If something is keeping the event loop alive
-        // (e.g., a misbehaving plugin like `startupGuard` that started a timer),
-        // process.exit() might not terminate the process immediately.
-        // This timeout ensures the process is forcefully terminated.
         setTimeout(() => {
             console.error('Process did not exit cleanly, forcing shutdown now.');
             process.exit(1);
-        }, 1000).unref(); // .unref() prevents this timeout from keeping the process alive itself
+        }, 1000).unref();
 
         // Attempt a clean exit first
         process.exit(1);
