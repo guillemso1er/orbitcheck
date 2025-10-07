@@ -1,6 +1,6 @@
 import { createApiClient } from '@orbicheck/contracts';
 import React, { useCallback, useEffect, useState } from 'react';
-import { UI_STRINGS } from '../constants';
+import { API_BASE, UI_STRINGS } from '../constants';
 
 interface ApiKey {
   id?: string;
@@ -160,7 +160,7 @@ const ApiKeys: React.FC<ApiKeysProps> = ({ token }) => {
         return;
       }
       const apiClient = createApiClient({
-        baseURL: '',
+        baseURL: API_BASE,
         token: token
       });
       const data = await apiClient.listApiKeys();
@@ -186,7 +186,7 @@ const ApiKeys: React.FC<ApiKeysProps> = ({ token }) => {
     try {
       setCreating(true);
       const apiClient = createApiClient({
-        baseURL: '',
+        baseURL: API_BASE,
         token: token
       });
       const data = await apiClient.createApiKey(name);
@@ -204,7 +204,7 @@ const ApiKeys: React.FC<ApiKeysProps> = ({ token }) => {
     if (!confirm('Are you sure you want to revoke this API key? This action cannot be undone.')) return;
     try {
       const apiClient = createApiClient({
-        baseURL: '',
+        baseURL: API_BASE,
         token: token
       });
       await apiClient.revokeApiKey(id);
@@ -224,7 +224,7 @@ const ApiKeys: React.FC<ApiKeysProps> = ({ token }) => {
     try {
       setCreating(true);
       const apiClient = createApiClient({
-        baseURL: '',
+        baseURL: API_BASE,
         token
       });
 

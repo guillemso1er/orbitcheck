@@ -1,7 +1,7 @@
 import { createApiClient } from '@orbicheck/contracts';
 import React, { useState } from 'react';
 import { useAuth } from '../AuthContext';
-import { UI_STRINGS } from '../constants';
+import { API_BASE, UI_STRINGS } from '../constants';
 
 interface WebhookTestResult {
   sent_to: string;
@@ -180,7 +180,7 @@ const WebhookTester: React.FC = () => {
     setLoading(true);
     try {
       const apiClient = createApiClient({
-        baseURL: '', // Use relative path since we're proxying
+        baseURL: API_BASE,
         token: token || ''
       });
 

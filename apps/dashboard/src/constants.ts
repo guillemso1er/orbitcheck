@@ -1,5 +1,7 @@
 import { DASHBOARD_ROUTES } from "@orbicheck/contracts";
 
+export const API_BASE = import.meta.env.VITE_API_BASE ?? '/_api';
+
 export const API_ENDPOINTS = {
   API_KEYS: DASHBOARD_ROUTES.LIST_API_KEYS,
   USAGE: DASHBOARD_ROUTES.GET_USAGE_STATISTICS,

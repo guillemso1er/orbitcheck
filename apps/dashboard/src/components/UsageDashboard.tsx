@@ -14,7 +14,7 @@ import {
 import React, { useCallback, useEffect, useState } from 'react';
 import { Bar, Line, Pie } from 'react-chartjs-2';
 import { useAuth } from '../AuthContext';
-import { UI_STRINGS } from '../constants';
+import { API_BASE, UI_STRINGS } from '../constants';
 
 ChartJS.register(
   CategoryScale,
@@ -183,7 +183,7 @@ const UsageDashboard: React.FC = () => {
       setError(null); // reset any previous error
 
       const apiClient = createApiClient({
-        baseURL: '', // Use relative path since we're proxying
+        baseURL: API_BASE,
         token: token || ''
       });
 

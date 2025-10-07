@@ -1,7 +1,7 @@
 import { createApiClient } from '@orbicheck/contracts';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useAuth } from '../AuthContext';
-import { UI_STRINGS } from '../constants';
+import { API_BASE, UI_STRINGS } from '../constants';
 import { FiltersSection, type FiltersState } from './FiltersSection';
 import './LogExplorer.css';
 import { LogsTable, type LogEntry } from './LogsTable';
@@ -50,7 +50,7 @@ const LogExplorer: React.FC = () => {
 
       try {
         const apiClient = createApiClient({
-          baseURL: '',
+          baseURL: API_BASE,
           token: token || ''
         });
 

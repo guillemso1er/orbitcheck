@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
+import { API_BASE } from '../constants';
 import { createApiClient } from '@orbicheck/contracts';
 
 interface User {
@@ -69,7 +70,7 @@ const Login: React.FC = () => {
 
     try {
       const apiClient = createApiClient({
-        baseURL: '', // Use relative path since we're proxying
+        baseURL: API_BASE,
         token: '' // No token needed for auth
       });
 
