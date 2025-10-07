@@ -55,21 +55,48 @@ function cleanStack(stack, maxLines = 5) {
 }
 
 function parseFirstFrame(msg, fallbackFile) {
-  const lines = msg.split('\n');
+  const lines = String(msg || '').split('\n');
   let fallback;
 
+  // Matches V8 stack frames:
+  //   at fn (/path/file.ts:10:5)
+  //   at /path/file.ts:10:5
+  //   at file:///path/file.ts:10:5
+  const STACK_RE = /^\s*at\s+(?:[^()]*KATEX_INLINE_OPEN)?(.*):(\d+):(\d+)KATEX_INLINE_CLOSE?\s*$/;
+
+  // Fallback for non-stack lines that still include file:line:col, e.g. parser/TS errors
+  //   /path/file.ts:10:5
+  //   C:\path\file.ts:10:5
+  //   file:///path/file.ts:10:5
+  const GENERIC_RE = /((?:file:\/\/\/)?(?:[A-Za-z]:)?[\/\```[^\s):]+):(\d+):(\d+)/;
+
+  const normalize = (file) => {
+    if (file && file.startsWith('file://')) {
+      try { return require('url').fileURLToPath(file); } catch { /* noop */ }
+    }
+    return file;
+  };
+
+  // Pass 1: proper stack frames
   for (const l of lines) {
-    if (!/^\s*at /.test(l)) continue;
-    // capture '(...path...:line:col)' or '...path...:line:col' (handles Windows drive letters)
-    const m = l.match(/KATEX_INLINE_OPEN?(.+?):(\d+):(\d+)KATEX_INLINE_CLOSE?\s*$/);
+    const m = l.match(STACK_RE);
     if (!m) continue;
 
-    const [, file, line, col] = m;
-    const frame = { file, line: Number(line), col: Number(col) };
+    const file = normalize(m[1]);
+    const line = Number(m[2]);
+    const col = Number(m[3]);
+    const frame = { file, line, col };
 
-    // Prefer project frames over node internals/node_modules
-    if (!/node_modules|internal\/|^\s*at (?:node:|Native)/.test(l)) return frame;
+    const internal = /node_modules|(?:^|[\s(])(node:|internal\/)/.test(l) || /^node:|^internal\//.test(file);
+    if (!internal) return frame;
     if (!fallback) fallback = frame;
+  }
+
+  // Pass 2: any "file:line:col" in non-stack text
+  for (const l of lines) {
+    const m = l.match(GENERIC_RE);
+    if (!m) continue;
+    return { file: normalize(m[1]), line: Number(m[2]), col: Number(m[3]) };
   }
 
   return fallback || (fallbackFile ? { file: fallbackFile } : null);
@@ -206,7 +233,11 @@ class CompactReporter {
       for (const suite of failedToRunSuites) {
         const file = rel(suite.testFilePath);
         process.stdout.write(`\n${c.red('FAIL')} ${c.bold(file)}\n`);
-;
+
+        const exec = suite.testExecError || {};
+        const failureMsg = suite.failureMessage ||
+          (exec && (exec.stack || exec.message)) ||
+          'Suite failed to run.';
 
         const parsed = parseFirstFrame(failureMsg, suite.testFilePath);
 
@@ -216,10 +247,7 @@ class CompactReporter {
         }
         process.stdout.write(header + '\n');
 
-        const exec = suite.testExecError || {};
-        const failureMsg = suite.failureMessage ||
-          (exec && (exec.stack || exec.message)) ||
-          'Suite failed to run.';
+
 
         // Prefer a clean one-liner, else extract the reason block
         const reason =
