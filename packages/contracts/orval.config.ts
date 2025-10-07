@@ -41,27 +41,8 @@ const apiClient: Client = {
           target: "src/hooks/afterResponse.ts",
         },
       ],
-    },
-    overrides: {
-      paths: {
-        "/auth/register": {
-          method: "post",
-          parameters: {
-            headers: {
-              required: [],
-            },
-          },
-        },
-        "/auth/login": {
-          method: "post",
-          parameters: {
-            headers: {
-              required: [],
-            },
-          },
-        },
-      },
-    },
+    }
+
   },
 };
 

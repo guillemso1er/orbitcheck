@@ -55,7 +55,7 @@ async function validateEndpointCoverage(app: FastifyInstance): Promise<void> {
   const basePath = baseUrl.replace(/^https?:\/\/[^/]+/, ''); // Remove protocol and host, keep path
 
   // Dashboard routes that don't use the basePath
-  const dashboardGroups = ['/api-keys', '/webhooks', '/data'];
+  const dashboardGroups = ['/api-keys', '/webhooks', '/data', '/auth', '/auth/register', '/auth/login'];
 
   const missingEndpoints: string[] = [];
 

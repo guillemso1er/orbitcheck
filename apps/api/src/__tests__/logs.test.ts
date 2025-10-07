@@ -43,8 +43,9 @@ describe('Logs Retrieval Endpoints', () => {
           return Promise.resolve({ rows: [logEntry] });
         }
         // Mock the authentication query
-        if (upperQuery.includes('API_KEYS')) {
-          return Promise.resolve({ rows: [{ project_id: 'test_project' }] });
+        if (upperQuery.includes('FROM API_KEYS') && upperQuery.includes('WHERE HASH =') && upperQuery.includes('PREFIX =') && upperQuery.includes('STATUS =')) {
+          // Mocking API key authentication
+          return Promise.resolve({ rows: [{ id: 'test_api_key_id', project_id: 'test_project' }] });
         }
         // Mock the projects query for JWT auth
         if (upperQuery.includes('FROM PROJECTS') && upperQuery.includes('WHERE P.USER_ID')) {
@@ -76,15 +77,16 @@ describe('Logs Retrieval Endpoints', () => {
         if (upperQuery.includes('COUNT(*) AS TOTAL FROM LOGS')) {
           return Promise.resolve({ rows: [{ total: 1 }] });
         }
-        if (upperQuery.includes('API_KEYS')) {
-          return Promise.resolve({ rows: [{ project_id: 'test_project' }] });
+        if (upperQuery.includes('FROM API_KEYS') && upperQuery.includes('WHERE HASH =') && upperQuery.includes('PREFIX =') && upperQuery.includes('STATUS =')) {
+          // Mocking API key authentication
+          return Promise.resolve({ rows: [{ id: 'test_api_key_id', project_id: 'test_project' }] });
         }
         return Promise.resolve({ rows: [] });
       });
 
       const response = await request(app.server)
         .get('/data/logs?reason_code=email.invalid_format')
-        .set('Authorization', 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoidGVzdF91c2VyIiwicHJvamVjdF9pZCI6InRlc3RfcHJvamVjdCJ9.test');
+        .set('Authorization', 'Bearer test_api_key_12345678901234567890123456789012');
 
       expect(response.status).toBe(200);
       const body = response.body as { data: { reason_codes: string[] }[] };
@@ -103,15 +105,16 @@ describe('Logs Retrieval Endpoints', () => {
         if (upperQuery.includes('COUNT(*) AS TOTAL FROM LOGS')) {
           return Promise.resolve({ rows: [{ total: 1 }] });
         }
-        if (upperQuery.includes('API_KEYS')) {
-          return Promise.resolve({ rows: [{ project_id: 'test_project' }] });
+        if (upperQuery.includes('FROM API_KEYS') && upperQuery.includes('WHERE HASH =') && upperQuery.includes('PREFIX =') && upperQuery.includes('STATUS =')) {
+          // Mocking API key authentication
+          return Promise.resolve({ rows: [{ id: 'test_api_key_id', project_id: 'test_project' }] });
         }
         return Promise.resolve({ rows: [] });
       });
 
       const response = await request(app.server)
         .get('/data/logs?endpoint=/v1/validate/email&status=400')
-        .set('Authorization', 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoidGVzdF91c2VyIiwicHJvamVjdF9pZCI6InRlc3RfcHJvamVjdCJ9.test');
+        .set('Authorization', 'Bearer test_api_key_12345678901234567890123456789012');
 
       expect(response.status).toBe(200);
       const body = response.body as { data: { endpoint: string; status: number }[] };
@@ -142,7 +145,7 @@ describe('Logs Retrieval Endpoints', () => {
 
       const response = await request(app.server)
         .get('/data/logs?limit=1&offset=1')
-        .set('Authorization', 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoidGVzdF91c2VyIiwicHJvamVjdF9pZCI6InRlc3RfcHJvamVjdCJ9.test');
+        .set('Authorization', 'Bearer test_api_key_12345678901234567890123456789012');
 
       expect(response.status).toBe(200);
       const body = response.body as { data: { id: string }[]; total_count: number; next_cursor: string };

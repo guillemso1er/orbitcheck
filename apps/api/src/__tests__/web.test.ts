@@ -90,7 +90,7 @@ describe('Web Authentication', () => {
     });
 
     it('should skip authentication for auth endpoints', async () => {
-      const request = createMockRequest('/v1/auth/login');
+      const request = createMockRequest('/auth/login');
       const reply = createMockReply();
 
       await hookHandler(request, reply);
@@ -119,24 +119,24 @@ describe('Web Authentication', () => {
       expect(mockAuth).not.toHaveBeenCalled();
     });
 
-    it('should use JWT verification for /data/usage endpoints', async () => {
+    it('should use API key auth for /data/usage endpoints', async () => {
       const request = createMockRequest('/data/usage');
       const reply = createMockReply();
 
       await hookHandler(request, reply);
 
-      expect(mockVerifyJWT).toHaveBeenCalled();
-      expect(mockAuth).not.toHaveBeenCalled();
+      expect(mockAuth).toHaveBeenCalled();
+      expect(mockVerifyJWT).not.toHaveBeenCalled();
     });
 
-    it('should use JWT verification for /data/logs endpoints', async () => {
+    it('should use API key auth for /data/logs endpoints', async () => {
       const request = createMockRequest('/data/logs');
       const reply = createMockReply();
 
       await hookHandler(request, reply);
 
-      expect(mockVerifyJWT).toHaveBeenCalled();
-      expect(mockAuth).not.toHaveBeenCalled();
+      expect(mockAuth).toHaveBeenCalled();
+      expect(mockVerifyJWT).not.toHaveBeenCalled();
     });
 
     it('should use API key auth for other endpoints', async () => {
@@ -162,9 +162,7 @@ describe('Web Authentication', () => {
     it('should skip rate limiting for dashboard routes', async () => {
       const dashboardRoutes = [
         '/api-keys',
-        '/webhooks/test',
-        '/data/usage',
-        '/data/logs'
+        '/webhooks/test'
       ];
 
       await Promise.all(dashboardRoutes.map(async (route) => {
@@ -176,6 +174,24 @@ describe('Web Authentication', () => {
 
         expect(mockRateLimit).not.toHaveBeenCalled();
         expect(mockIdempotency).not.toHaveBeenCalled();
+      }));
+    });
+
+    it('should apply rate limiting for data routes', async () => {
+      const dataRoutes = [
+        '/data/usage',
+        '/data/logs'
+      ];
+
+      await Promise.all(dataRoutes.map(async (route) => {
+        const request = createMockRequest(route);
+        const reply = createMockReply();
+        jest.clearAllMocks();
+
+        await hookHandler(request, reply);
+
+        expect(mockRateLimit).toHaveBeenCalled();
+        expect(mockIdempotency).toHaveBeenCalled();
       }));
     });
   });

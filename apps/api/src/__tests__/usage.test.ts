@@ -51,20 +51,16 @@ describe('Usage Stats Endpoints', () => {
           // Mocking cached requests for cache hit ratio (300 total - 15 non-cached = 285 cached)
           return Promise.resolve({ rows: [{ cached_requests: 285 }] });
         }
-        if (upperQuery.includes('API_KEYS')) {
-          // Mocking the authentication query
-          return Promise.resolve({ rows: [{ project_id: 'test_project' }] });
-        }
-        // Mock the projects query for JWT auth
-        if (upperQuery.includes('FROM PROJECTS') && upperQuery.includes('WHERE P.USER_ID')) {
-          return Promise.resolve({ rows: [{ project_id: 'test_project' }] });
+        if (upperQuery.includes('FROM API_KEYS') && upperQuery.includes('WHERE HASH =') && upperQuery.includes('PREFIX =') && upperQuery.includes('STATUS =')) {
+          // Mocking API key authentication
+          return Promise.resolve({ rows: [{ id: 'test_api_key_id', project_id: 'test_project' }] });
         }
         return Promise.resolve({ rows: [] });
       });
 
       const _result = await request(app.server)
         .get('/data/usage')
-        .set('Authorization', 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoidGVzdF91c2VyIiwicHJvamVjdF9pZCI6InRlc3RfcHJvamVjdCJ9.test');
+        .set('Authorization', 'Bearer test_api_key_12345678901234567890123456789012');
 
       expect(_result.statusCode).toBe(200);
       // Sum of validations from usageData
@@ -89,12 +85,9 @@ describe('Usage Stats Endpoints', () => {
         if (upperQuery.includes('COUNT(*) AS CACHED_REQUESTS FROM LOGS')) {
           return Promise.resolve({ rows: [{ cached_requests: 0 }] });
         }
-        if (upperQuery.includes('API_KEYS')) {
-          return Promise.resolve({ rows: [{ project_id: 'test_project' }] });
-        }
-        // Mock the projects query for JWT auth
-        if (upperQuery.includes('FROM projects') && upperQuery.includes('WHERE p.user_id')) {
-          return Promise.resolve({ rows: [{ project_id: 'test_project' }] });
+        if (upperQuery.includes('FROM API_KEYS') && upperQuery.includes('WHERE HASH =') && upperQuery.includes('PREFIX =') && upperQuery.includes('STATUS =')) {
+          // Mocking API key authentication
+          return Promise.resolve({ rows: [{ id: 'test_api_key_id', project_id: 'test_project' }] });
         }
         // For all other queries (usage_daily, reason_codes), return empty rows
         return Promise.resolve({ rows: [] });
@@ -102,7 +95,7 @@ describe('Usage Stats Endpoints', () => {
 
       const _result = await request(app.server)
         .get('/data/usage')
-        .set('Authorization', 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoidGVzdF91c2VyIiwicHJvamVjdF9pZCI6InRlc3RfcHJvamVjdCJ9.test');
+        .set('Authorization', 'Bearer test_api_key_12345678901234567890123456789012');
 
       expect(_result.statusCode).toBe(200);
       expect(_result.body.totals.validations).toBe(0);

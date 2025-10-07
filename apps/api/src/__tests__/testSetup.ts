@@ -162,11 +162,11 @@ export const createApp = async (): Promise<Fastify.FastifyInstance> => {
       return;
     }
 
-    // Dashboard routes: require JWT
-    const isDashboardRoute = url.startsWith('/api-keys') || url.startsWith('/api/webhooks') ||
-      url.startsWith('/v1/api-keys') || url.startsWith('/v1/webhooks') ||
-      url.startsWith('/v1/usage') || url.startsWith('/v1/logs') ||
-      url.startsWith('/data/logs') || url.startsWith('/data/usage');
+    // Dashboard routes: require JWT (api-keys, webhooks/test)
+    const isDashboardRoute = url.startsWith('/api-keys') || url.startsWith('/webhooks/test');
+
+    // Data routes: require API key auth (data/logs, data/usage)
+    const isDataRoute = url.startsWith('/data/logs') || url.startsWith('/data/usage');
 
     if (isDashboardRoute) {
       const authHeader = request.headers.authorization;
@@ -180,9 +180,19 @@ export const createApp = async (): Promise<Fastify.FastifyInstance> => {
         // Actually call jwt.verify so our mocks work
         const payload = jwt.verify(token, process.env.JWT_SECRET || 'test_jwt_secret');
 
-        // Check if user has a project
+        // Check if user exists
+        const userResult = await mockPool.query(
+          "SELECT id FROM users WHERE id = $1",
+          [payload.user_id]
+        );
+
+        if (!userResult.rows || userResult.rows.length === 0) {
+          return rep.code(401).send({ error: 'Unauthorized' });
+        }
+
+        // Get default project for user
         const projectResult = await mockPool.query(
-          "SELECT p.id AS project_id FROM projects p WHERE p.user_id = $1",
+          "SELECT p.id AS project_id FROM projects p WHERE p.user_id = $1 AND p.name = 'default'",
           [payload.user_id]
         );
 
@@ -195,6 +205,28 @@ export const createApp = async (): Promise<Fastify.FastifyInstance> => {
       } catch {
         return rep.code(401).send({ error: { code: 'invalid_token', message: 'Invalid token' } });
       }
+    } else if (isDataRoute) {
+      // API key authentication for data routes
+      const authHeader = request.headers.authorization;
+      if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return rep.code(401).send({ error: 'Unauthorized' });
+      }
+
+      const key = authHeader.split(' ')[1];
+      const prefix = key.slice(0, 6);
+      const keyHash = 'mock_hash'; // Simplified for tests
+
+      // Mock API key lookup
+      const apiKeyResult = await mockPool.query(
+        "SELECT id, project_id FROM api_keys WHERE hash = $1 AND prefix = $2 AND status = 'active'",
+        [keyHash, prefix]
+      );
+
+      if (!apiKeyResult.rows || apiKeyResult.rows.length === 0) {
+        return rep.code(401).send({ error: 'Unauthorized' });
+      }
+
+      (request as any).project_id = apiKeyResult.rows[0].project_id;
     }
     return;
   });
@@ -398,6 +430,7 @@ export const setupBeforeAll = async (): Promise<void> => {
   // Mock bcrypt and jwt defaults
   (bcrypt.hash as jest.Mock).mockResolvedValue('hashed_password');
   (bcrypt.compare as jest.Mock).mockResolvedValue(true);
+  (jwt.verify as jest.Mock).mockReturnValue({ user_id: 'test_user', project_id: 'test_project' });
   (jwt.sign as jest.Mock).mockReturnValue('mock_jwt_token');
   (jwt.verify as jest.Mock).mockReturnValue({ user_id: 'test_user', project_id: 'test_project' });
 };

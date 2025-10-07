@@ -1,15 +1,10 @@
 
-import { API_ROUTES, DASHBOARD_ROUTES } from "@orbicheck/contracts";
+import { DASHBOARD_ROUTES } from "@orbicheck/contracts";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { type Redis as IORedisType } from 'ioredis';
 import type { Pool } from "pg";
 
 import { auth, idempotency, rateLimit } from "./hooks.js";
-const _WEBHOOKS_TEST = DASHBOARD_ROUTES.TEST_WEBHOOK;
-const _USAGE = DASHBOARD_ROUTES.GET_USAGE_STATISTICS;
-const _LOGS = DASHBOARD_ROUTES.GET_EVENT_LOGS;
-const AUTH_REGISTER = API_ROUTES.REGISTER_NEW_USER;
-const AUTH_LOGIN = API_ROUTES.USER_LOGIN;
 import { registerApiKeysRoutes } from './routes/api-keys.js';
 import { registerAuthRoutes, verifyJWT } from "./routes/auth.js";
 import { registerDataRoutes } from './routes/data.js';
@@ -18,6 +13,9 @@ import { registerOrderRoutes } from './routes/orders.js';
 import { registerRulesRoutes } from './routes/rules.js';
 import { registerValidationRoutes } from './routes/validation.js';
 import { registerWebhookRoutes } from './routes/webhook.js';
+
+const AUTH_REGISTER = DASHBOARD_ROUTES.REGISTER_NEW_USER;
+const AUTH_LOGIN = DASHBOARD_ROUTES.USER_LOGIN;
 
 /**
  * Determines the appropriate authentication hook based on the request URL.

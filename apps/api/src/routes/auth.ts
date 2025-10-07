@@ -1,6 +1,6 @@
 import crypto from "node:crypto";
 
-import { API_V1_ROUTES } from "@orbicheck/contracts";
+import { DASHBOARD_ROUTES } from "@orbicheck/contracts";
 import bcrypt from 'bcryptjs';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import jwt from 'jsonwebtoken';
@@ -13,7 +13,7 @@ import { errorSchema, generateRequestId, sendError, sendServerError } from "./ut
 // Define auth routes since they're not in the contracts
 
 
-export async function verifyJWT(request: FastifyRequest, rep: FastifyReply, pool: Pool) : Promise<void> {
+export async function verifyJWT(request: FastifyRequest, rep: FastifyReply, pool: Pool): Promise<void> {
     const header = request.headers["authorization"];
     if (!header || !header.startsWith("Bearer ")) {
         rep.status(HTTP_STATUS.UNAUTHORIZED).send({ error: { code: ERROR_CODES.UNAUTHORIZED, message: ERROR_MESSAGES[ERROR_CODES.UNAUTHORIZED] } });
@@ -49,7 +49,7 @@ export async function verifyJWT(request: FastifyRequest, rep: FastifyReply, pool
 }
 
 export function registerAuthRoutes(app: FastifyInstance, pool: Pool): void {
-    app.post(API_V1_ROUTES.AUTH.REGISTER_NEW_USER, {
+    app.post(DASHBOARD_ROUTES.REGISTER_NEW_USER, {
         schema: {
             body: {
                 type: 'object',
@@ -132,11 +132,11 @@ export function registerAuthRoutes(app: FastifyInstance, pool: Pool): void {
             if (error && typeof error === 'object' && 'code' in error && (error as { code: string }).code === PG_UNIQUE_VIOLATION) { // Unique violation
                 return sendError(rep, HTTP_STATUS.BAD_REQUEST, ERROR_CODES.USER_EXISTS, ERROR_MESSAGES[ERROR_CODES.USER_EXISTS], generateRequestId());
             }
-            return sendServerError(request, rep, error, API_V1_ROUTES.AUTH.REGISTER_NEW_USER, generateRequestId());
+            return sendServerError(request, rep, error, DASHBOARD_ROUTES.REGISTER_NEW_USER, generateRequestId());
         }
     });
 
-    app.post(API_V1_ROUTES.AUTH.USER_LOGIN, {
+    app.post(DASHBOARD_ROUTES.USER_LOGIN, {
         schema: {
             body: {
                 type: 'object',
@@ -183,7 +183,7 @@ export function registerAuthRoutes(app: FastifyInstance, pool: Pool): void {
             const response: any = { token, user: { id: user.id, email }, request_id };
             return rep.send(response);
         } catch (error) {
-            return sendServerError(request, rep, error, API_V1_ROUTES.AUTH.USER_LOGIN, generateRequestId());
+            return sendServerError(request, rep, error, DASHBOARD_ROUTES.USER_LOGIN, generateRequestId());
         }
     });
 }

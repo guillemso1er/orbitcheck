@@ -11,7 +11,7 @@ const openapiDoc = yaml.load(fs.readFileSync(openapiPath, 'utf8'));
 // Extract paths and generate route constants
 const paths = openapiDoc.paths;
 const routeGroups = {};
-const dashboardGroups = ['api-keys', 'webhooks', 'data'];
+const dashboardGroups = ['api-keys', 'webhooks', 'data', 'auth', '/auth/register', '/auth/login'];
 
 // Group routes by their first path segment
 Object.entries(paths).forEach(([path, methods]) => {
@@ -58,7 +58,7 @@ const generateRouteConstants = () => {
 `;
 
     // Generate DASHBOARD_ROUTES (for dashboard-specific endpoints)
-    const dashboardGroups = ['api-keys', 'webhooks', 'data'];
+    const dashboardGroups = ['api-keys', 'webhooks', 'data', 'auth'];
     const dashboardRoutes = {};
     Object.entries(routeGroups).forEach(([group, routes]) => {
         if (dashboardGroups.includes(group)) {
@@ -96,18 +96,6 @@ const generateRouteConstants = () => {
 
     output += `} as const;\n\n`;
 
-    // Generate a flat API_ROUTES object for backward compatibility
-    output += `// Flat API routes for backward compatibility\n`;
-    output += `export const API_ROUTES = {\n`;
-    
-    Object.entries(routeGroups).forEach(([group, routes]) => {
-        Object.entries(routes).forEach(([constant, route]) => {
-            const cleanConstant = constant.replace(/_GET|_POST|_PUT|_DELETE|_PATCH/, '');
-            output += `  ${cleanConstant}: '${route.path}',\n`;
-        });
-    });
-
-    output += `} as const;\n`;
 
     return output;
 };
