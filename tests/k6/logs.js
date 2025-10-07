@@ -12,6 +12,7 @@ export const options = {
 
 const KEY = (__ENV.KEY || '').trim();
 const BASE_URL = 'http://localhost:8081/v1';
+const DATA_BASE_URL = 'http://localhost:8081/data';
 const HEADERS = {
     'Authorization': `Bearer ${KEY}`
 };
@@ -21,7 +22,7 @@ export default function (check) {
     //    use the original k6check as a fallback.
     check = check || k6check;
     // Scenario 1: Test GET logs
-    let res = http.get(`${BASE_URL}/logs`, { headers: HEADERS });
+    let res = http.get(`${DATA_BASE_URL}/logs`, { headers: HEADERS });
     check(res, {
         '[Logs] status 200 (first req)': (r) => r.status === 200,
         '[Logs] data array (first req)': (r) => {
@@ -35,7 +36,7 @@ export default function (check) {
     });
 
     // Second request (no cache implemented, so just check status)
-    res = http.get(`${BASE_URL}/logs`, { headers: HEADERS });
+    res = http.get(`${DATA_BASE_URL}/logs`, { headers: HEADERS });
     check(res, {
         '[Logs] status 200 (second req)': (r) => r.status === 200,
     });

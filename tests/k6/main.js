@@ -1,6 +1,7 @@
 import { check as k6check, sleep } from 'k6'; // Renamed original 'check' to 'k6check'
 import http from 'k6/http';
 import { default as addressTest } from './address.js';
+import { default as authTest } from './auth.js';
 import { default as dedupeTest } from './dedupe.js';
 import { default as emailTest } from './email.js';
 import { default as logsTest } from './logs.js';
@@ -49,6 +50,10 @@ export function addressScenario() {
     addressTest(createCheckFor('address'));
 }
 
+export function authScenario() {
+    authTest(createCheckFor('auth'));
+}
+
 export function dedupeScenario() {
     dedupeTest(createCheckFor('dedupe'));
 }
@@ -95,6 +100,9 @@ export default function () {
     console.log('Running address tests...');
     addressTest(createCheckFor('address'));
 
+    console.log('Running auth tests...');
+    authTest(createCheckFor('auth'));
+
     console.log('Running dedupe tests...');
     dedupeTest(createCheckFor('dedupe'));
 
@@ -126,6 +134,7 @@ export default function () {
 export function runSpecificTests(testNames = []) {
     const testMap = {
         address: () => addressTest(createCheckFor('address')),
+        auth: () => authTest(createCheckFor('auth')),
         dedupe: () => dedupeTest(createCheckFor('dedupe')),
         email: () => emailTest(createCheckFor('email')),
         logs: () => logsTest(createCheckFor('logs')),

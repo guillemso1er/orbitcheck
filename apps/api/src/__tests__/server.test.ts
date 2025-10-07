@@ -1,3 +1,4 @@
+import cors from '@fastify/cors';
 import * as Sentry from '@sentry/node';
 import { Queue, Worker } from 'bullmq';
 import Fastify from 'fastify';
@@ -129,6 +130,31 @@ describe('Server Build', () => {
     });
     expect(mockRegisterRoutes).toHaveBeenCalledWith(app, mockPool, mockRedis);
   });
+
+  it('should configure CORS with async origin function that validates allowed origins', async () => {
+    const app = await build(mockPool, mockRedis);
+
+    const corsCall = mockApp.register.mock.calls.find(call => call[0] === cors);
+    expect(corsCall).toBeDefined();
+
+    const options = corsCall[1];
+    expect(options).toHaveProperty('origin');
+    expect(typeof options.origin).toBe('function');
+
+    // Test that it's async
+    const result = options.origin('http://localhost:5173');
+    expect(result).toBeInstanceOf(Promise);
+
+    // Test logic
+    await expect(options.origin(undefined)).resolves.toBe(true);
+    await expect(options.origin('http://localhost:5173')).resolves.toBe(true);
+    await expect(options.origin(`http://localhost:${environment.PORT}`)).resolves.toBe(true);
+    await expect(options.origin('https://dashboard.orbicheck.com')).resolves.toBe(true);
+    await expect(options.origin('https://api.orbicheck.com')).resolves.toBe(true);
+    await expect(options.origin('http://evil.com')).resolves.toBe(false);
+
+    expect(options.credentials).toBe(true);
+  });
 });
 
 describe('Server Startup', () => {
@@ -156,6 +182,7 @@ describe('Server Startup', () => {
     (Pool as unknown as jest.Mock).mockImplementation(() => mockPool);
     (Redis as unknown as jest.Mock).mockImplementation(() => mockRedis);
     (mockQueue.add).mockResolvedValue({});
+    jest.spyOn(process as any, 'exit').mockImplementation(() => {});
   });
 
   it('should start the server and setup all services', async () => {
@@ -184,7 +211,10 @@ describe('Server Startup', () => {
       throw error;
     });
 
-    // Act & Assert
-    await expect(start()).rejects.toThrow('Database connection failed');
+    // Act
+    await start();
+
+    // Assert that process.exit was called
+    expect(process.exit).toHaveBeenCalledWith(1);
   });
 });

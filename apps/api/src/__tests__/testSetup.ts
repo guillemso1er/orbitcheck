@@ -165,7 +165,8 @@ export const createApp = async (): Promise<Fastify.FastifyInstance> => {
     // Dashboard routes: require JWT
     const isDashboardRoute = url.startsWith('/api-keys') || url.startsWith('/api/webhooks') ||
       url.startsWith('/v1/api-keys') || url.startsWith('/v1/webhooks') ||
-      url.startsWith('/v1/usage') || url.startsWith('/v1/logs');
+      url.startsWith('/v1/usage') || url.startsWith('/v1/logs') ||
+      url.startsWith('/data/logs') || url.startsWith('/data/usage');
 
     if (isDashboardRoute) {
       const authHeader = request.headers.authorization;

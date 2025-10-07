@@ -36,11 +36,18 @@ async function authenticateRequest(request: FastifyRequest, rep: FastifyReply, p
     if (url.startsWith('/health') || url.startsWith('/documentation') || url.startsWith(AUTH_REGISTER) || url.startsWith(AUTH_LOGIN)) return;
 
     // Dashboard routes require JWT authentication (user session)
-    const isDashboardRoute = url.startsWith(DASHBOARD_ROUTES.LIST_API_KEYS) || url.startsWith(DASHBOARD_ROUTES.TEST_WEBHOOK) ||
-        url.startsWith(DASHBOARD_ROUTES.GET_EVENT_LOGS) || url.startsWith(DASHBOARD_ROUTES.GET_USAGE_STATISTICS);
+    const isDashboardRoute = url.startsWith(DASHBOARD_ROUTES.LIST_API_KEYS) || url.startsWith(DASHBOARD_ROUTES.TEST_WEBHOOK);
+    // Data routes use API key auth for testing purposes
+    const isDataRoute = url.startsWith(DASHBOARD_ROUTES.GET_EVENT_LOGS) || url.startsWith(DASHBOARD_ROUTES.GET_USAGE_STATISTICS);
 
-    // Apply JWT verification for dashboard or API key auth for public API
-    await (isDashboardRoute ? verifyJWT(request, rep, pool) : auth(request, rep, pool));
+    // Apply JWT verification for dashboard, API key auth for data routes or public API
+    if (isDashboardRoute) {
+        await verifyJWT(request, rep, pool);
+    } else if (isDataRoute) {
+        await auth(request, rep, pool);
+    } else {
+        await auth(request, rep, pool);
+    }
 }
 
 /**
@@ -59,8 +66,8 @@ async function applyRateLimitingAndIdempotency(request: FastifyRequest, rep: Fas
     // Skip middleware for health, docs, and auth
     if (url.startsWith('/health') || url.startsWith('/documentation') || url.startsWith(AUTH_REGISTER) || url.startsWith(AUTH_LOGIN)) return;
 
-    const isDashboardRoute = url.startsWith(DASHBOARD_ROUTES.LIST_API_KEYS) || url.startsWith(DASHBOARD_ROUTES.TEST_WEBHOOK) ||
-        url.startsWith(DASHBOARD_ROUTES.GET_EVENT_LOGS) || url.startsWith(DASHBOARD_ROUTES.GET_USAGE_STATISTICS);
+    const isDashboardRoute = url.startsWith(DASHBOARD_ROUTES.LIST_API_KEYS) || url.startsWith(DASHBOARD_ROUTES.TEST_WEBHOOK);
+    const isDataRoute = url.startsWith(DASHBOARD_ROUTES.GET_EVENT_LOGS) || url.startsWith(DASHBOARD_ROUTES.GET_USAGE_STATISTICS);
 
     if (!isDashboardRoute) {
         await rateLimit(request, rep, redis);

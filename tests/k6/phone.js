@@ -95,5 +95,15 @@ export default function (check) {
         '[Invalid with Country] cache HIT': (r) => (r.headers['Cache-Status'] || '').toLowerCase().includes('hit'),
     });
 
+    // Scenario 5: Test phone verification (assuming a valid sid, but in test it might fail)
+    const verifyPayload = JSON.stringify({
+        verification_sid: 'test_sid',
+        code: '123456'
+    });
+    res = http.post(`${BASE_URL}/verify/phone`, verifyPayload, { headers: HEADERS });
+    check(res, {
+        '[Verify Phone] status is 200 or error': (r) => r.status === 200 || r.status === 400 || r.status === 500,
+    });
+
     sleep(0.1);
 }

@@ -94,7 +94,7 @@ export async function build(pool: Pool, redis: IORedisType): Promise<FastifyInst
     });
 
     // Register all API routes with shared pool and redis instances
-     registerRoutes(app, pool, redis);
+    registerRoutes(app, pool, redis);
 
     // Register OpenAPI validation (after routes are registered)
     await openapiValidation(app);

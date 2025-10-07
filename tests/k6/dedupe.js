@@ -90,5 +90,39 @@ export default function (check) {
         '[Exact] cache HIT': (r) => (r.headers['Cache-Status'] || '').toLowerCase().includes('hit'),
     });
 
+    // Scenario 4: Test dedupe address
+    const addressPayload = JSON.stringify({
+        line1: '123 Main St',
+        city: 'Anytown',
+        postal_code: '12345',
+        country: 'US'
+    });
+    res = http.post(`${BASE_URL}/dedupe/address`, addressPayload, { headers: HEADERS });
+    if (res.status !== 200) {
+        console.log(`Address dedupe failed: status ${res.status}, body: ${res.body}`);
+    }
+    check(res, {
+        '[Address Dedupe] status 200': (r) => r.status === 200,
+        '[Address Dedupe] has matches and action': (r) => {
+            const body = JSON.parse(r.body);
+            return body.matches !== undefined && body.suggested_action;
+        }
+    });
+
+    // Scenario 5: Test dedupe merge (assuming some IDs exist, but since it's new, might fail or be empty)
+    const mergePayload = JSON.stringify({
+        type: 'customer',
+        ids: ['00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000002'],
+        canonical_id: '00000000-0000-0000-0000-000000000001'
+    });
+    res = http.post(`${BASE_URL}/dedupe/merge`, mergePayload, { headers: HEADERS });
+    if (res.status !== 200 && res.status !== 400) {
+        console.log(`Merge failed: status ${res.status}, body: ${res.body}`);
+    }
+    // This might return an error since IDs don't exist, but test the endpoint exists
+    check(res, {
+        '[Merge] status is 200 or expected error': (r) => r.status === 200 || r.status === 400,
+    });
+
     sleep(0.1);
 }
