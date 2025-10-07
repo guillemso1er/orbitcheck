@@ -23,16 +23,7 @@ import { openapiValidation } from "./plugins/openapi.js";
 import startupGuard from './startup-guard.js';
 import { registerRoutes } from "./web.js";
 
-/**
- * Builds and configures the Fastify server instance with middleware, plugins, and routes.
- * Initializes error monitoring with Sentry (if DSN provided), sets up OpenAPI/Swagger documentation
- * for API specs and UI, enables CORS for cross-origin requests, registers all route modules,
- * and adds a simple health check endpoint. Configures logger level from environment.
- *
- * @param pool - PostgreSQL connection pool for all database interactions (queries, migrations).
- * @param redis - ioredis client for caching, rate limiting, idempotency keys, and session storage.
- * @returns {Promise<FastifyInstance>} Fully configured Fastify application ready for listening.
- */
+// ... (build function remains the same) ...
 export async function build(pool: Pool, redis: IORedisType): Promise<FastifyInstance> {
     if (environment.SENTRY_DSN) {
         Sentry.init({
@@ -95,7 +86,7 @@ export async function build(pool: Pool, redis: IORedisType): Promise<FastifyInst
     // Enable CORS restricted to dashboard origin (configure for prod domains)
     // Using a function that returns a value directly instead of callback pattern
     await app.register(cors, {
-        origin: (origin: string | undefined) => {
+        origin: async (origin: string | undefined) => {
             // Allow no Origin (e.g., curl/app.inject) or explicitly whitelisted origins
             return !origin || allowedOrigins.has(origin);
         },
@@ -103,7 +94,7 @@ export async function build(pool: Pool, redis: IORedisType): Promise<FastifyInst
     });
 
     // Register all API routes with shared pool and redis instances
-    registerRoutes(app, pool, redis);
+     registerRoutes(app, pool, redis);
 
     // Register OpenAPI validation (after routes are registered)
     await openapiValidation(app);
@@ -145,6 +136,21 @@ async function withTimeout<T>(promise: Promise<T>, ms: number, message: string):
     ]);
 }
 
+// *** CHANGE 1: Add a graceful shutdown function ***
+/**
+ * Gracefully closes all application resources: Fastify server, DB pool, and Redis client.
+ * Uses Promise.allSettled to ensure all resources are attempted to be closed, even if one fails.
+ */
+async function closeResources(app: FastifyInstance | null, pool: Pool | null, redis: IORedisType | null): Promise<void> {
+    console.log('Closing application resources...');
+    await Promise.allSettled([
+        app?.close(),
+        pool?.end(),
+        redis?.quit(),
+    ]);
+    console.log('All resources closed.');
+}
+
 /**
  * Starts the API server: initializes database pool and Redis client,
  * builds the Fastify app, sets up BullMQ queue/worker for disposable email processing,
@@ -154,100 +160,118 @@ async function withTimeout<T>(promise: Promise<T>, ms: number, message: string):
  * @returns {Promise<void>} Starts the server asynchronously; throws on failure.
  */
 export async function start(): Promise<void> {
-    // --- Step 1: Initialize and Verify Dependencies ---
-    const pool = new Pool({ connectionString: environment.DATABASE_URL });
+    let app: FastifyInstance | null = null;
+    let pool: Pool | null = null;
+    let appRedis: IORedisType | null = null;
 
     try {
-        const client = await pool.connect();
-        await client.query('SELECT 1');
-        client.release();
-    } catch (error) {
-        throw new Error(`FATAL: Could not connect to PostgreSQL. Shutting down. ${String(error)}`);
-    }
+        // --- Step 1: Initialize and Verify Dependencies ---
+        pool = new Pool({ connectionString: environment.DATABASE_URL });
 
-    // --- Create a dedicated client just for the startup check ---
-    const verificationRedis = new Redis(environment.REDIS_URL, {
-        maxRetriesPerRequest: 3,
-        connectTimeout: 5000,
-    });
-
-    try {
-        if (verificationRedis.status !== 'ready') {
-            await once(verificationRedis, 'ready');
+        try {
+            const client = await pool.connect();
+            await client.query('SELECT 1');
+            client.release();
+        } catch (error) {
+            throw new Error(`FATAL: Could not connect to PostgreSQL. Shutting down. ${String(error)}`);
         }
-        await verificationRedis.ping();
-        // We are done with this client, disconnect it.
-        await verificationRedis.quit();
-    } catch (error) {
-        throw new Error(`FATAL: Could not connect to Redis. Shutting down. ${String(error)}`);
-    }
 
-    // --- Create the main Redis client for the application with BullMQ's required options ---
-    const appRedis = new Redis(environment.REDIS_URL, {
-        maxRetriesPerRequest: null // This is required by BullMQ
-    });
+        // --- Create a dedicated client just for the startup check ---
+        const verificationRedis = new Redis(environment.REDIS_URL, {
+            maxRetriesPerRequest: 3,
+            connectTimeout: 5000,
+        });
 
-    // --- Step 2: Build the App and Start Workers ---
-    const app = await build(pool, appRedis);
-    app.log.info('All dependencies are connected. Building Fastify app...');
-
-    // Ensure Redis is ready for hooks during startup smoke test
-    if (appRedis.status !== 'ready') {
-        await once(appRedis, 'ready');
-    }
-    await appRedis.ping();
-
-
-    const timeoutMs = Number(process.env.STARTUP_SMOKETEST_TIMEOUT ?? 2000);
-    try {
-        const response = await withTimeout(
-            app.inject({ method: 'GET', url: '/health' }),
-            timeoutMs,
-            `Startup smoke test timed out after ${timeoutMs}ms. A hook/handler is likely not async or not calling done().`
-        );
-        if (response.statusCode !== 200) {
-            throw new Error(`Startup smoke test failed: /health returned ${response.statusCode}. Body: ${response.body}`);
+        try {
+            if (verificationRedis.status !== 'ready') {
+                await once(verificationRedis, 'ready');
+            }
+            await verificationRedis.ping();
+            // We are done with this client, disconnect it.
+            await verificationRedis.quit();
+        } catch (error) {
+            throw new Error(`FATAL: Could not connect to Redis. Shutting down. ${String(error)}`);
         }
-        app.log.info('Startup smoke test passed.');
+
+        // --- Create the main Redis client for the application with BullMQ's required options ---
+        appRedis = new Redis(environment.REDIS_URL, {
+            maxRetriesPerRequest: null // This is required by BullMQ
+        });
+
+        // --- Step 2: Build the App and Start Workers ---
+        app = await build(pool, appRedis);
+        app.log.info('All dependencies are connected. Building Fastify app...');
+
+        // Ensure Redis is ready for hooks during startup smoke test
+        if (appRedis.status !== 'ready') {
+            await once(appRedis, 'ready');
+        }
+        await appRedis.ping();
+
+        const timeoutMs = Number(process.env.STARTUP_SMOKETEST_TIMEOUT ?? 2000);
+        try {
+            const response = await withTimeout(
+                app.inject({ method: 'GET', url: '/health' }),
+                timeoutMs,
+                `Startup smoke test timed out after ${timeoutMs}ms. A hook/handler is likely not async or not calling done().`
+            );
+
+            if (response.statusCode !== 200) {
+                throw new Error(`Startup smoke test failed: /health returned ${response.statusCode}. Body: ${response.body}`);
+            }
+            app.log.info('Startup smoke test passed.');
+        } catch (error) {
+            // On smoke test failure, log, close resources, then re-throw
+            app?.log.error({ err: error }, 'FATAL: Startup check failed. Initiating graceful shutdown.');
+            await closeResources(app, pool, appRedis);
+            throw error; // Re-throw to be caught by the outer try/catch
+        }
+
+        const disposableQueue = new Queue('disposable', { connection: appRedis });
+        new Worker('disposable', disposableProcessor, { connection: appRedis });
+
+        await disposableQueue.add('refresh', {}, {
+            repeat: { pattern: '0 0 * * *' }
+        });
+
+        cron.schedule('0 0 * * *', async () => {
+            await runLogRetention(pool);
+        });
+
+        // --- Step 3: Start Listening ---
+        await app.listen({ port: environment.PORT, host: "0.0.0.0" });
+        app.log.info(`Orbicheck API server listening on http://0.0.0.0:${environment.PORT}`);
+
+        // Run initial refresh job in the background now that everything is running
+        void disposableQueue.add('refresh', {});
+
     } catch (error) {
-        app.log.error({ err: error }, 'FATAL: Startup check failed:');
-        throw error;
+        // This outer catch block handles any error from dependency init or the re-thrown smoke test error.
+        const logger = app?.log || console;
+        logger.error('Failed to start Orbicheck API:', error);
+
+        if (environment.SENTRY_DSN) {
+            Sentry.captureException(error);
+        }
+
+        // *** THE FIX: GUARANTEE PROCESS TERMINATION ***
+        // This is a safeguard. If something is keeping the event loop alive
+        // (e.g., a misbehaving plugin like `startupGuard` that started a timer),
+        // process.exit() might not terminate the process immediately.
+        // This timeout ensures the process is forcefully terminated.
+        setTimeout(() => {
+            console.error('Process did not exit cleanly, forcing shutdown now.');
+            process.exit(1);
+        }, 1000).unref(); // .unref() prevents this timeout from keeping the process alive itself
+
+        // Attempt a clean exit first
+        process.exit(1);
     }
-    const disposableQueue = new Queue('disposable', { connection: appRedis });
-    new Worker('disposable', disposableProcessor, { connection: appRedis });
-
-
-    await disposableQueue.add('refresh', {}, {
-        repeat: { pattern: '0 0 * * *' }
-    });
-
-    cron.schedule('0 0 * * *', async () => {
-        await runLogRetention(pool);
-    });
-
-    // --- Step 3: Start Listening ---
-    await app.listen({ port: environment.PORT, host: "0.0.0.0" });
-    app.log.info(`Orbicheck API server listening on http://0.0.0.0:${environment.PORT}`);
-
-    // Run initial refresh job in the background now that everything is running
-    void disposableQueue.add('refresh', {});
 }
 
 /**
  * Module entry point: starts the server if run directly (e.g., node server.js).
- * Catches startup errors, reports to Sentry if configured, logs to console, and exits with code 1.
  */
 if (process.argv[1] === import.meta.url.slice(7)) {
-    // Use void to explicitly mark the promise as intentionally not awaited
-    void (async () => {
-        try {
-            await start();
-        } catch (error) {
-            if (environment.SENTRY_DSN) {
-                Sentry.captureException(error);
-            }
-            console.error('Failed to start Orbicheck API:', error);
-            process.exit(1); // eslint-disable-line n/no-process-exit
-        }
-    })();
+    void start();
 }
