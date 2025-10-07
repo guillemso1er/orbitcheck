@@ -1,19 +1,19 @@
 import crypto from "node:crypto";
 
+import { API_V1_ROUTES } from "@orbicheck/contracts";
 import bcrypt from 'bcryptjs';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import jwt from 'jsonwebtoken';
 import type { Pool } from "pg";
 
-import { API_V1_ROUTES, DASHBOARD_ROUTES } from "@orbicheck/contracts";
 import { API_KEY_NAMES, API_KEY_PREFIX, ERROR_CODES, ERROR_MESSAGES, HTTP_STATUS, JWT_EXPIRES_IN, PG_UNIQUE_VIOLATION, PLAN_TYPES, PROJECT_NAMES, STATUS } from "../constants.js";
-import { environment } from "../env.js";
+import { environment } from "../environment.js";
 import { errorSchema, generateRequestId, sendError, sendServerError } from "./utils.js";
 
 // Define auth routes since they're not in the contracts
 
 
-export async function verifyJWT(request: FastifyRequest, rep: FastifyReply, pool: Pool) {
+export async function verifyJWT(request: FastifyRequest, rep: FastifyReply, pool: Pool) : Promise<void> {
     const header = request.headers["authorization"];
     if (!header || !header.startsWith("Bearer ")) {
         rep.status(HTTP_STATUS.UNAUTHORIZED).send({ error: { code: ERROR_CODES.UNAUTHORIZED, message: ERROR_MESSAGES[ERROR_CODES.UNAUTHORIZED] } });
@@ -48,7 +48,7 @@ export async function verifyJWT(request: FastifyRequest, rep: FastifyReply, pool
     }
 }
 
-export function registerAuthRoutes(app: FastifyInstance, pool: Pool) {
+export function registerAuthRoutes(app: FastifyInstance, pool: Pool): void {
     app.post(API_V1_ROUTES.AUTH.REGISTER_NEW_USER, {
         schema: {
             body: {
@@ -93,7 +93,7 @@ export function registerAuthRoutes(app: FastifyInstance, pool: Pool) {
             );
 
             if (userRows.length === 0) {
-                return sendError(rep, HTTP_STATUS.BAD_REQUEST, ERROR_CODES.USER_EXISTS, ERROR_MESSAGES[ERROR_CODES.USER_EXISTS], request_id);
+                return await sendError(rep, HTTP_STATUS.BAD_REQUEST, ERROR_CODES.USER_EXISTS, ERROR_MESSAGES[ERROR_CODES.USER_EXISTS], request_id);
             }
 
             const user = userRows[0];
@@ -108,6 +108,7 @@ export function registerAuthRoutes(app: FastifyInstance, pool: Pool) {
 
             // Generate default API key
             const buf = new Promise<Buffer>((resolve, reject) => {
+                // eslint-disable-next-line promise/prefer-await-to-callbacks
                 crypto.randomBytes(32, (error, buf) => {
                     if (error) reject(error);
                     else resolve(buf);
@@ -173,7 +174,7 @@ export function registerAuthRoutes(app: FastifyInstance, pool: Pool) {
             const { rows } = await pool.query('SELECT id, password_hash FROM users WHERE email = $1', [email]);
 
             if (rows.length === 0 || !(await bcrypt.compare(password, rows[0].password_hash))) {
-                return sendError(rep, HTTP_STATUS.UNAUTHORIZED, ERROR_CODES.INVALID_CREDENTIALS, ERROR_MESSAGES[ERROR_CODES.INVALID_CREDENTIALS], request_id);
+                return await sendError(rep, HTTP_STATUS.UNAUTHORIZED, ERROR_CODES.INVALID_CREDENTIALS, ERROR_MESSAGES[ERROR_CODES.INVALID_CREDENTIALS], request_id);
             }
 
             const user = rows[0];

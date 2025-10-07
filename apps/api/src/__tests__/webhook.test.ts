@@ -21,7 +21,7 @@ jest.mock('../routes/auth', () => {
     const actual = jest.requireActual('../routes/auth');
     return {
         ...actual,
-        verifyJWT: jest.fn(async (request_: any) => {
+        verifyJWT: jest.fn(async (request_: unknown) => {
             // Default: succeed and set ids
             request_.user_id = 'test_user';
             request_.project_id = 'test_project';
@@ -65,7 +65,7 @@ describe('Webhook Test Routes (JWT Auth)', () => {
 
 
 
-        mockPool.query.mockImplementation((queryText: string, values: any[]) => {
+        mockPool.query.mockImplementation((queryText: string, values: unknown[]) => {
             const upperQuery = queryText.toUpperCase();
             if (upperQuery.startsWith('SELECT ID FROM USERS WHERE ID = $1') && values[0] === 'test_user') {
                 return Promise.resolve({ rows: [{ id: 'test_user' }] });
@@ -82,7 +82,7 @@ describe('Webhook Test Routes (JWT Auth)', () => {
     });
 
     it('should successfully test a webhook with validation payload', async () => {
-        const res = await request(app.server)
+        const _result = await request(app.server)
             .post('/webhooks/test')
             .set('Authorization', `Bearer ${MOCK_JWT}`)
             .send({
@@ -101,7 +101,7 @@ describe('Webhook Test Routes (JWT Auth)', () => {
     });
 
     it('should handle custom payload successfully', async () => {
-        const res = await request(app.server)
+        const _result = await request(app.server)
             .post('/webhooks/test')
             .set('Authorization', `Bearer ${MOCK_JWT}`)
             .send({
@@ -119,7 +119,7 @@ describe('Webhook Test Routes (JWT Auth)', () => {
     });
 
     it('should reject invalid URL', async () => {
-        const res = await request(app.server)
+        const _result = await request(app.server)
             .post('/webhooks/test')
             .set('Authorization', `Bearer ${MOCK_JWT}`)
             .send({
@@ -132,7 +132,7 @@ describe('Webhook Test Routes (JWT Auth)', () => {
     });
 
     it('should reject missing custom payload for custom type', async () => {
-        const res = await request(app.server)
+        const _result = await request(app.server)
             .post('/webhooks/test')
             .set('Authorization', `Bearer ${MOCK_JWT}`)
             .send({
@@ -147,7 +147,7 @@ describe('Webhook Test Routes (JWT Auth)', () => {
     it('should handle fetch error', async () => {
         fetchMock.mockRejectedValue(new Error('Network error'));
 
-        const res = await request(app.server)
+        const _result = await request(app.server)
             .post('/webhooks/test')
             .set('Authorization', `Bearer ${MOCK_JWT}`)
             .send({
@@ -166,7 +166,7 @@ describe('Webhook Test Routes (JWT Auth)', () => {
         });
 
 
-        const res = await request(app.server)
+        const _result = await request(app.server)
             .post('/webhooks/test')
             .set('Authorization', `Bearer ${MOCK_JWT}`)
             .send({
@@ -180,7 +180,7 @@ describe('Webhook Test Routes (JWT Auth)', () => {
     });
 });
 
-function expectStatus(res: request.Response, expected: number) {
+function expectStatus(res: request.Response, expected: number) : void {
     if (res.statusCode !== expected) {
         console.log('FAILED status:', res.statusCode);
         console.log('Response body:', res.body);

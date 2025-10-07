@@ -9,7 +9,7 @@ declare module 'blocked-at' {
     function blockedAt(
         callback: (time: number, stack: string[], details: any) => void,
         options?: Options
-    ): NodeJS.Timer;
+    ): NodeJS.Timeout;
 
     export default blockedAt;
 }

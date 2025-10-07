@@ -1,21 +1,13 @@
 
+import { API_V1_ROUTES } from "@orbicheck/contracts";
 import type { FastifyInstance } from "fastify";
+import { type Redis as IORedisType } from 'ioredis';
 import type { Pool } from "pg";
 import twilio from 'twilio';
 
-import { type Redis as IORedisType } from 'ioredis';
 import {  ERROR_CODES, ERROR_MESSAGES, HTTP_STATUS, TWILIO_CHANNEL_SMS } from "../constants.js";
-import { API_V1_ROUTES } from "@orbicheck/contracts";
 // Import route constants from contracts package
-// TODO: Update to use @orbicheck/contracts export once build issues are resolved
-const ROUTES = {
-  VALIDATE_EMAIL: API_V1_ROUTES.VALIDATE.VALIDATE_EMAIL_ADDRESS,
-  VALIDATE_PHONE: API_V1_ROUTES.VALIDATE.VALIDATE_PHONE_NUMBER,
-  VALIDATE_ADDRESS: API_V1_ROUTES.VALIDATE.VALIDATE_ADDRESS,
-  VALIDATE_TAXID: API_V1_ROUTES.VALIDATE.VALIDATE_TAX_ID,
-  VERIFY_PHONE: API_V1_ROUTES.VERIFY.VERIFY_PHONE_OTP,
-};
-import { environment } from "../env.js";
+import { environment } from "../environment.js";
 import { logEvent } from "../hooks.js";
 import { validateAddress } from "../validators/address.js";
 import { validateEmail } from "../validators/email.js";
@@ -23,7 +15,7 @@ import { validatePhone } from "../validators/phone.js";
 import { validateTaxId } from "../validators/taxid.js";
 import { generateRequestId, rateLimitResponse, securityHeader, sendServerError, unauthorizedResponse, validationErrorResponse } from "./utils.js";
 
-export function registerValidationRoutes(app: FastifyInstance, pool: Pool, redis: IORedisType) {
+export function registerValidationRoutes(app: FastifyInstance, pool: Pool, redis: IORedisType): void {
     app.post(API_V1_ROUTES.VALIDATE.VALIDATE_EMAIL_ADDRESS, {
         schema: {
             summary: 'Validate Email Address',

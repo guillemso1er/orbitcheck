@@ -56,6 +56,7 @@ country: US`;
 
         // FIX: Call the callback with a single object argument to match
         // how promisify(execFile) resolves.
+        // eslint-disable-next-line promise/prefer-await-to-callbacks
         callback(null, { stdout: mockStdout, stderr: '' });
 
         return {} as ChildProcess;
@@ -81,6 +82,7 @@ country: US`;
     it('should handle fallback normalization when libpostal fails', async () => {
       mockedExecFile.mockImplementation(((...arguments_: any[]): ChildProcess => {
         const callback = arguments_.pop();
+        // eslint-disable-next-line promise/prefer-await-to-callbacks
         callback(new Error('Mock libpostal error'), '', ''); // Simulate failure
         return {} as ChildProcess;
       }) as any);
@@ -107,6 +109,7 @@ country: US`;
     it('should handle missing fields gracefully', async () => {
       mockedExecFile.mockImplementation(((...arguments_: any[]): ChildProcess => {
         const callback = arguments_.pop();
+        // eslint-disable-next-line promise/prefer-await-to-callbacks
         callback(new Error('Mock error'), '', ''); // Simulate failure
         return {} as ChildProcess;
       }) as any);

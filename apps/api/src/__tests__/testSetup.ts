@@ -47,7 +47,7 @@ jest.mock('pg', () => ({
   Pool: jest.fn(() => mockPool),
 }));
 
-jest.mock('../env.js', () => ({
+jest.mock('../environment.js', () => ({
   environment: {
     DATABASE_URL: 'postgres://test',
     REDIS_URL: 'redis://localhost',
@@ -139,17 +139,17 @@ jest.mock('jsonwebtoken', () => ({
 // --- Test Setup ---
 
 // This variable will hold the dynamically imported route registration function.
-let registerAuthRoutesFunction: any;
-let verifyJWTFunction: any;
-let registerApiKeysRoutesFunction: any;
-let registerValidationRoutesFunction: any;
-let registerDedupeRoutesFunction: any;
-let registerOrdersRoutesFunction: any;
-let registerDataRoutesFunction: any;
-let registerWebhooksRoutesFunction: any;
-let registerRulesRoutesFunction: any;
+let registerAuthRoutesFunction: unknown;
+let _verifyJWTFunction: unknown;
+let registerApiKeysRoutesFunction: unknown;
+let registerValidationRoutesFunction: unknown;
+let registerDedupeRoutesFunction: unknown;
+let registerOrdersRoutesFunction: unknown;
+let registerDataRoutesFunction: unknown;
+let registerWebhooksRoutesFunction: unknown;
+let registerRulesRoutesFunction: unknown;
 
-export const createApp = async () => {
+export const createApp = async (): Promise<Fastify.FastifyInstance> => {
   const app = Fastify({ logger: false });
   enableDiagnostics(app);
 
@@ -176,7 +176,7 @@ export const createApp = async () => {
       
       try {
         // Actually call jwt.verify so our mocks work
-        const payload = jwt.verify(token, process.env.JWT_SECRET || 'test_jwt_secret') as any;
+        const payload = jwt.verify(token, process.env.JWT_SECRET || 'test_jwt_secret');
         
         // Check if user has a project
         const projectResult = await mockPool.query(
@@ -190,7 +190,7 @@ export const createApp = async () => {
         
         (request as any).project_id = projectResult.rows[0].project_id;
         (request as any).user_id = payload.user_id;
-      } catch (error) {
+      } catch {
         return rep.code(401).send({ error: { code: 'invalid_token', message: 'Invalid token' } });
       }
     }
@@ -254,19 +254,19 @@ export const createApp = async () => {
 };
 
 // Dynamically imported modules for mocking
-export let hapi: any;
-export let mockDns: any;
-export let libphone: any;
-export let mockAddressValidator: any;
+export let hapi: unknown;
+export let mockDns: unknown;
+export let libphone: unknown;
+export let mockAddressValidator: unknown;
 export let mockValidateEmail: jest.Mock<Promise<ValidationResult>>;
 export let mockGetDomain: jest.Mock<any>;
 export let mockValidatePhone: jest.Mock<any>;
 export let mockValidateAddress: jest.Mock<any>;
-export let bcrypt: any;
-export let jwt: any;
+export let bcrypt: unknown;
+export let jwt: unknown;
 
 // Common beforeAll setup
-export const setupBeforeAll = async () => {
+export const setupBeforeAll = async (): Promise<void> => {
   // Set test environment variables to avoid errors
   process.env.JWT_SECRET = 'test_jwt_secret';
   process.env.TWILIO_ACCOUNT_SID = 'test_sid';
@@ -277,7 +277,7 @@ export const setupBeforeAll = async () => {
   // Load route modules synchronously with require for test environment
   const authModule = await import('../routes/auth.js');
   registerAuthRoutesFunction = authModule.registerAuthRoutes;
-  verifyJWTFunction = authModule.verifyJWT;
+  _verifyJWTFunction = authModule.verifyJWT;
   const apiKeysModule = await import('../routes/api-keys.js');
   registerApiKeysRoutesFunction = apiKeysModule.registerApiKeysRoutes;
   const validationModule = await import('../routes/validation.js');
@@ -294,23 +294,23 @@ export const setupBeforeAll = async () => {
   registerRulesRoutesFunction = rulesModule.registerRulesRoutes;
 
 
-  const emailMod = await import('../validators/email.js');
-  mockValidateEmail = emailMod.validateEmail as jest.Mock;
-  const phoneMod = await import('../validators/phone.js');
-  mockValidatePhone = phoneMod.validatePhone as jest.Mock;
-  const addressMod = await import('../validators/address.js');
-  mockValidateAddress = addressMod.validateAddress as jest.Mock;
-  const hapiMod = await import('@hapi/address');
-  hapi = hapiMod as any;
-  const dnsMod = await import('node:dns/promises');
-  mockDns = dnsMod as any;
-  const libphoneMod = await import('libphonenumber-js');
-  libphone = libphoneMod;
-  mockAddressValidator = addressMod;
-  const bcryptMod = await import('bcryptjs');
-  bcrypt = bcryptMod;
-  const jwtMod = await import('jsonwebtoken');
-  jwt = jwtMod;
+  const emailModule = await import('../validators/email.js');
+  mockValidateEmail = emailModule.validateEmail as jest.Mock;
+  const phoneModule = await import('../validators/phone.js');
+  mockValidatePhone = phoneModule.validatePhone as jest.Mock;
+  const addressModule = await import('../validators/address.js');
+  mockValidateAddress = addressModule.validateAddress as jest.Mock;
+  const hapiModule = await import('@hapi/address');
+  hapi = hapiModule as any;
+  const dnsModule = await import('node:dns/promises');
+  mockDns = dnsModule as any;
+  const libphoneModule = await import('libphonenumber-js');
+  libphone = libphoneModule;
+  mockAddressValidator = addressModule;
+  const bcryptModule = await import('bcryptjs');
+  bcrypt = bcryptModule;
+  const jwtModule = await import('jsonwebtoken');
+  jwt = jwtModule;
 
   // Set default mock implementations once
   mockValidateEmail.mockResolvedValue({
@@ -341,13 +341,11 @@ export const setupBeforeAll = async () => {
   });
 
   // Mock crypto for consistent testing
-  const cryptoMod = await import('node:crypto');
-  (cryptoMod.randomBytes as jest.Mock).mockImplementation((size: number, callback: (err: Error | null, buf: Buffer) => void) => {
-    callback(null, Buffer.from('test32bytes' + 'a'.repeat(24)));
-  });
+  const cryptoModule = await import('node:crypto');
+  (cryptoModule.randomBytes as jest.Mock).mockReturnValue(Buffer.from('test32bytes' + 'a'.repeat(24)));
   const actualCrypto = jest.requireActual('node:crypto');
-  (cryptoMod.createHash as jest.Mock).mockImplementation((algorithm) => actualCrypto.createHash(algorithm));
-  (cryptoMod.randomUUID as jest.Mock).mockReturnValue('123e4567-e89b-12d3-a456-426614174000');
+  (cryptoModule.createHash as jest.Mock).mockImplementation((algorithm) => actualCrypto.createHash(algorithm));
+  (cryptoModule.randomUUID as jest.Mock).mockReturnValue('123e4567-e89b-12d3-a456-426614174000');
 
   // Default Mock Implementations (Success Cases)
   mockPool.end.mockResolvedValue('OK');
@@ -395,18 +393,18 @@ describe('testSetup', () => {
 });
 
 // test diagnostics: lifecycle + response logging
-export function enableDiagnostics(app: any) {
-  app.addHook('onRequest', async (request: any, _rep: any) => {
+export function enableDiagnostics(app: unknown): void {
+  app.addHook('onRequest', async (request: unknown, _rep: unknown) => {
     console.log(`[onRequest] ${request.method} ${request.url} auth=${request.headers.authorization ?? '<none>'}`);
     return;
   });
 
-  app.addHook('preHandler', async (request: any, rep: any) => {
+  app.addHook('preHandler', async (request: unknown, _rep: unknown) => {
     console.log(`[preHandler] ${request.method} ${request.url}`);
     return;
   });
 
-  app.addHook('onSend', async (request: any, rep: any, payload: any) => {
+  app.addHook('onSend', async (request: unknown, rep: unknown, payload: unknown) => {
     const status = rep.statusCode;
     if (status >= 400) {
       let bodyText = '';
@@ -416,7 +414,7 @@ export function enableDiagnostics(app: any) {
     return payload;
   });
 
-  app.addHook('onError', async (request: any, rep: any, error: any) => {
+  app.addHook('onError', async (request: unknown, rep: unknown, error: unknown) => {
     console.log(`[onError] ${request.method} ${request.url} err=${error?.message} status=${rep.statusCode}`);
     return error;
   });

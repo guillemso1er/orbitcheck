@@ -1,3 +1,5 @@
+import soap from 'soap';
+
 import {
   validateCNPJ,
   validateCPF,
@@ -10,8 +12,6 @@ import {
   validateRUT,
   validateTaxId,
 } from '../taxid.js';
-
-import soap from 'soap';
 
 jest.mock('soap', () => ({
   createClientAsync: jest.fn(),

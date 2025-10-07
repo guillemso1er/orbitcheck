@@ -11,11 +11,11 @@ describe('Rules Endpoints', () => {
         await setupBeforeAll(); // Set up global mocks and environment
         app = await createApp();  // Correctly await the async function
 
-        app.addHook('preHandler', async (request_: FastifyRequest, rep: FastifyReply) => {
+        app.addHook('preHandler', async (request_: FastifyRequest, _rep: FastifyReply) => {
             if (request_.url.startsWith('/v1/rules')) {
                 const authHeader = request_.headers.authorization;
                 if (authHeader === 'Bearer valid_key') {
-                    (request_ as any).project_id = 'test_project';
+                    (request_ as { project_id: string }).project_id = 'test_project';
                 }
             }
         });

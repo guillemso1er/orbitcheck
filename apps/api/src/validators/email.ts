@@ -16,21 +16,22 @@ import { DNS_TIMEOUT_MS, DOMAIN_CACHE_TTL_DAYS, REASON_CODES, TTL_EMAIL } from "
  * @param ms - Timeout duration in milliseconds (default: 1200).
  * @returns {Promise} The raced promise; rejects with 'ETIMEDOUT' if timed out.
  */
-const withTimeout = <T>(p: Promise<T>, ms = DNS_TIMEOUT_MS): Promise<T> => {
-    let timer: NodeJS.Timeout;
+async function withTimeout<T>(p: Promise<T>, ms = DNS_TIMEOUT_MS): Promise<T> {
+    let timer: NodeJS.Timeout | undefined;
 
-    // The timeout promise
-    const timeoutPromise = new Promise<never>((resolve, reject) => {
-        timer = setTimeout(() => reject(new Error('ETIMEDOUT')), ms);
-    });
+    try {
+        // The timeout promise
+        const timeoutPromise = new Promise<never>((resolve, reject) => {
+            timer = setTimeout(() => reject(new Error('ETIMEDOUT')), ms);
+        });
 
-    // Race the input promise against the timeout
-    return Promise.race([p, timeoutPromise])
-        .finally(() => {
-            // CRITICAL: Always clear the timer when the race is over.
-            clearTimeout(timer);
-        }) as Promise<T>;
-};
+        // Race the input promise against the timeout
+        return await Promise.race([p, timeoutPromise]);
+    } finally {
+        // CRITICAL: Always clear the timer when the race is over.
+        if (timer) clearTimeout(timer);
+    }
+}
 
 /**
  * Validates an email address: format check, MX records (with A/AAAA fallback), disposable domain check via Redis.

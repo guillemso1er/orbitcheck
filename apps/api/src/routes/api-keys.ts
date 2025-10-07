@@ -1,14 +1,14 @@
 import crypto from "node:crypto";
 
+import { DASHBOARD_ROUTES } from "@orbicheck/contracts";
 import type { FastifyInstance } from "fastify";
 import type { Pool } from "pg";
 
 import { API_KEY_PREFIX, ERROR_CODES, ERROR_MESSAGES, HTTP_STATUS, STATUS } from "../constants.js";
-import { DASHBOARD_ROUTES } from "@orbicheck/contracts";
 import { errorSchema, generateRequestId, rateLimitResponse, securityHeader, sendError, sendServerError, unauthorizedResponse } from "./utils.js";
 
 
-export function registerApiKeysRoutes(app: FastifyInstance, pool: Pool) {
+export function registerApiKeysRoutes(app: FastifyInstance, pool: Pool): void {
     app.get(DASHBOARD_ROUTES.LIST_API_KEYS, {
         schema: {
             summary: 'List API Keys',
@@ -93,6 +93,7 @@ export function registerApiKeysRoutes(app: FastifyInstance, pool: Pool) {
 
             // Generate full key
             const buf = new Promise<Buffer>((resolve, reject) => {
+                // eslint-disable-next-line promise/prefer-await-to-callbacks
                 crypto.randomBytes(32, (error, buf) => {
                     if (error) reject(error);
                     else resolve(buf);
@@ -162,7 +163,7 @@ export function registerApiKeysRoutes(app: FastifyInstance, pool: Pool) {
             );
 
             if (rowCount === 0) {
-                return sendError(rep, HTTP_STATUS.NOT_FOUND, ERROR_CODES.NOT_FOUND, ERROR_MESSAGES[ERROR_CODES.NOT_FOUND], request_id);
+                return await sendError(rep, HTTP_STATUS.NOT_FOUND, ERROR_CODES.NOT_FOUND, ERROR_MESSAGES[ERROR_CODES.NOT_FOUND], request_id);
             }
 
             const response: any = { id, status: STATUS.REVOKED, request_id };

@@ -1,14 +1,13 @@
-// web.js - Fixed implementation
+
+import { API_ROUTES, DASHBOARD_ROUTES } from "@orbicheck/contracts";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
+import { type Redis as IORedisType } from 'ioredis';
 import type { Pool } from "pg";
 
-import { type Redis as IORedisType } from 'ioredis';
 import { auth, idempotency, rateLimit } from "./hooks.js";
-// Import route constants from contracts package
-import { API_V1_ROUTES, DASHBOARD_ROUTES, API_ROUTES } from "@orbicheck/contracts";
-const WEBHOOKS_TEST = DASHBOARD_ROUTES.TEST_WEBHOOK;
-const USAGE = DASHBOARD_ROUTES.GET_USAGE_STATISTICS;
-const LOGS = DASHBOARD_ROUTES.GET_EVENT_LOGS;
+const _WEBHOOKS_TEST = DASHBOARD_ROUTES.TEST_WEBHOOK;
+const _USAGE = DASHBOARD_ROUTES.GET_USAGE_STATISTICS;
+const _LOGS = DASHBOARD_ROUTES.GET_EVENT_LOGS;
 const AUTH_REGISTER = API_ROUTES.REGISTER_NEW_USER;
 const AUTH_LOGIN = API_ROUTES.USER_LOGIN;
 import { registerApiKeysRoutes } from './routes/api-keys.js';

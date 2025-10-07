@@ -1,12 +1,12 @@
 import crypto from "node:crypto";
 
 import type { FastifyReply,FastifyRequest } from "fastify";
-import IORedis from 'ioredis';
+import _IORedis from 'ioredis';
 import { type Redis as IORedisType } from 'ioredis';
 import type { Pool } from "pg";
 
 import { ERROR_CODES, ERROR_MESSAGES, HTTP_STATUS, STATUS } from "./constants.js";
-import { environment } from "./env.js";
+import { environment } from "./environment.js";
 
 
 /**
@@ -20,7 +20,7 @@ import { environment } from "./env.js";
  * @param pool - PostgreSQL connection pool for database queries.
  * @returns {Promise<void>} Resolves on success, sends 401 error on failure.
  */
-export async function auth(request: FastifyRequest, rep: FastifyReply, pool: Pool) {
+export async function auth(request: FastifyRequest, rep: FastifyReply, pool: Pool): Promise<void> {
     const header = request.headers["authorization"];
     if (!header || !header.startsWith("Bearer ")) {
         rep.status(HTTP_STATUS.UNAUTHORIZED).send({ error: { code: ERROR_CODES.UNAUTHORIZED, message: ERROR_MESSAGES[ERROR_CODES.UNAUTHORIZED] } });
@@ -64,7 +64,7 @@ export async function auth(request: FastifyRequest, rep: FastifyReply, pool: Poo
  * @param redis - Redis client for atomic increment and expiration.
  * @returns {Promise<void>} Resolves if under limit, sends 429 if exceeded.
  */
-export async function rateLimit(request: FastifyRequest, rep: FastifyReply, redis: IORedisType) {
+export async function rateLimit(request: FastifyRequest, rep: FastifyReply, redis: IORedisType): Promise<void> {
     const key = `rl:${request.project_id}:${request.ip}`;
     const limit = environment.RATE_LIMIT_COUNT;
     const ttl = 60;
@@ -88,7 +88,7 @@ export async function rateLimit(request: FastifyRequest, rep: FastifyReply, redi
  * @param redis - Redis client for GET/SET with expiration.
  * @returns {Promise<void|FastifyReply>} Sends cached response if found, otherwise attaches saveIdem.
  */
-export async function idempotency(request: FastifyRequest, rep: FastifyReply, redis: IORedisType) {
+export async function idempotency(request: FastifyRequest, rep: FastifyReply, redis: IORedisType): Promise<void> {
     const idem = request.headers["idempotency-key"];
     if (!idem || typeof idem !== "string") return;
     const cacheKey = `idem:${request.project_id}:${idem}`;
@@ -118,7 +118,7 @@ export async function idempotency(request: FastifyRequest, rep: FastifyReply, re
  * @param pool - PostgreSQL connection pool for inserting the log entry.
  * @returns {Promise<void>} Inserts log entry asynchronously.
  */
-export async function logEvent(project_id: string, type: string, endpoint: string, reason_codes: string[], status: number, meta: Record<string, unknown>, pool: Pool) {
+export async function logEvent(project_id: string, type: string, endpoint: string, reason_codes: string[], status: number, meta: Record<string, unknown>, pool: Pool): Promise<void> {
     await pool.query(
         "insert into logs (project_id, type, endpoint, reason_codes, status, meta) values ($1, $2, $3, $4, $5, $6)",
         [project_id, type, endpoint, reason_codes, status, meta]

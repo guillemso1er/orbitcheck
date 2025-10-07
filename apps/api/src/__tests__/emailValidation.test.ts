@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access */
+ 
 
 import crypto from 'node:crypto';
 
@@ -331,5 +331,5 @@ describe('Email Validation Endpoints', () => {
         });
     });
 
-    /* eslint-enable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access */
+     
 });

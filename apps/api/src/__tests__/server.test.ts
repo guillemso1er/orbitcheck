@@ -1,7 +1,7 @@
 import * as Sentry from '@sentry/node';
 import { Queue, Worker } from 'bullmq';
 import Fastify from 'fastify';
-import { Redis, type Redis as IORedisType } from 'ioredis';
+import { type Redis as IORedisType,Redis } from 'ioredis';
 import cron from 'node-cron';
 import { Pool } from 'pg';
 
@@ -77,7 +77,7 @@ jest.mock('@orbicheck/contracts/openapi.yaml', () => ({
 }));
 
 // Import the mocked env so we can manipulate it in tests
-import { environment } from '../env.js';
+import { environment } from '../environment.js';
 // Re-require the server module to ensure it gets the mocked dependencies
 import { build, start } from '../server.js';
 

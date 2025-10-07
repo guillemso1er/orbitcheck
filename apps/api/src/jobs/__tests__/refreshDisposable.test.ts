@@ -33,7 +33,7 @@ describe('Disposable Domains Refresh Job', () => {
     } as any;
 
     // Mock the constructor properly
-    (IORedisType as any).mockImplementation(() => mockRedis);
+    (IORedisType).mockImplementation(() => mockRedis);
 
     const mockFetchResponse = {
       json: jest.fn().mockResolvedValue(['disposable1.com', 'disposable2.com']),

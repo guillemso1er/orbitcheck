@@ -62,20 +62,20 @@ describe('Usage Stats Endpoints', () => {
         return Promise.resolve({ rows: [] });
       });
 
-      const res = await request(app.server)
+      const _result = await request(app.server)
         .get('/data/usage')
         .set('Authorization', 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoidGVzdF91c2VyIiwicHJvamVjdF9pZCI6InRlc3RfcHJvamVjdCJ9.test');
 
-      expect(res.statusCode).toBe(200);
+      expect(_result.statusCode).toBe(200);
       // Sum of validations from usageData
-      expect(res.body.totals.validations).toBe(30);
+      expect(_result.body.totals.validations).toBe(30);
       // Sum of orders from usageData
-      expect(res.body.totals.orders).toBe(15);
-      expect(res.body.by_day.length).toBe(2);
-      expect(res.body.top_reason_codes.length).toBe(1);
-      expect(res.body.top_reason_codes[0].code).toBe('email.valid');
+      expect(_result.body.totals.orders).toBe(15);
+      expect(_result.body.by_day.length).toBe(2);
+      expect(_result.body.top_reason_codes.length).toBe(1);
+      expect(_result.body.top_reason_codes[0].code).toBe('email.valid');
       // 285 cached / 300 total = 0.95
-      expect(res.body.cache_hit_ratio).toBeCloseTo(95);
+      expect(_result.body.cache_hit_ratio).toBeCloseTo(95);
     });
 
     it('should handle no usage data gracefully', async () => {
@@ -100,17 +100,17 @@ describe('Usage Stats Endpoints', () => {
         return Promise.resolve({ rows: [] });
       });
 
-      const res = await request(app.server)
+      const _result = await request(app.server)
         .get('/data/usage')
         .set('Authorization', 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoidGVzdF91c2VyIiwicHJvamVjdF9pZCI6InRlc3RfcHJvamVjdCJ9.test');
 
-      expect(res.statusCode).toBe(200);
-      expect(res.body.totals.validations).toBe(0);
-      expect(res.body.totals.orders).toBe(0);
-      expect(res.body.by_day.length).toBe(0);
-      expect(res.body.top_reason_codes.length).toBe(0);
+      expect(_result.statusCode).toBe(200);
+      expect(_result.body.totals.validations).toBe(0);
+      expect(_result.body.totals.orders).toBe(0);
+      expect(_result.body.by_day.length).toBe(0);
+      expect(_result.body.top_reason_codes.length).toBe(0);
       // 0 / 0 should be handled as 0 in the endpoint logic
-      expect(res.body.cache_hit_ratio).toBe(0);
+      expect(_result.body.cache_hit_ratio).toBe(0);
     });
   });
 });

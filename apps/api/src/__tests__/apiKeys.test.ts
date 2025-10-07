@@ -1,4 +1,4 @@
-import * as crypto from 'node:crypto';
+import * as nodeCrypto from 'node:crypto';
 
 import type { FastifyInstance } from 'fastify';
 import jwt from 'jsonwebtoken';
@@ -11,8 +11,8 @@ jest.mock('jsonwebtoken');
 
 // Create typed mocks for JWT and crypto
 const mockedJwtVerify = jwt.verify as jest.Mock;
-const mockedRandomBytes = crypto.randomBytes as jest.Mock;
-const mockedCreateHash = crypto.createHash as jest.Mock;
+const _mockedRandomBytes = nodeCrypto.randomBytes as jest.Mock;
+const _mockedCreateHash = nodeCrypto.createHash as jest.Mock;
 
 describe('API Keys Routes (JWT Auth)', () => {
     let app: FastifyInstance;
@@ -25,17 +25,17 @@ describe('API Keys Routes (JWT Auth)', () => {
             if (request_.url.startsWith('/api-keys')) {
                 try {
                     if (!request_.headers.authorization?.startsWith('Bearer ')) {
-                        return reply.status(401).send({ error: { code: 'missing_token', message: 'Authorization header is missing or invalid.' } });
+                        return await reply.status(401).send({ error: { code: 'missing_token', message: 'Authorization header is missing or invalid.' } });
                     }
                     const token = request_.headers.authorization.split(' ')[1];
                     mockedJwtVerify(token);
-                    (request_ as any).project_id = 'test_project';
-                    return;
+                    (request_ as { project_id: string }).project_id = 'test_project';
+                    return undefined;
                 } catch {
                     return reply.status(401).send({ error: { code: 'invalid_token', message: 'The provided token is invalid.' } });
                 }
             } else {
-                return
+                return undefined
             }
         });
 
@@ -103,17 +103,15 @@ describe('API Keys Routes (JWT Auth)', () => {
     it('should create a new API key with valid JWT', async () => {
         // --- THE FIX IS HERE ---
         // Dynamically require the mocked module *inside the test* to get the mocked version.
-        const crypto = await import('node:crypto');
-        const mockedRandomBytes = crypto.randomBytes as jest.Mock;
-        const mockedCreateHash = crypto.createHash as jest.Mock;
+        const importedCrypto = await import('node:crypto');
+        const mockedRandomBytes = importedCrypto.randomBytes as jest.Mock;
+        const mockedCreateHash = importedCrypto.createHash as jest.Mock;
 
         const hexString = '74657374' + '00'.repeat(28); // 'test....'
         const buffer = Buffer.from(hexString, 'hex');
 
         // This will now work correctly because mockedRandomBytes is a guaranteed mock function.
-        mockedRandomBytes.mockImplementation((size: number, callback: (err: Error | null, buf: Buffer) => void) => {
-            callback(null, buffer);
-        });
+        mockedRandomBytes.mockReturnValue(buffer);
 
         const mockHash = {
             update: jest.fn().mockReturnThis(),

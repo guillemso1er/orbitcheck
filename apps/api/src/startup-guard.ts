@@ -12,11 +12,11 @@ const expectedArity: Record<string, number> = {
     onError: 4              // (req, reply, error, done)
 };
 
-function isAsync(function_: Function) {
+function isAsync(function_: Function): boolean {
     return function_ && function_.constructor && function_.constructor.name === 'AsyncFunction';
 }
 
-function checkOne(name: keyof typeof expectedArity, function_: any) {
+function checkOne(name: keyof typeof expectedArity, function_: any) : void {
     if (typeof function_ !== 'function') return;
     const need = expectedArity[name];
     // Valid if async OR accepts the done callback (arity >= need)
@@ -29,7 +29,7 @@ function checkOne(name: keyof typeof expectedArity, function_: any) {
     }
 }
 
-function checkMany(name: keyof typeof expectedArity, handlers: any) {
+function checkMany(name: keyof typeof expectedArity, handlers: any) : void {
     if (!handlers) return;
     if (Array.isArray(handlers)) for (const h of handlers) checkOne(name, h);
     else checkOne(name, handlers);
@@ -38,9 +38,9 @@ function checkMany(name: keyof typeof expectedArity, handlers: any) {
 export default fp(async (app: FastifyInstance) => {
     // Guard global hooks
     const origAddHook = app.addHook.bind(app);
-    (app as any).addHook = ((name: string, handler: any) => {
+    (app as any).addHook = (async (name: string, handler: any) => {
         if (name in expectedArity) checkOne(name as any, handler);
-        return origAddHook(name as any, handler);
+        return await origAddHook(name as any, handler);
     }) as any;
 
     // Guard route-level hooks

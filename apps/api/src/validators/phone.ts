@@ -1,7 +1,7 @@
 import crypto from "node:crypto";
 
 import type { Redis } from "ioredis";
-import { parsePhoneNumber } from "libphonenumber-js";
+import { type CountryCode,parsePhoneNumberWithError } from "libphonenumber-js";
 
 import { REASON_CODES } from "../constants.js";
 
@@ -32,7 +32,7 @@ export async function validatePhone(
     const hash = crypto.createHash('sha1').update(input).digest('hex');
     const cacheKey = `validator:phone:${hash}`;
 
-    let result: any;
+    let result: { valid: boolean; e164: string; country: string | null; reason_codes: string[]; request_id: string; ttl_seconds: number };
 
     if (redis) {
         const cached = await redis.get(cacheKey);
@@ -46,7 +46,7 @@ export async function validatePhone(
     let cc = country?.toUpperCase();
 
     try {
-        const parsed = cc ? parsePhoneNumber(phone, cc as any) : parsePhoneNumber(phone as any);
+        const parsed = cc ? parsePhoneNumberWithError(phone, cc as CountryCode) : parsePhoneNumberWithError(phone);
         if (parsed && parsed.isValid()) {
             e164 = parsed.number;
             cc = parsed.country || cc;

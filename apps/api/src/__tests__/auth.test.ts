@@ -36,9 +36,7 @@ describe('Auth Routes', () => {
     jest.clearAllMocks();
 
     // Now you can safely mock the crypto functions
-    (crypto.randomBytes as jest.Mock).mockImplementation((size: number, callback: (err: Error | null, buf: Buffer) => void) => {
-      callback(null, Buffer.from('test32bytes' + 'a'.repeat(24)));
-    });
+    (crypto.randomBytes as jest.Mock).mockReturnValue(Buffer.from('test32bytes' + 'a'.repeat(24)));
     (crypto.createHash as jest.Mock).mockImplementation(() => ({
       update: jest.fn().mockReturnThis(),
       digest: jest.fn().mockReturnValue('test_hash')

@@ -1,11 +1,11 @@
+import { API_V1_ROUTES } from "@orbicheck/contracts";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import type { Pool } from "pg";
 
 import { REASON_CODES } from "../constants.js";
 import { generateRequestId, securityHeader, sendServerError } from "./utils.js";
-import { API_V1_ROUTES } from "@orbicheck/contracts";
 
-const reasonCodes: any[] = Object.entries(REASON_CODES).map(([key, code]) => {
+const reasonCodes: any[] = Object.entries(REASON_CODES).map(([_key, code]) => {
   // Map from code to description, category, severity - this is a simplification; in practice, you'd have a full mapping
   const descriptions: Record<string, { description: string, category: string, severity: 'low' | 'medium' | 'high' }> = {
     [REASON_CODES.EMAIL_INVALID_FORMAT]: { description: 'Invalid email format', category: 'email', severity: 'low' },
@@ -39,7 +39,7 @@ const reasonCodes: any[] = Object.entries(REASON_CODES).map(([key, code]) => {
   return { code, description: desc ? desc.description : 'Unknown reason code', category: desc ? desc.category : 'unknown', severity: desc ? desc.severity : 'medium' };
 });
 
-export function registerRulesRoutes(app: FastifyInstance, pool: Pool) {
+export function registerRulesRoutes(app: FastifyInstance, _pool: Pool): void {
   const rules: any[] = [
     {
       id: 'email_format',
@@ -250,7 +250,7 @@ export function registerRulesRoutes(app: FastifyInstance, pool: Pool) {
       const request_id = generateRequestId();
 
       // For now, log the registration; in production, store in DB
-      console.log(`Rules registered for project ${project_id}:`, rules);
+      console.warn(`Rules registered for project ${project_id}:`, rules);
 
       const response: any = {
         message: 'Rules registered successfully',

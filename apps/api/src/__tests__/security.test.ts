@@ -1,4 +1,5 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
+import type { Pool } from "pg";
 import request from 'supertest';
 
 import { auth } from '../hooks.js';
@@ -13,7 +14,7 @@ describe('Security and Authentication', () => {
     app = await createApp(); // Correctly await the async function
 
     app.addHook('preHandler', async (request_: FastifyRequest, rep: FastifyReply) => {
-      await auth(request_, rep, mockPool as any);
+      await auth(request_, rep, mockPool as unknown as Pool);
       return;
     });
 
@@ -64,33 +65,33 @@ describe('Security and Authentication', () => {
         return Promise.resolve({ rows: [] });
       });
 
-      const res = await request(app.server)
+      const result = await request(app.server)
         .post('/v1/validate/email')
         .set('Authorization', 'Bearer invalid_key')
         .send({ email: 'test@example.com' });
 
-      expect(res.statusCode).toBe(401);
-      expect(res.body.error.code).toBe('unauthorized');
+      expect(result.statusCode).toBe(401);
+      expect((result.body as { error: { code: string } }).error.code).toBe('unauthorized');
     });
   });
 
   describe('Security Headers', () => {
     it('should include security headers in responses', async () => {
       // This test relies on the default successful auth mock from beforeEach
-      const res = await request(app.server)
+      const result = await request(app.server)
         .post('/v1/validate/email')
         .set('Authorization', 'Bearer valid_key')
         .send({ email: 'test@example.com' });
 
       // Assuming a successful validation returns 200
-      expect(res.statusCode).toBe(200);
+      expect(result.statusCode).toBe(200);
 
       // Check for the security headers added by the preHandler hook in your test setup
-      expect(res.headers['x-content-type-options']).toBe('nosniff');
-      expect(res.headers['x-frame-options']).toBe('DENY');
-      expect(res.headers['x-xss-protection']).toBe('1; mode=block');
-      expect(res.headers['referrer-policy']).toBe('strict-origin-when-cross-origin');
-      expect(res.headers['permissions-policy']).toBe('camera=(), microphone=(), geolocation=()');
+      expect(result.headers['x-content-type-options']).toBe('nosniff');
+      expect(result.headers['x-frame-options']).toBe('DENY');
+      expect(result.headers['x-xss-protection']).toBe('1; mode=block');
+      expect(result.headers['referrer-policy']).toBe('strict-origin-when-cross-origin');
+      expect(result.headers['permissions-policy']).toBe('camera=(), microphone=(), geolocation=()');
     });
   });
 });

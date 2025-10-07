@@ -9,7 +9,7 @@ import type { Redis } from "ioredis";
  * @param s - Input string (e.g., "123.456.789-09").
  * @returns {string} String containing only digits.
  */
-function onlyDigits(s: string) { return (s || "").replaceAll(/\D/g, ""); }
+function onlyDigits(s: string): string { return (s || "").replaceAll(/\D/g, ""); }
 
 /**
  * Computes mod 11 checksum for validation algorithms.
@@ -19,7 +19,7 @@ function onlyDigits(s: string) { return (s || "").replaceAll(/\D/g, ""); }
  * @param weights - Array of weights corresponding to each digit position.
  * @returns {number} Modulus result for check digit computation.
  */
-function module11Checksum(nums: number[], weights: number[]) {
+function _module11Checksum(nums: number[], weights: number[]): number {
     const sum = nums.reduce((accumulator, n, index) => accumulator + n * weights[index], 0);
     const module_ = sum % 11;
     return module_;
@@ -40,11 +40,11 @@ function module11Checksum(nums: number[], weights: number[]) {
  * @param value - The CPF string (e.g., "123.456.789-09" or "12345678909").
  * @returns {Object} Validation result with valid flag and reason codes (format or checksum errors).
  */
-export function validateCPF(value: string) {
+export function validateCPF(value: string): { valid: boolean; reason_codes: string[] } {
     const v = onlyDigits(value);
     if (v.length !== 11) return { valid: false, reason_codes: ["taxid.invalid_format"] };
     if (/^(\d)\1+$/.test(v)) return { valid: false, reason_codes: ["taxid.invalid_format"] };
-    const n = v.split("").map(Number);
+    const n = [...v].map(Number);
     const d1 = (n.slice(0, 9).reduce((accumulator, current, index) => accumulator + current * (10 - index), 0) * 10) % 11 % 10;
     const d2 = (n.slice(0, 10).reduce((accumulator, current, index) => accumulator + current * (11 - index), 0) * 10) % 11 % 10;
     const ok = d1 === n[9] && d2 === n[10];
@@ -67,11 +67,11 @@ export function validateCPF(value: string) {
  * @param value - The CNPJ string (e.g., "12.345.678/0001-99" or "12345678000199").
  * @returns {Object} Validation result with valid flag and reason codes (format or checksum errors).
  */
-export function validateCNPJ(value: string) {
+export function validateCNPJ(value: string): { valid: boolean; reason_codes: string[] } {
     const v = onlyDigits(value);
     if (v.length !== 14) return { valid: false, reason_codes: ["taxid.invalid_format"] };
     if (/^(\d)\1+$/.test(v)) return { valid: false, reason_codes: ["taxid.invalid_format"] };
-    const n = v.split("").map(Number);
+    const n = [...v].map(Number);
     const w1 = [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2];
     const w2 = [6, ...w1];
     const d1 = 11 - (n.slice(0, 12).reduce((accumulator, current, index) => accumulator + current * w1[index], 0) % 11); const cd1 = d1 > 9 ? 0 : d1;
@@ -98,12 +98,11 @@ export function validateCNPJ(value: string) {
  */
 const RFC_CHARS = " 0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ&Ñ";
 const RFC_MAP: Record<string, number> = Object.fromEntries([...RFC_CHARS].map((c, index) => [c, index]));
-export function validateRFC(value: string) {
+export function validateRFC(value: string): { valid: boolean; reason_codes: string[] } {
     const v = value.trim().toUpperCase();
     if (!/^[&A-ZÑ]{3,4}\d{6}[\d&A-ZÑ]{3}$/.test(v)) return { valid: false, reason_codes: ["taxid.invalid_format"] };
     if (v.length !== 12 && v.length !== 13) return { valid: false, reason_codes: ["taxid.invalid_format"] };
-    let body: string;
-    body = v.length === 13 ? v.slice(0, 12) : v.slice(0, 11);
+    const body = v.length === 13 ? v.slice(0, 12) : v.slice(0, 11);
     const check = v.slice(-1);
     let sum = 0;
     const weights = [13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2];
@@ -132,11 +131,11 @@ export function validateRFC(value: string) {
  * @param value - The CUIT string (e.g., "20-12345678-9" or "20123456789").
  * @returns {Object} Validation result with valid flag and reason codes (format or checksum errors).
  */
-export function validateCUIT(value: string) {
+export function validateCUIT(value: string): { valid: boolean; reason_codes: string[] } {
     const v = onlyDigits(value);
     if (v.length !== 11) return { valid: false, reason_codes: ["taxid.invalid_format"] };
     const w = [5, 4, 3, 2, 7, 6, 5, 4, 3, 2];
-    const nums = v.split("").map(Number);
+    const nums = [...v].map(Number);
     const s = nums.slice(0, 10).reduce((accumulator, current, index) => accumulator + current * w[index], 0);
     const module_ = 11 - (s % 11);
     const cd = module_ === 11 ? 0 : module_ === 10 ? 9 : module_;
@@ -160,7 +159,7 @@ export function validateCUIT(value: string) {
  * @param value - The RUT string (e.g., "12.345.678-9" or "12345678-K").
  * @returns {Object} Validation result with valid flag and reason codes (format or checksum errors).
  */
-export function validateRUT(value: string) {
+export function validateRUT(value: string): { valid: boolean; reason_codes: string[] } {
     const v = value.replaceAll('.', "").replaceAll('-', "").toUpperCase();
     const body = v.slice(0, -1); const dv = v.slice(-1);
     if (!/^\d+$/.test(body)) return { valid: false, reason_codes: ["taxid.invalid_format"] };
@@ -169,8 +168,8 @@ export function validateRUT(value: string) {
         sum += Number.parseInt(body[index], 10) * mul;
         mul = (mul === 7) ? 2 : (mul + 1);
     }
-    const res = 11 - (sum % 11);
-    const cd = res === 11 ? "0" : res === 10 ? "K" : String(res);
+    const result = 11 - (sum % 11);
+    const cd = result === 11 ? "0" : result === 10 ? "K" : String(result);
     const ok = cd === dv;
     return { valid: ok, reason_codes: ok ? [] : ["taxid.invalid_checksum"] };
 }
@@ -191,11 +190,11 @@ export function validateRUT(value: string) {
  * @param value - The RUC string (e.g., "12345678901").
  * @returns {Object} Validation result with valid flag and reason codes (format or checksum errors).
  */
-export function validateRUC(value: string) {
+export function validateRUC(value: string): { valid: boolean; reason_codes: string[] } {
     const v = onlyDigits(value);
     if (v.length !== 11) return { valid: false, reason_codes: ["taxid.invalid_format"] };
     const weights = [5, 4, 3, 2, 7, 6, 5, 4, 3, 2];
-    const nums = v.split("").map(Number);
+    const nums = [...v].map(Number);
     const s = nums.slice(0, 10).reduce((accumulator, current, index) => accumulator + current * weights[index], 0);
     const module_ = 11 - (s % 11);
     const cd = (module_ === 11) ? 1 : (module_ === 10) ? 2 : module_;
@@ -219,10 +218,10 @@ export function validateRUC(value: string) {
  * @param value - The NIT string (e.g., "890123456-7" or "8901234567").
  * @returns {Object} Validation result with valid flag and reason codes (format or checksum errors).
  */
-export function validateNIT(value: string) {
+export function validateNIT(value: string): { valid: boolean; reason_codes: string[] } {
     const v = onlyDigits(value);
     const weights = [3, 7, 13, 17, 19, 23, 29, 37, 41, 43];
-    const nums = v.slice(0, -1).split("").reverse().map(Number);
+    const nums = [...v.slice(0, -1)].reverse().map(Number);
     let sum = 0;
     for (const [index, number_] of nums.entries()) { sum += number_ * (weights[index] || 3); }
     const module_ = sum % 11;
@@ -248,13 +247,13 @@ export function validateNIT(value: string) {
  * @returns {Object} Validation result with valid flag and reason codes (format or checksum errors).
  */
 const NIF_LETTERS = "TRWAGMYFPDXBNJZSQVHLCKE";
-export function validateES(value: string) {
+export function validateES(value: string): { valid: boolean; reason_codes: string[] } {
     let v = value.trim().toUpperCase();
     v = v.replaceAll(/\s/g, "");
 
     // NIE: X/Y/Z + 7 digits + letter
     if (/^[X-Z]\d{7}[A-Z]$/.test(v)) {
-        const map: any = { X: "0", Y: "1", Z: "2" };
+        const map: Record<string, string> = { X: "0", Y: "1", Z: "2" };
         const number_ = map[v[0]] + v.slice(1, 8);
         const letter = NIF_LETTERS[Number.parseInt(number_, 10) % 23];
         return {
@@ -297,7 +296,7 @@ export function validateES(value: string) {
  * @param value - The EIN string (e.g., "12-3456789" or "123456789").
  * @returns {Object} Validation result with valid flag and reason codes (format errors only).
  */
-export function validateEIN(value: string) {
+export function validateEIN(value: string): { valid: boolean; reason_codes: string[] } {
     const v = onlyDigits(value);
     return { valid: v.length === 9, reason_codes: v.length === 9 ? [] : ["taxid.invalid_format"] };
 }
@@ -329,7 +328,7 @@ export async function validateVATViaVIES(country: string, vatNumber: string): Pr
 
     try {
         const client = await soap.createClientAsync(process.env.VIES_WSDL_URL || "https://ec.europa.eu/taxation_customs/vies/checkVatService.wsdl");
-        const [result] = await client.checkVatAsync({ countryCode: country, vatNumber });
+        const [result] = await client.checkVatAsync({ countryCode: country, vatNumber }) as [{ valid: boolean }];
         if (result.valid) return { valid: true, reason_codes: [], source: "vies" };
         return { valid: false, reason_codes: ["taxid.vies_invalid"], source: "vies" };
     } catch {
@@ -355,18 +354,18 @@ export async function validateVATViaVIES(country: string, vatNumber: string): Pr
  * @param params - Validation parameters: type (e.g., 'cpf', 'vat'), value (tax ID string), country (ISO code), redis (optional client).
  * @returns {Promise<Object>} Comprehensive result with validity, normalized value, reason codes, source (format/vies), request ID, and TTL.
  */
-async function getCachedResult(redis: Redis | undefined, cacheKey: string) {
+async function getCachedResult(redis: Redis | undefined, cacheKey: string): Promise<any> {
   if (!redis) return null;
   const cached = await redis.get(cacheKey);
   return cached ? JSON.parse(cached) : null;
 }
 
-async function setCachedResult(redis: Redis | undefined, cacheKey: string, result: any) {
+async function setCachedResult(redis: Redis | undefined, cacheKey: string, result: { valid: boolean; normalized: string; reason_codes: string[]; source: string; request_id: string; ttl?: number }) : Promise<void> {
   if (!redis) return;
   await redis.set(cacheKey, JSON.stringify(result), 'EX', 24 * 3600);
 }
 
-function createBaseResult(normalizedValue: string): any {
+function createBaseResult(normalizedValue: string): { valid: boolean; reason_codes: string[]; request_id: string; source: string; normalized: string } {
   return {
     valid: false,
     reason_codes: [] as string[],
@@ -383,48 +382,48 @@ async function dispatchValidation(
 ): Promise<{ valid: boolean; reason_codes: string[]; source?: string }> {
   switch (t) {
   case "CPF": {
-    const res = validateCPF(value);
-    return { valid: res.valid, reason_codes: res.reason_codes };
+    const result = validateCPF(value);
+    return { valid: result.valid, reason_codes: result.reason_codes };
   }
   case "CNPJ": {
-    const res = validateCNPJ(value);
-    return { valid: res.valid, reason_codes: res.reason_codes };
+    const result = validateCNPJ(value);
+    return { valid: result.valid, reason_codes: result.reason_codes };
   }
   case "RFC": {
-    const res = validateRFC(value);
-    return { valid: res.valid, reason_codes: res.reason_codes };
+    const result = validateRFC(value);
+    return { valid: result.valid, reason_codes: result.reason_codes };
   }
   case "CUIT": {
-    const res = validateCUIT(value);
-    return { valid: res.valid, reason_codes: res.reason_codes };
+    const result = validateCUIT(value);
+    return { valid: result.valid, reason_codes: result.reason_codes };
   }
   case "RUT": {
-    const res = validateRUT(value);
-    return { valid: res.valid, reason_codes: res.reason_codes };
+    const result = validateRUT(value);
+    return { valid: result.valid, reason_codes: result.reason_codes };
   }
   case "RUC": {
-    const res = validateRUC(value);
-    return { valid: res.valid, reason_codes: res.reason_codes };
+    const result = validateRUC(value);
+    return { valid: result.valid, reason_codes: result.reason_codes };
   }
   case "NIT": {
-    const res = validateNIT(value);
-    return { valid: res.valid, reason_codes: res.reason_codes };
+    const result = validateNIT(value);
+    return { valid: result.valid, reason_codes: result.reason_codes };
   }
   case "NIF": 
   case "NIE": 
   case "CIF": {
-    const res = validateES(value);
-    return { valid: res.valid, reason_codes: res.reason_codes };
+    const result = validateES(value);
+    return { valid: result.valid, reason_codes: result.reason_codes };
   }
   case "EIN": {
-    const res = validateEIN(value);
-    return { valid: res.valid, reason_codes: res.reason_codes };
+    const result = validateEIN(value);
+    return { valid: result.valid, reason_codes: result.reason_codes };
   }
   case "VAT": {
     const cc = country?.toUpperCase() || value.slice(0, 2);
     const vn = value.replace(/^[A-Z]{2}/, "");
-    const res = await validateVATViaVIES(cc, vn);
-    return { valid: res.valid, reason_codes: res.reason_codes, source: res.source };
+    const result = await validateVATViaVIES(cc, vn);
+    return { valid: result.valid, reason_codes: result.reason_codes, source: result.source };
   }
   default: {
     return { valid: false, reason_codes: ["taxid.invalid_format"] };
@@ -432,7 +431,7 @@ async function dispatchValidation(
   }
 }
 
-export async function validateTaxId({ type, value, country, redis }: { type: string, value: string, country: string, redis?: Redis }) {
+export async function validateTaxId({ type, value, country, redis }: { type: string, value: string, country: string, redis?: Redis }): Promise<{ valid: boolean; normalized: string; reason_codes: string[]; source: string; request_id: string; ttl?: number }> {
   const t = type.toUpperCase();
   const normalizedValue = value.replaceAll(/\s/g, "");
   const input = { type: t, value: normalizedValue, country: country || "" };

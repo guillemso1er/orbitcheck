@@ -1,14 +1,15 @@
-import dotenv from 'dotenv';
-dotenv.config();
 import { createHash } from "node:crypto";
 import { promises as fs } from 'node:fs';
-import * as path from 'node:path';
+import path from 'node:path';
+
+import dotenv from 'dotenv';
+dotenv.config();
 
 import AdmZip from 'adm-zip';
 import fetch from 'node-fetch';
 import { Pool } from "pg";
 
-console.log('DATABASE_URL:', process.env.DATABASE_URL);
+console.warn('DATABASE_URL:', process.env.DATABASE_URL);
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
 async function randomBytesAsync(size: number): Promise<Buffer> {
@@ -16,93 +17,107 @@ async function randomBytesAsync(size: number): Promise<Buffer> {
     return randomBytes(size);
 }
 
-async function downloadAndImport() {
-    const tempDir = '/tmp/geonames';
+async function processCountry(country: string, temporaryDirectory: string, GEONAMES_BASE_URL: string): Promise<number> {
+    const zipPath = path.join(temporaryDirectory, `${country}.zip`);
+    const tsvPath = path.join(temporaryDirectory, `${country}postalCodeLatLongCity.txt`);
+
+    console.warn(`Downloading GeoNames postal codes for ${country}...`);
+    const url = `${GEONAMES_BASE_URL}/${country}.zip`;
+    const response = await fetch(url);
+    if (!response.ok) {
+        console.warn(`Download failed for ${country}: ${response.status}. Skipping.`);
+        return 0;
+    }
+    const buffer = await response.buffer();
+    await fs.writeFile(zipPath, buffer);
+
+    console.warn(`Extracting ZIP for ${country}...`);
+    const zip = new AdmZip(zipPath);
+    zip.extractAllTo(temporaryDirectory, true);
+
+    try {
+        await fs.access(tsvPath);
+    } catch {
+        console.warn(`TSV file not found for ${country} after extraction. Skipping.`);
+        await fs.unlink(zipPath).catch(() => { });
+        return 0;
+    }
+
+    console.warn(`Parsing and importing data for ${country}...`);
+    const data = await fs.readFile(tsvPath, 'utf8');
+    const lines = data.trim().split('\n').slice(1); // Skip header if present
+
+    const batchSize = 1000;
+    const allBatches: (string | number)[][][] = [];
+    let currentBatch: (string | number)[][] = [];
+    let countryCount = 0;
+
+    // Prepare all batches first
+    for (const line of lines) {
+        const [postalCode, placeName, adminName1, adminCode1, lat, lng, _accuracy] = line.split('\t');
+        if (postalCode && placeName) { // Skip empty postal codes
+            currentBatch.push([country, postalCode, placeName, adminName1 || '', adminCode1 || '', Number.parseFloat(lat), Number.parseFloat(lng)]);
+
+            if (currentBatch.length >= batchSize) {
+                allBatches.push(currentBatch);
+                countryCount += currentBatch.length;
+                currentBatch = [];
+            }
+        }
+    }
+
+    // Add remaining batch
+    if (currentBatch.length > 0) {
+        allBatches.push(currentBatch);
+        countryCount += currentBatch.length;
+    }
+
+    // Process batches in parallel
+    await Promise.all(allBatches.map(batch => insertBatch(pool, batch)));
+    console.warn(`Successfully imported ${countryCount} postal code records for ${country}.`);
+
+    console.warn(`Successfully imported ${countryCount} postal code records for ${country}.`);
+
+    // Cleanup in parallel
+    await Promise.all([
+        fs.unlink(zipPath).catch(() => { }),
+        fs.unlink(tsvPath).catch(() => { })
+    ]);
+
+    return countryCount;
+}
+
+async function downloadAndImport(): Promise<void> {
+    const temporaryDirectory = '/tmp/geonames';
     const countries = ['AR']; // Default to Argentina; extend as needed
     const GEONAMES_BASE_URL = 'http://download.geonames.org/export/zip';
 
     try {
         // Create temp dir
         try {
-            await fs.mkdir(tempDir, { recursive: true });
+            await fs.mkdir(temporaryDirectory, { recursive: true });
         } catch (error) {
-            if ((error as any).code !== 'EEXIST') throw error;
+            if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error;
         }
 
-        let totalCount = 0;
+        // Process countries
+        const totalCount = await processCountry(countries[0], temporaryDirectory, GEONAMES_BASE_URL);
 
-        for (const country of countries) {
-            const zipPath = path.join(tempDir, `${country}.zip`);
-            const tsvPath = path.join(tempDir, `${country}postalCodeLatLongCity.txt`);
+        // For parallel processing (use with caution):
+        // const counts = await Promise.all(
+        //     countries.map(country => processCountry(country, temporaryDirectory, GEONAMES_BASE_URL))
+        // );
+        // const totalCount = counts.reduce((sum, count) => sum + count, 0);
 
-            console.log(`Downloading GeoNames postal codes for ${country}...`);
-            const url = `${GEONAMES_BASE_URL}/${country}.zip`;
-            const response = await fetch(url);
-            if (!response.ok) {
-                console.warn(`Download failed for ${country}: ${response.status}. Skipping.`);
-                continue;
-            }
-            const buffer = await response.buffer();
-            await fs.writeFile(zipPath, buffer);
-
-            console.log(`Extracting ZIP for ${country}...`);
-            const zip = new AdmZip(zipPath);
-            zip.extractAllTo(tempDir, true);
-
-            try {
-                await fs.access(tsvPath);
-            } catch {
-                console.warn(`TSV file not found for ${country} after extraction. Skipping.`);
-                await fs.unlink(zipPath).catch(() => {});
-                continue;
-            }
-
-            console.log(`Parsing and importing data for ${country}...`);
-            const data = await fs.readFile(tsvPath, 'utf8');
-            const lines = data.trim().split('\n').slice(1); // Skip header if present
-
-            const batchSize = 1000;
-            let batch: (string | number)[][] = [];
-            let countryCount = 0;
-
-            for (const line of lines) {
-                const [postalCode, placeName, adminName1, adminCode1, lat, lng, accuracy] = line.split('\t');
-                if (postalCode && placeName) { // Skip empty postal codes
-                    batch.push([country, postalCode, placeName, adminName1 || '', adminCode1 || '', Number.parseFloat(lat), Number.parseFloat(lng)]);
-
-                    if (batch.length >= batchSize) {
-                        await insertBatch(pool, batch);
-                        countryCount += batch.length;
-                        totalCount += batch.length;
-                        console.log(`Imported ${countryCount} records for ${country}...`);
-                        batch = [];
-                    }
-                }
-            }
-
-            // Insert remaining
-            if (batch.length > 0) {
-                await insertBatch(pool, batch);
-                countryCount += batch.length;
-                totalCount += batch.length;
-            }
-
-            console.log(`Successfully imported ${countryCount} postal code records for ${country}.`);
-
-            // Cleanup
-            await fs.unlink(zipPath).catch(() => {});
-            await fs.unlink(tsvPath).catch(() => {});
-        }
-
-        console.log(`Total postal code records imported: ${totalCount}.`);
+        console.warn(`Total postal code records imported: ${totalCount}.`);
     } catch (error) {
         console.error('Import failed:', error);
         // Don't exit on import failure, as seed can continue
     }
 }
 
-async function insertBatch(pool: Pool, batch: (string | number)[][]) {
-    const client = await pool.connect();
+async function insertBatch(_pool: Pool, batch: (string | number)[][]): Promise<void> {
+    const client = await _pool.connect();
     try {
         const placeholders = batch.map((_, index) => `($${index * 7 + 1}, $${index * 7 + 2}, $${index * 7 + 3}, $${index * 7 + 4}, $${index * 7 + 5}, $${index * 7 + 6}, $${index * 7 + 7})`).join(', ');
 
@@ -119,7 +134,7 @@ async function insertBatch(pool: Pool, batch: (string | number)[][]) {
     }
 }
 
-(async () => {
+async function main(): Promise<void> {
     try {
         const { rows } = await pool.query("insert into projects (name, plan) values ($1, $2) returning id", ["Dev Project", "dev"]);
         const project_id = rows[0].id;
@@ -135,23 +150,24 @@ async function insertBatch(pool: Pool, batch: (string | number)[][]) {
             [project_id, raw.slice(0, 6), hash, 'active']
         );
 
-        console.log("PROJECT_ID=", project_id);
-        console.log("API_KEY=", raw);
+        console.warn("PROJECT_ID=", project_id);
+        console.warn("API_KEY=", raw);
 
         // Check if geonames_postal is empty and import if needed
         const { rows: countRows } = await pool.query("SELECT COUNT(*) FROM geonames_postal");
         const count = Number.parseInt(countRows[0].count);
         if (count === 0) {
-            console.log('GeoNames postal data not found, importing...');
+            console.warn('GeoNames postal data not found, importing...');
             await downloadAndImport();
         } else {
-            console.log(`GeoNames postal data already present (${count} records). Skipping import.`);
+            console.warn(`GeoNames postal data already present (${count} records). Skipping import.`);
         }
 
         await pool.end();
-        process.exit(0);
     } catch (error) {
         console.error('Seed script failed:', error);
-        process.exit(1);
+        throw error;
     }
-})();
+}
+
+main().catch(console.error);

@@ -1,9 +1,8 @@
 import 'dotenv/config';
+
 import { once } from 'node:events';
 import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
-import { fileURLToPath } from 'node:url';
-import yaml from 'js-yaml';
+import path from 'node:path';
 
 import cors from "@fastify/cors";
 import fastifySwagger from '@fastify/swagger';
@@ -12,15 +11,16 @@ import * as Sentry from '@sentry/node';
 import { Queue, Worker } from 'bullmq';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import Fastify from "fastify";
-import { Redis, type Redis as IORedisType } from 'ioredis';
+import { type Redis as IORedisType, Redis } from 'ioredis';
+import yaml from 'js-yaml';
 import cron from 'node-cron';
 import { Pool } from "pg";
 
 import { runLogRetention } from './cron/retention.js';
-import { environment } from "./env.js";
+import { environment } from "./environment.js";
 import { disposableProcessor } from './jobs/refreshDisposable.js';
-import startupGuard from './startup-guard.js';
 import { openapiValidation } from "./plugins/openapi.js";
+import startupGuard from './startup-guard.js';
 import { registerRoutes } from "./web.js";
 
 /**
@@ -53,6 +53,7 @@ export async function build(pool: Pool, redis: IORedisType): Promise<FastifyInst
     if (process.env.NODE_ENV !== 'production') {
         await app.register(startupGuard);
     }
+    // eslint-disable-next-line promise/prefer-await-to-callbacks
     app.setErrorHandler(async (error: Error & { code?: string; statusCode?: number }, request: FastifyRequest, reply: FastifyReply) => {
         // Fastify throws a specific error when a request times out
         if (error.code === 'FST_ERR_REQUEST_TIMEOUT' || error.name === 'RequestTimeoutError') {
@@ -64,7 +65,7 @@ export async function build(pool: Pool, redis: IORedisType): Promise<FastifyInst
     });
 
     // Load OpenAPI spec from contracts package
-    const openapiPath = join(process.cwd(), '..', '..', 'packages', 'contracts', 'openapi.yaml');
+    const openapiPath = path.join(process.cwd(), '..', '..', 'packages', 'contracts', 'openapi.yaml');
     const openapiSpec = yaml.load(readFileSync(openapiPath, 'utf8'));
 
     // Register OpenAPI/Swagger for automatic API documentation generation
@@ -83,19 +84,20 @@ export async function build(pool: Pool, redis: IORedisType): Promise<FastifyInst
         routePrefix: '/documentation',
     });
 
-    // Enable CORS restricted to dashboard origin (configure for prod domains)
-    await app.register(cors, {
-        origin(origin, cb) {
-            const allowedOrigins = new Set([
-                `http://localhost:${environment.PORT}`, // API itself for health/docs
-                'http://localhost:5173',                // Vite dev server
-                'https://dashboard.orbicheck.com',
-                'https://api.orbicheck.com'
-            ]);
+    // Define allowed origins
+    const allowedOrigins = new Set([
+        `http://localhost:${environment.PORT}`, // API itself for health/docs
+        'http://localhost:5173',                // Vite dev server
+        'https://dashboard.orbicheck.com',
+        'https://api.orbicheck.com'
+    ]);
 
+    // Enable CORS restricted to dashboard origin (configure for prod domains)
+    // Using a function that returns a value directly instead of callback pattern
+    await app.register(cors, {
+        origin: (origin: string | undefined) => {
             // Allow no Origin (e.g., curl/app.inject) or explicitly whitelisted origins
-            const allowed = !origin || allowedOrigins.has(origin);
-            cb(null, allowed);
+            return !origin || allowedOrigins.has(origin);
         },
         credentials: true,
     });
@@ -121,6 +123,26 @@ export async function build(pool: Pool, redis: IORedisType): Promise<FastifyInst
     app.get("/health", async (): Promise<{ ok: true; timestamp: string }> => ({ ok: true, timestamp: new Date().toISOString() }));
 
     return app;
+}
+
+/**
+ * Creates a promise that rejects after a timeout using async/await pattern
+ */
+async function createTimeoutPromise(ms: number, message: string): Promise<never> {
+    await new Promise<void>((resolve) => {
+        setTimeout(resolve, ms);
+    });
+    throw new Error(message);
+}
+
+/**
+ * Races a promise against a timeout
+ */
+async function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
+    return Promise.race([
+        promise,
+        createTimeoutPromise(ms, message)
+    ]);
 }
 
 /**
@@ -164,20 +186,6 @@ export async function start(): Promise<void> {
     const appRedis = new Redis(environment.REDIS_URL, {
         maxRetriesPerRequest: null // This is required by BullMQ
     });
-
-    async function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
-        const timeout = new Promise<never>((_, reject) => {
-            const id = setTimeout(() => {
-                clearTimeout(id);
-                reject(new Error(message));
-            }, ms);
-        });
-
-        return Promise.race([
-            promise,
-            timeout
-        ]);
-    }
 
     // --- Step 2: Build the App and Start Workers ---
     const app = await build(pool, appRedis);
@@ -230,11 +238,16 @@ export async function start(): Promise<void> {
  * Catches startup errors, reports to Sentry if configured, logs to console, and exits with code 1.
  */
 if (process.argv[1] === import.meta.url.slice(7)) {
-    start().catch(error => {
-        if (environment.SENTRY_DSN) {
-            Sentry.captureException(error);
+    // Use void to explicitly mark the promise as intentionally not awaited
+    void (async () => {
+        try {
+            await start();
+        } catch (error) {
+            if (environment.SENTRY_DSN) {
+                Sentry.captureException(error);
+            }
+            console.error('Failed to start Orbicheck API:', error);
+            process.exit(1); // eslint-disable-line n/no-process-exit
         }
-        console.error('Failed to start Orbicheck API:', error);
-        process.exit(1); // eslint-disable-line n/no-process-exit
-    });
+    })();
 }

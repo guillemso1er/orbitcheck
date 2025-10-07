@@ -1,7 +1,8 @@
-import { readFileSync } from 'fs';
-import { join } from 'path';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+
+import type { FastifyInstance, FastifyRequest } from "fastify";
 import yaml from 'js-yaml';
-import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 
 // Load OpenAPI spec
 const openapiPath = join(process.cwd(), '..', '..', 'packages', 'contracts', 'openapi.yaml');
@@ -19,7 +20,7 @@ export async function openapiValidation(app: FastifyInstance): Promise<void> {
   await validateEndpointCoverage(app);
 
   // Add request/response validation hooks
-  app.addHook('preHandler', async (request, reply) => {
+  app.addHook('preHandler', async (request, _reply) => {
     // Skip validation for health checks and documentation
     if (request.url.startsWith('/health') || request.url.startsWith('/documentation')) {
       return;
@@ -51,7 +52,7 @@ async function validateEndpointCoverage(app: FastifyInstance): Promise<void> {
 
   // Get the base path from the first server URL
   const baseUrl = servers[0]?.url || '';
-  const basePath = baseUrl.replace(/^https?:\/\/[^\/]+/, ''); // Remove protocol and host, keep path
+  const basePath = baseUrl.replace(/^https?:\/\/[^/]+/, ''); // Remove protocol and host, keep path
 
   // Dashboard routes that don't use the basePath
   const dashboardGroups = ['/api-keys', '/webhooks', '/data'];
@@ -61,7 +62,7 @@ async function validateEndpointCoverage(app: FastifyInstance): Promise<void> {
   for (const [path, methods] of Object.entries(paths)) {
     if (typeof methods !== 'object' || methods === null) continue;
 
-    for (const [method, operation] of Object.entries(methods as Record<string, any>)) {
+    for (const [method, _operation] of Object.entries(methods as Record<string, any>)) {
       if (method === 'parameters') continue; // Skip path-level parameters
 
       const httpMethod = method.toUpperCase();
@@ -103,7 +104,7 @@ async function validateRequest(request: FastifyRequest): Promise<void> {
 /**
  * Validates response against OpenAPI schema
  */
-async function validateResponse(request: FastifyRequest, payload: any): Promise<void> {
+async function validateResponse(request: FastifyRequest, _payload: any): Promise<void> {
   // TODO: Implement response validation using AJV against OpenAPI schema
   // For now, just log the response
   request.log.debug({

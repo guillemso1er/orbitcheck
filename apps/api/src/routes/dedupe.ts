@@ -1,5 +1,6 @@
 import crypto from "node:crypto";
 
+import { API_V1_ROUTES } from "@orbicheck/contracts";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import type { Pool } from "pg";
 
@@ -7,9 +8,8 @@ import { DEDUPE_ACTIONS, ERROR_CODES, ERROR_MESSAGES, HTTP_STATUS, MATCH_TYPES, 
 import { logEvent } from "../hooks.js";
 import { normalizeAddress } from "../validators/address.js";
 import { generateRequestId, rateLimitResponse, securityHeader, sendServerError, unauthorizedResponse, validationErrorResponse } from "./utils.js";
-import { API_V1_ROUTES } from "@orbicheck/contracts";
 
-export function registerDedupeRoutes(app: FastifyInstance, pool: Pool) {
+export function registerDedupeRoutes(app: FastifyInstance, pool: Pool): void {
     app.post(API_V1_ROUTES.DEDUPE.DEDUPLICATE_CUSTOMER, {
         schema: {
             summary: 'Deduplicate Customer',

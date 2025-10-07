@@ -10,7 +10,7 @@ jest.mock('jsonwebtoken');
 const mockedJwtVerify = jwt.verify as jest.Mock;
 
 describe('Dashboard Authentication - /api-keys endpoint', () => {
-    let app: any;
+    let app: unknown;
 
     beforeAll(async () => {
         await setupBeforeAll();
@@ -64,7 +64,7 @@ describe('Dashboard Authentication - /api-keys endpoint', () => {
             .set('Authorization', `Bearer ${validToken}`);
 
         expect(response.status).toBe(200);
-        const body = response.body as { data: any[]; request_id: string };
+        const body = response.body as { data: unknown[]; request_id: string };
         expect(body.data).toBeDefined();
         expect(body.data.length).toBeGreaterThan(0);
         expect(body.request_id).toBeDefined();

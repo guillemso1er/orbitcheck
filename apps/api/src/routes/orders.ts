@@ -1,5 +1,6 @@
 import crypto from "node:crypto";
 
+import { API_V1_ROUTES } from "@orbicheck/contracts";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import type { Redis } from "ioredis";
 import type { Pool } from "pg";
@@ -10,7 +11,6 @@ import { validateAddress } from "../validators/address.js";
 import { validateEmail } from "../validators/email.js";
 import { validatePhone } from "../validators/phone.js";
 import { generateRequestId, rateLimitResponse, securityHeader, sendServerError, unauthorizedResponse, validationErrorResponse } from "./utils.js";
-import { API_V1_ROUTES } from "@orbicheck/contracts";
 
 
 const customerMatchSchema = {
@@ -43,7 +43,7 @@ const addressMatchSchema = {
     }
 };
 
-export function registerOrderRoutes(app: FastifyInstance, pool: Pool, redis: Redis) {
+export function registerOrderRoutes(app: FastifyInstance, pool: Pool, redis: Redis): void {
     app.post(API_V1_ROUTES.ORDERS.EVALUATE_ORDER_FOR_RISK_AND_RULES, {
         schema: {
             summary: 'Evaluate Order for Risk and Rules',
@@ -149,7 +149,7 @@ export function registerOrderRoutes(app: FastifyInstance, pool: Pool, redis: Red
             const seenIds = new Set<string>();
             if (customer) {
                 const normEmail = customer.email ? customer.email.trim().toLowerCase() : null;
-                const normPhone = customer.phone ? customer.phone.replaceAll(/[^\d+]/g, '') : null;
+                const _normPhone = customer.phone ? customer.phone.replaceAll(/[^\d+]/g, '') : null;
                 const full_name = `${customer.first_name || ''} ${customer.last_name || ''}`.trim();
 
                 if (normEmail) {
@@ -257,8 +257,9 @@ export function registerOrderRoutes(app: FastifyInstance, pool: Pool, redis: Red
                                     WHERE project_id = $1 AND (similarity(line1, $2) > 0.85 OR similarity(city, $3) > 0.85)
                                     ORDER BY similarity_score DESC LIMIT 3`;
                 const { rows: fuzzyMatches } = await pool.query(fuzzyQuery, [project_id, normAddr.line1, normAddr.city]);
-                address_matches = address_matches.concat(
-                    fuzzyMatches
+                address_matches = [
+                    ...address_matches,
+                    ...fuzzyMatches
                         .filter(m => !address_matches.some(am => am.id === m.id))
                         .map(row => ({
                             id: row.id,
@@ -273,7 +274,7 @@ export function registerOrderRoutes(app: FastifyInstance, pool: Pool, redis: Red
                             similarity_score: row.similarity_score,
                             match_type: MATCH_TYPES.FUZZY_ADDRESS
                         }))
-                );
+                ];
             }
 
             app.log.info({ request_id, address_matches }, "Address dedupe matches found");

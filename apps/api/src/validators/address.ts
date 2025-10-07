@@ -9,7 +9,7 @@ import fetch from "node-fetch";
 import type { Pool } from "pg";
 
 import { REASON_CODES } from "../constants.js";
-import { environment } from "../env.js";
+import { environment } from "../environment.js";
 
 // Simple PO Box detector for multiple locales
 /**

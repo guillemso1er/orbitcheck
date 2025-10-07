@@ -1,11 +1,12 @@
 // Import the Fastify type for better code quality
+// Import the necessary setup functions and mock instances
+import crypto from 'node:crypto';
+
 import type { FastifyInstance } from 'fastify';
 import type { Redis } from 'ioredis';
 import type { CountryCode, ParsedNumber } from 'libphonenumber-js';
 import request from 'supertest';
 
-// Import the necessary setup functions and mock instances
-import crypto from 'node:crypto';
 import { createApp, libphone, mockPool, mockRedisInstance, mockTwilioInstance, mockValidatePhone, setupBeforeAll } from './testSetup.js';
 
 type ValidatePhoneResult = {
@@ -17,7 +18,7 @@ type ValidatePhoneResult = {
     ttl_seconds?: number;
 };
 
-interface MockParsedNumber extends ParsedNumber {
+interface _MockParsedNumber extends ParsedNumber {
     isValid: () => boolean;
     number: string;
     country: CountryCode;

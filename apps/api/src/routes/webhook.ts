@@ -1,9 +1,9 @@
+import { DASHBOARD_ROUTES } from "@orbicheck/contracts";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import fetch from "node-fetch";
 import type { Pool } from "pg";
 
 import { ERROR_CODES, ERROR_MESSAGES, EVENT_TYPES, HTTP_STATUS, ORDER_ACTIONS,PAYLOAD_TYPES, REASON_CODES } from "../constants.js";
-import { DASHBOARD_ROUTES } from "@orbicheck/contracts";
 import { logEvent } from "../hooks.js";
 import { verifyJWT } from "./auth.js";
 import { generateRequestId, rateLimitResponse, securityHeader, sendError, unauthorizedResponse } from "./utils.js";
@@ -14,10 +14,16 @@ const ROUTES = {
 };
 
 
-export function registerWebhookRoutes(app: FastifyInstance, pool: Pool) {
+export function registerWebhookRoutes(app: FastifyInstance, pool: Pool): void {
     app.post(ROUTES.WEBHOOKS_TEST, {
-        preHandler: (request: FastifyRequest, rep: FastifyReply, done) => {
-            verifyJWT(request, rep, pool).then(() => done()).catch(done);
+        // eslint-disable-next-line @typescript-eslint/no-misused-promises
+        preHandler: async (request: FastifyRequest, rep: FastifyReply, done) => {
+            try {
+                await verifyJWT(request, rep, pool);
+                done();
+            } catch (error) {
+                done(error instanceof Error ? error : new Error(String(error)));
+            }
         },
         schema: {
             summary: 'Test Webhook',
@@ -82,7 +88,7 @@ export function registerWebhookRoutes(app: FastifyInstance, pool: Pool) {
             const request_id = generateRequestId();
 
             if (!url || !/^https?:\/\//.test(url)) {
-                return sendError(rep, HTTP_STATUS.BAD_REQUEST, ERROR_CODES.INVALID_URL, ERROR_MESSAGES[ERROR_CODES.INVALID_URL], request_id);
+                return await sendError(rep, HTTP_STATUS.BAD_REQUEST, ERROR_CODES.INVALID_URL, ERROR_MESSAGES[ERROR_CODES.INVALID_URL], request_id);
             }
 
             let payload: Record<string, unknown>;
@@ -122,13 +128,13 @@ export function registerWebhookRoutes(app: FastifyInstance, pool: Pool) {
                 }
                 case PAYLOAD_TYPES.CUSTOM: {
                     if (!custom_payload) {
-                        return sendError(rep, HTTP_STATUS.BAD_REQUEST, ERROR_CODES.MISSING_PAYLOAD, ERROR_MESSAGES[ERROR_CODES.MISSING_PAYLOAD], request_id);
+                        return await sendError(rep, HTTP_STATUS.BAD_REQUEST, ERROR_CODES.MISSING_PAYLOAD, ERROR_MESSAGES[ERROR_CODES.MISSING_PAYLOAD], request_id);
                     }
                     payload = { ...common, ...custom_payload };
                     break;
                 }
                 default: {
-                    return sendError(rep, HTTP_STATUS.BAD_REQUEST, ERROR_CODES.INVALID_TYPE, ERROR_MESSAGES[ERROR_CODES.INVALID_TYPE], request_id);
+                    return await sendError(rep, HTTP_STATUS.BAD_REQUEST, ERROR_CODES.INVALID_TYPE, ERROR_MESSAGES[ERROR_CODES.INVALID_TYPE], request_id);
                 }
             }
 
@@ -168,7 +174,7 @@ export function registerWebhookRoutes(app: FastifyInstance, pool: Pool) {
             return rep.send(result);
         } catch (error) {
             const request_id = generateRequestId();
-            const errorMessage = error instanceof globalThis.Error ? (error as globalThis.Error).message : 'Unknown error';
+            const errorMessage = error instanceof globalThis.Error ? (error).message : 'Unknown error';
             await logEvent(project_id, 'webhook_test', DASHBOARD_ROUTES.TEST_WEBHOOK, [REASON_CODES.WEBHOOK_SEND_FAILED], HTTP_STATUS.INTERNAL_SERVER_ERROR, {
                 url,
                 payload_type,

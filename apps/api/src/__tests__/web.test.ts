@@ -1,7 +1,8 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import type { Redis as IORedisType } from 'ioredis';
-import type { Pool } from 'pg';
 import * as jwt from 'jsonwebtoken';
+import type { Pool } from 'pg';
+
 import { auth, idempotency, rateLimit } from '../hooks.js';
 import { verifyJWT } from '../routes/auth.js';
 import { registerRoutes } from '../web.js';
@@ -15,7 +16,7 @@ const mockVerifyJWT = verifyJWT as jest.MockedFunction<typeof verifyJWT>;
 const mockAuth = auth as jest.MockedFunction<typeof auth>;
 const mockRateLimit = rateLimit as jest.MockedFunction<typeof rateLimit>;
 const mockIdempotency = idempotency as jest.MockedFunction<typeof idempotency>;
-const mockJwtVerify = jwt.verify as jest.Mock;
+const _mockJwtVerify = jwt.verify as jest.Mock;
 
 // Mock Fastify
 const mockAddHook = jest.fn();
@@ -166,7 +167,7 @@ describe('Web Authentication', () => {
         '/data/logs'
       ];
 
-      for (const route of dashboardRoutes) {
+      await Promise.all(dashboardRoutes.map(async (route) => {
         const request = createMockRequest(route);
         const reply = createMockReply();
         jest.clearAllMocks();
@@ -175,7 +176,7 @@ describe('Web Authentication', () => {
 
         expect(mockRateLimit).not.toHaveBeenCalled();
         expect(mockIdempotency).not.toHaveBeenCalled();
-      }
+      }));
     });
   });
 });
