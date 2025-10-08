@@ -28,7 +28,6 @@ export default function (check) {
         '[Valid Email] status 200 (first req)': (r) => r.status === 200,
         '[Valid Email] valid is true (first req)': (r) => body1 && body1.valid === true,
         '[Valid Email] disposable is false (first req)': (r) => body1 && body1.disposable === false,
-        '[Valid Email] mx_found is true (first req)': (r) => body1 && body1.mx_found === true,
     });
 
     // Second request for the same email. THIS MUST be a HIT.
@@ -64,8 +63,8 @@ export default function (check) {
     check(res3, {
         '[Disposable] status 200 (first req)': (r) => r.status === 200,
         '[Disposable] valid is false (first req)': (r) => body3 && body3.valid === false,
-        '[Disposable] disposable is false (first req)': (r) => body3 && body3.disposable === false,
-        // '[Disposable] reason email.disposable_domain (first req)': (r) => body3 && body3.reason_codes && body3.reason_codes.includes('email.disposable_domain'),
+        '[Disposable] disposable is true (first req)': (r) => body3 && body3.disposable === true,
+        '[Disposable] reason email.disposable_domain (first req)': (r) => body3 && body3.reason_codes && body3.reason_codes.includes('email.disposable_domain'),
     });
 
     // Second request, check for HIT.

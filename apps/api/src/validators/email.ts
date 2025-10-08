@@ -34,6 +34,30 @@ async function withTimeout<T>(p: Promise<T>, ms = DNS_TIMEOUT_MS): Promise<T> {
 }
 
 /**
+ * Performs DNS lookup to check for MX records with A/AAAA fallback
+ */
+async function checkMxRecords(asciiHost: string): Promise<boolean> {
+    try {
+        // First, try to resolve MX records.
+        const recs = await withTimeout(dns.resolveMx(asciiHost));
+        return !!(recs && recs.length > 0 && recs[0].exchange !== '.');
+    } catch {
+        // If MX lookup fails, fall back to checking for A/AAAA.
+        try {
+            const [a, aaaa] = await Promise.allSettled([
+                withTimeout(dns.resolve4(asciiHost)),
+                withTimeout(dns.resolve6(asciiHost)),
+            ]);
+            const hasA = a.status === 'fulfilled' && (a.value)?.length > 0;
+            const hasAAAA = aaaa.status === 'fulfilled' && (aaaa.value)?.length > 0;
+            return hasA || hasAAAA;
+        } catch {
+            return false;
+        }
+    }
+}
+
+/**
  * Validates an email address: format check, MX records (with A/AAAA fallback), disposable domain check via Redis.
  * Normalizes to lowercase ASCII domain. Caches results in Redis (30 days TTL) using SHA-1 hash.
  * For performance, caches MX and disposable status at domain level (7 days TTL) to avoid repeated DNS/Redis lookups.
@@ -106,38 +130,31 @@ export async function validateEmail(
                     domainData = JSON.parse(domainCache) as DomainCache;
                     mx_found = domainData.mx_found;
                     disposable = domainData.disposable;
+
+                    // Add reason codes based on cached data
+                    if (!mx_found) {
+                        reason_codes.push(REASON_CODES.EMAIL_MX_NOT_FOUND);
+                    }
+                    if (disposable) {
+                        reason_codes.push(REASON_CODES.EMAIL_DISPOSABLE_DOMAIN);
+                    }
                 } else {
                     // DNS LOOKUP (with MX and A/AAAA fallback)
-                    try {
-                        // First, try to resolve MX records.
-                        const recs = await withTimeout(dns.resolveMx(asciiHost));
-                        mx_found = !!(recs && recs.length > 0 && recs[0].exchange !== '.');
-                    } catch {
-                        // If MX lookup fails, fall back to checking for A/AAAA.
-                        try {
-                            const [a, aaaa] = await Promise.allSettled([
-                                withTimeout(dns.resolve4(asciiHost)),
-                                withTimeout(dns.resolve6(asciiHost)),
-                            ]);
-                            const hasA = a.status === 'fulfilled' && (a.value)?.length > 0;
-                            const hasAAAA = aaaa.status === 'fulfilled' && (aaaa.value)?.length > 0;
-                            mx_found = hasA || hasAAAA;
-                        } catch {
-                            mx_found = false;
-                        }
-                    }
+                    mx_found = await checkMxRecords(asciiHost);
 
                     if (!mx_found) {
                         reason_codes.push(REASON_CODES.EMAIL_MX_NOT_FOUND);
                     }
 
                     // REDIS LOOKUP for disposable domains
-                    const isDisposable =
-                        (await redis.sismember('disposable_domains', asciiHost)) ||
-                        (registrableDomain && (await redis.sismember('disposable_domains', registrableDomain)));
+                    // sismember returns 1 if member exists, 0 if not
+                    const isDisposableHost = await redis.sismember('disposable_domains', asciiHost);
+                    const isDisposableRegistrable = registrableDomain ?
+                        await redis.sismember('disposable_domains', registrableDomain) : 0;
 
-                    if (isDisposable) {
-                        disposable = true;
+                    disposable = !!(isDisposableHost || isDisposableRegistrable);
+
+                    if (disposable) {
                         reason_codes.push(REASON_CODES.EMAIL_DISPOSABLE_DOMAIN);
                     }
 
@@ -147,38 +164,24 @@ export async function validateEmail(
                 }
             } else {
                 // Fallback if no Redis
-                try {
-                    // First, try to resolve MX records.
-                    const recs = await withTimeout(dns.resolveMx(asciiHost));
-                    mx_found = !!(recs && recs.length > 0 && recs[0].exchange !== '.');
-                } catch {
-                    try {
-                        const [a, aaaa] = await Promise.allSettled([
-                            withTimeout(dns.resolve4(asciiHost)),
-                            withTimeout(dns.resolve6(asciiHost)),
-                        ]);
-                        const hasA = a.status === 'fulfilled' && (a.value)?.length > 0;
-                        const hasAAAA = aaaa.status === 'fulfilled' && (aaaa.value)?.length > 0;
-                        mx_found = hasA || hasAAAA;
-                    } catch {
-                        mx_found = false;
-                    }
-                }
+                mx_found = await checkMxRecords(asciiHost);
 
                 if (!mx_found) {
                     reason_codes.push(REASON_CODES.EMAIL_MX_NOT_FOUND);
                 }
 
-                // Disposable check without Redis
-                disposable = false; // Can't check without Redis
+                // Can't check disposable without Redis
+                disposable = false;
             }
         }
-    } catch {
+    } catch (error) {
         // Global safety net
         reason_codes.push(REASON_CODES.EMAIL_SERVER_ERROR);
     }
 
+    // Valid only if format is valid, MX records exist, and not disposable
     const valid = isFormatValid && mx_found && !disposable;
+
     const result: ValidationResult = {
         valid,
         normalized: fullNormalized,
