@@ -54,16 +54,16 @@ export default function () {
     const dashboardAuthHeaders = Object.assign({}, DASHBOARD_HEADERS, { 'Authorization': `Bearer ${jwt}`, 'Cache-Control': 'no-cache' });
 
     // Capture initial logs and usage to exclude previous data
-    const resInitialLogs = http.get(`${BASE_URL}/data/logs`, { headers: dashboardAuthHeaders });
+    const resInitialLogs = http.get(`${BASE_URL}/v1/data/logs`, { headers: dashboardAuthHeaders });
     const initialLogsCount = JSON.parse(resInitialLogs.body).data.length;
 
-    const resInitialUsage = http.get(`${BASE_URL}/data/usage`, { headers: dashboardAuthHeaders });
+    const resInitialUsage = http.get(`${BASE_URL}/v1/data/usage`, { headers: dashboardAuthHeaders });
     const initialUsage = JSON.parse(resInitialUsage.body);
     const initialValidations = initialUsage.totals.validations || 0;
     const initialOrders = initialUsage.totals.orders || 0;
 
     // Step 3: List API keys (should be empty initially)
-    const resListKeys = http.get(`${BASE_URL}/api-keys`, { headers: dashboardAuthHeaders });
+    const resListKeys = http.get(`${BASE_URL}/v1/api-keys`, { headers: dashboardAuthHeaders });
     check(resListKeys, {
         '[List API Keys] status 200': (r) => r.status === 200,
         '[List API Keys] is array': (r) => Array.isArray(JSON.parse(r.body).data)
@@ -73,7 +73,7 @@ export default function () {
 
     // Step 4: Create API key
     const createKeyPayload = JSON.stringify({ name: 'k9-test-key' });
-    const resCreateKey = http.post(`${BASE_URL}/api-keys`, createKeyPayload, { headers: dashboardAuthHeaders });
+    const resCreateKey = http.post(`${BASE_URL}/v1/api-keys`, createKeyPayload, { headers: dashboardAuthHeaders });
     check(resCreateKey, {
         '[Create API Key] status 201': (r) => r.status === 201,
         '[Create API Key] has key': (r) => {
@@ -86,7 +86,7 @@ export default function () {
     const apiKey = createBody.full_key;
 
     // Step 5: List API keys again (should have one more)
-    const resListKeys2 = http.get(`${BASE_URL}/api-keys`, { headers: dashboardAuthHeaders });
+    const resListKeys2 = http.get(`${BASE_URL}/v1/api-keys`, { headers: dashboardAuthHeaders });
     const afterCreateKeys = JSON.parse(resListKeys2.body).data;
     console.log('After create keys count:', afterCreateKeys.length);
     console.log('After create keys:', JSON.stringify(afterCreateKeys));
@@ -294,14 +294,14 @@ export default function () {
     });
 
     // Step 18: Get event logs
-    const resGetLogs = http.get(`${BASE_URL}/data/logs`, { headers: dashboardAuthHeaders });
+    const resGetLogs = http.get(`${BASE_URL}/v1/data/logs`, { headers: dashboardAuthHeaders });
     check(resGetLogs, {
         '[Get Logs] status 200': (r) => r.status === 200,
         '[Get Logs] is array': (r) => Array.isArray(JSON.parse(r.body).data)
     });
 
     // Step 19: Get usage statistics
-    const resGetUsage = http.get(`${BASE_URL}/data/usage`, { headers: dashboardAuthHeaders });
+    const resGetUsage = http.get(`${BASE_URL}/v1/data/usage`, { headers: dashboardAuthHeaders });
     check(resGetUsage, {
         '[Get Usage] status 200': (r) => r.status === 200,
         '[Get Usage] has data': (r) => {
@@ -312,7 +312,7 @@ export default function () {
 
     // Step 20: Test webhook
     const webhookPayload = JSON.stringify({ url: 'https://httpbin.org/post', event: 'test' });
-    const resTestWebhook = http.post(`${BASE_URL}/webhooks/test`, webhookPayload, { headers: dashboardAuthHeaders });
+    const resTestWebhook = http.post(`${BASE_URL}/v1/webhooks/test`, webhookPayload, { headers: dashboardAuthHeaders });
     check(resTestWebhook, {
         '[Test Webhook] status 200': (r) => r.status === 200,
         '[Test Webhook] success': (r) => {
@@ -325,7 +325,7 @@ export default function () {
     const keyId = JSON.parse(resCreateKey.body).id;
     console.log('Revoking key id:', keyId);
     const revokeHeaders = { 'Authorization': `Bearer ${jwt}`, 'Cache-Control': 'no-cache' };
-    const resRevokeKey = http.del(`${BASE_URL}/api-keys/${keyId}`, null, { headers: revokeHeaders });
+    const resRevokeKey = http.del(`${BASE_URL}/v1/api-keys/${keyId}`, null, { headers: revokeHeaders });
     console.log('Revoke status:', resRevokeKey.status);
     console.log('Revoke body:', resRevokeKey.body);
     check(resRevokeKey, {
@@ -333,7 +333,7 @@ export default function () {
     });
 
     // Step 22: List API keys to verify revocation
-    const resListKeys3 = http.get(`${BASE_URL}/api-keys`, { headers: dashboardAuthHeaders });
+    const resListKeys3 = http.get(`${BASE_URL}/v1/api-keys`, { headers: dashboardAuthHeaders });
     const afterRevokeKeys = JSON.parse(resListKeys3.body).data;
     console.log('After revoke keys count:', afterRevokeKeys.length);
     check(resListKeys3, {
@@ -345,10 +345,10 @@ export default function () {
     });
 
     // Step 23: Verify logs and usage match the test actions (excluding previous data)
-    const resFinalLogs = http.get(`${BASE_URL}/data/logs`, { headers: dashboardAuthHeaders });
+    const resFinalLogs = http.get(`${BASE_URL}/v1/data/logs`, { headers: dashboardAuthHeaders });
     const finalLogsCount = JSON.parse(resFinalLogs.body).data.length;
 
-    const resFinalUsage = http.get(`${BASE_URL}/data/usage`, { headers: dashboardAuthHeaders });
+    const resFinalUsage = http.get(`${BASE_URL}/v1/data/usage`, { headers: dashboardAuthHeaders });
     const finalUsage = JSON.parse(resFinalUsage.body);
     const finalValidations = finalUsage.totals.validations || 0;
     const finalOrders = finalUsage.totals.orders || 0;

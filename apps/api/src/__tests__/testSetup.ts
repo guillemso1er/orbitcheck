@@ -163,10 +163,10 @@ export const createApp = async (): Promise<Fastify.FastifyInstance> => {
     }
 
     // Dashboard routes: require JWT (api-keys, webhooks/test)
-    const isDashboardRoute = url.startsWith('/api-keys') || url.startsWith('/webhooks/test');
+    const isDashboardRoute = url.startsWith('/v1/api-keys') || url.startsWith('/v1/webhooks/test');
 
     // Data routes: require API key auth (data/logs, data/usage)
-    const isDataRoute = url.startsWith('/data/logs') || url.startsWith('/data/usage');
+    const isDataRoute = url.startsWith('/v1/data/logs') || url.startsWith('/v1/data/usage');
 
     if (isDashboardRoute) {
       const authHeader = request.headers.authorization;

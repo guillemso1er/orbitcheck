@@ -1,6 +1,6 @@
 import crypto from "node:crypto";
 
-import type { FastifyReply,FastifyRequest } from "fastify";
+import type { FastifyReply, FastifyRequest } from "fastify";
 
 export const errorSchema = {
     type: 'object',

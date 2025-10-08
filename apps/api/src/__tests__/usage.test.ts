@@ -59,7 +59,7 @@ describe('Usage Stats Endpoints', () => {
       });
 
       const _result = await request(app.server)
-        .get('/data/usage')
+        .get('/v1/data/usage')
         .set('Authorization', 'Bearer test_api_key_12345678901234567890123456789012');
 
       expect(_result.statusCode).toBe(200);
@@ -94,7 +94,7 @@ describe('Usage Stats Endpoints', () => {
       });
 
       const _result = await request(app.server)
-        .get('/data/usage')
+        .get('/v1/data/usage')
         .set('Authorization', 'Bearer test_api_key_12345678901234567890123456789012');
 
       expect(_result.statusCode).toBe(200);

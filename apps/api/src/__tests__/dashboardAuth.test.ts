@@ -60,7 +60,7 @@ describe('Dashboard Authentication - /api-keys endpoint', () => {
         const validToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.test';
 
         const response = await request(app.server)
-            .get('/api-keys')
+            .get('/v1/api-keys')
             .set('Authorization', `Bearer ${validToken}`);
 
         expect(response.status).toBe(200);
@@ -72,7 +72,7 @@ describe('Dashboard Authentication - /api-keys endpoint', () => {
 
     it('should return 400 when Authorization header is missing', async () => {
         const response = await request(app.server)
-            .get('/api-keys');
+            .get('/v1/api-keys');
 
         expect(response.status).toBe(400);
         expect(response.body.error).toBeDefined();
@@ -80,7 +80,7 @@ describe('Dashboard Authentication - /api-keys endpoint', () => {
 
     it('should return 401 when Authorization header does not start with Bearer', async () => {
         const response = await request(app.server)
-            .get('/api-keys')
+            .get('/v1/api-keys')
             .set('Authorization', 'InvalidTokenFormat');
 
         expect(response.status).toBe(401);
@@ -93,7 +93,7 @@ describe('Dashboard Authentication - /api-keys endpoint', () => {
         });
 
         const response = await request(app.server)
-            .get('/api-keys')
+            .get('/v1/api-keys')
             .set('Authorization', 'Bearer invalid_jwt_token');
 
         expect(response.status).toBe(401);
@@ -111,7 +111,7 @@ describe('Dashboard Authentication - /api-keys endpoint', () => {
         });
 
         const response = await request(app.server)
-            .get('/api-keys')
+            .get('/v1/api-keys')
             .set('Authorization', 'Bearer valid_token');
 
         expect(response.status).toBe(401); // Returns 401 due to failed auth flow
@@ -122,7 +122,7 @@ describe('Dashboard Authentication - /api-keys endpoint', () => {
         // Test that /api-keys uses JWT auth (already tested above)
         const jwtToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.test';
         const jwtResponse = await request(app.server)
-            .get('/api-keys')
+            .get('/v1/api-keys')
             .set('Authorization', `Bearer ${jwtToken}`);
 
         expect(jwtResponse.status).toBe(200);

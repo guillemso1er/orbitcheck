@@ -55,7 +55,7 @@ describe('Logs Retrieval Endpoints', () => {
       });
 
       const response = await request(app.server)
-        .get('/data/logs')
+        .get('/v1/data/logs')
         .set('Authorization', 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoidGVzdF91c2VyIiwicHJvamVjdF9pZCI6InRlc3RfcHJvamVjdCJ9.test');
 
       expect(response.status).toBe(200);
@@ -85,7 +85,7 @@ describe('Logs Retrieval Endpoints', () => {
       });
 
       const response = await request(app.server)
-        .get('/data/logs?reason_code=email.invalid_format')
+        .get('/v1/data/logs?reason_code=email.invalid_format')
         .set('Authorization', 'Bearer test_api_key_12345678901234567890123456789012');
 
       expect(response.status).toBe(200);
@@ -113,7 +113,7 @@ describe('Logs Retrieval Endpoints', () => {
       });
 
       const response = await request(app.server)
-        .get('/data/logs?endpoint=/v1/validate/email&status=400')
+        .get('/v1/data/logs?endpoint=/v1/validate/email&status=400')
         .set('Authorization', 'Bearer test_api_key_12345678901234567890123456789012');
 
       expect(response.status).toBe(200);
@@ -144,7 +144,7 @@ describe('Logs Retrieval Endpoints', () => {
       });
 
       const response = await request(app.server)
-        .get('/data/logs?limit=1&offset=1')
+        .get('/v1/data/logs?limit=1&offset=1')
         .set('Authorization', 'Bearer test_api_key_12345678901234567890123456789012');
 
       expect(response.status).toBe(200);

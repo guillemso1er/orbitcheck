@@ -22,7 +22,7 @@ describe('API Keys Routes (JWT Auth)', () => {
         app = await createApp();
 
         app.addHook('preHandler', async (request_, reply) => {
-            if (request_.url.startsWith('/api-keys')) {
+            if (request_.url.startsWith('/v1/api-keys')) {
                 try {
                     if (!request_.headers.authorization?.startsWith('Bearer ')) {
                         return await reply.status(401).send({ error: { code: 'missing_token', message: 'Authorization header is missing or invalid.' } });
@@ -79,7 +79,7 @@ describe('API Keys Routes (JWT Auth)', () => {
         });
 
         const response = await request(app.server)
-            .get('/api-keys')
+            .get('/v1/api-keys')
             .set('Authorization', 'Bearer invalid_key');
 
         expect(response.status).toBe(401);
@@ -90,7 +90,7 @@ describe('API Keys Routes (JWT Auth)', () => {
 
     it('should list API keys with valid JWT', async () => {
         const response = await request(app.server)
-            .get('/api-keys')
+            .get('/v1/api-keys')
             .set('Authorization', 'Bearer valid_jwt_token');
 
         expect(response.status).toBe(200);
@@ -123,7 +123,7 @@ describe('API Keys Routes (JWT Auth)', () => {
         mockedCreateHash.mockReturnValue(mockHash);
 
         const response = await request(app.server)
-            .post('/api-keys')
+            .post('/v1/api-keys')
             .set('Authorization', 'Bearer valid_jwt_token')
             .send({ name: 'New Test Key' });
 

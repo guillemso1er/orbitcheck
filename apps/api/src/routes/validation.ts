@@ -5,7 +5,7 @@ import { type Redis as IORedisType } from 'ioredis';
 import type { Pool } from "pg";
 import twilio from 'twilio';
 
-import {  ERROR_CODES, ERROR_MESSAGES, HTTP_STATUS, TWILIO_CHANNEL_SMS } from "../constants.js";
+import { ERROR_CODES, ERROR_MESSAGES, HTTP_STATUS, TWILIO_CHANNEL_SMS } from "../constants.js";
 // Import route constants from contracts package
 import { environment } from "../environment.js";
 import { logEvent } from "../hooks.js";

@@ -14,7 +14,7 @@ export { beforeRequest } from './hooks/beforeRequest.js';
 export type * from './openapi-types.js';
 
 // Export route constants
-export { API_V1_ROUTES, DASHBOARD_ROUTES } from './routes.js';
+export { API_V1_ROUTES, DASHBOARD_ROUTES, MGMT_V1_ROUTES } from './routes.js';
 
 // Export the route constants
 export * from './routes.js';

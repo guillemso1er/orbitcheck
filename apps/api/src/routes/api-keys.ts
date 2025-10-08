@@ -1,15 +1,15 @@
 import crypto from "node:crypto";
 
-import { DASHBOARD_ROUTES } from "@orbicheck/contracts";
 import type { FastifyInstance } from "fastify";
 import type { Pool } from "pg";
 
 import { API_KEY_PREFIX, ERROR_CODES, ERROR_MESSAGES, HTTP_STATUS, STATUS } from "../constants.js";
 import { errorSchema, generateRequestId, rateLimitResponse, securityHeader, sendError, sendServerError, unauthorizedResponse } from "./utils.js";
+import { MGMT_V1_ROUTES } from "@orbicheck/contracts";
 
 
 export function registerApiKeysRoutes(app: FastifyInstance, pool: Pool): void {
-    app.get(DASHBOARD_ROUTES.LIST_API_KEYS, {
+    app.get(MGMT_V1_ROUTES.API_KEYS.LIST_API_KEYS, {
         schema: {
             summary: 'List API Keys',
             description: 'Retrieves a list of API keys for the authenticated project, showing only the prefix (first 6 characters) for security.',
@@ -53,11 +53,11 @@ export function registerApiKeysRoutes(app: FastifyInstance, pool: Pool): void {
             const response: any = { data: rows, request_id };
             return rep.send(response);
         } catch (error) {
-            return sendServerError(request, rep, error, DASHBOARD_ROUTES.LIST_API_KEYS, generateRequestId());
+            return sendServerError(request, rep, error, MGMT_V1_ROUTES.API_KEYS.LIST_API_KEYS, generateRequestId());
         }
     });
 
-    app.post(DASHBOARD_ROUTES.CREATE_API_KEY, {
+    app.post(MGMT_V1_ROUTES.API_KEYS.CREATE_API_KEY, {
         schema: {
             summary: 'Create New API Key',
             description: 'Generates a new API key for the authenticated project.',
@@ -122,11 +122,11 @@ export function registerApiKeysRoutes(app: FastifyInstance, pool: Pool): void {
             };
             return rep.status(HTTP_STATUS.CREATED).send(response);
         } catch (error) {
-            return sendServerError(request, rep, error, DASHBOARD_ROUTES.LIST_API_KEYS, generateRequestId());
+            return sendServerError(request, rep, error, MGMT_V1_ROUTES.API_KEYS.LIST_API_KEYS, generateRequestId());
         }
     });
 
-    app.delete(DASHBOARD_ROUTES.REVOKE_API_KEY, {
+    app.delete(MGMT_V1_ROUTES.API_KEYS.REVOKE_API_KEY, {
         schema: {
             summary: 'Revoke API Key',
             description: 'Revokes an API key by setting its status to revoked. Cannot be undone.',
@@ -173,7 +173,7 @@ export function registerApiKeysRoutes(app: FastifyInstance, pool: Pool): void {
             return rep.send(response);
         } catch (error) {
             console.log('Revoke error:', error);
-            return sendServerError(request, rep, error, `${DASHBOARD_ROUTES.LIST_API_KEYS}/:id`, generateRequestId());
+            return sendServerError(request, rep, error, `${MGMT_V1_ROUTES.API_KEYS.LIST_API_KEYS}/:id`, generateRequestId());
         }
     });
 }

@@ -1,9 +1,9 @@
-import { API_V1_ROUTES } from "@orbicheck/contracts";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import type { Pool } from "pg";
 
 import { REASON_CODES } from "../constants.js";
 import { generateRequestId, securityHeader, sendServerError } from "./utils.js";
+import { MGMT_V1_ROUTES } from "@orbicheck/contracts";
 
 const reasonCodes: any[] = Object.entries(REASON_CODES).map(([_key, code]) => {
   // Map from code to description, category, severity - this is a simplification; in practice, you'd have a full mapping
@@ -121,7 +121,7 @@ export function registerRulesRoutes(app: FastifyInstance, _pool: Pool): void {
   ];
 
   // Rules list endpoint
-  app.get(API_V1_ROUTES.RULES.GET_AVAILABLE_RULES, {
+  app.get(MGMT_V1_ROUTES.RULES.GET_AVAILABLE_RULES, {
     schema: {
       summary: 'Get Available Rules',
       description: 'Returns a list of all available validation and risk assessment rules.',
@@ -159,12 +159,12 @@ export function registerRulesRoutes(app: FastifyInstance, _pool: Pool): void {
       };
       return rep.send(response);
     } catch (error) {
-      return sendServerError(request, rep, error, API_V1_ROUTES.RULES.GET_AVAILABLE_RULES, generateRequestId());
+      return sendServerError(request, rep, error, MGMT_V1_ROUTES.RULES.GET_AVAILABLE_RULES, generateRequestId());
     }
   });
 
   // Reason code catalog endpoint
-  app.get(API_V1_ROUTES.RULES.GET_REASON_CODE_CATALOG, {
+  app.get(MGMT_V1_ROUTES.RULES.GET_REASON_CODE_CATALOG, {
     schema: {
       summary: 'Get Reason Code Catalog',
       description: 'Returns a comprehensive list of all possible reason codes with descriptions and severity levels.',
@@ -201,12 +201,12 @@ export function registerRulesRoutes(app: FastifyInstance, _pool: Pool): void {
       };
       return rep.send(response);
     } catch (error) {
-      return sendServerError(request, rep, error, API_V1_ROUTES.RULES.GET_REASON_CODE_CATALOG, generateRequestId());
+      return sendServerError(request, rep, error, MGMT_V1_ROUTES.RULES.GET_REASON_CODE_CATALOG, generateRequestId());
     }
   });
 
   // Placeholder for register rules route (to be implemented)
-  app.post(API_V1_ROUTES.RULES.REGISTER_CUSTOM_RULES, {
+  app.post(MGMT_V1_ROUTES.RULES.REGISTER_CUSTOM_RULES, {
     schema: {
       summary: 'Register Custom Rules',
       description: 'Registers custom business rules for the project.',
@@ -260,7 +260,7 @@ export function registerRulesRoutes(app: FastifyInstance, _pool: Pool): void {
 
       return rep.send(response);
     } catch (error) {
-      return sendServerError(request, rep, error, API_V1_ROUTES.RULES.REGISTER_CUSTOM_RULES, generateRequestId());
+      return sendServerError(request, rep, error, MGMT_V1_ROUTES.RULES.REGISTER_CUSTOM_RULES, generateRequestId());
     }
   });
 }

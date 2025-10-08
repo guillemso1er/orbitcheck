@@ -54,8 +54,11 @@ async function validateEndpointCoverage(app: FastifyInstance): Promise<void> {
   const baseUrl = servers[0]?.url || '';
   const basePath = baseUrl.replace(/^https?:\/\/[^/]+/, ''); // Remove protocol and host, keep path
 
-  // Dashboard routes that don't use the basePath
-  const dashboardGroups = ['/api-keys', '/webhooks', '/data', '/auth', '/auth/register', '/auth/login'];
+  // Routes that should NOT have the base path prepended (UI/Dashboard routes)
+  const routesWithoutBasePath = [
+    '/auth/register',
+    '/auth/login',
+  ];
 
   const missingEndpoints: string[] = [];
 
@@ -66,9 +69,25 @@ async function validateEndpointCoverage(app: FastifyInstance): Promise<void> {
       if (method === 'parameters') continue; // Skip path-level parameters
 
       const httpMethod = method.toUpperCase();
-      const isDashboardRoute = dashboardGroups.some(group => path.startsWith(group));
-      const fullPath = isDashboardRoute ? path : basePath + path; // Don't add basePath for dashboard routes
-      const routePath = fullPath.replace(/\{([^}]+)\}/g, ':$1'); // Convert OpenAPI {param} to Fastify :param
+
+      // Determine if this route should have the base path
+      let fullPath = path;
+
+      // Check if this is a route that shouldn't have the base path
+      const shouldSkipBasePath = routesWithoutBasePath.some(route =>
+        path === route || path.startsWith(route + '/')
+      );
+
+      // Only add base path if:
+      // 1. We have a base path
+      // 2. The path doesn't already start with the base path
+      // 3. It's not in the list of routes that should skip the base path
+      if (basePath && !path.startsWith(basePath) && !shouldSkipBasePath) {
+        fullPath = basePath + path;
+      }
+
+      // Convert OpenAPI {param} to Fastify :param
+      const routePath = fullPath.replace(/\{([^}]+)\}/g, ':$1');
 
       // Check if route exists
       const routeExists = app.hasRoute({ method: httpMethod, url: routePath });

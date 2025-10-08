@@ -12,7 +12,7 @@ export const options = {
 
 const KEY = (__ENV.KEY || '').trim();
 const BASE_URL = 'http://localhost:8081/v1';
-const DATA_BASE_URL = 'http://localhost:8081/data';
+const DATA_BASE_URL = 'http://localhost:8081/v1/data';
 const HEADERS = {
     'Authorization': `Bearer ${KEY}`
 };

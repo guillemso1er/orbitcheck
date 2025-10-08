@@ -1,4 +1,4 @@
- 
+
 
 import crypto from 'node:crypto';
 
@@ -331,5 +331,5 @@ describe('Email Validation Endpoints', () => {
         });
     });
 
-     
+
 });

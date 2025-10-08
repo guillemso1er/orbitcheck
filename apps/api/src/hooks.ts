@@ -1,7 +1,6 @@
 import crypto from "node:crypto";
 
-import type { FastifyReply,FastifyRequest } from "fastify";
-import _IORedis from 'ioredis';
+import type { FastifyReply, FastifyRequest } from "fastify";
 import { type Redis as IORedisType } from 'ioredis';
 import type { Pool } from "pg";
 

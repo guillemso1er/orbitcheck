@@ -83,7 +83,7 @@ describe('Webhook Test Routes (JWT Auth)', () => {
 
     it('should successfully test a webhook with validation payload', async () => {
         const res = await request(app.server)
-            .post('/webhooks/test')
+            .post('/v1/webhooks/test')
             .set('Authorization', `Bearer ${MOCK_JWT}`)
             .send({
                 url: 'https://example.com/webhook',
@@ -102,7 +102,7 @@ describe('Webhook Test Routes (JWT Auth)', () => {
 
     it('should handle custom payload successfully', async () => {
         const res = await request(app.server)
-            .post('/webhooks/test')
+            .post('/v1/webhooks/test')
             .set('Authorization', `Bearer ${MOCK_JWT}`)
             .send({
                 url: 'https://example.com/webhook',
@@ -120,7 +120,7 @@ describe('Webhook Test Routes (JWT Auth)', () => {
 
     it('should reject invalid URL', async () => {
         const res = await request(app.server)
-            .post('/webhooks/test')
+            .post('/v1/webhooks/test')
             .set('Authorization', `Bearer ${MOCK_JWT}`)
             .send({
                 url: 'ftp://example.com',
@@ -133,7 +133,7 @@ describe('Webhook Test Routes (JWT Auth)', () => {
 
     it('should reject missing custom payload for custom type', async () => {
         const res = await request(app.server)
-            .post('/webhooks/test')
+            .post('/v1/webhooks/test')
             .set('Authorization', `Bearer ${MOCK_JWT}`)
             .send({
                 url: 'https://example.com/webhook',
@@ -148,7 +148,7 @@ describe('Webhook Test Routes (JWT Auth)', () => {
         fetchMock.mockRejectedValue(new Error('Network error'));
 
         const res = await request(app.server)
-            .post('/webhooks/test')
+            .post('/v1/webhooks/test')
             .set('Authorization', `Bearer ${MOCK_JWT}`)
             .send({
                 url: 'https://example.com/webhook',
@@ -167,7 +167,7 @@ describe('Webhook Test Routes (JWT Auth)', () => {
 
 
         const res = await request(app.server)
-            .post('/webhooks/test')
+            .post('/v1/webhooks/test')
             .set('Authorization', `Bearer ${MOCK_JWT}`)
             .send({
                 url: 'https://example.com/webhook',

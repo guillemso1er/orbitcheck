@@ -100,7 +100,7 @@ describe('Web Authentication', () => {
     });
 
     it('should use JWT verification for /api-keys endpoints', async () => {
-      const request = createMockRequest('/api-keys', { authorization: 'Bearer token' });
+      const request = createMockRequest('/v1/api-keys', { authorization: 'Bearer token' });
       const reply = createMockReply();
 
       await hookHandler(request, reply);
@@ -110,7 +110,7 @@ describe('Web Authentication', () => {
     });
 
     it('should use JWT verification for /webhooks/test endpoints', async () => {
-      const request = createMockRequest('/webhooks/test');
+      const request = createMockRequest('/v1/webhooks/test');
       const reply = createMockReply();
 
       await hookHandler(request, reply);
@@ -120,7 +120,7 @@ describe('Web Authentication', () => {
     });
 
     it('should use API key auth for /data/usage endpoints', async () => {
-      const request = createMockRequest('/data/usage');
+      const request = createMockRequest('/v1/data/usage');
       const reply = createMockReply();
 
       await hookHandler(request, reply);
@@ -140,7 +140,7 @@ describe('Web Authentication', () => {
     });
 
     it('should use API key auth for other endpoints', async () => {
-      const request = createMockRequest('/api/validation/email');
+      const request = createMockRequest('/v1/validation/email');
       const reply = createMockReply();
 
       await hookHandler(request, reply);
@@ -150,7 +150,7 @@ describe('Web Authentication', () => {
     });
 
     it('should apply rate limiting for non-dashboard routes', async () => {
-      const request = createMockRequest('/api/validation/email');
+      const request = createMockRequest('/v1/validation/email');
       const reply = createMockReply();
 
       await hookHandler(request, reply);
@@ -161,8 +161,8 @@ describe('Web Authentication', () => {
 
     it('should skip rate limiting for dashboard routes', async () => {
       const dashboardRoutes = [
-        '/api-keys',
-        '/webhooks/test'
+        '/v1/api-keys',
+        '/v1/webhooks/test'
       ];
 
       await Promise.all(dashboardRoutes.map(async (route) => {
@@ -179,8 +179,8 @@ describe('Web Authentication', () => {
 
     it('should apply rate limiting for data routes', async () => {
       const dataRoutes = [
-        '/data/usage',
-        '/data/logs'
+        '/v1/data/usage',
+        '/v1/data/logs'
       ];
 
       await Promise.all(dataRoutes.map(async (route) => {

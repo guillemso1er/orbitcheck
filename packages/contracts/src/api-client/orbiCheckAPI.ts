@@ -851,7 +851,7 @@ export const listApiKeys = <TData = AxiosResponse<ListApiKeys200>>(
      options?: AxiosRequestConfig
  ): Promise<TData> => {
     return axios.get(
-      `/api-keys`,options
+      `/v1/api-keys`,options
     );
   }
 
@@ -863,7 +863,7 @@ export const createApiKey = <TData = AxiosResponse<CreateApiKey201>>(
     createApiKeyBody: CreateApiKeyBody, options?: AxiosRequestConfig
  ): Promise<TData> => {
     return axios.post(
-      `/api-keys`,
+      `/v1/api-keys`,
       createApiKeyBody,options
     );
   }
@@ -876,7 +876,7 @@ export const revokeApiKey = <TData = AxiosResponse<RevokeApiKey200>>(
     id: string, options?: AxiosRequestConfig
  ): Promise<TData> => {
     return axios.delete(
-      `/api-keys/${id}`,options
+      `/v1/api-keys/${id}`,options
     );
   }
 
@@ -1005,7 +1005,7 @@ export const getLogs = <TData = AxiosResponse<GetLogs200>>(
     params?: GetLogsParams, options?: AxiosRequestConfig
  ): Promise<TData> => {
     return axios.get(
-      `/data/logs`,{
+      `/v1/data/logs`,{
     ...options,
         params: {...params, ...options?.params},}
     );
@@ -1019,7 +1019,7 @@ export const getUsage = <TData = AxiosResponse<GetUsage200>>(
      options?: AxiosRequestConfig
  ): Promise<TData> => {
     return axios.get(
-      `/data/usage`,options
+      `/v1/data/usage`,options
     );
   }
 
@@ -1068,7 +1068,7 @@ export const testWebhook = <TData = AxiosResponse<TestWebhook200>>(
     testWebhookBody: TestWebhookBody, options?: AxiosRequestConfig
  ): Promise<TData> => {
     return axios.post(
-      `/webhooks/test`,
+      `/v1/webhooks/test`,
       testWebhookBody,options
     );
   }

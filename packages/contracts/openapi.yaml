@@ -144,7 +144,7 @@ paths:
                 $ref: '#/components/schemas/Error'
 
   # API Keys
-  /api-keys:
+  /v1/api-keys:
     get:
       tags:
         - Management API
@@ -220,7 +220,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
-  /api-keys/{id}:
+  /v1/api-keys/{id}:
     delete:
       tags:
         - Management API
@@ -856,7 +856,7 @@ paths:
                 $ref: '#/components/schemas/Error'
 
   # Data Retrieval
-  /data/logs:
+  /v1/data/logs:
     get:
       tags:
         - Management API
@@ -922,7 +922,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
-  /data/usage:
+  /v1/data/usage:
     get:
       tags:
         - Management API
@@ -1089,7 +1089,7 @@ paths:
                 $ref: '#/components/schemas/Error'
 
   # Webhooks
-  /webhooks/test:
+  /v1/webhooks/test:
     post:
       tags:
         - Management API

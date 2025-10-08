@@ -199,9 +199,9 @@ export const RISK_PO_BOX = 30 as const;
 export const RISK_POSTAL_MISMATCH = 10 as const;
 
 export const RISK_GEO_OUT = 40 as const;
-export const RISK_GEOCODE_FAIL = 15 as const;         
-export const RISK_INVALID_ADDR = 20 as const;         
-export const RISK_INVALID_EMAIL_PHONE = 20 as const;  
+export const RISK_GEOCODE_FAIL = 15 as const;
+export const RISK_INVALID_ADDR = 20 as const;
+export const RISK_INVALID_EMAIL_PHONE = 20 as const;
 
 export const RISK_COD = 20 as const;
 

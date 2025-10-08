@@ -399,7 +399,7 @@ export function registerOrderRoutes(app: FastifyInstance, pool: Pool, redis: Red
             if ((rep as any).saveIdem) {
                 await (rep as any).saveIdem(response);
             }
-             return rep.send(response);
+            return rep.send(response);
         } catch (error) {
             app.log.error({ err: error, request_id }, "An unhandled error occurred in /v1/orders/evaluate");
             return sendServerError(request, rep, error, API_V1_ROUTES.ORDERS.EVALUATE_ORDER_FOR_RISK_AND_RULES, request_id);
