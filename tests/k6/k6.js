@@ -19,11 +19,11 @@ const DASHBOARD_HEADERS = {
 export default function () {
     const check = k6check;
 
-    console.log('Starting k9 comprehensive journey test...');
+    console.log('Starting k6 comprehensive journey test...');
 
     // Step 1: Register a new user
     const registerPayload = JSON.stringify({
-        email: `k9test${Date.now()}@example.com`,
+        email: `k6test${Date.now()}@example.com`,
         password: 'password123'
     });
     const resRegister = http.post(`${BASE_URL}/auth/register`, registerPayload, { headers: DASHBOARD_HEADERS });
@@ -72,7 +72,7 @@ export default function () {
     console.log('Initial keys count:', initialKeys.length);
 
     // Step 4: Create API key
-    const createKeyPayload = JSON.stringify({ name: 'k9-test-key' });
+    const createKeyPayload = JSON.stringify({ name: 'k6-test-key' });
     const resCreateKey = http.post(`${BASE_URL}/v1/api-keys`, createKeyPayload, { headers: dashboardAuthHeaders });
     check(resCreateKey, {
         '[Create API Key] status 201': (r) => r.status === 201,
@@ -213,7 +213,7 @@ export default function () {
 
     // Step 13: Evaluate order
     const orderPayload = JSON.stringify({
-        order_id: `k9-order-${Date.now()}`,
+        order_id: `k6-order-${Date.now()}`,
         customer: {
             email: 'customer@example.com',
             phone: '+1234567890',
@@ -265,8 +265,8 @@ export default function () {
     const customRulesPayload = JSON.stringify({
         rules: [
             {
-                id: 'k9-custom-rule',
-                name: 'k9-custom-rule',
+                id: 'k6-custom-rule',
+                name: 'k6-custom-rule',
                 description: 'test rule',
                 reason_code: 'test',
                 severity: 'low',
@@ -288,8 +288,8 @@ export default function () {
     check(resGetRules2, {
         '[Get Rules After Register] status 200': (r) => r.status === 200,
         '[Get Rules After Register] has more rules': (r) => {
-          const body = JSON.parse(r.body);
-          return body.rules.length >= initialRules.length;
+            const body = JSON.parse(r.body);
+            return body.rules.length >= initialRules.length;
         }
     });
 
@@ -316,8 +316,8 @@ export default function () {
     check(resTestWebhook, {
         '[Test Webhook] status 200': (r) => r.status === 200,
         '[Test Webhook] success': (r) => {
-          const body = JSON.parse(r.body);
-          return body.response && body.response.status === 200;
+            const body = JSON.parse(r.body);
+            return body.response && body.response.status === 200;
         }
     });
 
@@ -339,8 +339,8 @@ export default function () {
     check(resListKeys3, {
         '[List API Keys After Revoke] status 200': (r) => r.status === 200,
         '[List API Keys After Revoke] has one more than initial': (r) => {
-          const body = JSON.parse(r.body).data;
-          return body.length === initialKeys.length + 1;
+            const body = JSON.parse(r.body).data;
+            return body.length === initialKeys.length + 1;
         }
     });
 
@@ -373,6 +373,6 @@ export default function () {
         '[Verify Usage] orders increase': (r) => actualOrdersIncrease >= expectedOrdersIncrease
     });
 
-    console.log('k9 journey test completed successfully!');
+    console.log('k6 journey test completed successfully!');
     sleep(0.1);
 }

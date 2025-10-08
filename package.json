@@ -4,9 +4,9 @@
   "scripts": {
     "api": "pnpm --filter @orbicheck/api dev",
     "dashboard": "pnpm --filter @orbicheck/dashboard dev",
-    "k9": "k6 run -e KEY=ok_test_a450e23f007460bc2a01e5ec715a12a76952 --vus 1 --iterations 1 tests/k6/main.js",
-    "k9:fulljourney": "k6 run  tests/k6/k9.js",
-    "k9:all": "k6 run -e KEY=ok_test_a450e23f007460bc2a01e5ec715a12a76952  tests/k6/main.js",
+    "k6": "k6 run -e KEY=ok_test_a450e23f007460bc2a01e5ec715a12a76952 --vus 1 --iterations 1 tests/k6/main.js",
+    "k6:fulljourney": "k6 run  tests/k6/k6.js",
+    "k6:all": "k6 run -e KEY=ok_test_a450e23f007460bc2a01e5ec715a12a76952  tests/k6/main.js",
     "generate:routes": "pnpm --filter @orbicheck/contracts run generate:routes",
     "generate:types": "pnpm --filter @orbicheck/contracts run generate:types",
     "generate:client": "pnpm --filter @orbicheck/contracts run generate:client",

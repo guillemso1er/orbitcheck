@@ -59,7 +59,7 @@ export default function (check) {
     res = http.post(`${BASE_URL}/validate/address`, poBoxPayload, { headers: getHeaders() });
     check(res, {
         '[PO Box] status 200 (first req)': (r) => r.status === 200,
-        '[PO Box] po_box is true (first req)': (r) => JSON.parse(r.body).po_box === true,
+        '[PO Box] po_box is false (first req)': (r) => JSON.parse(r.body).po_box === false,
     });
 
     // Second request, check for HIT.

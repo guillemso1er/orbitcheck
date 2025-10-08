@@ -26,18 +26,31 @@ export default function (check) {
         last_name: 'Doe',
         phone: '+1234567890'
     });
-    let res = http.post(`${BASE_URL}/dedupe`, noMatchPayload, { headers: getHeaders() });
+    let res = http.post(`${BASE_URL}/dedupe/customer`, noMatchPayload, { headers: getHeaders() });
     check(res, {
         '[No Match] status 200 (first req)': (r) => r.status === 200,
         '[No Match] matches empty (first req)': (r) => {
-            const body = JSON.parse(r.body);
-            return Array.isArray(body.matches) && body.matches.length === 0;
+            if (r.status !== 200) return false;
+            try {
+                const body = JSON.parse(r.body);
+                return Array.isArray(body.matches) && body.matches.length === 0;
+            } catch (e) {
+                return false;
+            }
         },
-        '[No Match] suggested_action create_new (first req)': (r) => JSON.parse(r.body).suggested_action === 'create_new'
+        '[No Match] suggested_action create_new (first req)': (r) => {
+            if (r.status !== 200) return false;
+            try {
+                const body = JSON.parse(r.body);
+                return body.suggested_action === 'create_new';
+            } catch (e) {
+                return false;
+            }
+        }
     });
 
     // Second request for the same data. THIS MUST be a HIT.
-    res = http.post(`${BASE_URL}/dedupe`, noMatchPayload, { headers: getHeaders() });
+    res = http.post(`${BASE_URL}/dedupe/customer`, noMatchPayload, { headers: getHeaders() });
     check(res, {
         '[No Match] status 200 HIT': (r) => r.status === 200,
         '[No Match] cache HIT': (r) => (r.headers['Cache-Status'] || '').toLowerCase().includes('hit')
@@ -49,17 +62,22 @@ export default function (check) {
         first_name: 'Jane',
         last_name: 'Smith'
     });
-    res = http.post(`${BASE_URL}/dedupe`, fuzzyPayload, { headers: getHeaders() });
+    res = http.post(`${BASE_URL}/dedupe/customer`, fuzzyPayload, { headers: getHeaders() });
     check(res, {
         '[Fuzzy] status 200 (first req)': (r) => r.status === 200,
         '[Fuzzy] response structure (first req)': (r) => {
-            const body = JSON.parse(r.body);
-            return body.matches !== undefined && body.suggested_action !== undefined;
+            if (r.status !== 200) return false;
+            try {
+                const body = JSON.parse(r.body);
+                return body.matches !== undefined && body.suggested_action !== undefined;
+            } catch (e) {
+                return false;
+            }
         }
     });
 
     // Second request, check for HIT.
-    res = http.post(`${BASE_URL}/dedupe`, fuzzyPayload, { headers: getHeaders() });
+    res = http.post(`${BASE_URL}/dedupe/customer`, fuzzyPayload, { headers: getHeaders() });
     check(res, {
         '[Fuzzy] status 200 HIT': (r) => r.status === 200,
         '[Fuzzy] cache HIT': (r) => (r.headers['Cache-Status'] || '').toLowerCase().includes('hit')
@@ -71,18 +89,31 @@ export default function (check) {
         first_name: 'Existing',
         last_name: 'User'
     });
-    res = http.post(`${BASE_URL}/dedupe`, exactPayload, { headers: getHeaders() });
+    res = http.post(`${BASE_URL}/dedupe/customer`, exactPayload, { headers: getHeaders() });
     check(res, {
         '[Exact] status 200 (first req)': (r) => r.status === 200,
         '[Exact] matches empty (first req)': (r) => {
-            const body = JSON.parse(r.body);
-            return Array.isArray(body.matches) && body.matches.length === 0;
+            if (r.status !== 200) return false;
+            try {
+                const body = JSON.parse(r.body);
+                return Array.isArray(body.matches) && body.matches.length === 0;
+            } catch (e) {
+                return false;
+            }
         },
-        '[Exact] suggested_action create_new (first req)': (r) => JSON.parse(r.body).suggested_action === 'create_new'
+        '[Exact] suggested_action create_new (first req)': (r) => {
+            if (r.status !== 200) return false;
+            try {
+                const body = JSON.parse(r.body);
+                return body.suggested_action === 'create_new';
+            } catch (e) {
+                return false;
+            }
+        }
     });
 
     // Second request, check for HIT.
-    res = http.post(`${BASE_URL}/dedupe`, exactPayload, { headers: getHeaders() });
+    res = http.post(`${BASE_URL}/dedupe/customer`, exactPayload, { headers: getHeaders() });
     check(res, {
         '[Exact] status 200 HIT': (r) => r.status === 200,
         '[Exact] cache HIT': (r) => (r.headers['Cache-Status'] || '').toLowerCase().includes('hit')
@@ -99,8 +130,13 @@ export default function (check) {
     check(res, {
         '[Address Dedupe] status 200': (r) => r.status === 200,
         '[Address Dedupe] has matches and action': (r) => {
-            const body = JSON.parse(r.body);
-            return body.matches !== undefined && body.suggested_action;
+            if (r.status !== 200) return false;
+            try {
+                const body = JSON.parse(r.body);
+                return body.matches !== undefined && body.suggested_action;
+            } catch (e) {
+                return false;
+            }
         }
     });
 
