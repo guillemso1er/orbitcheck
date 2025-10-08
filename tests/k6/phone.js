@@ -1,5 +1,6 @@
-import { sleep, check as k6check } from 'k6';
+import { check as k6check, sleep } from 'k6';
 import http from 'k6/http';
+import { getHeaders } from './auth-utils.js';
 
 export const options = {
     vus: 50,
@@ -10,12 +11,7 @@ export const options = {
     }
 };
 
-const KEY = (__ENV.KEY || '').trim();
 const BASE_URL = 'http://localhost:8081/v1';
-const HEADERS = {
-    'Content-Type': 'application/json',
-    'Authorization': `Bearer ${KEY}`
-};
 
 export default function (check) {
     // 3. If check is not provided (when running this file directly),
@@ -23,7 +19,7 @@ export default function (check) {
     check = check || k6check;
     // Scenario 1: Test valid phone without country
     const validPayload = JSON.stringify({ phone: '+16502530000' });
-    let res = http.post(`${BASE_URL}/validate/phone`, validPayload, { headers: HEADERS });
+    let res = http.post(`${BASE_URL}/validate/phone`, validPayload, { headers: getHeaders('POST', '/v1/validate/phone', validPayload) });
     check(res, {
         '[Valid Phone] status 200 (first req)': (r) => r.status === 200,
         '[Valid Phone] valid is true (first req)': (r) => JSON.parse(r.body).valid === true,
@@ -35,7 +31,7 @@ export default function (check) {
     });
 
     // Second request for the same phone. THIS MUST be a HIT.
-    res = http.post(`${BASE_URL}/validate/phone`, validPayload, { headers: HEADERS });
+    res = http.post(`${BASE_URL}/validate/phone`, validPayload, { headers: getHeaders('POST', '/v1/validate/phone', validPayload) });
     check(res, {
         '[Valid Phone] status 200 HIT': (r) => r.status === 200,
         '[Valid Phone] cache HIT': (r) => (r.headers['Cache-Status'] || '').toLowerCase().includes('hit'),
@@ -43,7 +39,7 @@ export default function (check) {
 
     // Scenario 2: Test valid phone with country hint
     const validWithCountryPayload = JSON.stringify({ phone: '6502530000', country: 'US' });
-    res = http.post(`${BASE_URL}/validate/phone`, validWithCountryPayload, { headers: HEADERS });
+    res = http.post(`${BASE_URL}/validate/phone`, validWithCountryPayload, { headers: getHeaders('POST', '/v1/validate/phone', validWithCountryPayload) });
     check(res, {
         '[Valid with Country] status 200 (first req)': (r) => r.status === 200,
         '[Valid with Country] valid is true (first req)': (r) => JSON.parse(r.body).valid === true,
@@ -51,7 +47,7 @@ export default function (check) {
     });
 
     // Second request, check for HIT.
-    res = http.post(`${BASE_URL}/validate/phone`, validWithCountryPayload, { headers: HEADERS });
+    res = http.post(`${BASE_URL}/validate/phone`, validWithCountryPayload, { headers: getHeaders('POST', '/v1/validate/phone', validWithCountryPayload) });
     check(res, {
         '[Valid with Country] status 200 HIT': (r) => r.status === 200,
         '[Valid with Country] cache HIT': (r) => (r.headers['Cache-Status'] || '').toLowerCase().includes('hit'),
@@ -59,7 +55,7 @@ export default function (check) {
 
     // Scenario 3: Test invalid phone format
     const invalidPayload = JSON.stringify({ phone: 'invalid-phone' });
-    res = http.post(`${BASE_URL}/validate/phone`, invalidPayload, { headers: HEADERS });
+    res = http.post(`${BASE_URL}/validate/phone`, invalidPayload, { headers: getHeaders('POST', '/v1/validate/phone', invalidPayload) });
     check(res, {
         '[Invalid Format] status 200 (first req)': (r) => r.status === 200,
         '[Invalid Format] valid is false (first req)': (r) => JSON.parse(r.body).valid === false,
@@ -70,7 +66,7 @@ export default function (check) {
     });
 
     // Second request, check for HIT.
-    res = http.post(`${BASE_URL}/validate/phone`, invalidPayload, { headers: HEADERS });
+    res = http.post(`${BASE_URL}/validate/phone`, invalidPayload, { headers: getHeaders('POST', '/v1/validate/phone', invalidPayload) });
     check(res, {
         '[Invalid Format] status 200 HIT': (r) => r.status === 200,
         '[Invalid Format] cache HIT': (r) => (r.headers['Cache-Status'] || '').toLowerCase().includes('hit'),
@@ -78,7 +74,7 @@ export default function (check) {
 
     // Scenario 4: Test invalid phone with country hint
     const invalidWithCountryPayload = JSON.stringify({ phone: '999999', country: 'US' });
-    res = http.post(`${BASE_URL}/validate/phone`, invalidWithCountryPayload, { headers: HEADERS });
+    res = http.post(`${BASE_URL}/validate/phone`, invalidWithCountryPayload, { headers: getHeaders('POST', '/v1/validate/phone', invalidWithCountryPayload) });
     check(res, {
         '[Invalid with Country] status 200 (first req)': (r) => r.status === 200,
         '[Invalid with Country] valid is false (first req)': (r) => JSON.parse(r.body).valid === false,
@@ -89,7 +85,7 @@ export default function (check) {
     });
 
     // Second request, check for HIT.
-    res = http.post(`${BASE_URL}/validate/phone`, invalidWithCountryPayload, { headers: HEADERS });
+    res = http.post(`${BASE_URL}/validate/phone`, invalidWithCountryPayload, { headers: getHeaders('POST', '/v1/validate/phone', invalidWithCountryPayload) });
     check(res, {
         '[Invalid with Country] status 200 HIT': (r) => r.status === 200,
         '[Invalid with Country] cache HIT': (r) => (r.headers['Cache-Status'] || '').toLowerCase().includes('hit'),
@@ -100,7 +96,7 @@ export default function (check) {
         verification_sid: 'test_sid',
         code: '123456'
     });
-    res = http.post(`${BASE_URL}/verify/phone`, verifyPayload, { headers: HEADERS });
+    res = http.post(`${BASE_URL}/verify/phone`, verifyPayload, { headers: getHeaders('POST', '/v1/verify/phone', verifyPayload) });
     check(res, {
         '[Verify Phone] status is 200 or error': (r) => r.status === 200 || r.status === 400 || r.status === 500,
     });

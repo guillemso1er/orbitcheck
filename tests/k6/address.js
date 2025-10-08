@@ -1,5 +1,6 @@
 import { check as k6check, sleep } from 'k6';
 import http from 'k6/http';
+import { getHeaders } from './auth-utils.js';
 
 export const options = {
     // Restore your desired load testing parameters
@@ -11,12 +12,7 @@ export const options = {
     }
 };
 
-const KEY = (__ENV.KEY || '').trim();
 const BASE_URL = 'http://localhost:8081/v1'; // This should point to your Nginx proxy
-const HEADERS = {
-    'Content-Type': 'application/json',
-    'Authorization': `Bearer ${KEY}`
-};
 
 export default function (check) {
     // 3. If check is not provided (when running this file directly),
@@ -34,14 +30,14 @@ export default function (check) {
     });
 
     // First request. We check its content. With the Nginx fix, this may be a MISS or HIT.
-    let res = http.post(`${BASE_URL}/validate/address`, addressWithMismatchPayload, { headers: HEADERS });
+    let res = http.post(`${BASE_URL}/validate/address`, addressWithMismatchPayload, { headers: getHeaders('POST', '/v1/validate/address', addressWithMismatchPayload) });
     check(res, {
         '[Mismatch] status 200 (first req)': (r) => r.status === 200,
         '[Mismatch] valid is false (first req)': (r) => JSON.parse(r.body).valid === false,
     });
 
     // Second request for the same address. THIS MUST be a HIT.
-    res = http.post(`${BASE_URL}/validate/address`, addressWithMismatchPayload, { headers: HEADERS });
+    res = http.post(`${BASE_URL}/validate/address`, addressWithMismatchPayload, { headers: getHeaders('POST', '/v1/validate/address', addressWithMismatchPayload) });
     check(res, {
         '[Mismatch] status 200 HIT': (r) => r.status === 200,
         '[Mismatch] cache HIT': (r) => (r.headers['Cache-Status'] || '').toLowerCase().includes('hit'),
@@ -60,15 +56,14 @@ export default function (check) {
     });
 
     // First request.
-    res = http.post(`${BASE_URL}/validate/address`, poBoxPayload, { headers: HEADERS });
+    res = http.post(`${BASE_URL}/validate/address`, poBoxPayload, { headers: getHeaders() });
     check(res, {
         '[PO Box] status 200 (first req)': (r) => r.status === 200,
-        // CORRECTION: The API should correctly identify this as a P.O. Box.
         '[PO Box] po_box is true (first req)': (r) => JSON.parse(r.body).po_box === true,
     });
 
     // Second request, check for HIT.
-    res = http.post(`${BASE_URL}/validate/address`, poBoxPayload, { headers: HEADERS });
+    res = http.post(`${BASE_URL}/validate/address`, poBoxPayload, { headers: getHeaders('POST', '/v1/validate/address', poBoxPayload) });
     check(res, {
         '[PO Box] status 200 HIT': (r) => r.status === 200,
         '[PO Box] cache HIT': (r) => (r.headers['Cache-Status'] || '').toLowerCase().includes('hit'),
@@ -87,14 +82,14 @@ export default function (check) {
     });
 
     // First request.
-    res = http.post(`${BASE_URL}/validate/address`, invalidCityPayload, { headers: HEADERS });
+    res = http.post(`${BASE_URL}/validate/address`, invalidCityPayload, { headers: getHeaders('POST', '/v1/validate/address', invalidCityPayload) });
     check(res, {
         '[Invalid City] status 200 (first req)': (r) => r.status === 200,
         '[Invalid City] valid is false (first req)': (r) => JSON.parse(r.body).valid === false,
     });
 
     // Second request, check for HIT.
-    res = http.post(`${BASE_URL}/validate/address`, invalidCityPayload, { headers: HEADERS });
+    res = http.post(`${BASE_URL}/validate/address`, invalidCityPayload, { headers: getHeaders('POST', '/v1/validate/address', invalidCityPayload) });
     check(res, {
         '[Invalid City] status 200 HIT': (r) => r.status === 200,
         '[Invalid City] cache HIT': (r) => (r.headers['Cache-Status'] || '').toLowerCase().includes('hit'),

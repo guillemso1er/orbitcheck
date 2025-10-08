@@ -2,7 +2,7 @@ import cors from '@fastify/cors';
 import * as Sentry from '@sentry/node';
 import { Queue, Worker } from 'bullmq';
 import Fastify from 'fastify';
-import { type Redis as IORedisType,Redis } from 'ioredis';
+import { type Redis as IORedisType, Redis } from 'ioredis';
 import cron from 'node-cron';
 import { Pool } from 'pg';
 
@@ -10,7 +10,7 @@ import { registerRoutes } from '../web.js';
 
 // --- Top-level Mocks ---
 
-// Tell Jest to use the manual mock we created in src/__mocks__/environment.ts
+// Tell Jest to use the manual mock we created in src/mocks/environment.ts
 // This line MUST come before any imports from '../server.js' or its dependencies.
 jest.mock('../environment', () => ({
   environment: {
@@ -19,6 +19,7 @@ jest.mock('../environment', () => ({
     REDIS_URL: 'redis://test',
     SENTRY_DSN: '',
     LOG_LEVEL: 'info',
+    SESSION_SECRET: 'test-secret',
   }
 }));
 
@@ -28,6 +29,8 @@ jest.mock('@sentry/node', () => ({
 }));
 
 jest.mock('@fastify/cors', () => jest.fn());
+jest.mock('@fastify/cookie', () => jest.fn());
+jest.mock('@fastify/session', () => jest.fn());
 jest.mock('@fastify/swagger', () => jest.fn());
 jest.mock('@fastify/swagger-ui', () => jest.fn());
 
@@ -40,6 +43,7 @@ const mockApp = {
   log: { info: jest.fn(), error: jest.fn() },
   setErrorHandler: jest.fn(),
   hasRoute: jest.fn().mockReturnValue(true),
+  close: jest.fn().mockResolvedValue(undefined),
 };
 jest.mock('fastify', () => jest.fn(() => mockApp));
 
@@ -66,15 +70,35 @@ jest.mock('../web', () => ({
   registerRoutes: jest.fn(),
 }));
 
-// Mock the OpenAPI spec for tests
-jest.mock('@orbicheck/contracts/openapi.yaml', () => ({
-  openapi: '3.0.3',
-  info: {
-    title: 'OrbiCheck API',
-    description: 'API for validation, deduplication, and risk assessment services',
-    version: '1.0.0'
-  },
-  paths: {}
+jest.mock('../startup-guard', () => jest.fn());
+
+jest.mock('../plugins/openapi', () => ({
+  openapiValidation: jest.fn(),
+}));
+
+jest.mock('../cron/retention', () => ({
+  runLogRetention: jest.fn(),
+}));
+
+jest.mock('../jobs/refreshDisposable', () => ({
+  disposableProcessor: jest.fn(),
+}));
+
+// Mock fs and yaml for OpenAPI spec loading
+jest.mock('node:fs', () => ({
+  readFileSync: jest.fn(() => 'mocked yaml content'),
+}));
+
+jest.mock('js-yaml', () => ({
+  load: jest.fn(() => ({
+    openapi: '3.0.3',
+    info: {
+      title: 'OrbiCheck API',
+      description: 'API for validation, deduplication, and risk assessment services',
+      version: '1.0.0'
+    },
+    paths: {}
+  })),
 }));
 
 // Import the mocked env so we can manipulate it in tests
@@ -99,6 +123,7 @@ describe('Server Build', () => {
       SENTRY_DSN: '',
       LOG_LEVEL: 'info',
       PORT: 8080,
+      SESSION_SECRET: 'test-secret',
     });
   });
 
@@ -160,16 +185,26 @@ describe('Server Build', () => {
 describe('Server Startup', () => {
   let mockPool: jest.Mocked<Pool>;
   let mockRedis: jest.Mocked<IORedisType>;
+  let originalSetTimeout: typeof setTimeout;
+  let mockProcessExit: jest.SpyInstance;
 
   beforeEach(() => {
     jest.clearAllMocks();
+    jest.clearAllTimers();
+    jest.useFakeTimers();
+    
+    // Store original setTimeout before mocking
+    originalSetTimeout = global.setTimeout;
+    
     mockPool = {
       query: jest.fn(),
       connect: jest.fn().mockResolvedValue({
         query: jest.fn().mockResolvedValue({ rows: [{ value: 1 }] }),
         release: jest.fn(),
       }),
+      end: jest.fn().mockResolvedValue(undefined),
     } as any;
+    
     mockRedis = {
       quit: jest.fn().mockResolvedValue(true),
       status: 'ready' as const,
@@ -179,10 +214,24 @@ describe('Server Startup', () => {
       del: jest.fn().mockResolvedValue(1),
       rename: jest.fn().mockResolvedValue('OK'),
     } as any;
+    
     (Pool as unknown as jest.Mock).mockImplementation(() => mockPool);
     (Redis as unknown as jest.Mock).mockImplementation(() => mockRedis);
     (mockQueue.add).mockResolvedValue({});
-    jest.spyOn(process as any, 'exit').mockImplementation(() => {});
+    
+    // Mock process.exit to prevent actual exit
+    mockProcessExit = jest.spyOn(process, 'exit').mockImplementation(((code?: string | number | null) => {
+      // Do nothing - prevent actual exit
+    }) as any);
+  });
+
+  afterEach(() => {
+    // Clear all timers to prevent timeout from executing after test
+    jest.clearAllTimers();
+    jest.useRealTimers();
+    
+    // Restore process.exit
+    mockProcessExit.mockRestore();
   });
 
   it('should start the server and setup all services', async () => {
@@ -215,6 +264,9 @@ describe('Server Startup', () => {
     await start();
 
     // Assert that process.exit was called
-    expect(process.exit).toHaveBeenCalledWith(1);
+    expect(mockProcessExit).toHaveBeenCalledWith(1);
+    
+    // Clear the timeout that was set in the error handler
+    jest.clearAllTimers();
   });
 });

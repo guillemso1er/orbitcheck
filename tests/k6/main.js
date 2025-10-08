@@ -1,5 +1,6 @@
 import { check as k6check, sleep } from 'k6'; // Renamed original 'check' to 'k6check'
 import http from 'k6/http';
+import { getHeaders } from './auth-utils.js';
 import { default as addressTest } from './address.js';
 import { default as authTest } from './auth.js';
 import { default as dedupeTest } from './dedupe.js';
@@ -20,12 +21,7 @@ export const options = {
     }
 };
 
-const KEY = (__ENV.KEY || '').trim();
 const BASE_URL = 'http://localhost:8081/v1';
-const HEADERS = {
-    'Content-Type': 'application/json',
-    'Authorization': `Bearer ${KEY}`
-};
 
 /**
  * Creates a wrapper around the k6 `check` function to prepend a name.

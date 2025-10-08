@@ -1,7 +1,10 @@
+// apps/api/src/__tests__/apiKeys.test.ts
+
 import type { FastifyInstance } from 'fastify';
 import jwt from 'jsonwebtoken';
 import request from 'supertest';
 
+import * as nodeCrypto from 'node:crypto';
 import { createApp, mockPool, setupBeforeAll } from './testSetup.js';
 
 // Mock the JWT library
@@ -9,7 +12,6 @@ jest.mock('jsonwebtoken');
 
 // Mock crypto before importing
 jest.mock('node:crypto');
-import * as nodeCrypto from 'node:crypto';
 
 // Create typed mocks for JWT
 const mockedJwtVerify = jwt.verify as jest.Mock;
@@ -28,8 +30,10 @@ describe('API Keys Routes (JWT Auth)', () => {
                         return await reply.status(401).send({ error: { code: 'missing_token', message: 'Authorization header is missing or invalid.' } });
                     }
                     const token = request_.headers.authorization.split(' ')[1];
-                    mockedJwtVerify(token);
-                    (request_ as { project_id: string }).project_id = 'test_project';
+                    const payload = mockedJwtVerify(token);
+                    // FIX: Set both project_id AND user_id on the request
+                    (request_ as { project_id: string; user_id: string }).project_id = 'test_project';
+                    (request_ as { project_id: string; user_id: string }).user_id = payload.user_id || 'test_user';
                     return undefined;
                 } catch {
                     return reply.status(401).send({ error: { code: 'invalid_token', message: 'The provided token is invalid.' } });
@@ -56,24 +60,40 @@ describe('API Keys Routes (JWT Auth)', () => {
             if (size === 32) {
                 const hexString = '74657374' + '00'.repeat(28); // 'test....'
                 const buffer = Buffer.from(hexString, 'hex');
-                callback(null, buffer);
+                if (callback) {
+                    callback(null, buffer);
+                } else {
+                    return buffer; // Support both callback and sync usage
+                }
             } else if (size === 16) {
                 const ivBuffer = Buffer.from('1234567890123456'); // 16 bytes for IV
-                callback(null, ivBuffer);
+                if (callback) {
+                    callback(null, ivBuffer);
+                } else {
+                    return ivBuffer;
+                }
             } else {
-                callback(null, Buffer.alloc(size));
+                const buffer = Buffer.alloc(size);
+                if (callback) {
+                    callback(null, buffer);
+                } else {
+                    return buffer;
+                }
             }
         });
+
         (nodeCrypto.createHash as jest.Mock).mockImplementation(() => ({
             update: jest.fn().mockReturnThis(),
             digest: jest.fn().mockReturnValue('test_hash'),
         }));
+
         (nodeCrypto.createCipheriv as jest.Mock).mockImplementation(() => ({
             update: jest.fn().mockReturnValue('encrypted_'),
             final: jest.fn().mockReturnValue('final')
         }));
 
         mockedJwtVerify.mockImplementation(() => ({ user_id: 'test_user' }));
+
         mockPool.query.mockImplementation((queryText: string) => {
             const upperQuery = queryText.toUpperCase();
             if (upperQuery.includes('SELECT ID FROM USERS')) {
@@ -95,7 +115,6 @@ describe('API Keys Routes (JWT Auth)', () => {
         });
     });
 
-
     it('should reject API keys list with an invalid JWT', async () => {
         mockedJwtVerify.mockImplementation(() => {
             throw new Error('Invalid token');
@@ -110,7 +129,6 @@ describe('API Keys Routes (JWT Auth)', () => {
         expect(body.error.code).toBe('invalid_token');
     });
 
-
     it('should list API keys with valid JWT', async () => {
         const response = await request(app.server)
             .get('/v1/api-keys')
@@ -121,7 +139,6 @@ describe('API Keys Routes (JWT Auth)', () => {
         expect(body.data.length).toBe(1);
         expect(body.data[0].prefix).toBe('ok_abcd');
     });
-
 
     it('should create a new API key with valid JWT', async () => {
         const response = await request(app.server)
