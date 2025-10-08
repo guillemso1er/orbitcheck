@@ -204,6 +204,9 @@ const createMockRequest = (url: string, headers: Record<string, string> = {}): F
     headers,
     user_id: undefined,
     project_id: undefined,
+    log: {
+      info: jest.fn(),
+    },
   } as unknown as FastifyRequest;
 };
 

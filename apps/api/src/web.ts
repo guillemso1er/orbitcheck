@@ -35,9 +35,7 @@ async function authenticateRequest(request: FastifyRequest, rep: FastifyReply, p
 
     // Dashboard routes require JWT authentication (user session)
     const isDashboardRoute = url.startsWith(DASHBOARD_ROUTES.LIST_API_KEYS) ||
-                             url.startsWith(DASHBOARD_ROUTES.TEST_WEBHOOK) ||
-                             url.startsWith(DASHBOARD_ROUTES.GET_EVENT_LOGS) ||
-                             url.startsWith(DASHBOARD_ROUTES.GET_USAGE_STATISTICS);
+                              url.startsWith(DASHBOARD_ROUTES.TEST_WEBHOOK);
 
     // Log the auth method being used for debugging
     request.log.info({ url, isDashboardRoute }, 'Auth method determination');
@@ -69,9 +67,7 @@ async function applyRateLimitingAndIdempotency(request: FastifyRequest, rep: Fas
     if (url.startsWith('/health') || url.startsWith('/documentation') || url.startsWith(AUTH_REGISTER) || url.startsWith(AUTH_LOGIN)) return;
 
     const isDashboardRoute = url.startsWith(DASHBOARD_ROUTES.LIST_API_KEYS) ||
-                             url.startsWith(DASHBOARD_ROUTES.TEST_WEBHOOK) ||
-                             url.startsWith(DASHBOARD_ROUTES.GET_EVENT_LOGS) ||
-                             url.startsWith(DASHBOARD_ROUTES.GET_USAGE_STATISTICS);
+                              url.startsWith(DASHBOARD_ROUTES.TEST_WEBHOOK);
 
     if (!isDashboardRoute) {
         await rateLimit(request, rep, redis);

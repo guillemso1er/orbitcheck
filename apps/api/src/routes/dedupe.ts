@@ -208,6 +208,7 @@ export function registerDedupeRoutes(app: FastifyInstance, pool: Pool): void {
             const addrHash = crypto.createHash('sha256').update(JSON.stringify(normAddr)).digest('hex');
 
             // Deterministic match: exact address_hash
+
             const { rows: hashMatches } = await pool.query(
                 'SELECT id, line1, line2, city, state, postal_code, country, lat, lng FROM addresses WHERE project_id = $2 AND address_hash = $1',
                 [addrHash, project_id]
@@ -222,6 +223,7 @@ export function registerDedupeRoutes(app: FastifyInstance, pool: Pool): void {
                     });
                 }
             }
+
 
             // Fallback deterministic: exact postal_code + city + country
             if (matches.length === 0) {
@@ -262,6 +264,7 @@ export function registerDedupeRoutes(app: FastifyInstance, pool: Pool): void {
                 }
             }
 
+
             // Sort matches by score descending
             matches.sort((a, b) => b.similarity_score - a.similarity_score);
 
@@ -279,10 +282,12 @@ export function registerDedupeRoutes(app: FastifyInstance, pool: Pool): void {
             }
 
             const response: any = { matches, suggested_action, canonical_id, request_id };
+            console.log('Dedupe address response:', JSON.stringify(response));
             await (rep as any).saveIdem?.(response);
             await logEvent(project_id, 'dedupe', '/dedupe/address', reason_codes, HTTP_STATUS.OK, { matches_count: matches.length, suggested_action }, pool);
             return rep.send(response);
         } catch (error) {
+            console.log('Dedupe address error:', error);
             return sendServerError(request, rep, error, API_V1_ROUTES.DEDUPE.DEDUPLICATE_ADDRESS, generateRequestId());
         }
     });

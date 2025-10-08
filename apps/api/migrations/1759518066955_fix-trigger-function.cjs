@@ -1,20 +1,20 @@
 /**
  * @type {import('node-pg-migrate').ColumnDefinitions | undefined}
  */
-export const shorthands = undefined;
+const shorthands = undefined;
 
 /**
  * @param pgm {import('node-pg-migrate').MigrationBuilder}
  * @param run {() => void | undefined}
  * @returns {Promise<void> | void}
  */
-export const up = (pgm) => {
+const up = (pgm) => {
   // Drop the existing trigger first
   pgm.sql(`DROP TRIGGER IF EXISTS log_usage_trigger ON logs;`);
-  
+
   // Drop the existing function
   pgm.sql(`DROP FUNCTION IF EXISTS update_usage_reason_counts();`);
-  
+
   // Create the corrected function
   pgm.sql(`
     CREATE OR REPLACE FUNCTION update_usage_reason_counts() RETURNS trigger AS $$
@@ -47,7 +47,7 @@ export const up = (pgm) => {
     END;
     $$ LANGUAGE plpgsql;
   `);
-  
+
   // Recreate the trigger
   pgm.sql(`
     CREATE TRIGGER log_usage_trigger AFTER INSERT ON logs FOR EACH ROW EXECUTE FUNCTION update_usage_reason_counts();
@@ -59,4 +59,6 @@ export const up = (pgm) => {
  * @param run {() => void | undefined}
  * @returns {Promise<void> | void}
  */
-export const down = (pgm) => {};
+const down = (pgm) => {};
+
+module.exports = { shorthands, up, down };

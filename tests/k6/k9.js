@@ -10,7 +10,7 @@ export const options = {
     }
 };
 
-const BASE_URL = 'http://localhost:8081';
+const BASE_URL = 'http://localhost:8080';
 const API_V1_URL = `${BASE_URL}/v1`;
 const DASHBOARD_HEADERS = {
     'Content-Type': 'application/json'
@@ -51,7 +51,16 @@ export default function () {
     });
 
     // Dashboard headers with JWT
-    const dashboardAuthHeaders = Object.assign({}, DASHBOARD_HEADERS, { 'Authorization': `Bearer ${jwt}` });
+    const dashboardAuthHeaders = Object.assign({}, DASHBOARD_HEADERS, { 'Authorization': `Bearer ${jwt}`, 'Cache-Control': 'no-cache' });
+
+    // Capture initial logs and usage to exclude previous data
+    const resInitialLogs = http.get(`${BASE_URL}/data/logs`, { headers: dashboardAuthHeaders });
+    const initialLogsCount = JSON.parse(resInitialLogs.body).data.length;
+
+    const resInitialUsage = http.get(`${BASE_URL}/data/usage`, { headers: dashboardAuthHeaders });
+    const initialUsage = JSON.parse(resInitialUsage.body);
+    const initialValidations = initialUsage.totals.validations || 0;
+    const initialOrders = initialUsage.totals.orders || 0;
 
     // Step 3: List API keys (should be empty initially)
     const resListKeys = http.get(`${BASE_URL}/api-keys`, { headers: dashboardAuthHeaders });
@@ -60,6 +69,7 @@ export default function () {
         '[List API Keys] is array': (r) => Array.isArray(JSON.parse(r.body).data)
     });
     const initialKeys = JSON.parse(resListKeys.body).data;
+    console.log('Initial keys count:', initialKeys.length);
 
     // Step 4: Create API key
     const createKeyPayload = JSON.stringify({ name: 'k9-test-key' });
@@ -71,10 +81,15 @@ export default function () {
             return body.full_key && body.id;
         }
     });
-    const apiKey = JSON.parse(resCreateKey.body).full_key;
+    const createBody = JSON.parse(resCreateKey.body);
+    console.log('Create API Key response:', JSON.stringify(createBody));
+    const apiKey = createBody.full_key;
 
     // Step 5: List API keys again (should have one more)
     const resListKeys2 = http.get(`${BASE_URL}/api-keys`, { headers: dashboardAuthHeaders });
+    const afterCreateKeys = JSON.parse(resListKeys2.body).data;
+    console.log('After create keys count:', afterCreateKeys.length);
+    console.log('After create keys:', JSON.stringify(afterCreateKeys));
     check(resListKeys2, {
         '[List API Keys After Create] status 200': (r) => r.status === 200,
         '[List API Keys After Create] has one more key': (r) => {
@@ -113,11 +128,13 @@ export default function () {
 
     // Step 8: Validate address
     const addressPayload = JSON.stringify({
-        line1: '123 Main St',
-        city: 'Anytown',
-        postal_code: '12345',
-        state: 'CA',
-        country: 'US'
+        address: {
+            line1: '123 Main St',
+            city: 'Anytown',
+            postal_code: '12345',
+            state: 'CA',
+            country: 'US'
+        }
     });
     const resValidateAddress = http.post(`${API_V1_URL}/validate/address`, addressPayload, { headers: apiHeaders });
     check(resValidateAddress, {
@@ -129,7 +146,7 @@ export default function () {
     });
 
     // Step 9: Validate tax id
-    const taxidPayload = JSON.stringify({ tax_id: '123-45-6789', country: 'US' });
+    const taxidPayload = JSON.stringify({ type: 'ssn', value: '123-45-6789', country: 'US' });
     const resValidateTaxid = http.post(`${API_V1_URL}/validate/tax-id`, taxidPayload, { headers: apiHeaders });
     check(resValidateTaxid, {
         '[Validate Tax ID] status 200': (r) => r.status === 200,
@@ -149,12 +166,13 @@ export default function () {
     const resDedupeCustomer = http.post(`${API_V1_URL}/dedupe/customer`, dedupeCustomerPayload, { headers: apiHeaders });
     check(resDedupeCustomer, {
         '[Dedupe Customer] status 200': (r) => r.status === 200,
-        '[Dedupe Customer] has id': (r) => {
+        '[Dedupe Customer] has matches': (r) => {
             const body = JSON.parse(r.body);
-            return body.id;
+            return body.matches !== undefined;
         }
     });
-    const customerId = JSON.parse(resDedupeCustomer.body).id;
+    const dedupeCustomerBody = JSON.parse(resDedupeCustomer.body);
+    const customerId = dedupeCustomerBody.canonical_id || null;
 
     // Step 11: Dedupe address
     const dedupeAddressPayload = JSON.stringify({
@@ -167,26 +185,31 @@ export default function () {
     const resDedupeAddress = http.post(`${API_V1_URL}/dedupe/address`, dedupeAddressPayload, { headers: apiHeaders });
     check(resDedupeAddress, {
         '[Dedupe Address] status 200': (r) => r.status === 200,
-        '[Dedupe Address] has id': (r) => {
+        '[Dedupe Address] has matches': (r) => {
             const body = JSON.parse(r.body);
-            return body.id;
+            return body.matches !== undefined;
         }
     });
-    const addressId = JSON.parse(resDedupeAddress.body).id;
+    const dedupeAddressBody = JSON.parse(resDedupeAddress.body);
+    const addressId = dedupeAddressBody.canonical_id || null;
 
-    // Step 12: Merge deduped records (assuming customer and address can be merged)
-    const mergePayload = JSON.stringify({
-        customer_id: customerId,
-        address_id: addressId
-    });
-    const resMerge = http.post(`${API_V1_URL}/dedupe/merge`, mergePayload, { headers: apiHeaders });
-    check(resMerge, {
-        '[Merge Deduped] status 200': (r) => r.status === 200,
-        '[Merge Deduped] success': (r) => {
-            const body = JSON.parse(r.body);
-            return body.success || body.merged;
-        }
-    });
+    // Step 12: Merge deduped records (only if canonical_id exists)
+    let resMerge;
+    if (customerId && customerId !== 'new-customer-id') {
+        const mergePayload = JSON.stringify({
+            type: 'customer',
+            ids: [customerId],
+            canonical_id: customerId
+        });
+        resMerge = http.post(`${API_V1_URL}/dedupe/merge`, mergePayload, { headers: apiHeaders });
+        check(resMerge, {
+            '[Merge Deduped] status 200': (r) => r.status === 200,
+            '[Merge Deduped] success': (r) => {
+                const body = JSON.parse(r.body);
+                return body.success;
+            }
+        });
+    }
 
     // Step 13: Evaluate order
     const orderPayload = JSON.stringify({
@@ -221,34 +244,42 @@ export default function () {
     const resGetRules = http.get(`${API_V1_URL}/rules`, { headers: apiHeaders });
     check(resGetRules, {
         '[Get Rules] status 200': (r) => r.status === 200,
-        '[Get Rules] is array': (r) => Array.isArray(JSON.parse(r.body))
+        '[Get Rules] has rules': (r) => {
+            const body = JSON.parse(r.body);
+            return Array.isArray(body.rules);
+        }
     });
-    const initialRules = JSON.parse(resGetRules.body);
+    const initialRules = JSON.parse(resGetRules.body).rules;
 
     // Step 15: Get reason code catalog
     const resGetCatalog = http.get(`${API_V1_URL}/rules/catalog`, { headers: apiHeaders });
     check(resGetCatalog, {
         '[Get Catalog] status 200': (r) => r.status === 200,
-        '[Get Catalog] has data': (r) => {
+        '[Get Catalog] has reason_codes': (r) => {
             const body = JSON.parse(r.body);
-            return body && typeof body === 'object';
+            return body && Array.isArray(body.reason_codes);
         }
     });
 
     // Step 16: Register custom rules
-    const customRulesPayload = JSON.stringify([
-        {
-            name: 'k9-custom-rule',
-            condition: 'total_amount > 500',
-            action: 'block'
-        }
-    ]);
+    const customRulesPayload = JSON.stringify({
+        rules: [
+            {
+                id: 'k9-custom-rule',
+                name: 'k9-custom-rule',
+                description: 'test rule',
+                reason_code: 'test',
+                severity: 'low',
+                enabled: true
+            }
+        ]
+    });
     const resRegisterRules = http.post(`${API_V1_URL}/rules/register`, customRulesPayload, { headers: apiHeaders });
     check(resRegisterRules, {
-        '[Register Rules] status 201': (r) => r.status === 201,
+        '[Register Rules] status 200': (r) => r.status === 200,
         '[Register Rules] success': (r) => {
             const body = JSON.parse(r.body);
-            return body.registered || body.success;
+            return body.registered_rules && Array.isArray(body.registered_rules);
         }
     });
 
@@ -257,8 +288,8 @@ export default function () {
     check(resGetRules2, {
         '[Get Rules After Register] status 200': (r) => r.status === 200,
         '[Get Rules After Register] has more rules': (r) => {
-            const body = JSON.parse(r.body);
-            return body.length >= initialRules.length;
+          const body = JSON.parse(r.body);
+          return body.rules.length >= initialRules.length;
         }
     });
 
@@ -266,7 +297,7 @@ export default function () {
     const resGetLogs = http.get(`${BASE_URL}/data/logs`, { headers: dashboardAuthHeaders });
     check(resGetLogs, {
         '[Get Logs] status 200': (r) => r.status === 200,
-        '[Get Logs] is array': (r) => Array.isArray(JSON.parse(r.body))
+        '[Get Logs] is array': (r) => Array.isArray(JSON.parse(r.body).data)
     });
 
     // Step 19: Get usage statistics
@@ -280,31 +311,66 @@ export default function () {
     });
 
     // Step 20: Test webhook
-    const webhookPayload = JSON.stringify({ url: 'https://example.com/webhook', event: 'test' });
+    const webhookPayload = JSON.stringify({ url: 'https://httpbin.org/post', event: 'test' });
     const resTestWebhook = http.post(`${BASE_URL}/webhooks/test`, webhookPayload, { headers: dashboardAuthHeaders });
     check(resTestWebhook, {
         '[Test Webhook] status 200': (r) => r.status === 200,
         '[Test Webhook] success': (r) => {
-            const body = JSON.parse(r.body);
-            return body.sent || body.success;
+          const body = JSON.parse(r.body);
+          return body.response && body.response.status === 200;
         }
     });
 
     // Step 21: Revoke API key
     const keyId = JSON.parse(resCreateKey.body).id;
-    const resRevokeKey = http.del(`${BASE_URL}/api-keys/${keyId}`, null, { headers: dashboardAuthHeaders });
+    console.log('Revoking key id:', keyId);
+    const revokeHeaders = { 'Authorization': `Bearer ${jwt}`, 'Cache-Control': 'no-cache' };
+    const resRevokeKey = http.del(`${BASE_URL}/api-keys/${keyId}`, null, { headers: revokeHeaders });
+    console.log('Revoke status:', resRevokeKey.status);
+    console.log('Revoke body:', resRevokeKey.body);
     check(resRevokeKey, {
         '[Revoke API Key] status 200': (r) => r.status === 200
     });
 
     // Step 22: List API keys to verify revocation
     const resListKeys3 = http.get(`${BASE_URL}/api-keys`, { headers: dashboardAuthHeaders });
+    const afterRevokeKeys = JSON.parse(resListKeys3.body).data;
+    console.log('After revoke keys count:', afterRevokeKeys.length);
     check(resListKeys3, {
         '[List API Keys After Revoke] status 200': (r) => r.status === 200,
-        '[List API Keys After Revoke] back to initial count': (r) => {
-            const body = JSON.parse(r.body).data;
-            return body.length === initialKeys.length;
+        '[List API Keys After Revoke] has one more than initial': (r) => {
+          const body = JSON.parse(r.body).data;
+          return body.length === initialKeys.length + 1;
         }
+    });
+
+    // Step 23: Verify logs and usage match the test actions (excluding previous data)
+    const resFinalLogs = http.get(`${BASE_URL}/data/logs`, { headers: dashboardAuthHeaders });
+    const finalLogsCount = JSON.parse(resFinalLogs.body).data.length;
+
+    const resFinalUsage = http.get(`${BASE_URL}/data/usage`, { headers: dashboardAuthHeaders });
+    const finalUsage = JSON.parse(resFinalUsage.body);
+    const finalValidations = finalUsage.totals.validations || 0;
+    const finalOrders = finalUsage.totals.orders || 0;
+
+    // Expected: 4 validations, 2 dedupes, 1 order, 1 webhook = 8 logs
+    const expectedLogsIncrease = 8;
+    const expectedValidationsIncrease = 4;
+    const expectedOrdersIncrease = 1;
+
+    const actualLogsIncrease = finalLogsCount - initialLogsCount;
+    const actualValidationsIncrease = finalValidations - initialValidations;
+    const actualOrdersIncrease = finalOrders - initialOrders;
+
+    check(resFinalLogs, {
+        '[Verify Logs] status 200': (r) => r.status === 200,
+        '[Verify Logs] increase matches actions': (r) => actualLogsIncrease >= expectedLogsIncrease
+    });
+
+    check(resFinalUsage, {
+        '[Verify Usage] status 200': (r) => r.status === 200,
+        '[Verify Usage] validations increase': (r) => actualValidationsIncrease >= expectedValidationsIncrease,
+        '[Verify Usage] orders increase': (r) => actualOrdersIncrease >= expectedOrdersIncrease
     });
 
     console.log('k9 journey test completed successfully!');

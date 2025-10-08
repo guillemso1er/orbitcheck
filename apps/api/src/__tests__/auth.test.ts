@@ -102,7 +102,7 @@ describe('Auth Routes', () => {
 
     const response = await app.inject({
       method: 'POST',
-      url: '/v1/auth/register',
+      url: '/auth/register',
       payload: { email: 'test@example.com', password: 'password123' }
     });
 
@@ -131,7 +131,7 @@ describe('Auth Routes', () => {
 
     const response = await app.inject({
       method: 'POST',
-      url: '/v1/auth/login',
+      url: '/auth/login',
       payload: { email: 'test@example.com', password: 'password123' }
     });
 
@@ -161,7 +161,7 @@ describe('Auth Routes', () => {
 
     const response = await app.inject({
       method: 'POST',
-      url: '/v1/auth/login',
+      url: '/auth/login',
       payload: { email: 'invalid@example.com', password: 'wrong' }
     });
 

@@ -43,11 +43,13 @@ export function registerApiKeysRoutes(app: FastifyInstance, pool: Pool): void {
     }, async (request, rep) => {
         try {
             const project_id = request.project_id!;
+            console.log('Listing API keys for project_id:', project_id);
             const request_id = generateRequestId();
             const { rows } = await pool.query(
                 "SELECT id, prefix, name, status, created_at, last_used_at FROM api_keys WHERE project_id = $1 ORDER BY created_at DESC",
                 [project_id]
             );
+            console.log('Found api keys:', rows.length);
             const response: any = { data: rows, request_id };
             return rep.send(response);
         } catch (error) {
@@ -87,6 +89,7 @@ export function registerApiKeysRoutes(app: FastifyInstance, pool: Pool): void {
     }, async (request, rep) => {
         try {
             const project_id = request.project_id!;
+            request.log.info('Creating API key for project_id: ' + project_id);
             const body = request.body as any;
             const { name } = body;
             const request_id = generateRequestId();
@@ -169,6 +172,7 @@ export function registerApiKeysRoutes(app: FastifyInstance, pool: Pool): void {
             const response: any = { id, status: STATUS.REVOKED, request_id };
             return rep.send(response);
         } catch (error) {
+            console.log('Revoke error:', error);
             return sendServerError(request, rep, error, `${DASHBOARD_ROUTES.LIST_API_KEYS}/:id`, generateRequestId());
         }
     });

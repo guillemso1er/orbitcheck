@@ -16,12 +16,20 @@ servers:
 security:
   - BearerAuth: []
 
+tags:
+  - name: UI Endpoints
+    description: Endpoints used exclusively by the web application UI, such as user authentication.
+  - name: Management API
+    description: Endpoints for managing your account, data, API keys, and configurations.
+  - name: Runtime API
+    description: Core operational endpoints for data validation, deduplication, and order processing.
+
 paths:
   # Authentication
   /auth/register:
     post:
       tags:
-        - Authentication
+        - UI Endpoints
       summary: Register new user
       description: Creates a new user account with default project and API key
       operationId: registerUser
@@ -83,7 +91,7 @@ paths:
   /auth/login:
     post:
       tags:
-        - Authentication
+        - UI Endpoints
       summary: User login
       description: Authenticates a user and returns JWT token
       operationId: loginUser
@@ -139,7 +147,7 @@ paths:
   /api-keys:
     get:
       tags:
-        - API Keys
+        - Management API
       summary: List API keys
       description: Retrieves API keys for the authenticated project
       operationId: listApiKeys
@@ -165,7 +173,7 @@ paths:
                 $ref: '#/components/schemas/Error'
     post:
       tags:
-        - API Keys
+        - Management API
       summary: Create API key
       description: Generates a new API key for the authenticated project
       operationId: createApiKey
@@ -215,7 +223,7 @@ paths:
   /api-keys/{id}:
     delete:
       tags:
-        - API Keys
+        - Management API
       summary: Revoke API key
       description: Revokes an API key by setting its status to revoked
       operationId: revokeApiKey
@@ -259,7 +267,7 @@ paths:
   /validate/email:
     post:
       tags:
-        - Validation
+        - Runtime API
       summary: Validate email address
       description: Performs comprehensive email validation including format, MX records, and disposable detection
       operationId: validateEmail
@@ -315,7 +323,7 @@ paths:
   /validate/phone:
     post:
       tags:
-        - Validation
+        - Runtime API
       summary: Validate phone number
       description: Validates a phone number and returns it in E.164 format
       operationId: validatePhone
@@ -380,7 +388,7 @@ paths:
   /validate/address:
     post:
       tags:
-        - Validation
+        - Runtime API
       summary: Validate address
       description: Validates a physical address and normalizes it
       operationId: validateAddress
@@ -473,7 +481,7 @@ paths:
   /validate/tax-id:
     post:
       tags:
-        - Validation
+        - Runtime API
       summary: Validate tax ID
       description: Validates a tax identification number
       operationId: validateTaxId
@@ -527,7 +535,7 @@ paths:
   /verify/phone:
     post:
       tags:
-        - Validation
+        - Runtime API
       summary: Verify phone OTP
       description: Verifies OTP sent to phone number
       operationId: verifyPhoneOtp
@@ -576,7 +584,7 @@ paths:
   /dedupe/customer:
     post:
       tags:
-        - Deduplication
+        - Runtime API
       summary: Deduplicate customer
       description: Searches for existing customers using deterministic and fuzzy matching
       operationId: dedupeCustomer
@@ -635,7 +643,7 @@ paths:
   /dedupe/address:
     post:
       tags:
-        - Deduplication
+        - Runtime API
       summary: Deduplicate address
       description: Searches for existing addresses using deterministic and fuzzy matching
       operationId: dedupeAddress
@@ -703,7 +711,7 @@ paths:
   /dedupe/merge:
     post:
       tags:
-        - Deduplication
+        - Runtime API
       summary: Merge deduplicated records
       description: Merges multiple customer or address records into a canonical one
       operationId: mergeDeduplicated
@@ -760,7 +768,7 @@ paths:
   /orders/evaluate:
     post:
       tags:
-        - Order Evaluation
+        - Runtime API
       summary: Evaluate order for risk and rules
       description: Evaluates an order for deduplication, validation, and applies business rules
       operationId: evaluateOrder
@@ -851,7 +859,7 @@ paths:
   /data/logs:
     get:
       tags:
-        - Data Retrieval
+        - Management API
       summary: Get event logs
       description: Retrieves event logs for the project with optional filters
       operationId: getLogs
@@ -917,7 +925,7 @@ paths:
   /data/usage:
     get:
       tags:
-        - Data Retrieval
+        - Management API
       summary: Get usage statistics
       description: Retrieves usage statistics for the project
       operationId: getUsage
@@ -984,7 +992,7 @@ paths:
   /rules:
     get:
       tags:
-        - Rules
+        - Management API
       summary: Get available rules
       description: Returns a list of all available validation and risk assessment rules
       operationId: getRules
@@ -1012,7 +1020,7 @@ paths:
   /rules/catalog:
     get:
       tags:
-        - Rules
+        - Management API
       summary: Get reason code catalog
       description: Returns a comprehensive list of all possible reason codes
       operationId: getReasonCodeCatalog
@@ -1040,7 +1048,7 @@ paths:
   /rules/register:
     post:
       tags:
-        - Rules
+        - Management API
       summary: Register custom rules
       description: Registers custom business rules for the project
       operationId: registerCustomRules
@@ -1084,7 +1092,7 @@ paths:
   /webhooks/test:
     post:
       tags:
-        - Webhooks
+        - Management API
       summary: Test webhook
       description: Sends a sample payload to the provided webhook URL
       operationId: testWebhook
