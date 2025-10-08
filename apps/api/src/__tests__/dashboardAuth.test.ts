@@ -56,8 +56,42 @@ describe('Dashboard Authentication - /api-keys endpoint', () => {
         });
     });
 
-    it('should successfully access /api-keys with valid JWT token', async () => {
-        const validToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.test';
+    it('should successfully access /api-keys with valid PAT token', async () => {
+        const validToken = 'pat_token_hash';
+
+        mockPool.query.mockImplementation((queryText: string) => {
+            const upperQuery = queryText.toUpperCase();
+            if (upperQuery.includes('SELECT ID, USER_ID, SCOPES FROM PERSONAL_ACCESS_TOKENS')) {
+                return Promise.resolve({ rows: [{ id: 'pat_1', user_id: 'test_user', scopes: ['keys:read'] }] });
+            }
+            if (upperQuery.includes('SELECT ID FROM USERS')) {
+                return Promise.resolve({ rows: [{ id: 'test_user' }] });
+            }
+            if (upperQuery.includes('SELECT P.ID AS PROJECT_ID FROM PROJECTS P WHERE P.USER_ID')) {
+                return Promise.resolve({ rows: [{ project_id: 'test_project' }] });
+            }
+            if (upperQuery.includes('SELECT ID, PREFIX, NAME, STATUS, CREATED_AT, LAST_USED_AT FROM API_KEYS')) {
+                return Promise.resolve({
+                    rows: [
+                        {
+                            id: 'key_1',
+                            prefix: 'ok_abcd',
+                            name: 'Test Key',
+                            status: 'active',
+                            created_at: new Date().toISOString(),
+                            last_used_at: null
+                        }
+                    ]
+                });
+            }
+            if (upperQuery.includes('INSERT INTO AUDIT_LOGS')) {
+                return Promise.resolve({ rows: [] });
+            }
+            if (upperQuery.includes('UPDATE PERSONAL_ACCESS_TOKENS SET LAST_USED_AT')) {
+                return Promise.resolve({ rows: [] });
+            }
+            return Promise.resolve({ rows: [] });
+        });
 
         const response = await request(app.server)
             .get('/v1/api-keys')

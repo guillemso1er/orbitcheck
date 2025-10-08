@@ -112,6 +112,22 @@ export const API_KEY_PREFIX = 'ok_' as const;
 
 export const JWT_EXPIRES_IN = '7d' as const;
 
+export const PAT_SCOPES = {
+  KEYS_READ: 'keys:read',
+  KEYS_WRITE: 'keys:write',
+  LOGS_READ: 'logs:read',
+  USAGE_READ: 'usage:read',
+  WEBHOOKS_MANAGE: 'webhooks:manage',
+  CONNECTORS_MANAGE: 'connectors:manage',
+} as const;
+
+export const USER_ROLES = {
+  OWNER: 'owner',
+  ADMIN: 'admin',
+  DEVELOPER: 'developer',
+  READ_ONLY: 'read-only',
+} as const;
+
 export const PG_UNIQUE_VIOLATION = '23505' as const;
 
 export const MATCH_TYPES = {

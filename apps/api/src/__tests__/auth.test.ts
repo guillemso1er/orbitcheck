@@ -36,7 +36,25 @@ describe('Auth Routes', () => {
     jest.clearAllMocks();
 
     // Now you can safely mock the crypto functions
-    (crypto.randomBytes as jest.Mock).mockReturnValue(Buffer.from('test32bytes' + 'a'.repeat(24)));
+    (crypto.randomBytes as jest.Mock).mockImplementation((size, callback) => {
+      if (callback) {
+        if (size === 32) {
+          callback(null, Buffer.from('test32bytes' + 'a'.repeat(24)));
+        } else if (size === 16) {
+          callback(null, Buffer.from('1234567890123456'));
+        } else {
+          callback(null, Buffer.alloc(size));
+        }
+      } else {
+        if (size === 32) {
+          return Buffer.from('test32bytes' + 'a'.repeat(24));
+        } else if (size === 16) {
+          return Buffer.from('1234567890123456');
+        } else {
+          return Buffer.alloc(size);
+        }
+      }
+    });
     (crypto.createHash as jest.Mock).mockImplementation(() => ({
       update: jest.fn().mockReturnThis(),
       digest: jest.fn().mockReturnValue('test_hash')
@@ -71,6 +89,11 @@ describe('Auth Routes', () => {
     (crypto.createHash as jest.Mock).mockImplementation(() => ({
       update: jest.fn().mockReturnThis(),
       digest: jest.fn().mockReturnValue('test_hash')
+    }));
+    // Mock crypto.createCipheriv
+    (crypto.createCipheriv as jest.Mock).mockImplementation(() => ({
+      update: jest.fn().mockReturnValue('encrypted_'),
+      final: jest.fn().mockReturnValue('final')
     }));
 
     // Default mock for DB queries

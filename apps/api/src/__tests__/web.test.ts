@@ -4,7 +4,7 @@ import * as jwt from 'jsonwebtoken';
 import type { Pool } from 'pg';
 
 import { auth, idempotency, rateLimit } from '../hooks.js';
-import { verifyJWT } from '../routes/auth.js';
+import { verifyPAT } from '../routes/auth.js';
 import { registerRoutes } from '../web.js';
 
  // Mock dependencies
@@ -12,7 +12,7 @@ jest.mock('../routes/auth');
 jest.mock('../hooks');
 jest.mock('jsonwebtoken');
 
-const mockVerifyJWT = verifyJWT as jest.MockedFunction<typeof verifyJWT>;
+const mockVerifyPAT = verifyPAT as jest.MockedFunction<typeof verifyPAT>;
 const mockAuth = auth as jest.MockedFunction<typeof auth>;
 const mockRateLimit = rateLimit as jest.MockedFunction<typeof rateLimit>;
 const mockIdempotency = idempotency as jest.MockedFunction<typeof idempotency>;
@@ -75,7 +75,7 @@ describe('Web Authentication', () => {
 
       await hookHandler(request, reply);
 
-      expect(mockVerifyJWT).not.toHaveBeenCalled();
+      expect(mockVerifyPAT).not.toHaveBeenCalled();
       expect(mockAuth).not.toHaveBeenCalled();
     });
 
@@ -85,7 +85,7 @@ describe('Web Authentication', () => {
 
       await hookHandler(request, reply);
 
-      expect(mockVerifyJWT).not.toHaveBeenCalled();
+      expect(mockVerifyPAT).not.toHaveBeenCalled();
       expect(mockAuth).not.toHaveBeenCalled();
     });
 
@@ -95,7 +95,7 @@ describe('Web Authentication', () => {
 
       await hookHandler(request, reply);
 
-      expect(mockVerifyJWT).not.toHaveBeenCalled();
+      expect(mockVerifyPAT).not.toHaveBeenCalled();
       expect(mockAuth).not.toHaveBeenCalled();
     });
 
@@ -105,7 +105,7 @@ describe('Web Authentication', () => {
 
       await hookHandler(request, reply);
 
-      expect(mockVerifyJWT).toHaveBeenCalled();
+      expect(mockVerifyPAT).toHaveBeenCalled();
       expect(mockAuth).not.toHaveBeenCalled();
     });
 
@@ -115,38 +115,38 @@ describe('Web Authentication', () => {
 
       await hookHandler(request, reply);
 
-      expect(mockVerifyJWT).toHaveBeenCalled();
+      expect(mockVerifyPAT).toHaveBeenCalled();
       expect(mockAuth).not.toHaveBeenCalled();
     });
 
-    it('should use API key auth for /data/usage endpoints', async () => {
+    it('should use PAT auth for /data/usage endpoints', async () => {
       const request = createMockRequest('/v1/data/usage');
       const reply = createMockReply();
 
       await hookHandler(request, reply);
 
-      expect(mockAuth).toHaveBeenCalled();
-      expect(mockVerifyJWT).not.toHaveBeenCalled();
+      expect(mockVerifyPAT).toHaveBeenCalled();
+      expect(mockAuth).not.toHaveBeenCalled();
     });
 
-    it('should use API key auth for /data/logs endpoints', async () => {
-      const request = createMockRequest('/data/logs');
+    it('should use PAT auth for /data/logs endpoints', async () => {
+      const request = createMockRequest('/v1/data/logs');
       const reply = createMockReply();
 
       await hookHandler(request, reply);
 
-      expect(mockAuth).toHaveBeenCalled();
-      expect(mockVerifyJWT).not.toHaveBeenCalled();
+      expect(mockVerifyPAT).toHaveBeenCalled();
+      expect(mockAuth).not.toHaveBeenCalled();
     });
 
     it('should use API key auth for other endpoints', async () => {
-      const request = createMockRequest('/v1/validation/email');
+      const request = createMockRequest('/v1/validate/email');
       const reply = createMockReply();
 
       await hookHandler(request, reply);
 
       expect(mockAuth).toHaveBeenCalled();
-      expect(mockVerifyJWT).not.toHaveBeenCalled();
+      expect(mockVerifyPAT).not.toHaveBeenCalled();
     });
 
     it('should apply rate limiting for non-dashboard routes', async () => {
@@ -177,13 +177,14 @@ describe('Web Authentication', () => {
       }));
     });
 
-    it('should apply rate limiting for data routes', async () => {
-      const dataRoutes = [
+    it('should apply rate limiting for other mgmt routes', async () => {
+      const otherMgmtRoutes = [
         '/v1/data/usage',
-        '/v1/data/logs'
+        '/v1/data/logs',
+        '/v1/rules'
       ];
 
-      await Promise.all(dataRoutes.map(async (route) => {
+      await Promise.all(otherMgmtRoutes.map(async (route) => {
         const request = createMockRequest(route);
         const reply = createMockReply();
         jest.clearAllMocks();

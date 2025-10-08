@@ -52,6 +52,8 @@ jest.mock('../environment.js', () => ({
     DATABASE_URL: 'postgres://test',
     REDIS_URL: 'redis://localhost',
     JWT_SECRET: 'test_jwt_secret',
+    SESSION_SECRET: 'test_session_secret',
+    ENCRYPTION_KEY: '0123456789abcdef0123456789abcdef', // 32 bytes hex
     TWILIO_ACCOUNT_SID: 'test_sid',
     TWILIO_AUTH_TOKEN: 'test_token',
     TWILIO_PHONE_NUMBER: '+15551234567',
@@ -66,6 +68,8 @@ jest.mock('../environment.js', () => ({
 }));
 
 jest.mock('ioredis', () => jest.fn(() => mockRedisInstance));
+
+jest.mock('@fastify/session', () => jest.fn());
 
 jest.mock('twilio', () => jest.fn(() => mockTwilioInstance));
 
@@ -152,6 +156,7 @@ let registerRulesRoutesFunction: unknown;
 
 export const createApp = async (): Promise<Fastify.FastifyInstance> => {
   const app = Fastify({ logger: false });
+  await app.register(require('@fastify/session'), { secret: 'test_session_secret' });
   enableDiagnostics(app);
 
   app.addHook('preHandler', async (request, rep) => {
@@ -311,7 +316,7 @@ export const setupBeforeAll = async (): Promise<void> => {
   // Load route modules synchronously with require for test environment
   const authModule = await import('../routes/auth.js');
   registerAuthRoutesFunction = authModule.registerAuthRoutes;
-  _verifyJWTFunction = authModule.verifyJWT;
+  _verifyJWTFunction = authModule.verifyPAT;
   const apiKeysModule = await import('../routes/api-keys.js');
   registerApiKeysRoutesFunction = apiKeysModule.registerApiKeysRoutes;
   const validationModule = await import('../routes/validation.js');

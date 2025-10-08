@@ -13,39 +13,86 @@ import { errorSchema, generateRequestId, sendError, sendServerError } from "./ut
 // Define auth routes since they're not in the contracts
 
 
-export async function verifyJWT(request: FastifyRequest, rep: FastifyReply, pool: Pool): Promise<void> {
+export async function verifySession(request: FastifyRequest, rep: FastifyReply, pool: Pool): Promise<void> {
+    if (!request.session.user_id) {
+        rep.status(HTTP_STATUS.UNAUTHORIZED).send({ error: { code: ERROR_CODES.UNAUTHORIZED, message: ERROR_MESSAGES[ERROR_CODES.UNAUTHORIZED] } });
+        return;
+    }
+
+    const user_id = request.session.user_id;
+    const { rows } = await pool.query('SELECT id FROM users WHERE id = $1', [user_id]);
+    if (rows.length === 0) {
+        rep.status(HTTP_STATUS.UNAUTHORIZED).send({ error: { code: ERROR_CODES.INVALID_TOKEN, message: ERROR_MESSAGES[ERROR_CODES.INVALID_TOKEN] } });
+        return;
+    }
+    // eslint-disable-next-line require-atomic-updates
+    request.user_id = user_id;
+
+    // Get default project for user
+    const { rows: projectRows } = await pool.query(
+        'SELECT p.id as project_id FROM projects p WHERE p.user_id = $1 AND p.name = $2',
+        [user_id, PROJECT_NAMES.DEFAULT]
+    );
+    if (projectRows.length === 0) {
+        rep.status(HTTP_STATUS.FORBIDDEN).send({ error: { code: ERROR_CODES.NO_PROJECT, message: ERROR_MESSAGES[ERROR_CODES.NO_PROJECT] } });
+        return;
+    }
+    // eslint-disable-next-line require-atomic-updates
+    request.project_id = projectRows[0].project_id;
+}
+
+export async function verifyPAT(request: FastifyRequest, rep: FastifyReply, pool: Pool): Promise<void> {
     const header = request.headers["authorization"];
     if (!header || !header.startsWith("Bearer ")) {
+        request.log.info('No or invalid Bearer header for PAT auth');
         rep.status(HTTP_STATUS.UNAUTHORIZED).send({ error: { code: ERROR_CODES.UNAUTHORIZED, message: ERROR_MESSAGES[ERROR_CODES.UNAUTHORIZED] } });
         return;
     }
     const token = header.slice(7).trim();
+    const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
 
-    try {
-        const decoded = jwt.verify(token, environment.JWT_SECRET) as { user_id: string };
-        const { rows } = await pool.query('SELECT id FROM users WHERE id = $1', [decoded.user_id]);
-        if (rows.length === 0) {
-            rep.status(HTTP_STATUS.UNAUTHORIZED).send({ error: { code: ERROR_CODES.INVALID_TOKEN, message: ERROR_MESSAGES[ERROR_CODES.INVALID_TOKEN] } });
-            return;
-        }
-        // eslint-disable-next-line require-atomic-updates
-        request.user_id = decoded.user_id;
+    request.log.info('Verifying PAT with hash');
 
-        // Get default project for user
-        const { rows: projectRows } = await pool.query(
-            'SELECT p.id as project_id FROM projects p WHERE p.user_id = $1 AND p.name = $2',
-            [decoded.user_id, PROJECT_NAMES.DEFAULT]
-        );
-        if (projectRows.length === 0) {
-            rep.status(HTTP_STATUS.FORBIDDEN).send({ error: { code: ERROR_CODES.NO_PROJECT, message: ERROR_MESSAGES[ERROR_CODES.NO_PROJECT] } });
-            return;
-        }
-        // eslint-disable-next-line require-atomic-updates
-        request.project_id = projectRows[0].project_id;
-    } catch {
-        rep.status(HTTP_STATUS.UNAUTHORIZED).send({ error: { code: ERROR_CODES.INVALID_TOKEN, message: "Invalid or expired token" } });
+    // Query for active PAT matching hash and not expired
+    const { rows } = await pool.query(
+        "select id, user_id, scopes from personal_access_tokens where token_hash=$1 and (expires_at is null or expires_at > now())",
+        [tokenHash]
+    );
+
+    if (rows.length === 0) {
+        rep.status(HTTP_STATUS.UNAUTHORIZED).send({ error: { code: ERROR_CODES.UNAUTHORIZED, message: ERROR_MESSAGES[ERROR_CODES.UNAUTHORIZED] } });
         return;
     }
+
+    // Update usage timestamp
+    await pool.query(
+        "UPDATE personal_access_tokens SET last_used_at = now() WHERE id = $1",
+        [rows[0].id]
+    );
+
+    // Attach user_id and scopes to request
+    // eslint-disable-next-line require-atomic-updates
+    request.user_id = rows[0].user_id;
+    // eslint-disable-next-line require-atomic-updates
+    request.pat_scopes = rows[0].scopes || [];
+
+    // Get default project for user
+    const { rows: projectRows } = await pool.query(
+        'SELECT p.id as project_id FROM projects p WHERE p.user_id = $1 AND p.name = $2',
+        [rows[0].user_id, PROJECT_NAMES.DEFAULT]
+    );
+    if (projectRows.length === 0) {
+        rep.status(HTTP_STATUS.FORBIDDEN).send({ error: { code: ERROR_CODES.NO_PROJECT, message: ERROR_MESSAGES[ERROR_CODES.NO_PROJECT] } });
+        return;
+    }
+    // eslint-disable-next-line require-atomic-updates
+    request.project_id = projectRows[0].project_id;
+
+    // Audit PAT usage
+    await pool.query(
+        "INSERT INTO audit_logs (user_id, action, resource, details) VALUES ($1, $2, $3, $4)",
+        [rows[0].user_id, 'pat_used', 'api', JSON.stringify({ token_id: rows[0].id, url: request.url })]
+    );
 }
 
 export function registerAuthRoutes(app: FastifyInstance, pool: Pool): void {
@@ -118,12 +165,27 @@ export function registerAuthRoutes(app: FastifyInstance, pool: Pool): void {
             const prefix = fullKey.slice(0, 6);
             const keyHash = crypto.createHash('sha256').update(fullKey).digest('hex');
 
+            // Encrypt the full key for HMAC
+            const iv = new Promise<Buffer>((resolve, reject) => {
+                crypto.randomBytes(16, (error, buf) => {
+                    if (error) reject(error);
+                    else resolve(buf);
+                });
+            });
+            const cipher = crypto.createCipheriv('aes-256-cbc', Buffer.from(environment.ENCRYPTION_KEY, 'hex'), await iv);
+            let encrypted = cipher.update(fullKey, 'utf8', 'hex');
+            encrypted += cipher.final('hex');
+            const encryptedWithIv = (await iv).toString('hex') + ':' + encrypted;
+
             await pool.query(
-                "INSERT INTO api_keys (project_id, prefix, hash, status, name) VALUES ($1, $2, $3, $4, $5)",
-                [projectId, prefix, keyHash, STATUS.ACTIVE, API_KEY_NAMES.DEFAULT]
+                "INSERT INTO api_keys (project_id, prefix, hash, encrypted_key, status, name) VALUES ($1, $2, $3, $4, $5, $6)",
+                [projectId, prefix, keyHash, encrypted, STATUS.ACTIVE, API_KEY_NAMES.DEFAULT]
             );
 
-            // Generate JWT
+            // Set session
+            // request.session.user_id = user.id;
+
+            // Generate JWT for backward compatibility
             const token = jwt.sign({ user_id: user.id }, environment.JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
 
             const response: any = { token, user, request_id };
@@ -178,6 +240,10 @@ export function registerAuthRoutes(app: FastifyInstance, pool: Pool): void {
             }
 
             const user = rows[0];
+            // Set session
+            // request.session.user_id = user.id;
+
+            // Generate JWT for backward compatibility
             const token = jwt.sign({ user_id: user.id }, environment.JWT_SECRET, { expiresIn: '7d' });
 
             const response: any = { token, user: { id: user.id, email }, request_id };

@@ -1,5 +1,8 @@
 // This file will run automatically before all tests
 
+// Mock process.exit to prevent test suite from exiting
+jest.spyOn(process, 'exit').mockImplementation((() => undefined) as any);
+
 jest.mock('./environment', () => ({
     environment: {
         // Provide a default set of mock values for your entire test suite

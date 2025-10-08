@@ -20,5 +20,7 @@ export const environment = {
     S3_BUCKET: process.env.S3_BUCKET || "orbicheck",
     GOOGLE_GEOCODING_KEY: process.env.GOOGLE_GEOCODING_KEY || "",
     USE_GOOGLE_FALLBACK: process.env.USE_GOOGLE_FALLBACK === "true",
-    JWT_SECRET: process.env.JWT_SECRET || (() => { throw new Error('JWT_SECRET must be set in environment'); })()
+    JWT_SECRET: process.env.JWT_SECRET || (() => { throw new Error('JWT_SECRET must be set in environment'); })(),
+    SESSION_SECRET: process.env.SESSION_SECRET || (() => { throw new Error('SESSION_SECRET must be set in environment'); })(),
+    ENCRYPTION_KEY: process.env.ENCRYPTION_KEY || (() => { throw new Error('ENCRYPTION_KEY must be set in environment'); })()
 };

@@ -6,7 +6,7 @@ import type { Pool } from "pg";
 
 import { auth, idempotency, rateLimit } from "./hooks.js";
 import { registerApiKeysRoutes } from './routes/api-keys.js';
-import { registerAuthRoutes, verifyJWT } from "./routes/auth.js";
+import { registerAuthRoutes, verifyPAT, verifySession } from "./routes/auth.js";
 import { registerDataRoutes } from './routes/data.js';
 import { registerDedupeRoutes } from './routes/dedupe.js';
 import { registerOrderRoutes } from './routes/orders.js';
@@ -19,7 +19,7 @@ const AUTH_LOGIN = DASHBOARD_ROUTES.USER_LOGIN;
 
 /**
  * Determines the appropriate authentication hook based on the request URL.
- * For dashboard routes, uses JWT verification; for API routes, uses API key auth.
+ * For management routes, uses PAT verification; for runtime routes, uses API key auth.
  * Public routes are skipped.
  *
  * @param req - Fastify request object
@@ -33,20 +33,31 @@ async function authenticateRequest(request: FastifyRequest, rep: FastifyReply, p
     // Skip authentication for public endpoints: health checks, API docs, and auth routes
     if (url.startsWith('/health') || url.startsWith('/documentation') || url.startsWith(AUTH_REGISTER) || url.startsWith(AUTH_LOGIN)) return;
 
-    // Dashboard routes require JWT authentication (user session)
-    const isDashboardRoute = url.startsWith(MGMT_V1_ROUTES.API_KEYS.LIST_API_KEYS) ||
-        url.startsWith(MGMT_V1_ROUTES.WEBHOOKS.TEST_WEBHOOK);
+    // Management routes require PAT authentication
+    const isMgmtRoute = url.startsWith('/v1/api-keys') ||
+        url.startsWith('/v1/data') ||
+        url.startsWith('/v1/rules') ||
+        url.startsWith('/v1/webhooks');
+
+    // Runtime routes require API key with HMAC
+    const isRuntimeRoute = url.startsWith('/v1/dedupe') ||
+        url.startsWith('/v1/orders') ||
+        url.startsWith('/v1/validate') ||
+        url.startsWith('/v1/verify');
 
     // Log the auth method being used for debugging
-    request.log.info({ url, isDashboardRoute }, 'Auth method determination');
+    request.log.info({ url, isMgmtRoute, isRuntimeRoute }, 'Auth method determination');
 
-    // Apply JWT verification for dashboard, API key auth for public API
-    if (isDashboardRoute) {
-        request.log.info('Using JWT auth for dashboard route');
-        await verifyJWT(request, rep, pool);
+    // Apply appropriate auth
+    if (isMgmtRoute) {
+        request.log.info('Using PAT auth for management route');
+        await verifyPAT(request, rep, pool);
+    } else if (isRuntimeRoute) {
+        request.log.info('Using API key HMAC auth for runtime route');
+        await auth(request, rep, pool); // TODO: change to HMAC
     } else {
-        request.log.info('Using API key auth for public API route');
-        await auth(request, rep, pool);
+        // Public or session routes
+        request.log.info('No auth required for public route');
     }
 }
 

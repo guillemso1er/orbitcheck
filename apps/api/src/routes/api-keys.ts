@@ -4,6 +4,7 @@ import type { FastifyInstance } from "fastify";
 import type { Pool } from "pg";
 
 import { API_KEY_PREFIX, ERROR_CODES, ERROR_MESSAGES, HTTP_STATUS, STATUS } from "../constants.js";
+import { environment } from "../environment.js";
 import { errorSchema, generateRequestId, rateLimitResponse, securityHeader, sendError, sendServerError, unauthorizedResponse } from "./utils.js";
 import { MGMT_V1_ROUTES } from "@orbicheck/contracts";
 
@@ -106,9 +107,16 @@ export function registerApiKeysRoutes(app: FastifyInstance, pool: Pool): void {
             const prefix = full_key.slice(0, 6);
             const keyHash = crypto.createHash('sha256').update(full_key).digest('hex');
 
+            // Encrypt the full key
+            const iv = crypto.randomBytes(16);
+            const cipher = crypto.createCipheriv('aes-256-cbc', Buffer.from(environment.ENCRYPTION_KEY, 'hex'), iv);
+            let encrypted = cipher.update(full_key, 'utf8', 'hex');
+            encrypted += cipher.final('hex');
+            const encryptedWithIv = iv.toString('hex') + ':' + encrypted;
+
             const { rows } = await pool.query(
-                "INSERT INTO api_keys (project_id, prefix, hash, status, name) VALUES ($1, $2, $3, $4, $5) RETURNING id, created_at",
-                [project_id, prefix, keyHash, STATUS.ACTIVE, name || null]
+                "INSERT INTO api_keys (project_id, prefix, hash, encrypted_key, status, name) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id, created_at",
+                [project_id, prefix, keyHash, encryptedWithIv, STATUS.ACTIVE, name || null]
             );
 
             const newKey = rows[0];
@@ -122,7 +130,7 @@ export function registerApiKeysRoutes(app: FastifyInstance, pool: Pool): void {
             };
             return rep.status(HTTP_STATUS.CREATED).send(response);
         } catch (error) {
-            return sendServerError(request, rep, error, MGMT_V1_ROUTES.API_KEYS.LIST_API_KEYS, generateRequestId());
+            return sendServerError(request, rep, error, MGMT_V1_ROUTES.API_KEYS.CREATE_API_KEY, generateRequestId());
         }
     });
 

@@ -1,18 +1,18 @@
-import * as nodeCrypto from 'node:crypto';
-
 import type { FastifyInstance } from 'fastify';
 import jwt from 'jsonwebtoken';
 import request from 'supertest';
 
 import { createApp, mockPool, setupBeforeAll } from './testSetup.js';
 
-// Mock the JWT library (the crypto mock is now handled globally)
+// Mock the JWT library
 jest.mock('jsonwebtoken');
 
-// Create typed mocks for JWT and crypto
+// Mock crypto before importing
+jest.mock('node:crypto');
+import * as nodeCrypto from 'node:crypto';
+
+// Create typed mocks for JWT
 const mockedJwtVerify = jwt.verify as jest.Mock;
-const _mockedRandomBytes = nodeCrypto.randomBytes as jest.Mock;
-const _mockedCreateHash = nodeCrypto.createHash as jest.Mock;
 
 describe('API Keys Routes (JWT Auth)', () => {
     let app: FastifyInstance;
@@ -50,6 +50,29 @@ describe('API Keys Routes (JWT Auth)', () => {
 
     beforeEach(() => {
         jest.clearAllMocks();
+
+        // Mock crypto functions
+        (nodeCrypto.randomBytes as jest.Mock).mockImplementation((size, callback) => {
+            if (size === 32) {
+                const hexString = '74657374' + '00'.repeat(28); // 'test....'
+                const buffer = Buffer.from(hexString, 'hex');
+                callback(null, buffer);
+            } else if (size === 16) {
+                const ivBuffer = Buffer.from('1234567890123456'); // 16 bytes for IV
+                callback(null, ivBuffer);
+            } else {
+                callback(null, Buffer.alloc(size));
+            }
+        });
+        (nodeCrypto.createHash as jest.Mock).mockImplementation(() => ({
+            update: jest.fn().mockReturnThis(),
+            digest: jest.fn().mockReturnValue('test_hash'),
+        }));
+        (nodeCrypto.createCipheriv as jest.Mock).mockImplementation(() => ({
+            update: jest.fn().mockReturnValue('encrypted_'),
+            final: jest.fn().mockReturnValue('final')
+        }));
+
         mockedJwtVerify.mockImplementation(() => ({ user_id: 'test_user' }));
         mockPool.query.mockImplementation((queryText: string) => {
             const upperQuery = queryText.toUpperCase();
@@ -101,27 +124,6 @@ describe('API Keys Routes (JWT Auth)', () => {
 
 
     it('should create a new API key with valid JWT', async () => {
-        // --- THE FIX IS HERE ---
-        // Dynamically require the mocked module *inside the test* to get the mocked version.
-        const importedCrypto = await import('node:crypto');
-        const mockedRandomBytes = importedCrypto.randomBytes as jest.Mock;
-        const mockedCreateHash = importedCrypto.createHash as jest.Mock;
-
-        const hexString = '74657374' + '00'.repeat(28); // 'test....'
-        const buffer = Buffer.from(hexString, 'hex');
-
-        // eslint-disable-next-line promise/prefer-await-to-callbacks
-        mockedRandomBytes.mockImplementation((size, callback) => {
-            // eslint-disable-next-line promise/prefer-await-to-callbacks
-            callback(null, buffer);
-        });
-
-        const mockHash = {
-            update: jest.fn().mockReturnThis(),
-            digest: jest.fn().mockReturnValue('test_hash'),
-        };
-        mockedCreateHash.mockReturnValue(mockHash);
-
         const response = await request(app.server)
             .post('/v1/api-keys')
             .set('Authorization', 'Bearer valid_jwt_token')

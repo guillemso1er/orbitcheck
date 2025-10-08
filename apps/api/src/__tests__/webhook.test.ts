@@ -9,7 +9,7 @@ import fetch from 'node-fetch';
 import request from 'supertest';
 
 import * as hooks from '../hooks.js';
-import { verifyJWT } from '../routes/auth.js';
+import { verifyPAT } from '../routes/auth.js';
 import { createApp, mockPool, setupBeforeAll } from './testSetup.js';
 
 // --- Tell Jest to mock the modules ---
@@ -21,7 +21,7 @@ jest.mock('../routes/auth', () => {
     const actual = jest.requireActual('../routes/auth');
     return {
         ...actual,
-        verifyJWT: jest.fn(async (request_: unknown) => {
+        verifyPAT: jest.fn(async (request_: unknown) => {
             // Default: succeed and set ids
             request_.user_id = 'test_user';
             request_.project_id = 'test_project';
@@ -161,7 +161,7 @@ describe('Webhook Test Routes (JWT Auth)', () => {
 
     it('should reject without a valid JWT', async () => {
         // Override the successful mock with a failure for this specific test
-        (verifyJWT as jest.Mock).mockImplementationOnce(async (_request, rep) => {
+        (verifyPAT as jest.Mock).mockImplementationOnce(async (_request, rep) => {
             return rep.status(401).send({ error: { code: 'invalid_token', message: 'Invalid or expired token' } });
         });
 

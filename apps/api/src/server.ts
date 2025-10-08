@@ -5,6 +5,8 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 
 import cors from "@fastify/cors";
+import cookie from "@fastify/cookie";
+import fastifySession from "@fastify/session";
 import fastifySwagger from '@fastify/swagger';
 import fastifySwaggerUi from '@fastify/swagger-ui';
 import * as Sentry from '@sentry/node';
@@ -91,6 +93,19 @@ export async function build(pool: Pool, redis: IORedisType): Promise<FastifyInst
             return !origin || allowedOrigins.has(origin);
         },
         credentials: true,
+    });
+
+    // Register cookie and session
+    await app.register(cookie);
+    await app.register(fastifySession, {
+        secret: environment.SESSION_SECRET,
+        cookieName: 'sessionId',
+        cookie: {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'lax',
+            maxAge: 24 * 60 * 60 * 1000, // 24 hours
+        },
     });
 
     // Register all API routes with shared pool and redis instances
