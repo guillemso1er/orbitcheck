@@ -210,8 +210,8 @@ export function registerDedupeRoutes(app: FastifyInstance, pool: Pool): void {
             // Deterministic match: exact address_hash
 
             const { rows: hashMatches } = await pool.query(
-                'SELECT id, line1, line2, city, state, postal_code, country, lat, lng FROM addresses WHERE project_id = $2 AND address_hash = $1',
-                [addrHash, project_id]
+                'SELECT id, line1, line2, city, state, postal_code, country, lat, lng FROM addresses WHERE project_id = $1 AND address_hash = $2',
+                [project_id, addrHash]  // Note: swapped order to match $1, $2
             );
             for (const row of hashMatches) {
                 if (row.id) {
@@ -228,7 +228,7 @@ export function registerDedupeRoutes(app: FastifyInstance, pool: Pool): void {
             // Fallback deterministic: exact postal_code + city + country
             if (matches.length === 0) {
                 const { rows: exactMatches } = await pool.query(
-                    'SELECT id, line1, line2, city, state, postal_code, country, lat, lng FROM addresses WHERE project_id = $2 AND postal_code = $3 AND lower(city) = lower($4) AND country = $5',
+                    'SELECT id, line1, line2, city, state, postal_code, country, lat, lng FROM addresses WHERE project_id = $1 AND postal_code = $2 AND lower(city) = lower($3) AND country = $4',
                     [project_id, normAddr.postal_code, normAddr.city, normAddr.country]
                 );
                 for (const row of exactMatches) {

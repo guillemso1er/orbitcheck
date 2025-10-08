@@ -44,8 +44,11 @@ interface NormalizedAddress {
 
 export async function normalizeAddress(addr: { line1: string; line2?: string; city: string; state?: string; postal_code: string; country: string; }): Promise<NormalizedAddress> {
     const joined = `${addr.line1}, ${addr.line2 || ""}, ${addr.city}, ${addr.state || ""}, ${addr.postal_code}, ${addr.country}`;
+    console.log('normalizeAddress called with:', joined);
     try {
+        console.log('executing parse-address');
         const { stdout } = await exec("/usr/local/bin/parse-address", [joined]);
+        console.log('parse-address stdout:', stdout);
         const parts: Record<string, string> = {};
         for (const line of stdout.split("\n")) {
             const [k, v] = line.split(":").map(s => s?.trim());

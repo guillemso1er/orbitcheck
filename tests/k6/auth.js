@@ -10,7 +10,7 @@ export const options = {
     }
 };
 
-const BASE_URL = 'http://localhost:8081/v1';
+const BASE_URL = 'http://localhost:8081';
 const HEADERS = {
     'Content-Type': 'application/json'
 };
