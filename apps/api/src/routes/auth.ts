@@ -3,16 +3,22 @@ import crypto from "node:crypto";
 import { DASHBOARD_ROUTES } from "@orbicheck/contracts";
 import bcrypt from 'bcryptjs';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
-import jwt from 'jsonwebtoken';
 import type { Pool } from "pg";
 
-import { API_KEY_NAMES, API_KEY_PREFIX, ERROR_CODES, ERROR_MESSAGES, HTTP_STATUS, JWT_EXPIRES_IN, PG_UNIQUE_VIOLATION, PLAN_TYPES, PROJECT_NAMES, STATUS } from "../constants.js";
+import { API_KEY_NAMES, API_KEY_PREFIX, ERROR_CODES, ERROR_MESSAGES, HTTP_STATUS, PG_UNIQUE_VIOLATION, PLAN_TYPES, PROJECT_NAMES, STATUS } from "../constants.js";
 import { environment } from "../environment.js";
 import { errorSchema, generateRequestId, sendError, sendServerError } from "./utils.js";
 
-// Define auth routes since they're not in the contracts
-
-
+/**
+ * Verifies session cookie for dashboard authentication.
+ * Checks if user_id exists in session and validates against database.
+ * Attaches user_id and default project_id to request.
+ *
+ * @param request - Fastify request object with session
+ * @param rep - Fastify reply object
+ * @param pool - PostgreSQL connection pool
+ * @returns {Promise<void>} Resolves on success, sends 401 on failure
+ */
 export async function verifySession(request: FastifyRequest, rep: FastifyReply, pool: Pool): Promise<void> {
     if (!request.session.user_id) {
         rep.status(HTTP_STATUS.UNAUTHORIZED).send({ error: { code: ERROR_CODES.UNAUTHORIZED, message: ERROR_MESSAGES[ERROR_CODES.UNAUTHORIZED] } });
@@ -22,6 +28,8 @@ export async function verifySession(request: FastifyRequest, rep: FastifyReply, 
     const user_id = request.session.user_id;
     const { rows } = await pool.query('SELECT id FROM users WHERE id = $1', [user_id]);
     if (rows.length === 0) {
+        // Invalid session - clear it
+        request.session.user_id = null;
         rep.status(HTTP_STATUS.UNAUTHORIZED).send({ error: { code: ERROR_CODES.INVALID_TOKEN, message: ERROR_MESSAGES[ERROR_CODES.INVALID_TOKEN] } });
         return;
     }
@@ -41,6 +49,16 @@ export async function verifySession(request: FastifyRequest, rep: FastifyReply, 
     request.project_id = projectRows[0].project_id;
 }
 
+/**
+ * Verifies Personal Access Token for management API authentication.
+ * Validates token hash, checks expiration, and applies scopes.
+ * Updates last_used_at and logs audit entry.
+ *
+ * @param request - Fastify request object with Authorization header
+ * @param rep - Fastify reply object
+ * @param pool - PostgreSQL connection pool
+ * @returns {Promise<void>} Resolves on success, sends 401 on failure
+ */
 export async function verifyPAT(request: FastifyRequest, rep: FastifyReply, pool: Pool): Promise<void> {
     const header = request.headers["authorization"];
     if (!header || !header.startsWith("Bearer ")) {
@@ -111,7 +129,6 @@ export function registerAuthRoutes(app: FastifyInstance, pool: Pool): void {
                     description: 'User registered successfully',
                     type: 'object',
                     properties: {
-                        token: { type: 'string' },
                         user: {
                             type: 'object',
                             properties: {
@@ -119,6 +136,8 @@ export function registerAuthRoutes(app: FastifyInstance, pool: Pool): void {
                                 email: { type: 'string' }
                             }
                         },
+                        pat_token: { type: 'string', description: 'Personal Access Token for CLI/automation' },
+                        api_key: { type: 'string', description: 'API key for runtime endpoints' },
                         request_id: { type: 'string' }
                     }
                 },
@@ -153,45 +172,61 @@ export function registerAuthRoutes(app: FastifyInstance, pool: Pool): void {
 
             const projectId = projectRows[0].id;
 
-            // Generate default API key
-            const buf = new Promise<Buffer>((resolve, reject) => {
-                // eslint-disable-next-line promise/prefer-await-to-callbacks
+            // Generate API key for runtime endpoints
+            const buf = await new Promise<Buffer>((resolve, reject) => {
                 crypto.randomBytes(32, (error, buf) => {
                     if (error) reject(error);
                     else resolve(buf);
                 });
             });
-            const fullKey = API_KEY_PREFIX + (await buf).toString('hex');
+            const fullKey = API_KEY_PREFIX + buf.toString('hex');
             const prefix = fullKey.slice(0, 6);
             const keyHash = crypto.createHash('sha256').update(fullKey).digest('hex');
 
-            // Encrypt the full key for HMAC
-            const iv = new Promise<Buffer>((resolve, reject) => {
+            // Encrypt the full key for HMAC verification
+            const iv = await new Promise<Buffer>((resolve, reject) => {
                 crypto.randomBytes(16, (error, buf) => {
                     if (error) reject(error);
                     else resolve(buf);
                 });
             });
-            const cipher = crypto.createCipheriv('aes-256-cbc', Buffer.from(environment.ENCRYPTION_KEY, 'hex'), await iv);
+            const cipher = crypto.createCipheriv('aes-256-cbc', Buffer.from(environment.ENCRYPTION_KEY, 'hex'), iv);
             let encrypted = cipher.update(fullKey, 'utf8', 'hex');
             encrypted += cipher.final('hex');
-            const encryptedWithIv = (await iv).toString('hex') + ':' + encrypted;
+            const encryptedWithIv = iv.toString('hex') + ':' + encrypted;
 
             await pool.query(
                 "INSERT INTO api_keys (project_id, prefix, hash, encrypted_key, status, name) VALUES ($1, $2, $3, $4, $5, $6)",
-                [projectId, prefix, keyHash, encrypted, STATUS.ACTIVE, API_KEY_NAMES.DEFAULT]
+                [projectId, prefix, keyHash, encryptedWithIv, STATUS.ACTIVE, API_KEY_NAMES.DEFAULT]
             );
 
-            // Set session
-            // request.session.user_id = user.id;
+            // Generate PAT for management API access
+            const patBuf = await new Promise<Buffer>((resolve, reject) => {
+                crypto.randomBytes(32, (error, buf) => {
+                    if (error) reject(error);
+                    else resolve(buf);
+                });
+            });
+            const patToken = 'pat_' + patBuf.toString('hex');
+            const patHash = crypto.createHash('sha256').update(patToken).digest('hex');
 
-            // Generate JWT for backward compatibility
-            const token = jwt.sign({ user_id: user.id }, environment.JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
+            await pool.query(
+                "INSERT INTO personal_access_tokens (user_id, name, token_hash, scopes, expires_at) VALUES ($1, $2, $3, $4, $5)",
+                [user.id, 'Default PAT', patHash, ['*'], null]
+            );
 
-            const response: any = { token, user, request_id };
+            // Set session cookie for dashboard access
+            request.session.user_id = user.id;
+
+            const response: any = {
+                user,
+                pat_token: patToken,
+                api_key: fullKey,
+                request_id
+            };
             return rep.status(HTTP_STATUS.CREATED).send(response);
         } catch (error) {
-            if (error && typeof error === 'object' && 'code' in error && (error as { code: string }).code === PG_UNIQUE_VIOLATION) { // Unique violation
+            if (error && typeof error === 'object' && 'code' in error && (error as { code: string }).code === PG_UNIQUE_VIOLATION) {
                 return sendError(rep, HTTP_STATUS.BAD_REQUEST, ERROR_CODES.USER_EXISTS, ERROR_MESSAGES[ERROR_CODES.USER_EXISTS], generateRequestId());
             }
             return sendServerError(request, rep, error, DASHBOARD_ROUTES.REGISTER_NEW_USER, generateRequestId());
@@ -213,7 +248,6 @@ export function registerAuthRoutes(app: FastifyInstance, pool: Pool): void {
                     description: 'Login successful',
                     type: 'object',
                     properties: {
-                        token: { type: 'string' },
                         user: {
                             type: 'object',
                             properties: {
@@ -233,23 +267,33 @@ export function registerAuthRoutes(app: FastifyInstance, pool: Pool): void {
             const body = request.body as any;
             const { email, password } = body;
 
-            const { rows } = await pool.query('SELECT id, password_hash FROM users WHERE email = $1', [email]);
+            const { rows } = await pool.query('SELECT id, email, password_hash FROM users WHERE email = $1', [email]);
 
             if (rows.length === 0 || !(await bcrypt.compare(password, rows[0].password_hash))) {
                 return await sendError(rep, HTTP_STATUS.UNAUTHORIZED, ERROR_CODES.INVALID_CREDENTIALS, ERROR_MESSAGES[ERROR_CODES.INVALID_CREDENTIALS], request_id);
             }
 
             const user = rows[0];
-            // Set session
-            // request.session.user_id = user.id;
 
-            // Generate JWT for backward compatibility
-            const token = jwt.sign({ user_id: user.id }, environment.JWT_SECRET, { expiresIn: '7d' });
+            // Set session cookie for dashboard access
+            request.session.user_id = user.id;
 
-            const response: any = { token, user: { id: user.id, email }, request_id };
+            const response: any = {
+                user: { id: user.id, email: user.email },
+                request_id
+            };
             return rep.send(response);
         } catch (error) {
             return sendServerError(request, rep, error, DASHBOARD_ROUTES.USER_LOGIN, generateRequestId());
         }
+    });
+
+    // Add logout endpoint
+    app.post(DASHBOARD_ROUTES.USER_LOGOUT, async (request, rep) => {
+        // Clear session
+        request.session.user_id = null;
+        await request.session.destroy();
+
+        return rep.send({ message: 'Logged out successfully' });
     });
 }

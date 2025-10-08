@@ -4,9 +4,9 @@ import { once } from 'node:events';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 
-import cors from "@fastify/cors";
 import cookie from "@fastify/cookie";
-import fastifySession from "@fastify/session";
+import cors from "@fastify/cors";
+import fastifySecureSession from "@fastify/secure-session";
 import fastifySwagger from '@fastify/swagger';
 import fastifySwaggerUi from '@fastify/swagger-ui';
 import * as Sentry from '@sentry/node';
@@ -25,7 +25,6 @@ import { openapiValidation } from "./plugins/openapi.js";
 import startupGuard from './startup-guard.js';
 import { registerRoutes } from "./web.js";
 
-// ... (build function remains the same) ...
 export async function build(pool: Pool, redis: IORedisType): Promise<FastifyInstance> {
     if (environment.SENTRY_DSN) {
         Sentry.init({
@@ -41,14 +40,16 @@ export async function build(pool: Pool, redis: IORedisType): Promise<FastifyInst
                 ? undefined
                 : { target: 'pino-pretty', options: { colorize: true, translateTime: 'SYS:standard' } }
         },
-        requestTimeout: 10_000
+        requestTimeout: 10_000,
+        trustProxy: true, // Important for secure cookies behind proxies
     });
+
     if (process.env.NODE_ENV !== 'production') {
         await app.register(startupGuard);
     }
-    // eslint-disable-next-line promise/prefer-await-to-callbacks
+
+    // Error handler
     app.setErrorHandler(async (error: Error & { code?: string; statusCode?: number }, request: FastifyRequest, reply: FastifyReply) => {
-        // Fastify throws a specific error when a request times out
         if (error.code === 'FST_ERR_REQUEST_TIMEOUT' || error.name === 'RequestTimeoutError') {
             request.log.error({ method: request.method, url: request.url, reqId: request.id }, 'Request timed out — likely stuck in a hook/handler');
             return reply.status(503).send({ error: 'timeout' });
@@ -77,36 +78,74 @@ export async function build(pool: Pool, redis: IORedisType): Promise<FastifyInst
         routePrefix: '/documentation',
     });
 
-    // Define allowed origins
+    // Define allowed origins based on environment
     const allowedOrigins = new Set([
         `http://localhost:${environment.PORT}`, // API itself for health/docs
-        'http://localhost:5173',                // Vite dev server
-        'https://dashboard.orbicheck.com',
-        'https://api.orbicheck.com'
     ]);
 
-    // Enable CORS restricted to dashboard origin (configure for prod domains)
-    // Using a function that returns a value directly instead of callback pattern
+    // Add environment-specific origins
+    if (process.env.NODE_ENV === 'production') {
+        allowedOrigins.add('https://dashboard.orbicheck.com');
+        allowedOrigins.add('https://api.orbicheck.com');
+        // Add your OIDC provider domain if needed
+        if (environment.OIDC_PROVIDER_URL) {
+            allowedOrigins.add(new URL(environment.OIDC_PROVIDER_URL).origin);
+        }
+    } else {
+        // Development origins
+        allowedOrigins.add('http://localhost:5173'); // Vite dev server
+        allowedOrigins.add('http://localhost:3000'); // Alternative dev server
+        allowedOrigins.add('http://localhost:5174'); // Dashboard dev server
+    }
+
+    // Enable CORS with proper configuration for different auth methods
     await app.register(cors, {
         origin: async (origin: string | undefined) => {
-            // Allow no Origin (e.g., curl/app.inject) or explicitly whitelisted origins
-            return !origin || allowedOrigins.has(origin);
+            // Allow requests with no Origin header (e.g., server-to-server, Postman, curl)
+            // This is important for PAT and API key authentication
+            if (!origin) return true;
+
+            // Check if origin is in allowed list
+            return allowedOrigins.has(origin);
         },
-        credentials: true,
+        credentials: true, // Required for session cookies
+        methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+        allowedHeaders: [
+            'Content-Type',
+            'Authorization', // For PAT and API keys
+            'X-Idempotency-Key', // For idempotency
+            'X-Request-Id' // For request tracking
+        ],
+        exposedHeaders: ['X-Request-Id', 'X-RateLimit-Remaining', 'X-RateLimit-Reset'],
     });
 
-    // Register cookie and session
+    // Register cookie support (required for secure sessions)
     await app.register(cookie);
-    await app.register(fastifySession, {
-        secret: environment.SESSION_SECRET,
-        cookieName: 'sessionId',
+
+    // Use secure-session instead of regular session for better security
+    // This provides encrypted, stateless sessions
+    await app.register(fastifySecureSession, {
+        sessionName: 'session',
+        cookieName: 'orbicheck_session', // More specific cookie name
+        key: Buffer.from(environment.SESSION_SECRET, 'hex'), // Should be 32 bytes hex string
         cookie: {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'lax',
-            maxAge: 24 * 60 * 60 * 1000, // 24 hours
-        },
+            path: '/',
+            httpOnly: true, // Prevents JavaScript access
+            secure: process.env.NODE_ENV === 'production', // HTTPS only in production
+            sameSite: 'lax', // CSRF protection while allowing navigation
+            maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+            domain: process.env.NODE_ENV === 'production'
+                ? '.orbicheck.com' // Allow subdomain sharing in production
+                : undefined
+        }
     });
+
+    // Add OIDC support for dashboard authentication (if configured)
+    if (environment.OIDC_ENABLED && environment.OIDC_CLIENT_ID && environment.OIDC_CLIENT_SECRET) {
+        // Register OIDC plugin here if using one
+        // Example: await app.register(fastifyOauth2, { ... })
+        app.log.info('OIDC authentication configured for dashboard');
+    }
 
     // Register all API routes with shared pool and redis instances
     registerRoutes(app, pool, redis);
@@ -114,19 +153,74 @@ export async function build(pool: Pool, redis: IORedisType): Promise<FastifyInst
     // Register OpenAPI validation (after routes are registered)
     await openapiValidation(app);
 
-    // Add security headers (equivalent to helmet)
+    // Add security headers (enhanced security)
     app.addHook('onSend', async (request, reply, payload) => {
+        // Basic security headers
         reply.header('X-Content-Type-Options', 'nosniff');
         reply.header('X-Frame-Options', 'DENY');
         reply.header('X-XSS-Protection', '1; mode=block');
         reply.header('Referrer-Policy', 'strict-origin-when-cross-origin');
         reply.header('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+
+        // Add CSP for dashboard routes
+        if (request.url.startsWith('/dashboard') || request.url.startsWith('/api/dashboard')) {
+            reply.header('Content-Security-Policy',
+                "default-src 'self'; " +
+                "script-src 'self' 'unsafe-inline' 'unsafe-eval'; " + // May need to adjust for your frontend
+                "style-src 'self' 'unsafe-inline'; " +
+                "img-src 'self' data: https:; " +
+                "connect-src 'self' " + (environment.OIDC_PROVIDER_URL || '') + "; " +
+                "frame-ancestors 'none';"
+            );
+        }
+
+        // Add HSTS in production
+        if (process.env.NODE_ENV === 'production') {
+            reply.header('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
+        }
+
+        // Add request ID to response headers for tracing
+        if (request.id) {
+            reply.header('X-Request-Id', request.id);
+        }
+
         return payload;
     });
 
+    // Health check endpoint (public, no auth required)
+    app.get("/health", async (): Promise<{ ok: true; timestamp: string; environment: string }> => ({
+        ok: true,
+        timestamp: new Date().toISOString(),
+        environment: process.env.NODE_ENV || 'development'
+    }));
 
-    // Simple health check endpoint for monitoring and load balancers
-    app.get("/health", async (): Promise<{ ok: true; timestamp: string }> => ({ ok: true, timestamp: new Date().toISOString() }));
+    // Add a ready check that verifies all dependencies
+    app.get("/ready", async (): Promise<{ ready: boolean; checks: Record<string, boolean> }> => {
+        const checks = {
+            database: false,
+            redis: false
+        };
+
+        try {
+            // Check database
+            const dbResult = await pool.query('SELECT 1');
+            checks.database = dbResult.rows.length > 0;
+        } catch (error) {
+            app.log.error({ err: error }, 'Database health check failed');
+        }
+
+        try {
+            // Check Redis
+            await redis.ping();
+            checks.redis = true;
+        } catch (error) {
+            app.log.error({ err: error }, 'Redis health check failed');
+        }
+
+        const ready = Object.values(checks).every(status => status);
+
+        return { ready, checks };
+    });
 
     return app;
 }

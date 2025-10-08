@@ -1,5 +1,4 @@
-
-import { DASHBOARD_ROUTES, MGMT_V1_ROUTES } from "@orbicheck/contracts";
+import { DASHBOARD_ROUTES } from "@orbicheck/contracts";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { type Redis as IORedisType } from 'ioredis';
 import type { Pool } from "pg";
@@ -16,10 +15,11 @@ import { registerWebhookRoutes } from './routes/webhook.js';
 
 const AUTH_REGISTER = DASHBOARD_ROUTES.REGISTER_NEW_USER;
 const AUTH_LOGIN = DASHBOARD_ROUTES.USER_LOGIN;
+const AUTH_LOGOUT = DASHBOARD_ROUTES.USER_LOGOUT;
 
 /**
  * Determines the appropriate authentication hook based on the request URL.
- * For management routes, uses PAT verification; for runtime routes, uses API key auth.
+ * Dashboard routes use session cookies, management routes use PAT, runtime routes use API key with HMAC.
  * Public routes are skipped.
  *
  * @param req - Fastify request object
@@ -31,39 +31,52 @@ async function authenticateRequest(request: FastifyRequest, rep: FastifyReply, p
     const url = request.url;
 
     // Skip authentication for public endpoints: health checks, API docs, and auth routes
-    if (url.startsWith('/health') || url.startsWith('/documentation') || url.startsWith(AUTH_REGISTER) || url.startsWith(AUTH_LOGIN)) return;
+    if (url.startsWith('/health') ||
+        url.startsWith('/documentation') ||
+        url.startsWith(AUTH_REGISTER) ||
+        url.startsWith(AUTH_LOGIN) ||
+        url.startsWith(AUTH_LOGOUT)) {
+        return;
+    }
 
-    // Management routes require PAT authentication
+    // Dashboard routes - use session-based authentication
+    const isDashboardRoute = url.startsWith('/dashboard') ||
+        url.startsWith('/api/dashboard');
+
+    // Management routes - use PAT authentication
     const isMgmtRoute = url.startsWith('/v1/api-keys') ||
         url.startsWith('/v1/data') ||
         url.startsWith('/v1/rules') ||
         url.startsWith('/v1/webhooks');
 
-    // Runtime routes require API key with HMAC
+    // Runtime routes - use API key with HMAC
     const isRuntimeRoute = url.startsWith('/v1/dedupe') ||
         url.startsWith('/v1/orders') ||
         url.startsWith('/v1/validate') ||
         url.startsWith('/v1/verify');
 
     // Log the auth method being used for debugging
-    request.log.info({ url, isMgmtRoute, isRuntimeRoute }, 'Auth method determination');
+    request.log.info({ url, isDashboardRoute, isMgmtRoute, isRuntimeRoute }, 'Auth method determination');
 
     // Apply appropriate auth
-    if (isMgmtRoute) {
+    if (isDashboardRoute) {
+        request.log.info('Using session auth for dashboard route');
+        await verifySession(request, rep, pool);
+    } else if (isMgmtRoute) {
         request.log.info('Using PAT auth for management route');
         await verifyPAT(request, rep, pool);
     } else if (isRuntimeRoute) {
-        request.log.info('Using API key HMAC auth for runtime route');
-        await auth(request, rep, pool); // TODO: change to HMAC
+        request.log.info('Using API key/HMAC auth for runtime route');
+        await auth(request, rep, pool); // Supports both Bearer API keys and HMAC
     } else {
-        // Public or session routes
+        // Other public routes
         request.log.info('No auth required for public route');
     }
 }
 
 /**
- * Applies rate limiting and idempotency checks for non-dashboard API routes only.
- * Skips for dashboard to avoid unnecessary overhead on low-volume admin routes.
+ * Applies rate limiting and idempotency checks for runtime API routes only.
+ * Skips for dashboard and management routes to avoid unnecessary overhead.
  * Calls rateLimit hook (project+IP per minute) and idempotency hook (replay if key exists).
  *
  * @param req - Fastify request object with URL and project_id (from auth).
@@ -75,12 +88,21 @@ async function applyRateLimitingAndIdempotency(request: FastifyRequest, rep: Fas
     const url = request.url;
 
     // Skip middleware for health, docs, and auth
-    if (url.startsWith('/health') || url.startsWith('/documentation') || url.startsWith(AUTH_REGISTER) || url.startsWith(AUTH_LOGIN)) return;
+    if (url.startsWith('/health') ||
+        url.startsWith('/documentation') ||
+        url.startsWith(AUTH_REGISTER) ||
+        url.startsWith(AUTH_LOGIN) ||
+        url.startsWith(AUTH_LOGOUT)) {
+        return;
+    }
 
-    const isDashboardRoute = url.startsWith(MGMT_V1_ROUTES.API_KEYS.LIST_API_KEYS) ||
-        url.startsWith(MGMT_V1_ROUTES.WEBHOOKS.TEST_WEBHOOK);
+    // Only apply rate limiting and idempotency to runtime routes
+    const isRuntimeRoute = url.startsWith('/v1/dedupe') ||
+        url.startsWith('/v1/orders') ||
+        url.startsWith('/v1/validate') ||
+        url.startsWith('/v1/verify');
 
-    if (!isDashboardRoute) {
+    if (isRuntimeRoute) {
         await rateLimit(request, rep, redis);
         await idempotency(request, rep, redis);
     }
@@ -88,7 +110,7 @@ async function applyRateLimitingAndIdempotency(request: FastifyRequest, rep: Fas
 
 /**
  * Registers all API routes on the Fastify instance with global preHandler hooks for auth, rate limiting, and idempotency.
- * Hooks run before every route: authenticate based on path, apply middleware for API routes.
+ * Hooks run before every route: authenticate based on path, apply middleware for runtime routes.
  * Imports and registers modular route handlers for auth, API keys, validation, dedupe, orders, data, webhooks, rules.
  * Ensures consistent middleware application across the API surface.
  *

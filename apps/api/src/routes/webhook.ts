@@ -4,7 +4,7 @@ import type { Pool } from "pg";
 
 import { ERROR_CODES, ERROR_MESSAGES, EVENT_TYPES, HTTP_STATUS, ORDER_ACTIONS, PAYLOAD_TYPES, REASON_CODES } from "../constants.js";
 import { logEvent } from "../hooks.js";
-import { verifyPAT } from "./auth.js";
+import { verifyJWT } from "./auth.js";
 import { generateRequestId, rateLimitResponse, securityHeader, sendError, unauthorizedResponse } from "./utils.js";
 import { MGMT_V1_ROUTES } from "@orbicheck/contracts";
 // Import route constants from contracts package
@@ -19,7 +19,7 @@ export function registerWebhookRoutes(app: FastifyInstance, pool: Pool): void {
         // eslint-disable-next-line @typescript-eslint/no-misused-promises
         preHandler: async (request: FastifyRequest, rep: FastifyReply, done) => {
             try {
-                await verifyPAT(request, rep, pool);
+                await verifyJWT(request, rep, pool);
                 done();
             } catch (error) {
                 done(error instanceof Error ? error : new Error(String(error)));
