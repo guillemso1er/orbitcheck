@@ -6,7 +6,7 @@ import path from 'node:path';
 
 import cookie from "@fastify/cookie";
 import cors from "@fastify/cors";
-import fastifySecureSession from "@fastify/secure-session";
+import secureSession from '@fastify/secure-session';
 import fastifySwagger from '@fastify/swagger';
 import fastifySwaggerUi from '@fastify/swagger-ui';
 import * as Sentry from '@sentry/node';
@@ -124,7 +124,7 @@ export async function build(pool: Pool, redis: IORedisType): Promise<FastifyInst
 
     // Use secure-session instead of regular session for better security
     // This provides encrypted, stateless sessions
-    await app.register(fastifySecureSession, {
+    await app.register(secureSession, {
         sessionName: 'session',
         cookieName: 'orbicheck_session', // More specific cookie name
         key: Buffer.from(environment.SESSION_SECRET, 'hex'), // Should be 32 bytes hex string
@@ -344,7 +344,7 @@ export async function start(): Promise<void> {
         });
 
         cron.schedule('0 0 * * *', async () => {
-            await runLogRetention(pool);
+            await runLogRetention(pool!);
         });
 
         // --- Step 3: Start Listening ---

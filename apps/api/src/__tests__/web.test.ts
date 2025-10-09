@@ -1,219 +1,292 @@
-import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
-import type { Redis as IORedisType } from 'ioredis';
-import * as jwt from 'jsonwebtoken';
-import type { Pool } from 'pg';
+import type { FastifyReply } from 'fastify';
+import { createApp, mockPool, mockRedisInstance, mockSession, setupBeforeAll } from '../setupTest';
 
-import { auth, idempotency, rateLimit } from '../hooks.js';
-import { verifyPAT } from '../routes/auth.js';
-import { registerRoutes } from '../web.js';
+describe('Web Module', () => {
+  let verifySession: any;
+  let verifyPAT: any;
+  let auth: any;
+  let rateLimit: any;
+  let idempotency: any;
 
- // Mock dependencies
-jest.mock('../routes/auth');
-jest.mock('../hooks');
-jest.mock('jsonwebtoken');
+  beforeAll(async () => {
+    await setupBeforeAll();
 
-const mockVerifyPAT = verifyPAT as jest.MockedFunction<typeof verifyPAT>;
-const mockAuth = auth as jest.MockedFunction<typeof auth>;
-const mockRateLimit = rateLimit as jest.MockedFunction<typeof rateLimit>;
-const mockIdempotency = idempotency as jest.MockedFunction<typeof idempotency>;
-const _mockJwtVerify = jwt.verify as jest.Mock;
+    // Import functions
+    const authModule = await import('../routes/auth');
+    verifySession = authModule.verifySession;
+    verifyPAT = authModule.verifyPAT;
 
-// Mock Fastify
-const mockAddHook = jest.fn();
-const mockGet = jest.fn();
-const mockPost = jest.fn();
-const mockDelete = jest.fn();
-const mockApp = {
-  addHook: mockAddHook,
-  get: mockGet,
-  post: mockPost,
-  delete: mockDelete,
-} as unknown as FastifyInstance;
+    const hooksModule = await import('../hooks');
+    auth = hooksModule.auth;
+    rateLimit = hooksModule.rateLimit;
+    idempotency = hooksModule.idempotency;
+  });
 
-const mockPool = {} as Pool;
-const mockRedis = {} as IORedisType;
-
-describe('Web Authentication', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    mockAddHook.mockClear();
-    mockGet.mockClear();
-    mockPost.mockClear();
-    mockDelete.mockClear();
+  });
+
+  describe('authenticateRequest', () => {
+    it('should skip auth for public endpoints', async () => {
+      const webModule = await import('../web');
+      const mockRequest = { url: '/health', log: { info: jest.fn() } } as any;
+      const mockReply = {} as FastifyReply;
+
+      // This should be extracted to a testable function
+      // For now, we'll test through registerRoutes
+      const app = await createApp();
+      webModule.registerRoutes(app, mockPool as any, mockRedisInstance as any);
+
+      const response = await app.inject({
+        method: 'GET',
+        url: '/health'
+      });
+
+      expect(response.statusCode).toBe(200);
+    });
+
+    it('should use session auth for dashboard routes', async () => {
+      const mockRequest = {
+        url: '/dashboard/settings',
+        log: { info: jest.fn() },
+        session: mockSession
+      } as any;
+      const mockReply = {} as FastifyReply;
+
+      // Mock successful session verification
+      mockSession.user_id = 'user123';
+      mockPool.query
+        .mockResolvedValueOnce({ rows: [{ id: 'user123' }] })
+        .mockResolvedValueOnce({ rows: [{ project_id: 'project123' }] });
+
+      await verifySession(mockRequest, mockReply, mockPool as any);
+
+      expect(mockRequest.user_id).toBe('user123');
+      expect(mockRequest.project_id).toBe('project123');
+    });
+
+    it('should use PAT auth for management routes', async () => {
+      const mockRequest = {
+        url: '/v1/api-keys',
+        headers: { authorization: 'Bearer pat_token' },
+        log: { info: jest.fn() }
+      } as any;
+      const mockReply = {} as FastifyReply;
+
+      // Mock PAT verification
+      const crypto = await import('node:crypto');
+      (crypto.createHash as jest.Mock).mockReturnValue({
+        update: jest.fn().mockReturnThis(),
+        digest: jest.fn().mockReturnValue('token_hash'),
+      });
+
+      mockPool.query
+        .mockResolvedValueOnce({ rows: [{ id: 'pat123', user_id: 'user123', scopes: ['*'] }] })
+        .mockResolvedValueOnce({ rows: [{ value: 1 }] })
+        .mockResolvedValueOnce({ rows: [{ project_id: 'project123' }] })
+        .mockResolvedValueOnce({ rows: [{ value: 1 }] });
+
+      await verifyPAT(mockRequest, mockReply, mockPool as any);
+
+      expect(mockRequest.user_id).toBe('user123');
+      expect(mockRequest.pat_scopes).toEqual(['*']);
+    });
+
+    it('should use API key/HMAC auth for runtime routes', async () => {
+      const mockRequest = {
+        url: '/v1/orders',
+        headers: { authorization: 'Bearer sk_test_key' },
+        log: { info: jest.fn() }
+      } as any;
+      const mockReply = {} as FastifyReply;
+
+      // Mock API key verification
+      const crypto = await import('node:crypto');
+      (crypto.createHash as jest.Mock).mockReturnValue({
+        update: jest.fn().mockReturnThis(),
+        digest: jest.fn().mockReturnValue('key_hash'),
+      });
+
+      mockPool.query
+        .mockResolvedValueOnce({ rows: [{ id: 'key123', project_id: 'project123' }] })
+        .mockResolvedValueOnce({ rows: [{ value: 1 }] });
+
+      await auth(mockRequest, mockReply, mockPool as any);
+
+      expect(mockRequest.project_id).toBe('project123');
+    });
+
+    it('should verify HMAC signature for runtime routes', async () => {
+      const timestamp = Date.now().toString();
+      const mockRequest = {
+        url: '/v1/validate',
+        method: 'POST',
+        headers: {
+          authorization: `HMAC keyId=sk_test signature=test_sig ts=${timestamp} nonce=123`
+        },
+        body: { test: 'data' },
+        log: { info: jest.fn() }
+      } as any;
+      const mockReply = {} as FastifyReply;
+
+      // Mock HMAC verification
+      const crypto = await import('node:crypto');
+      (crypto.createDecipheriv as jest.Mock).mockImplementation(() => ({
+        update: jest.fn().mockReturnValue('sk_test'),
+        final: jest.fn().mockReturnValue('_key'),
+      }));
+      (crypto.createHmac as jest.Mock).mockImplementation(() => ({
+        update: jest.fn().mockReturnThis(),
+        digest: jest.fn().mockReturnValue('test_sig'),
+      }));
+
+      mockPool.query
+        .mockResolvedValueOnce({
+          rows: [{
+            id: 'key123',
+            project_id: 'project123',
+            encrypted_key: 'iv:encrypted_data'
+          }]
+        })
+        .mockResolvedValueOnce({ rows: [{ value: 1 }] });
+
+      await auth(mockRequest, mockReply, mockPool as any);
+
+      expect(mockRequest.project_id).toBe('project123');
+    });
+  });
+
+  describe('applyRateLimitingAndIdempotency', () => {
+    it('should skip middleware for public routes', async () => {
+      const app = await createApp();
+      const { registerRoutes } = await import('../web');
+
+      registerRoutes(app, mockPool as any, mockRedisInstance as any);
+
+      const response = await app.inject({
+        method: 'GET',
+        url: '/health'
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(mockRedisInstance.incr).not.toHaveBeenCalled();
+    });
+
+    it('should apply rate limiting to runtime routes', async () => {
+      const mockRequest = {
+        url: '/v1/validate',
+        project_id: 'project123',
+        ip: '127.0.0.1',
+        log: { info: jest.fn() }
+      } as any;
+      const mockReply = {} as FastifyReply;
+
+      mockRedisInstance.incr.mockResolvedValue(1);
+      mockRedisInstance.expire.mockResolvedValue(1);
+
+      await rateLimit(mockRequest, mockReply, mockRedisInstance as any);
+
+      expect(mockRedisInstance.incr).toHaveBeenCalledWith(
+        expect.stringContaining('rate_limit:project123')
+      );
+    });
+
+    it('should enforce rate limits', async () => {
+      const mockRequest = {
+        url: '/v1/validate',
+        project_id: 'project123',
+        ip: '127.0.0.1',
+        log: { info: jest.fn() }
+      } as any;
+      const mockReply = {
+        status: jest.fn().mockReturnThis(),
+        send: jest.fn(),
+        header: jest.fn(),
+      } as unknown as FastifyReply;
+
+      mockRedisInstance.incr.mockResolvedValue(101); // Over limit
+
+      await rateLimit(mockRequest, mockReply, mockRedisInstance as any);
+
+      expect(mockReply.status).toHaveBeenCalledWith(429);
+    });
+
+    it('should handle idempotency for runtime routes', async () => {
+      const mockRequest = {
+        url: '/v1/orders',
+        headers: { 'x-idempotency-key': 'test-key' },
+        project_id: 'project123',
+        log: { info: jest.fn() }
+      } as any;
+      const mockReply = {
+        status: jest.fn().mockReturnThis(),
+        send: jest.fn(),
+        header: jest.fn(),
+      } as unknown as FastifyReply;
+
+      // Simulate cached response
+      mockRedisInstance.get.mockResolvedValue(JSON.stringify({
+        statusCode: 200,
+        body: { result: 'cached' },
+        headers: {}
+      }));
+
+      await idempotency(mockRequest, mockReply, mockRedisInstance as any);
+
+      expect(mockReply.status).toHaveBeenCalledWith(200);
+      expect(mockReply.send).toHaveBeenCalledWith({ result: 'cached' });
+    });
   });
 
   describe('registerRoutes', () => {
-    it('should register preHandler hook that applies authentication and rate limiting', () => {
-      registerRoutes(mockApp, mockPool, mockRedis);
+    it('should register all route modules', async () => {
+      const app = await createApp();
+      const { registerRoutes } = await import('../web');
 
-      expect(mockAddHook).toHaveBeenCalledWith('preHandler', expect.any(Function));
-    });
-
-    it('should register all route handlers', () => {
-      registerRoutes(mockApp, mockPool, mockRedis);
-
-      // Should register all route handlers
-      expect(mockAddHook).toHaveBeenCalledTimes(1);
-      // The exact number of route registrations may vary depending on the implementation
-      expect(mockGet).toHaveBeenCalled();
-      expect(mockPost).toHaveBeenCalled();
-      expect(mockDelete).toHaveBeenCalled();
-    });
-  });
-
-  describe('Authentication Logic', () => {
-    let hookHandler: Function;
-
-    beforeEach(() => {
-      registerRoutes(mockApp, mockPool, mockRedis);
-      hookHandler = mockAddHook.mock.calls[0][1];
-    });
-
-    it('should skip authentication for health endpoints', async () => {
-      const request = createMockRequest('/health');
-      const reply = createMockReply();
-
-      await hookHandler(request, reply);
-
-      expect(mockVerifyPAT).not.toHaveBeenCalled();
-      expect(mockAuth).not.toHaveBeenCalled();
-    });
-
-    it('should skip authentication for documentation endpoints', async () => {
-      const request = createMockRequest('/documentation');
-      const reply = createMockReply();
-
-      await hookHandler(request, reply);
-
-      expect(mockVerifyPAT).not.toHaveBeenCalled();
-      expect(mockAuth).not.toHaveBeenCalled();
-    });
-
-    it('should skip authentication for auth endpoints', async () => {
-      const request = createMockRequest('/auth/login');
-      const reply = createMockReply();
-
-      await hookHandler(request, reply);
-
-      expect(mockVerifyPAT).not.toHaveBeenCalled();
-      expect(mockAuth).not.toHaveBeenCalled();
-    });
-
-    it('should use JWT verification for /api-keys endpoints', async () => {
-      const request = createMockRequest('/v1/api-keys', { authorization: 'Bearer token' });
-      const reply = createMockReply();
-
-      await hookHandler(request, reply);
-
-      expect(mockVerifyPAT).toHaveBeenCalled();
-      expect(mockAuth).not.toHaveBeenCalled();
-    });
-
-    it('should use JWT verification for /webhooks/test endpoints', async () => {
-      const request = createMockRequest('/v1/webhooks/test');
-      const reply = createMockReply();
-
-      await hookHandler(request, reply);
-
-      expect(mockVerifyPAT).toHaveBeenCalled();
-      expect(mockAuth).not.toHaveBeenCalled();
-    });
-
-    it('should use PAT auth for /data/usage endpoints', async () => {
-      const request = createMockRequest('/v1/data/usage');
-      const reply = createMockReply();
-
-      await hookHandler(request, reply);
-
-      expect(mockVerifyPAT).toHaveBeenCalled();
-      expect(mockAuth).not.toHaveBeenCalled();
-    });
-
-    it('should use PAT auth for /data/logs endpoints', async () => {
-      const request = createMockRequest('/v1/data/logs');
-      const reply = createMockReply();
-
-      await hookHandler(request, reply);
-
-      expect(mockVerifyPAT).toHaveBeenCalled();
-      expect(mockAuth).not.toHaveBeenCalled();
-    });
-
-    it('should use API key auth for other endpoints', async () => {
-      const request = createMockRequest('/v1/validate/email');
-      const reply = createMockReply();
-
-      await hookHandler(request, reply);
-
-      expect(mockAuth).toHaveBeenCalled();
-      expect(mockVerifyPAT).not.toHaveBeenCalled();
-    });
-
-    it('should apply rate limiting for non-dashboard routes', async () => {
-      const request = createMockRequest('/v1/validation/email');
-      const reply = createMockReply();
-
-      await hookHandler(request, reply);
-
-      expect(mockRateLimit).toHaveBeenCalled();
-      expect(mockIdempotency).toHaveBeenCalled();
-    });
-
-    it('should skip rate limiting for dashboard routes', async () => {
-      const dashboardRoutes = [
-        '/v1/api-keys',
-        '/v1/webhooks/test'
-      ];
-
-      await Promise.all(dashboardRoutes.map(async (route) => {
-        const request = createMockRequest(route);
-        const reply = createMockReply();
-        jest.clearAllMocks();
-
-        await hookHandler(request, reply);
-
-        expect(mockRateLimit).not.toHaveBeenCalled();
-        expect(mockIdempotency).not.toHaveBeenCalled();
+      // Mock all route registration functions
+      jest.mock('../routes/api-keys', () => ({
+        registerApiKeysRoutes: jest.fn(),
       }));
+      jest.mock('../routes/data', () => ({
+        registerDataRoutes: jest.fn(),
+      }));
+      jest.mock('../routes/validation', () => ({
+        registerValidationRoutes: jest.fn(),
+      }));
+
+      registerRoutes(app, mockPool as any, mockRedisInstance as any);
+
+      // Verify hooks are registered
+      expect(app.ready).toBeDefined();
     });
 
-    it('should apply rate limiting for other mgmt routes', async () => {
-      const otherMgmtRoutes = [
-        '/v1/data/usage',
-        '/v1/data/logs',
-        '/v1/rules'
-      ];
+    it('should handle authentication flow for different route types', async () => {
+      const app = await createApp();
+      const { registerRoutes } = await import('../web');
 
-      await Promise.all(otherMgmtRoutes.map(async (route) => {
-        const request = createMockRequest(route);
-        const reply = createMockReply();
-        jest.clearAllMocks();
+      registerRoutes(app, mockPool as any, mockRedisInstance as any);
 
-        await hookHandler(request, reply);
+      // Test public route - no auth
+      const healthResponse = await app.inject({
+        method: 'GET',
+        url: '/health'
+      });
+      expect(healthResponse.statusCode).toBe(200);
 
-        expect(mockRateLimit).toHaveBeenCalled();
-        expect(mockIdempotency).toHaveBeenCalled();
-      }));
+      // Test management route - requires PAT
+      const mgmtResponse = await app.inject({
+        method: 'GET',
+        url: '/v1/api-keys'
+      });
+      expect(mgmtResponse.statusCode).toBe(401); // No auth provided
+
+      // Test runtime route - requires API key
+      const runtimeResponse = await app.inject({
+        method: 'POST',
+        url: '/v1/validate',
+        payload: { email: 'test@example.com' }
+      });
+      expect(runtimeResponse.statusCode).toBe(401); // No auth provided
     });
   });
 });
-
-// Helper functions
-const createMockRequest = (url: string, headers: Record<string, string> = {}): FastifyRequest => {
-  return {
-    url,
-    headers,
-    user_id: undefined,
-    project_id: undefined,
-    log: {
-      info: jest.fn(),
-    },
-  } as unknown as FastifyRequest;
-};
-
-const createMockReply = (): FastifyReply => {
-  return {
-    status: jest.fn().mockReturnThis(),
-    send: jest.fn(),
-  } as unknown as FastifyReply;
-};

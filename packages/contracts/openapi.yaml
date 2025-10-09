@@ -143,6 +143,26 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
+  /auth/logout:
+    post:
+      tags:
+        - UI Endpoints
+      summary: User logout
+      description: Logs out the current user by clearing the session
+      operationId: logoutUser
+      security: []
+      responses:
+        '200':
+          description: Logout successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    description: Success message
+
   # API Keys
   /v1/api-keys:
     get:

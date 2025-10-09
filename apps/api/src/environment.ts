@@ -21,6 +21,13 @@ export const environment = {
     GOOGLE_GEOCODING_KEY: process.env.GOOGLE_GEOCODING_KEY || "",
     USE_GOOGLE_FALLBACK: process.env.USE_GOOGLE_FALLBACK === "true",
     JWT_SECRET: process.env.JWT_SECRET || (() => { throw new Error('JWT_SECRET must be set in environment'); })(),
-    SESSION_SECRET: process.env.SESSION_SECRET || (() => { throw new Error('SESSION_SECRET must be set in environment'); })(),
-    ENCRYPTION_KEY: process.env.ENCRYPTION_KEY || (() => { throw new Error('ENCRYPTION_KEY must be set in environment'); })()
+    ENCRYPTION_KEY: process.env.ENCRYPTION_KEY || (() => { throw new Error('ENCRYPTION_KEY must be set in environment'); })(),
+    SESSION_SECRET: process.env.SESSION_SECRET || crypto.randomBytes(32).toString('hex'),
+
+    // OIDC configuration (optional)
+    OIDC_ENABLED: process.env.OIDC_ENABLED === 'true',
+    OIDC_CLIENT_ID: process.env.OIDC_CLIENT_ID,
+    OIDC_CLIENT_SECRET: process.env.OIDC_CLIENT_SECRET,
+    OIDC_PROVIDER_URL: process.env.OIDC_PROVIDER_URL, // e.g., https://accounts.google.com
+    OIDC_REDIRECT_URI: process.env.OIDC_REDIRECT_URI || `http://localhost:${process.env.PORT || 3000}/auth/callback`,
 };

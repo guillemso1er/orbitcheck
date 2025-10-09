@@ -316,6 +316,11 @@ export type LoginUser200 = {
   request_id?: string;
 };
 
+export type LogoutUser200 = {
+  /** Success message */
+  message?: string;
+};
+
 export type ListApiKeys200 = {
   data?: ApiKey[];
   request_id?: string;
@@ -844,6 +849,18 @@ export const loginUser = <TData = AxiosResponse<LoginUser200>>(
   }
 
 /**
+ * Logs out the current user by clearing the session
+ * @summary User logout
+ */
+export const logoutUser = <TData = AxiosResponse<LogoutUser200>>(
+     options?: AxiosRequestConfig
+ ): Promise<TData> => {
+    return axios.post(
+      `/auth/logout`,undefined,options
+    );
+  }
+
+/**
  * Retrieves API keys for the authenticated project
  * @summary List API keys
  */
@@ -1075,6 +1092,7 @@ export const testWebhook = <TData = AxiosResponse<TestWebhook200>>(
 
 export type RegisterUserResult = AxiosResponse<RegisterUser201>
 export type LoginUserResult = AxiosResponse<LoginUser200>
+export type LogoutUserResult = AxiosResponse<LogoutUser200>
 export type ListApiKeysResult = AxiosResponse<ListApiKeys200>
 export type CreateApiKeyResult = AxiosResponse<CreateApiKey201>
 export type RevokeApiKeyResult = AxiosResponse<RevokeApiKey200>
