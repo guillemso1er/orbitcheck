@@ -6,6 +6,7 @@ import path from 'node:path';
 
 import cookie from "@fastify/cookie";
 import cors from "@fastify/cors";
+import metrics from "@immobiliarelabs/fastify-metrics";
 import secureSession from '@fastify/secure-session';
 import fastifySwagger from '@fastify/swagger';
 import fastifySwaggerUi from '@fastify/swagger-ui';
@@ -139,6 +140,9 @@ export async function build(pool: Pool, redis: IORedisType): Promise<FastifyInst
                 : undefined
         }
     });
+
+    // Enable metrics collection (before routes to avoid auth)
+    await app.register(metrics as any);
 
     // Add OIDC support for dashboard authentication (if configured)
     if (environment.OIDC_ENABLED && environment.OIDC_CLIENT_ID && environment.OIDC_CLIENT_SECRET) {

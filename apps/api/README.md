@@ -1,6 +1,6 @@
 # Orbicheck API - Data Hygiene Guard
 
-The API is a Fastify-based TypeScript server providing data validation, deduplication, and order risk assessment for e-commerce hygiene. It handles validators for emails, phones, addresses, tax IDs; fuzzy/deterministic dedupe for entities; order evaluation with rules (P.O. box block, COD risk, fraud scoring); and observability (logs, metrics).
+The API is a Fastify-based TypeScript server providing data validation, deduplication, and order risk assessment for e-commerce hygiene. It handles validators for emails, phones, addresses, tax IDs; fuzzy/deterministic dedupe for entities; order evaluation with rules (P.O. box block, COD risk, fraud scoring); and observability (logs, metrics). It also provides management endpoints for authentication, API key management, data access, rules configuration, and webhook testing.
 
 **AI-Friendly Notes:** Follow root README.md for monorepo setup. Use `list_code_definition_names` on `src/` to see routes (e.g., validateEmail), validators, jobs. Before edits, read `src/server.ts` (Fastify config, BullMQ), `src/web.ts` (route registration), and relevant files. Test changes with `pnpm run test` via `execute_command`.
 
@@ -66,6 +66,7 @@ All POST/GET; auth via Bearer API key; rate limited (300/min); idempotent.
 - Validators: email.invalid_format, email.mx_not_found, email.disposable_domain, email.server_error, phone.invalid_format, phone.unparseable, phone.otp_sent, phone.otp_send_failed, address.po_box, address.postal_city_mismatch, taxid.invalid_format, taxid.invalid_checksum, taxid.vies_invalid, taxid.vies_unavailable.
 - Dedupe: dedupe.server_error.
 - Order: order.customer_dedupe_match, order.address_dedupe_match, order.duplicate_detected, order.po_box_block, order.address_mismatch, order.invalid_email, order.invalid_phone, order.cod_risk, order.high_value, order.server_error.
+- Webhook: webhook.send_failed.
 
 ### 1. POST /validate/email
 **Body:** { "email": "string" }
@@ -120,6 +121,50 @@ All POST/GET; auth via Bearer API key; rate limited (300/min); idempotent.
 ### 10. GET /rules
 **Response (200):** { "rules": [{ "id": "string", "name": "string", "description": "string", "reason_code": "string", "severity": "string", "enabled": boolean }], "request_id": "string" }
 **Example:** `{ "rules": [{ "id": "email_format", "name": "Email Format Validation", "description": "Checks if email is properly formatted", "reason_code": "email.invalid_format", "severity": "low", "enabled": true }], "request_id": "uuid" }`
+
+### 11. POST /auth/register
+**Body:** { "email": "string", "password": "string" }
+**Response (201):** { "api_key": "string", "pat": "string", "project_id": "string" }
+**Example Request:** `{ "email": "user@example.com", "password": "securepass" }`
+**Example Response:** `{ "api_key": "ok_test_...", "pat": "pat_...", "project_id": "proj_..." }`
+
+### 12. POST /auth/login
+**Body:** { "api_key": "string" }
+**Response (200):** Sets session cookie
+
+### 13. POST /auth/logout
+**Response (200):** Clears session
+
+### 14. GET /api-keys
+**Response (200):** { "api_keys": [{ "id": "string", "name": "string", "created_at": "string" }] }
+
+### 15. POST /api-keys
+**Body:** { "name": "string" }
+**Response (201):** { "id": "string", "key": "string", "name": "string", "created_at": "string" }
+
+### 16. DELETE /api-keys/:id
+**Response (200):** { "deleted": true }
+
+### 17. GET /data/logs
+**Query:** cursor?, limit?
+**Response (200):** { "data": [{ "id": "string", "type": "string", "endpoint": "string", "reason_codes": ["string"], "status": integer, "created_at": "string" }], "next_cursor": "string|null" }
+
+### 18. GET /data/usage
+**Query:** period?
+**Response (200):** { "period": "string", "totals": { "validations": integer, "orders": integer }, "by_day": [{ "date": "string", "validations": integer, "orders": integer }], "request_id": "string" }
+
+### 19. GET /rules/catalog
+**Response (200):** { "catalog": { "reason_codes": {...}, "severities": [...] } }
+
+### 20. POST /rules/register
+**Body:** { "rules": [{ "id": "string", "name": "string", "description": "string", "reason_code": "string", "severity": "string", "enabled": boolean }] }
+**Response (200):** { "registered": ["string"] }
+
+### 21. POST /webhooks/test
+**Body:** { "url": "string", "payload_type": "validation"|"order"|"custom", "custom_payload"?: object }
+**Response (200):** { "sent_to": "string", "response": { "status": integer, "body": "string" } }
+**Example Request:** `{ "url": "https://example.com/webhook", "payload_type": "validation" }`
+**Example Response:** `{ "sent_to": "https://example.com/webhook", "response": { "status": 200, "body": "OK" } }`
 
 ## Observability
 

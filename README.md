@@ -2,6 +2,18 @@
 
 Orbicheck is a validation and risk assessment platform for e-commerce and business operations. It provides comprehensive validation for emails, phones, addresses, tax IDs, and order risk scoring with deduplication.
 
+## Technologies
+
+- **Backend**: Node.js, TypeScript, Fastify
+- **Frontend**: React 18, TypeScript, Vite
+- **Database**: PostgreSQL
+- **Cache**: Redis
+- **Testing**: Jest (unit), Playwright (E2E), k6 (load)
+- **Deployment**: Docker, Docker Compose
+- **Observability**: Loki, Prometheus, Promtail, Grafana, Statping, Uptime Kuma
+- **Package Manager**: pnpm
+- **Monorepo Tool**: pnpm workspaces
+
 ## Features
 
 ### Validators
@@ -70,9 +82,35 @@ Orbicheck uses different authentication methods for different APIs:
 ### Usage Dashboard
 - GET /usage: Project usage dashboard.
 
+## Webhooks
+
+Orbicheck supports webhook testing for integration verification:
+
+- POST /v1/webhooks/test: Send test payloads (validation, order evaluation, custom) to webhook URLs.
+
+## Applications
+
+- **API (apps/api/)**: Fastify-based backend providing data validation, deduplication, order risk assessment, and management APIs. Connected to PostgreSQL (database), Valkey/Redis (cache), MinIO (object storage). Exposes metrics at /metrics for Prometheus monitoring.
+- **Dashboard (apps/dashboard/)**: React frontend for user authentication, API key management, log exploration, usage monitoring, and webhook testing. Connects to the API for data and authentication.
+- **Site (apps/site/)**: Static HTML/CSS/JS marketing website with documentation, pricing, and legal pages. Served via Caddy reverse proxy in development.
+- **Contracts (packages/contracts/)**: Shared OpenAPI specifications, TypeScript types, and generated API clients.
+
+## Observability Services
+
+Orbicheck includes a comprehensive observability stack for monitoring, logging, and alerting:
+
+- **Prometheus (localhost:9090)**: Metrics collection from the API service (/metrics endpoint). Provides time-series data for performance monitoring.
+- **Grafana (localhost:3000)**: Visualization dashboard connected to Prometheus and Loki. Default login: admin/admin.
+- **Loki (localhost:3100)**: Log aggregation system that collects logs from all services.
+- **Promtail**: Log shipping agent that forwards container logs to Loki.
+- **Statping (localhost:8082)**: Status monitoring tool that checks health of services like the API.
+- **Uptime Kuma (localhost:3001)**: Uptime monitoring with alerts for service availability.
+
+These services are automatically connected: Prometheus scrapes metrics from the API, Promtail ships logs to Loki, Grafana visualizes data from both, Statping monitors API health, and Uptime Kuma monitors the Caddy proxy.
+
 ## Setup and Running the App
 
-Orbicheck is a monorepo with two main applications: the API (backend server) and the Dashboard (React frontend).
+Orbicheck is a monorepo with multiple applications: the API (backend server), the Dashboard (React frontend), the Site (static marketing site), and shared Contracts package.
 
 ### Prerequisites
 - Node.js (v20+ recommended)
@@ -148,11 +186,19 @@ pnpm --filter @orbicheck/dashboard run build
 ```
 
 ### Containerized Setup (Optional)
-Use Docker Compose for full stack (DB, Redis, API, Dashboard):
+Use Docker Compose for full stack (DB, Redis, API, Dashboard, monitoring services):
 ```
 podman compose -f infra/compose/dev.compose.yml up -d
 ```
-Access API at http://localhost:8080 and Dashboard at http://localhost:5173.
+Access services at:
+- **Site**: http://localhost:8081 (marketing website)
+- **API**: http://localhost:8080 (API docs at /documentation, metrics at /metrics)
+- **Dashboard**: http://localhost:5173 (React frontend)
+- **Prometheus**: http://localhost:9090 (metrics collection)
+- **Grafana**: http://localhost:3000 (dashboards, default login: admin/admin)
+- **Loki**: http://localhost:3100 (log aggregation)
+- **Statping**: http://localhost:8082 (status monitoring)
+- **Uptime Kuma**: http://localhost:3001 (uptime monitoring)
 
 ## Testing
 

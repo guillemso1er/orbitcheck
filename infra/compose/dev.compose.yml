@@ -42,6 +42,19 @@ services:
       timeout: 20s
       retries: 3
 
+  dashboard:
+    image: node:18
+    working_dir: /app
+    volumes:
+      - ../../:/app
+    command: sh -c "npm install -g pnpm && pnpm install && cd apps/dashboard && pnpm run dev --host 0.0.0.0"
+    ports:
+      - "5173:5173"
+    environment:
+      - CI=true
+    depends_on:
+      - api
+
   caddy:
       build: ./caddy
       ports:

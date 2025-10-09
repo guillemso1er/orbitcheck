@@ -30,9 +30,10 @@ const AUTH_LOGOUT = DASHBOARD_ROUTES.USER_LOGOUT;
 async function authenticateRequest(request: FastifyRequest, rep: FastifyReply, pool: Pool): Promise<void> {
     const url = request.url;
 
-    // Skip authentication for public endpoints: health checks, API docs, and auth routes
+    // Skip authentication for public endpoints: health checks, API docs, metrics, and auth routes
     if (url.startsWith('/health') ||
         url.startsWith('/documentation') ||
+        url.startsWith('/metrics') ||
         url.startsWith(AUTH_REGISTER) ||
         url.startsWith(AUTH_LOGIN) ||
         url.startsWith(AUTH_LOGOUT)) {
@@ -93,9 +94,10 @@ async function authenticateRequest(request: FastifyRequest, rep: FastifyReply, p
 async function applyRateLimitingAndIdempotency(request: FastifyRequest, rep: FastifyReply, redis: IORedisType): Promise<void> {
     const url = request.url;
 
-    // Skip middleware for health, docs, and auth
+    // Skip middleware for health, docs, metrics, and auth
     if (url.startsWith('/health') ||
         url.startsWith('/documentation') ||
+        url.startsWith('/metrics') ||
         url.startsWith(AUTH_REGISTER) ||
         url.startsWith(AUTH_LOGIN) ||
         url.startsWith(AUTH_LOGOUT)) {

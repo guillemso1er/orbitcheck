@@ -85,3 +85,5 @@ apps/api/test-results/.last-run.json
 apps/api/.eslint.tt
 packages/contracts/node_modules
 packages/contracts/dist
+.pnpm-store
+.pnpm-store/

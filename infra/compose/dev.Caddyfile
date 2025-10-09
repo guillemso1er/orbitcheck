@@ -5,12 +5,16 @@
 }
 
 :80 {
-	# These matchers inspect the final response header AFTER it comes back from the reverse proxy.
-	@cache_hit expression {http.response.header.Cache-Status}.matches("(?i).\\bhit\\b.")
-	@cache_miss expression {http.response.header.Cache-Status}.matches("(?i).\\b(miss|stored)\\b.")
-	@cache_bypass expression {http.response.header.Cache-Status}.matches("(?i).\\bbypass\\b.")
+	# Serve static site files
+	root * ../../apps/site
+	try_files {path} {path}/ /index.html
+	file_server
 
-	reverse_proxy 127.0.0.1:18080 {
+	# API routes
+	@api {
+		path /api/*
+	}
+	reverse_proxy @api 127.0.0.1:18080 {
 		header_up X-Auth-Cache-Key {http.request.header.Authorization}
 		header_up -Authorization
 		header_up Host {host}
@@ -18,12 +22,6 @@
 		header_up +X-Forwarded-For {remote_host}
 		header_up X-Forwarded-Proto {scheme}
 	}
-
-	# After the reverse_proxy is done, these header directives are evaluated
-	# against the response, conditionally setting the normalized header.
-	header @cache_hit X-Cache-Status HIT
-	header @cache_miss X-Cache-Status MISS
-	header @cache_bypass X-Cache-Status BYPASS
 }
 
 :18080 {

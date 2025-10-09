@@ -2,10 +2,26 @@
 
 The Dashboard is a React-based frontend application for managing Orbicheck API projects, API keys, logs, usage, and webhooks. It provides a user interface for authentication, monitoring, and configuration.
 
+## Tech Stack
+- **Framework**: React 18 with TypeScript
+- **Build Tool**: Vite
+- **Styling**: CSS Modules
+- **Charts**: Chart.js
+- **Testing**: Jest for unit tests, Playwright for E2E tests
+- **HTTP Client**: Axios (via generated API client)
+
+## Features
+
+- **Authentication**: Login and logout using API keys for session management.
+- **API Key Management**: Create, list, and delete API keys for runtime API access.
+- **Log Explorer**: Browse and filter audit logs with pagination and search capabilities.
+- **Usage Dashboard**: Visualize API usage statistics with interactive charts.
+- **Webhook Tester**: Test webhook integrations by sending sample payloads to configured URLs.
+
 ## Setup and Running
 
 ### Prerequisites
-- Node.js (v18+)
+- Node.js (v20+ recommended)
 - pnpm
 
 ### Install Dependencies
@@ -46,7 +62,18 @@ pnpm --filter @orbicheck/dashboard exec playwright test
 - Headless mode (default): Uses Chromium; ensure API is running for tests.
 
 ### Unit Tests
-Currently, no unit tests are configured for the Dashboard components. Consider adding Vitest or Jest for testing React components in the future.
+The Dashboard uses Jest for unit testing React components.
+From the monorepo root:
+```
+pnpm --filter @orbicheck/dashboard run test
+```
+
+Watch mode:
+```
+pnpm --filter @orbicheck/dashboard run test:watch
+```
+
+Tests are located in `src/__tests__/`.
 
 ## Components
 - **Login**: Authenticates with API key.
