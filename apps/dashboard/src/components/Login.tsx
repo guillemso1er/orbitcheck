@@ -92,6 +92,12 @@ const Login: React.FC = () => {
           id: data.user.id || '',
           email: data.user.email || ''
         };
+        // Store the auth token for API requests
+        // For registration, use pat_token; for login, no token returned, rely on session
+        const token = (data as any).pat_token || data.token;
+        if (token) {
+          localStorage.setItem('auth_token', token);
+        }
         login(user);
         navigate('/api-keys');
       } else {

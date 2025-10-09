@@ -220,15 +220,10 @@ const ApiKeys: React.FC<ApiKeysProps> = () => {
         baseURL: API_BASE
       });
 
-      // Run both operations in parallel so revoke is called immediately (satisfies the test),
-      // then wait for both to settle before updating UI.
-      const createPromise = apiClient.createApiKey(name);
-      const revokePromise = apiClient.revokeApiKey(key.id || '');
-
-      const newData = await createPromise;
-      await revokePromise;
-
+      const newData = await apiClient.createApiKey(name);
       setNewKey({ prefix: newData.prefix || '', full_key: newData.full_key || '' });
+
+      await apiClient.revokeApiKey(key.id || '');
       fetchKeys();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error');

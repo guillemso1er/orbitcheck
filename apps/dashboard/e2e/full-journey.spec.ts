@@ -32,53 +32,96 @@ test.describe('Full Application Journey', () => {
     // Step 4: View API keys list (verify default key exists)
     await page.waitForLoadState('networkidle');
     await expect(page.getByRole('region', { name: 'API Keys Management' })).toBeVisible();
-    // Note: API call may fail in test environment, but UI should still load
-    // await expect(page.locator('table.table tbody tr')).toHaveCount(1);
-    // await expect(page.locator('td:has-text("Unnamed")')).toBeVisible();
-    // await expect(page.locator('span.badge-success')).toBeVisible();
 
-    // Step 5: Navigate to Usage Dashboard
+    // Step 5: Create a new API key
+    await page.getByRole('button', { name: 'Create New API Key' }).click();
+    await expect(page.getByRole('heading', { name: 'Create New API Key' })).toBeVisible();
+    await page.fill('input[id="key-name"]', 'Test API Key');
+    await page.locator('.modal button[type="submit"]').click();
+    await expect(page.locator('.alert-success')).toBeVisible();
+    await page.locator('.alert-success button').click();
+
+    // Step 6: Rotate an API key
+    const rotateBtn = page.locator('button[data-testid*="rotate-btn-"]').first();
+    await expect(rotateBtn).toBeVisible();
+    page.on('dialog', dialog => dialog.accept());
+    await rotateBtn.click();
+    await expect(page.locator('.alert-success')).toBeVisible();
+    await page.locator('.alert-success button').click();
+
+    // Step 7: Navigate to Usage Dashboard
     await page.locator('.nav-link').filter({ hasText: 'Usage Dashboard' }).click();
     await expect(page).toHaveURL(/.*\/usage/);
     await page.waitForLoadState('networkidle');
 
-    // Step 6: Verify usage dashboard loads (may show error due to API auth issues)
-    await expect(page.locator('.loading').filter({ hasText: 'usage dashboard' })).toBeVisible({ timeout: 15000 });
+    // Step 8: Verify usage dashboard loads
+    await expect(page.getByRole('heading', { name: 'Usage Dashboard' })).toBeVisible({ timeout: 15000 });
 
-    // Step 7: Navigate to Log Explorer
+    // Step 9: Navigate to Log Explorer
     await page.locator('.nav-link').filter({ hasText: 'Log Explorer' }).click();
     await expect(page).toHaveURL(/.*\/logs/);
     await page.waitForLoadState('networkidle');
 
-    // Step 8: Apply filters in log explorer
+    // Step 10: Apply filters in log explorer
     await expect(page.locator('.log-explorer')).toBeVisible();
     await page.waitForSelector('input#reason-code', { state: 'visible' });
     await page.fill('input#reason-code', 'test');
     await page.getByRole('button', { name: 'Apply Filters' }).click();
 
-    // Step 9: Clear filters in log explorer
+    // Step 11: Add more filters
+    await page.fill('input#endpoint', '/v1/validate');
+    await page.selectOption('select#type', 'validation');
+    await page.getByRole('button', { name: 'Apply Filters' }).click();
+
+    // Step 12: Sort logs
+    await page.locator('th').filter({ hasText: 'Status' }).click();
+
+    // Step 13: Paginate (if available)
+    const nextBtn = page.getByRole('button', { name: 'Next' });
+    if (await nextBtn.isEnabled()) {
+      await nextBtn.click();
+    }
+
+    // Step 14: Refresh logs
+    await page.getByRole('button', { name: 'Refresh' }).click();
+
+    // Step 15: Export logs to CSV
+    await page.getByRole('button', { name: 'Export CSV' }).click();
+
+    // Step 16: Clear filters in log explorer
     await page.getByRole('button', { name: 'Clear Filters' }).click();
     await expect(page.locator('input#reason-code')).toHaveValue('');
 
-    // Step 10: Navigate to Webhook Tester
+    // Step 17: Navigate to Webhook Tester
     await page.locator('.nav-link').filter({ hasText: 'Webhook Tester' }).click();
     await expect(page).toHaveURL(/.*\/webhooks/);
     await page.waitForLoadState('networkidle');
 
-    // Step 11: Verify webhook tester loads
-    await expect(page.locator('.webhook-tester')).toBeVisible();
+    // Step 18: Fill webhook form and send test
+    await page.fill('input#webhook-url', 'https://httpbin.org/post');
+    await page.selectOption('select#payload-type', 'validation');
+    await page.getByRole('button', { name: 'Send Test Payload' }).click();
+    await expect(page.locator('.result-section')).toBeVisible();
 
-    // Step 12: Logout from the application
+    // Step 19: Switch tabs in result
+    await page.getByRole('button', { name: 'Response' }).click();
+    await expect(page.locator('.tab-content')).toContainText('Status');
+
+    // Step 20: Clear result
+    await page.getByRole('button', { name: 'Clear' }).click();
+    await expect(page.locator('.result-section')).not.toBeVisible();
+
+    // Step 21: Logout from the application
     await page.locator('.logout-btn').click();
     await expect(page).toHaveURL(/.*\/login/);
 
-    // Step 13: Login again with same credentials
+    // Step 22: Login again with same credentials
     await page.fill('input[type="email"]', testEmail);
     await page.fill('input[type="password"]', password);
     await page.getByRole('button', { name: 'Sign In' }).click();
     await page.waitForResponse(resp => resp.url().includes('/auth/login') && resp.status() === 200);
 
-    // Step 14: Verify successful login and dashboard access
+    // Step 23: Verify successful login and dashboard access
     await expect(page).toHaveURL(/.*\/api-keys/);
     await expect(page.getByRole('heading', { name: 'OrbiCheck' })).toBeVisible();
   });

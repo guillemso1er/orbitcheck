@@ -39,6 +39,15 @@ export class ApiClient {
     this.baseURL = config.baseURL;
   }
 
+  private getHeaders() {
+    const headers: Record<string, string> = {};
+    const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
+    if (token) {
+      headers.Authorization = `Bearer ${token}`;
+    }
+    return headers;
+  }
+
 
   // Authentication methods (don't require token)
   async registerUser(body: RegisterUserBody): Promise<RegisterUser201> {
@@ -60,6 +69,7 @@ export class ApiClient {
     const response = await getUsage({
       baseURL: this.baseURL,
       withCredentials: true,
+      headers: this.getHeaders()
     });
     return response.data;
   }
@@ -75,6 +85,7 @@ export class ApiClient {
     const response = await getLogs(params, {
       baseURL: this.baseURL,
       withCredentials: true,
+      headers: this.getHeaders()
     });
     return response.data;
   }
@@ -84,6 +95,7 @@ export class ApiClient {
     const response = await listApiKeys({
       baseURL: this.baseURL,
       withCredentials: true,
+      headers: this.getHeaders()
     });
     return response.data;
   }
@@ -93,6 +105,7 @@ export class ApiClient {
     const response = await createApiKey(body, {
       baseURL: this.baseURL,
       withCredentials: true,
+      headers: this.getHeaders()
     });
     return response.data;
   }
@@ -101,6 +114,7 @@ export class ApiClient {
     const response = await revokeApiKey(id, {
       baseURL: this.baseURL,
       withCredentials: true,
+      headers: this.getHeaders()
     });
     return response.data;
   }
@@ -114,6 +128,7 @@ export class ApiClient {
     const response = await testWebhook(body, {
       baseURL: this.baseURL,
       withCredentials: true,
+      headers: this.getHeaders()
     });
     return response.data;
   }

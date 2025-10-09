@@ -43,7 +43,7 @@ async function authenticateRequest(request: FastifyRequest, rep: FastifyReply, p
     const isDashboardRoute = url.startsWith('/dashboard') ||
         url.startsWith('/api/dashboard');
 
-    // Management routes - use PAT authentication
+    // Management routes - use PAT authentication, fallback to session
     const isMgmtRoute = url.startsWith('/v1/api-keys') ||
         url.startsWith('/v1/data') ||
         url.startsWith('/v1/rules') ||
@@ -63,8 +63,14 @@ async function authenticateRequest(request: FastifyRequest, rep: FastifyReply, p
         request.log.info('Using session auth for dashboard route');
         await verifySession(request, rep, pool);
     } else if (isMgmtRoute) {
-        request.log.info('Using PAT auth for management route');
-        await verifyPAT(request, rep, pool);
+        request.log.info('Trying PAT auth for management route');
+        const header = request.headers["authorization"];
+        if (header && header.startsWith("Bearer ")) {
+            await verifyPAT(request, rep, pool);
+        } else {
+            request.log.info('No Bearer header, trying session auth for management route');
+            await verifySession(request, rep, pool);
+        }
     } else if (isRuntimeRoute) {
         request.log.info('Using API key/HMAC auth for runtime route');
         await auth(request, rep, pool); // Supports both Bearer API keys and HMAC
