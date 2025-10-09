@@ -1,6 +1,6 @@
-# Orbicheck API
+# Orbicheck
 
-Orbicheck is a validation and risk assessment API for e-commerce and business operations. It provides comprehensive validation for emails, phones, addresses, tax IDs, and order risk scoring with deduplication.
+Orbicheck is a validation and risk assessment platform for e-commerce and business operations. It provides comprehensive validation for emails, phones, addresses, tax IDs, and order risk scoring with deduplication.
 
 ## Features
 
@@ -44,16 +44,30 @@ Orbicheck is a validation and risk assessment API for e-commerce and business op
 ### Orders
 - POST /v1/orders/evaluate: Order risk assessment.
 
-### Auth/Dashboard
-- POST /auth/login: JWT login.
-- GET /api/keys: List API keys.
-- POST /api/keys: Create API key.
-- DELETE /api/keys/:id: Delete API key.
-- POST /webhooks: Create webhook.
-- GET /webhooks: List webhooks.
-- DELETE /webhooks/:id: Delete webhook.
+### Authentication
+Orbicheck uses different authentication methods for different APIs:
 
-### Usage
+- **Dashboard (session-based)**: For user registration, login, and web dashboard access.
+- **Management API (Bearer token or session)**: For managing API keys, viewing usage, etc. Uses Personal Access Tokens (PATs) or session cookies.
+- **Runtime API (API key)**: For validation, deduplication, and order evaluation endpoints.
+
+### Dashboard Auth
+- POST /auth/register: Register a new user (returns API key and PAT).
+- POST /auth/login: Session-based login.
+- POST /auth/logout: Logout and clear session.
+
+### Management API (v1)
+- GET /v1/api-keys: List API keys.
+- POST /v1/api-keys: Create API key.
+- DELETE /v1/api-keys/:id: Delete API key.
+- POST /v1/webhooks/test: Test webhook.
+- GET /v1/data/logs: Get event logs.
+- GET /v1/data/usage: Get usage statistics.
+- GET /v1/rules: Get available rules.
+- GET /v1/rules/catalog: Get reason code catalog.
+- POST /v1/rules/register: Register custom rules.
+
+### Usage Dashboard
 - GET /usage: Project usage dashboard.
 
 ## Setup and Running the App
@@ -105,6 +119,8 @@ Seed initial data (creates a dev project and API key):
 pnpm --filter @orbicheck/api exec ts-node --require dotenv/config src/seed.ts
 ```
 Note the output PROJECT_ID and API_KEY for authentication.
+
+Alternatively, register a new user via the dashboard at http://localhost:5173 to get both a Personal Access Token (PAT) for management API access and an API key for runtime validation endpoints.
 
 ### 4. Running the API (Backend)
 In one terminal, from the root:
@@ -169,7 +185,16 @@ pnpm --filter @orbicheck/dashboard exec playwright test --ui
 ```
 
 ### Unit Tests (Dashboard)
-Currently, no dedicated unit tests for the Dashboard. Consider adding Jest or Vitest for component testing in the future.
+The Dashboard has unit tests using Jest for component testing.
+From the root:
+```
+pnpm --filter @orbicheck/dashboard run test
+```
+
+Watch mode:
+```
+pnpm --filter @orbicheck/dashboard run test:watch
+```
 
 ### Load Testing
 Load tests using k6 scripts in `tests/k6/`:
@@ -184,4 +209,4 @@ See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 
-MIT
+MIT - see [LICENSE](LICENSE) for details.
