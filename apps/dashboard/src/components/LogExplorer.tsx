@@ -1,6 +1,5 @@
 import { createApiClient } from '@orbicheck/contracts';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { useAuth } from '../AuthContext';
 import { API_BASE, UI_STRINGS } from '../constants';
 import { FiltersSection, type FiltersState } from './FiltersSection';
 import './LogExplorer.css';
@@ -17,7 +16,6 @@ const EMPTY_FILTERS: FiltersState = {
 };
 
 const LogExplorer: React.FC = () => {
-  const { token } = useAuth();
 
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [totalCount, setTotalCount] = useState(0);
@@ -50,8 +48,7 @@ const LogExplorer: React.FC = () => {
 
       try {
         const apiClient = createApiClient({
-          baseURL: API_BASE,
-          token: token || ''
+          baseURL: API_BASE
         });
 
         const f = overrideFilters ?? appliedFilters;
@@ -89,8 +86,8 @@ const LogExplorer: React.FC = () => {
         setLoading(false);
       }
     },
-    // only depend on token/limit so the function stays stable; we always pass overrides when needed
-    [token, limit]
+    // only depend on limit so the function stays stable; we always pass overrides when needed
+    [limit]
   );
 
   // Initial load only

@@ -58,6 +58,7 @@ async function validateEndpointCoverage(app: FastifyInstance): Promise<void> {
   const routesWithoutBasePath = [
     '/auth/register',
     '/auth/login',
+    '/auth/logout',
   ];
 
   const missingEndpoints: string[] = [];

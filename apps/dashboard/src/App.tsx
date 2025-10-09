@@ -33,7 +33,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
  * @returns {JSX.Element} The root layout of the application with a sidebar, main content, and defined routes.
  */
 function App() {
-  const { isAuthenticated, logout, token } = useAuth();
+  const { isAuthenticated, logout } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(() => window.innerWidth > 768);
   const [isMobile, setIsMobile] = useState(() => window.innerWidth <= 768);
 
@@ -114,7 +114,7 @@ function App() {
             element={
               <ProtectedRoute>
                 <div role="region" aria-label={UI_STRINGS.API_KEYS_MANAGEMENT}>
-                  <ApiKeys token={token!} />
+                  <ApiKeys />
                 </div>
               </ProtectedRoute>
             }

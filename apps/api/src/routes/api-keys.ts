@@ -173,11 +173,13 @@ export function registerApiKeysRoutes(app: FastifyInstance, pool: Pool): void {
             const project_id = request.project_id!;
             const { id } = request.params as { id: string };
             const request_id = generateRequestId();
+            console.log('Revoking API key id:', id, 'project_id:', project_id);
 
             const { rowCount } = await pool.query(
                 "UPDATE api_keys SET status = $3 WHERE id = $1 AND project_id = $2",
                 [id, project_id, STATUS.REVOKED]
             );
+            console.log('Revoke rowCount:', rowCount);
 
             if (rowCount === 0) {
                 return await sendError(rep, HTTP_STATUS.NOT_FOUND, ERROR_CODES.NOT_FOUND, ERROR_MESSAGES[ERROR_CODES.NOT_FOUND], request_id);

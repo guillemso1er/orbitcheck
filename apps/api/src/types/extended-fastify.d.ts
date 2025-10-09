@@ -12,8 +12,8 @@ declare module 'fastify' {
   }
 }
 
-declare module '@fastify/session' {
-  interface FastifySessionObject {
+declare module '@fastify/secure-session' {
+  interface SessionData {
     user_id?: string;
   }
 }

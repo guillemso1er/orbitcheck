@@ -29,7 +29,7 @@ export async function verifySession(request: FastifyRequest, rep: FastifyReply, 
     const { rows } = await pool.query('SELECT id FROM users WHERE id = $1', [user_id]);
     if (rows.length === 0) {
         // Invalid session - clear it
-        request.session.user_id = null;
+        request.session.user_id = undefined;
         rep.status(HTTP_STATUS.UNAUTHORIZED).send({ error: { code: ERROR_CODES.INVALID_TOKEN, message: ERROR_MESSAGES[ERROR_CODES.INVALID_TOKEN] } });
         return;
     }
@@ -290,10 +290,18 @@ export function registerAuthRoutes(app: FastifyInstance, pool: Pool): void {
 
     // Add logout endpoint
     app.post(DASHBOARD_ROUTES.USER_LOGOUT, async (request, rep) => {
-        // Clear session
-        request.session.user_id = null;
-        await request.session.destroy();
+        try {
+            console.log('Logout request.session exists:', !!request.session);
+            // Clear session if it exists
+            if (request.session) {
+                request.session.user_id = undefined;
+            }
+            // For secure-session, we don't need destroy, just clear the data
 
-        return rep.send({ message: 'Logged out successfully' });
+            return rep.send({ message: 'Logged out successfully' });
+        } catch (error) {
+            console.log('Logout error:', error);
+            return sendServerError(request, rep, error, DASHBOARD_ROUTES.USER_LOGOUT, generateRequestId());
+        }
     });
 }

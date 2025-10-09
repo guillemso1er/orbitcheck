@@ -30,16 +30,13 @@ import {
 
 export interface ApiClientConfig {
   baseURL: string;
-  token: string;
 }
 
 export class ApiClient {
   private baseURL: string;
-  private token: string;
 
   constructor(config: ApiClientConfig) {
     this.baseURL = config.baseURL;
-    this.token = config.token;
   }
 
 
@@ -62,9 +59,7 @@ export class ApiClient {
   async getUsage(): Promise<GetUsage200> {
     const response = await getUsage({
       baseURL: this.baseURL,
-      headers: {
-        'Authorization': `Bearer ${this.token}`,
-      },
+      withCredentials: true,
     });
     return response.data;
   }
@@ -79,9 +74,7 @@ export class ApiClient {
   }): Promise<GetLogs200> {
     const response = await getLogs(params, {
       baseURL: this.baseURL,
-      headers: {
-        'Authorization': `Bearer ${this.token}`,
-      },
+      withCredentials: true,
     });
     return response.data;
   }
@@ -90,9 +83,7 @@ export class ApiClient {
   async listApiKeys(): Promise<ListApiKeys200> {
     const response = await listApiKeys({
       baseURL: this.baseURL,
-      headers: {
-        'Authorization': `Bearer ${this.token}`,
-      },
+      withCredentials: true,
     });
     return response.data;
   }
@@ -101,9 +92,7 @@ export class ApiClient {
     const body: CreateApiKeyBody = name ? { name } : {};
     const response = await createApiKey(body, {
       baseURL: this.baseURL,
-      headers: {
-        'Authorization': `Bearer ${this.token}`,
-      },
+      withCredentials: true,
     });
     return response.data;
   }
@@ -111,9 +100,7 @@ export class ApiClient {
   async revokeApiKey(id: string): Promise<RevokeApiKey200> {
     const response = await revokeApiKey(id, {
       baseURL: this.baseURL,
-      headers: {
-        'Authorization': `Bearer ${this.token}`,
-      },
+      withCredentials: true,
     });
     return response.data;
   }
@@ -126,9 +113,7 @@ export class ApiClient {
     }
     const response = await testWebhook(body, {
       baseURL: this.baseURL,
-      headers: {
-        'Authorization': `Bearer ${this.token}`,
-      },
+      withCredentials: true,
     });
     return response.data;
   }

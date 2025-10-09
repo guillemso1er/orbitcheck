@@ -15,6 +15,9 @@ const API_V1_URL = `${BASE_URL}/v1`;
 const HEADERS = {
     'Content-Type': 'application/json'
 };
+const NO_BODY_HEADERS = {
+    // No Content-Type for requests without body
+};
 
 export default function () {
     const check = k6check;
@@ -110,7 +113,7 @@ export default function () {
         '[List API Keys After Create] has one more key': (r) => r.status === 200 && JSON.parse(r.body).data.length === initialKeys.length + 1
     });
 
-    // Step 6-9: Validation endpoints (Runtime API - use API key)
+    // Step 6-10: Validation endpoints (Runtime API - use API key)
     const emailPayload = JSON.stringify({ email: 'test@example.com' });
     const resValidateEmail = http.post(`${API_V1_URL}/validate/email`, emailPayload, { headers: newRuntimeHeaders });
     check(resValidateEmail, {
@@ -121,7 +124,7 @@ export default function () {
         }
     });
 
-    const phonePayload = JSON.stringify({ phone: '+1234567890' });
+    const phonePayload = JSON.stringify({ phone: '+1234567890', request_otp: true });
     const resValidatePhone = http.post(`${API_V1_URL}/validate/phone`, phonePayload, { headers: newRuntimeHeaders });
     check(resValidatePhone, {
         '[Validate Phone] status 200': (r) => r.status === 200,
@@ -130,6 +133,21 @@ export default function () {
             return body.valid !== undefined;
         }
     });
+    const phoneBody = JSON.parse(resValidatePhone.body);
+    const verificationSid = phoneBody.verification_sid;
+
+    // Step 10: Verify phone OTP (Runtime API - use API key)
+    if (verificationSid) {
+        const verifyPayload = JSON.stringify({ verification_sid: verificationSid, code: '123456' });
+        const resVerifyPhone = http.post(`${API_V1_URL}/verify/phone`, verifyPayload, { headers: newRuntimeHeaders });
+        check(resVerifyPhone, {
+            '[Verify Phone] status 200': (r) => r.status === 200,
+            '[Verify Phone] has result': (r) => {
+                const body = JSON.parse(r.body);
+                return body.valid !== undefined;
+            }
+        });
+    }
 
     const addressPayload = JSON.stringify({
         address: {
@@ -159,7 +177,7 @@ export default function () {
         }
     });
 
-    // Step 10-12: Dedupe endpoints (Runtime API - use API key)
+    // Step 12-14: Dedupe endpoints (Runtime API - use API key)
     const dedupeCustomerPayload = JSON.stringify({
         email: 'customer@example.com',
         phone: '+1234567890',
@@ -177,6 +195,23 @@ export default function () {
     const dedupeCustomerBody = JSON.parse(resDedupeCustomer.body);
     const customerId = dedupeCustomerBody.canonical_id || null;
 
+    // Step 11: Merge deduplicated customers (Runtime API - use API key) - only if there are matches
+    if (customerId) {
+        const mergeCustomerPayload = JSON.stringify({
+            type: 'customer',
+            ids: [customerId],
+            canonical_id: customerId
+        });
+        const resMergeCustomer = http.post(`${API_V1_URL}/dedupe/merge`, mergeCustomerPayload, { headers: newRuntimeHeaders });
+        check(resMergeCustomer, {
+            '[Dedupe Merge Customer] status 200': (r) => r.status === 200,
+            '[Dedupe Merge Customer] success': (r) => {
+                const body = JSON.parse(r.body);
+                return body.success !== undefined;
+            }
+        });
+    }
+
     const dedupeAddressPayload = JSON.stringify({
         line1: '123 Main St',
         city: 'Anytown',
@@ -193,7 +228,7 @@ export default function () {
         }
     });
 
-    // Step 13: Evaluate order (Runtime API - use API key)
+    // Step 15: Evaluate order (Runtime API - use API key)
     const orderPayload = JSON.stringify({
         order_id: `k6-order-${Date.now()}`,
         customer: {
@@ -222,7 +257,7 @@ export default function () {
         }
     });
 
-    // Step 14-17: Rules endpoints (Management API - use PAT)
+    // Step 16-19: Rules endpoints (Management API - use PAT)
     const resGetRules = http.get(`${API_V1_URL}/rules`, { headers: mgmtHeaders });
     check(resGetRules, {
         '[Get Rules] status 200': (r) => r.status === 200,
@@ -259,7 +294,7 @@ export default function () {
         }
     });
 
-    // Step 18-19: Data endpoints (Management API - use PAT)
+    // Step 20-21: Data endpoints (Management API - use PAT)
     const resGetLogs = http.get(`${BASE_URL}/v1/data/logs`, { headers: mgmtHeaders });
     check(resGetLogs, {
         '[Get Logs] status 200': (r) => r.status === 200,
@@ -272,7 +307,7 @@ export default function () {
         '[Get Usage] has data': (r) => r.status === 200 && (() => { const body = JSON.parse(r.body); return body && typeof body === 'object'; })()
     });
 
-    // Step 20: Test webhook (Management API - use PAT)
+    // Step 22: Test webhook (Management API - use PAT)
     const webhookPayload = JSON.stringify({ url: 'https://httpbin.org/post', payload_type: 'validation' });
     const resTestWebhook = http.post(`${BASE_URL}/v1/webhooks/test`, webhookPayload, { headers: mgmtHeaders });
     check(resTestWebhook, {
@@ -283,22 +318,21 @@ export default function () {
         }
     });
 
-    // Step 21: Revoke API key (Management API - use PAT)
+    // Step 23: Revoke API key (Management API - use PAT)
     const keyId = createBody.id;
-    console.log('Revoking key id:', keyId);
-    const resRevokeKey = http.del(`${BASE_URL}/v1/api-keys/${keyId}`, null, { headers: mgmtHeaders });
+    const resRevokeKey = http.del(`${BASE_URL}/v1/api-keys/${keyId}`, null, { headers: Object.assign({}, NO_BODY_HEADERS, { 'Authorization': `Bearer ${patToken}` }) });
     check(resRevokeKey, {
         '[Revoke API Key] status 200': (r) => r.status === 200
     });
 
-    // Step 22: List API keys to verify revocation (Management API - use PAT)
+    // Step 24: List API keys to verify revocation (Management API - use PAT)
     const resListKeys3 = http.get(`${BASE_URL}/v1/api-keys`, { headers: mgmtHeaders });
     check(resListKeys3, {
         '[List API Keys After Revoke] status 200': (r) => r.status === 200,
         '[List API Keys After Revoke] still has revoked key': (r) => r.status === 200 && JSON.parse(r.body).data.length === initialKeys.length + 1
     });
 
-    // Step 23: Test HMAC authentication (optional) - Runtime API
+    // Step 25: Test HMAC authentication (optional) - Runtime API
     const timestamp = Date.now().toString();
     const nonce = Math.random().toString(36).substring(7);
 
@@ -312,9 +346,11 @@ export default function () {
     const resHmacTest = http.post(`${API_V1_URL}/validate/email`, emailPayload, { headers: hmacHeaders });
     console.log('HMAC test status:', resHmacTest.status); // Expected to fail without proper signature
 
-    // Step 24: Logout (clears session)
+    // Step 26: Logout (clears session)
     const resLogout = http.post(`${BASE_URL}/auth/logout`, null, {
-        headers: dashboardHeaders // Uses session cookie
+        headers: Object.assign({}, NO_BODY_HEADERS, {
+            'Cookie': sessionCookie.length > 0 ? `orbicheck_session=${sessionCookie[0]}` : ''
+        })
     });
     check(resLogout, {
         '[Logout] status 200': (r) => r.status === 200

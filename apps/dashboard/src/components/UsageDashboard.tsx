@@ -13,7 +13,6 @@ import {
 } from 'chart.js';
 import React, { useCallback, useEffect, useState } from 'react';
 import { Bar, Line, Pie } from 'react-chartjs-2';
-import { useAuth } from '../AuthContext';
 import { API_BASE, UI_STRINGS } from '../constants';
 
 ChartJS.register(
@@ -172,7 +171,6 @@ const CacheHitRatioChart: React.FC<{ data: UsageData }> = ({ data }) => {
 };
 
 const UsageDashboard: React.FC = () => {
-  const { token } = useAuth();
   const [data, setData] = useState<UsageData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -183,8 +181,7 @@ const UsageDashboard: React.FC = () => {
       setError(null); // reset any previous error
 
       const apiClient = createApiClient({
-        baseURL: API_BASE,
-        token: token || ''
+        baseURL: API_BASE
       });
 
       const usageData = await apiClient.getUsage();
@@ -219,7 +216,7 @@ const UsageDashboard: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [token]);
+  }, []);
 
   useEffect(() => {
     fetchUsage();

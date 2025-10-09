@@ -1,6 +1,5 @@
 import { createApiClient } from '@orbicheck/contracts';
 import React, { useState } from 'react';
-import { useAuth } from '../AuthContext';
 import { API_BASE, UI_STRINGS } from '../constants';
 
 interface WebhookTestResult {
@@ -161,7 +160,6 @@ const ResultTabs: React.FC<{
 );
 
 const WebhookTester: React.FC = () => {
-  const { token } = useAuth();
   const [url, setUrl] = useState('');
   const [payloadType, setPayloadType] = useState<'validation' | 'order' | 'custom'>('validation');
   const [customPayload, setCustomPayload] = useState('');
@@ -180,8 +178,7 @@ const WebhookTester: React.FC = () => {
     setLoading(true);
     try {
       const apiClient = createApiClient({
-        baseURL: API_BASE,
-        token: token || ''
+        baseURL: API_BASE
       });
 
       const data = await apiClient.testWebhook(url, payloadType, payloadType === 'custom' && customPayload ? JSON.parse(customPayload) : undefined);

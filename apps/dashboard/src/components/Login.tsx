@@ -70,8 +70,7 @@ const Login: React.FC = () => {
 
     try {
       const apiClient = createApiClient({
-        baseURL: API_BASE,
-        token: '' // No token needed for auth
+        baseURL: API_BASE
       });
 
       let data;
@@ -87,13 +86,13 @@ const Login: React.FC = () => {
         });
       }
 
-      if (data.token && data.user) {
+      if (data.user) {
         // Ensure the user object matches the expected interface
         const user: User = {
           id: data.user.id || '',
           email: data.user.email || ''
         };
-        login(data.token, user);
+        login(user);
         navigate('/api-keys');
       } else {
         throw new Error('Invalid response from server');

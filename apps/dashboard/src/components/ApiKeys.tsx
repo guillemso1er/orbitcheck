@@ -12,7 +12,7 @@ interface ApiKey {
 }
 
 interface ApiKeysProps {
-  token: string;
+  token?: string;
 }
 
 const CreateApiKeyModal: React.FC<{
@@ -144,7 +144,7 @@ const ApiKeysTable: React.FC<{
 );
 
 
-const ApiKeys: React.FC<ApiKeysProps> = ({ token }) => {
+const ApiKeys: React.FC<ApiKeysProps> = () => {
   const [keys, setKeys] = useState<ApiKey[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -155,13 +155,8 @@ const ApiKeys: React.FC<ApiKeysProps> = ({ token }) => {
   const fetchKeys = useCallback(async () => {
     try {
       setLoading(true);
-      if (!token) {
-        setLoading(false);
-        return;
-      }
       const apiClient = createApiClient({
-        baseURL: API_BASE,
-        token: token
+        baseURL: API_BASE
       });
       const data = await apiClient.listApiKeys();
       setKeys((data.data || []).map((key: ApiKey) => ({
@@ -176,7 +171,7 @@ const ApiKeys: React.FC<ApiKeysProps> = ({ token }) => {
     } finally {
       setLoading(false);
     }
-  }, [token]);
+  }, []);
 
   useEffect(() => {
     fetchKeys();
@@ -186,8 +181,7 @@ const ApiKeys: React.FC<ApiKeysProps> = ({ token }) => {
     try {
       setCreating(true);
       const apiClient = createApiClient({
-        baseURL: API_BASE,
-        token: token
+        baseURL: API_BASE
       });
       const data = await apiClient.createApiKey(name);
       setNewKey({ prefix: data.prefix || '', full_key: data.full_key || '' });
@@ -204,8 +198,7 @@ const ApiKeys: React.FC<ApiKeysProps> = ({ token }) => {
     if (!confirm('Are you sure you want to revoke this API key? This action cannot be undone.')) return;
     try {
       const apiClient = createApiClient({
-        baseURL: API_BASE,
-        token: token
+        baseURL: API_BASE
       });
       await apiClient.revokeApiKey(id);
       fetchKeys();
@@ -224,8 +217,7 @@ const ApiKeys: React.FC<ApiKeysProps> = ({ token }) => {
     try {
       setCreating(true);
       const apiClient = createApiClient({
-        baseURL: API_BASE,
-        token
+        baseURL: API_BASE
       });
 
       // Run both operations in parallel so revoke is called immediately (satisfies the test),
