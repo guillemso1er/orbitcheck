@@ -9,13 +9,10 @@ const shorthands = undefined;
  * @returns {Promise<void> | void}
  */
 const up = (pgm) => {
-  // Drop the existing trigger first
-  pgm.sql(`DROP TRIGGER IF EXISTS log_usage_trigger ON logs;`);
+  // Add reason_counts to usage_daily for per-rule metrics
+  pgm.sql(`ALTER TABLE usage_daily ADD COLUMN IF NOT EXISTS reason_counts jsonb DEFAULT '{}';`);
 
-  // Drop the existing function
-  pgm.sql(`DROP FUNCTION IF EXISTS update_usage_reason_counts();`);
-
-  // Create the corrected function
+  // Trigger to update reason_counts on log insert
   pgm.sql(`
     CREATE OR REPLACE FUNCTION update_usage_reason_counts() RETURNS trigger AS $$
     DECLARE
@@ -48,7 +45,6 @@ const up = (pgm) => {
     $$ LANGUAGE plpgsql;
   `);
 
-  // Recreate the trigger
   pgm.sql(`
     CREATE TRIGGER log_usage_trigger AFTER INSERT ON logs FOR EACH ROW EXECUTE FUNCTION update_usage_reason_counts();
   `);
@@ -59,6 +55,10 @@ const up = (pgm) => {
  * @param run {() => void | undefined}
  * @returns {Promise<void> | void}
  */
-const down = (pgm) => {};
+const down = (pgm) => {
+  pgm.sql(`DROP TRIGGER IF EXISTS log_usage_trigger ON logs;`);
+  pgm.sql(`DROP FUNCTION IF EXISTS update_usage_reason_counts();`);
+  pgm.sql(`ALTER TABLE usage_daily DROP COLUMN IF EXISTS reason_counts;`);
+};
 
 module.exports = { shorthands, up, down };
