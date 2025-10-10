@@ -177,7 +177,66 @@ export default function () {
         }
     });
 
-    // Step 12-14: Dedupe endpoints (Runtime API - use API key)
+    // Step 11: Batch validation (Runtime API - use API key)
+    const batchValidatePayload = JSON.stringify({
+        type: 'email',
+        data: ['batch1@example.com', 'batch2@example.com', 'batch3@example.com']
+    });
+    const resBatchValidate = http.post(`${API_V1_URL}/batch/validate`, batchValidatePayload, { headers: newRuntimeHeaders });
+    check(resBatchValidate, {
+        '[Batch Validate] status 202': (r) => r.status === 202,
+        '[Batch Validate] has job_id': (r) => {
+            const body = JSON.parse(r.body);
+            return body.job_id && body.status === 'pending';
+        }
+    });
+    const batchValidateBody = JSON.parse(resBatchValidate.body);
+    const validateJobId = batchValidateBody.job_id;
+
+    // Step 12: Batch deduplication (Runtime API - use API key)
+    const batchDedupePayload = JSON.stringify({
+        type: 'customers',
+        data: [
+            { email: 'batch-customer1@example.com', first_name: 'John', last_name: 'Doe' },
+            { email: 'batch-customer2@example.com', first_name: 'Jane', last_name: 'Smith' }
+        ]
+    });
+    const resBatchDedupe = http.post(`${API_V1_URL}/batch/dedupe`, batchDedupePayload, { headers: newRuntimeHeaders });
+    check(resBatchDedupe, {
+        '[Batch Dedupe] status 202': (r) => r.status === 202,
+        '[Batch Dedupe] has job_id': (r) => {
+            const body = JSON.parse(r.body);
+            return body.job_id && body.status === 'pending';
+        }
+    });
+    const batchDedupeBody = JSON.parse(resBatchDedupe.body);
+    const dedupeJobId = batchDedupeBody.job_id;
+
+    // Step 13: Check job status for validation job (Runtime API - use API key)
+    if (validateJobId) {
+        const resGetValidateJob = http.get(`${API_V1_URL}/jobs/${validateJobId}`, { headers: newRuntimeHeaders });
+        check(resGetValidateJob, {
+            '[Get Validate Job Status] status 200': (r) => r.status === 200,
+            '[Get Validate Job Status] has status': (r) => {
+                const body = JSON.parse(r.body);
+                return body.status && body.job_id === validateJobId;
+            }
+        });
+    }
+
+    // Step 14: Check job status for dedupe job (Runtime API - use API key)
+    if (dedupeJobId) {
+        const resGetDedupeJob = http.get(`${API_V1_URL}/jobs/${dedupeJobId}`, { headers: newRuntimeHeaders });
+        check(resGetDedupeJob, {
+            '[Get Dedupe Job Status] status 200': (r) => r.status === 200,
+            '[Get Dedupe Job Status] has status': (r) => {
+                const body = JSON.parse(r.body);
+                return body.status && body.job_id === dedupeJobId;
+            }
+        });
+    }
+
+    // Step 18-20: Dedupe endpoints (Runtime API - use API key)
     const dedupeCustomerPayload = JSON.stringify({
         email: 'customer@example.com',
         phone: '+1234567890',
@@ -195,7 +254,7 @@ export default function () {
     const dedupeCustomerBody = JSON.parse(resDedupeCustomer.body);
     const customerId = dedupeCustomerBody.canonical_id || null;
 
-    // Step 11: Merge deduplicated customers (Runtime API - use API key) - only if there are matches
+    // Step 16: Merge deduplicated customers (Runtime API - use API key) - only if there are matches
     if (customerId) {
         const mergeCustomerPayload = JSON.stringify({
             type: 'customer',
@@ -228,7 +287,7 @@ export default function () {
         }
     });
 
-    // Step 15: Evaluate order (Runtime API - use API key)
+    // Step 21: Evaluate order (Runtime API - use API key)
     const orderPayload = JSON.stringify({
         order_id: `k6-order-${Date.now()}`,
         customer: {
@@ -257,7 +316,7 @@ export default function () {
         }
     });
 
-    // Step 16-19: Rules endpoints (Management API - use PAT)
+    // Step 26-29: Rules endpoints (Management API - use PAT)
     const resGetRules = http.get(`${API_V1_URL}/rules`, { headers: mgmtHeaders });
     check(resGetRules, {
         '[Get Rules] status 200': (r) => r.status === 200,
@@ -294,7 +353,7 @@ export default function () {
         }
     });
 
-    // Step 20-21: Data endpoints (Management API - use PAT)
+    // Step 30-31: Data endpoints (Management API - use PAT)
     const resGetLogs = http.get(`${BASE_URL}/v1/data/logs`, { headers: mgmtHeaders });
     check(resGetLogs, {
         '[Get Logs] status 200': (r) => r.status === 200,
@@ -307,7 +366,7 @@ export default function () {
         '[Get Usage] has data': (r) => r.status === 200 && (() => { const body = JSON.parse(r.body); return body && typeof body === 'object'; })()
     });
 
-    // Step 22: Test webhook (Management API - use PAT)
+    // Step 32: Test webhook (Management API - use PAT)
     const webhookPayload = JSON.stringify({ url: 'https://httpbin.org/post', payload_type: 'validation' });
     const resTestWebhook = http.post(`${BASE_URL}/v1/webhooks/test`, webhookPayload, { headers: mgmtHeaders });
     check(resTestWebhook, {
@@ -318,21 +377,21 @@ export default function () {
         }
     });
 
-    // Step 23: Revoke API key (Management API - use PAT)
+    // Step 33: Revoke API key (Management API - use PAT)
     const keyId = createBody.id;
     const resRevokeKey = http.del(`${BASE_URL}/v1/api-keys/${keyId}`, null, { headers: Object.assign({}, NO_BODY_HEADERS, { 'Authorization': `Bearer ${patToken}` }) });
     check(resRevokeKey, {
         '[Revoke API Key] status 200': (r) => r.status === 200
     });
 
-    // Step 24: List API keys to verify revocation (Management API - use PAT)
+    // Step 34: List API keys to verify revocation (Management API - use PAT)
     const resListKeys3 = http.get(`${BASE_URL}/v1/api-keys`, { headers: mgmtHeaders });
     check(resListKeys3, {
         '[List API Keys After Revoke] status 200': (r) => r.status === 200,
         '[List API Keys After Revoke] still has revoked key': (r) => r.status === 200 && JSON.parse(r.body).data.length === initialKeys.length + 1
     });
 
-    // Step 25: Test HMAC authentication (optional) - Runtime API
+    // Step 35: Test HMAC authentication (optional) - Runtime API
     const timestamp = Date.now().toString();
     const nonce = Math.random().toString(36).substring(7);
 
@@ -346,7 +405,7 @@ export default function () {
     const resHmacTest = http.post(`${API_V1_URL}/validate/email`, emailPayload, { headers: hmacHeaders });
     console.log('HMAC test status:', resHmacTest.status); // Expected to fail without proper signature
 
-    // Step 26: Logout (clears session)
+    // Step 36: Logout (clears session)
     const resLogout = http.post(`${BASE_URL}/auth/logout`, null, {
         headers: Object.assign({}, NO_BODY_HEADERS, {
             'Cookie': sessionCookie.length > 0 ? `orbicheck_session=${sessionCookie[0]}` : ''

@@ -1182,6 +1182,200 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
+  # Batch Operations
+  /v1/batch/validate:
+    post:
+      tags:
+        - Runtime API
+      summary: Batch validate data
+      description: Performs batch validation of emails, phones, addresses, or tax IDs asynchronously
+      operationId: batchValidate
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - type
+                - data
+              properties:
+                type:
+                  type: string
+                  enum: [email, phone, address, tax-id]
+                  description: The type of data to validate
+                data:
+                  type: array
+                  items:
+                    type: object
+                    description: Data items to validate (format depends on type)
+                  maxItems: 10000
+                  description: Array of items to validate
+      responses:
+        '202':
+          description: Batch validation job started
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  job_id:
+                    type: string
+                    description: Unique job identifier
+                  status:
+                    type: string
+                    enum: [pending]
+                    description: Job status
+                  request_id:
+                    type: string
+                    description: Request identifier
+        '400':
+          description: Invalid input data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /v1/batch/dedupe:
+    post:
+      tags:
+        - Runtime API
+      summary: Batch deduplicate data
+      description: Performs batch deduplication of customers or addresses asynchronously
+      operationId: batchDedupe
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - type
+                - data
+              properties:
+                type:
+                  type: string
+                  enum: [customers, addresses]
+                  description: The type of data to deduplicate
+                data:
+                  type: array
+                  items:
+                    type: object
+                    description: Data items to deduplicate (format depends on type)
+                  maxItems: 10000
+                  description: Array of items to deduplicate
+      responses:
+        '202':
+          description: Batch deduplication job started
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  job_id:
+                    type: string
+                    description: Unique job identifier
+                  status:
+                    type: string
+                    enum: [pending]
+                    description: Job status
+                  request_id:
+                    type: string
+                    description: Request identifier
+        '400':
+          description: Invalid input data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /v1/jobs/{id}:
+    get:
+      tags:
+        - Runtime API
+      summary: Get job status
+      description: Retrieves the status and results of an asynchronous job
+      operationId: getJobStatus
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Job ID
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Job status and results
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  job_id:
+                    type: string
+                    description: Unique job identifier
+                  status:
+                    type: string
+                    enum: [pending, processing, completed, failed]
+                    description: Current job status
+                  progress:
+                    type: object
+                    properties:
+                      total:
+                        type: integer
+                        description: Total items to process
+                      processed:
+                        type: integer
+                        description: Items processed so far
+                      percentage:
+                        type: number
+                        description: Completion percentage (0-100)
+                    nullable: true
+                    description: Progress information (only available during processing)
+                  result_url:
+                    type: string
+                    nullable: true
+                    description: URL to download results (only available when completed)
+                  error:
+                    type: string
+                    nullable: true
+                    description: Error message (only available when failed)
+                  created_at:
+                    type: string
+                    format: date-time
+                    description: Job creation timestamp
+                  updated_at:
+                    type: string
+                    format: date-time
+                    description: Last update timestamp
+                  request_id:
+                    type: string
+                    description: Request identifier
+        '404':
+          description: Job not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
 components:
   securitySchemes:
     BearerAuth:

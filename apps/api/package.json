@@ -19,7 +19,7 @@
         "@aws-sdk/client-s3": "^3.896.0",
         "@fastify/cookie": "^11.0.2",
         "@fastify/cors": "11.1.0",
-        "@immobiliarelabs/fastify-metrics": "^2.0.0",
+        "@immobiliarelabs/fastify-metrics": "^7.0.0",
         "@fastify/secure-session": "^8.2.0",
         "@fastify/session": "^11.1.0",
         "@fastify/swagger": "^9.5.2",

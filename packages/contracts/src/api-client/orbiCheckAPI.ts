@@ -823,6 +823,157 @@ export type TestWebhook200 = {
 };
 
 /**
+ * The type of data to validate
+ */
+export type BatchValidateBodyType = typeof BatchValidateBodyType[keyof typeof BatchValidateBodyType];
+
+
+// eslint-disable-next-line @typescript-eslint/no-redeclare
+export const BatchValidateBodyType = {
+  email: 'email',
+  phone: 'phone',
+  address: 'address',
+  'tax-id': 'tax-id',
+} as const;
+
+/**
+ * Data items to validate (format depends on type)
+ */
+export type BatchValidateBodyDataItem = { [key: string]: unknown };
+
+export type BatchValidateBody = {
+  /** The type of data to validate */
+  type: BatchValidateBodyType;
+  /**
+   * Array of items to validate
+   * @maxItems 10000
+   */
+  data: BatchValidateBodyDataItem[];
+};
+
+/**
+ * Job status
+ */
+export type BatchValidate202Status = typeof BatchValidate202Status[keyof typeof BatchValidate202Status];
+
+
+// eslint-disable-next-line @typescript-eslint/no-redeclare
+export const BatchValidate202Status = {
+  pending: 'pending',
+} as const;
+
+export type BatchValidate202 = {
+  /** Unique job identifier */
+  job_id?: string;
+  /** Job status */
+  status?: BatchValidate202Status;
+  /** Request identifier */
+  request_id?: string;
+};
+
+/**
+ * The type of data to deduplicate
+ */
+export type BatchDedupeBodyType = typeof BatchDedupeBodyType[keyof typeof BatchDedupeBodyType];
+
+
+// eslint-disable-next-line @typescript-eslint/no-redeclare
+export const BatchDedupeBodyType = {
+  customers: 'customers',
+  addresses: 'addresses',
+} as const;
+
+/**
+ * Data items to deduplicate (format depends on type)
+ */
+export type BatchDedupeBodyDataItem = { [key: string]: unknown };
+
+export type BatchDedupeBody = {
+  /** The type of data to deduplicate */
+  type: BatchDedupeBodyType;
+  /**
+   * Array of items to deduplicate
+   * @maxItems 10000
+   */
+  data: BatchDedupeBodyDataItem[];
+};
+
+/**
+ * Job status
+ */
+export type BatchDedupe202Status = typeof BatchDedupe202Status[keyof typeof BatchDedupe202Status];
+
+
+// eslint-disable-next-line @typescript-eslint/no-redeclare
+export const BatchDedupe202Status = {
+  pending: 'pending',
+} as const;
+
+export type BatchDedupe202 = {
+  /** Unique job identifier */
+  job_id?: string;
+  /** Job status */
+  status?: BatchDedupe202Status;
+  /** Request identifier */
+  request_id?: string;
+};
+
+/**
+ * Current job status
+ */
+export type GetJobStatus200Status = typeof GetJobStatus200Status[keyof typeof GetJobStatus200Status];
+
+
+// eslint-disable-next-line @typescript-eslint/no-redeclare
+export const GetJobStatus200Status = {
+  pending: 'pending',
+  processing: 'processing',
+  completed: 'completed',
+  failed: 'failed',
+} as const;
+
+/**
+ * Progress information (only available during processing)
+ * @nullable
+ */
+export type GetJobStatus200Progress = {
+  /** Total items to process */
+  total?: number;
+  /** Items processed so far */
+  processed?: number;
+  /** Completion percentage (0-100) */
+  percentage?: number;
+} | null;
+
+export type GetJobStatus200 = {
+  /** Unique job identifier */
+  job_id?: string;
+  /** Current job status */
+  status?: GetJobStatus200Status;
+  /**
+   * Progress information (only available during processing)
+   * @nullable
+   */
+  progress?: GetJobStatus200Progress;
+  /**
+   * URL to download results (only available when completed)
+   * @nullable
+   */
+  result_url?: string | null;
+  /**
+   * Error message (only available when failed)
+   * @nullable
+   */
+  error?: string | null;
+  /** Job creation timestamp */
+  created_at?: string;
+  /** Last update timestamp */
+  updated_at?: string;
+  /** Request identifier */
+  request_id?: string;
+};
+
+/**
  * Creates a new user account with default project and API key
  * @summary Register new user
  */
@@ -1090,6 +1241,44 @@ export const testWebhook = <TData = AxiosResponse<TestWebhook200>>(
     );
   }
 
+/**
+ * Performs batch validation of emails, phones, addresses, or tax IDs asynchronously
+ * @summary Batch validate data
+ */
+export const batchValidate = <TData = AxiosResponse<BatchValidate202>>(
+    batchValidateBody: BatchValidateBody, options?: AxiosRequestConfig
+ ): Promise<TData> => {
+    return axios.post(
+      `/v1/batch/validate`,
+      batchValidateBody,options
+    );
+  }
+
+/**
+ * Performs batch deduplication of customers or addresses asynchronously
+ * @summary Batch deduplicate data
+ */
+export const batchDedupe = <TData = AxiosResponse<BatchDedupe202>>(
+    batchDedupeBody: BatchDedupeBody, options?: AxiosRequestConfig
+ ): Promise<TData> => {
+    return axios.post(
+      `/v1/batch/dedupe`,
+      batchDedupeBody,options
+    );
+  }
+
+/**
+ * Retrieves the status and results of an asynchronous job
+ * @summary Get job status
+ */
+export const getJobStatus = <TData = AxiosResponse<GetJobStatus200>>(
+    id: string, options?: AxiosRequestConfig
+ ): Promise<TData> => {
+    return axios.get(
+      `/v1/jobs/${id}`,options
+    );
+  }
+
 export type RegisterUserResult = AxiosResponse<RegisterUser201>
 export type LoginUserResult = AxiosResponse<LoginUser200>
 export type LogoutUserResult = AxiosResponse<LogoutUser200>
@@ -1111,3 +1300,6 @@ export type GetRulesResult = AxiosResponse<GetRules200>
 export type GetReasonCodeCatalogResult = AxiosResponse<GetReasonCodeCatalog200>
 export type RegisterCustomRulesResult = AxiosResponse<RegisterCustomRules200>
 export type TestWebhookResult = AxiosResponse<TestWebhook200>
+export type BatchValidateResult = AxiosResponse<BatchValidate202>
+export type BatchDedupeResult = AxiosResponse<BatchDedupe202>
+export type GetJobStatusResult = AxiosResponse<GetJobStatus200>

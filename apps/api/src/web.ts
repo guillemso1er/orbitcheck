@@ -6,8 +6,10 @@ import type { Pool } from "pg";
 import { auth, idempotency, rateLimit } from "./hooks.js";
 import { registerApiKeysRoutes } from './routes/api-keys.js';
 import { registerAuthRoutes, verifyPAT, verifySession } from "./routes/auth.js";
+import { registerBatchRoutes } from './routes/batch.js';
 import { registerDataRoutes } from './routes/data.js';
 import { registerDedupeRoutes } from './routes/dedupe.js';
+import { registerJobRoutes } from './routes/jobs.js';
 import { registerOrderRoutes } from './routes/orders.js';
 import { registerRulesRoutes } from './routes/rules.js';
 import { registerValidationRoutes } from './routes/validation.js';
@@ -54,7 +56,9 @@ async function authenticateRequest(request: FastifyRequest, rep: FastifyReply, p
     const isRuntimeRoute = url.startsWith('/v1/dedupe') ||
         url.startsWith('/v1/orders') ||
         url.startsWith('/v1/validate') ||
-        url.startsWith('/v1/verify');
+        url.startsWith('/v1/verify') ||
+        url.startsWith('/v1/batch') ||
+        url.startsWith('/v1/jobs');
 
     // Log the auth method being used for debugging
     request.log.info({ url, isDashboardRoute, isMgmtRoute, isRuntimeRoute }, 'Auth method determination');
@@ -108,7 +112,9 @@ async function applyRateLimitingAndIdempotency(request: FastifyRequest, rep: Fas
     const isRuntimeRoute = url.startsWith('/v1/dedupe') ||
         url.startsWith('/v1/orders') ||
         url.startsWith('/v1/validate') ||
-        url.startsWith('/v1/verify');
+        url.startsWith('/v1/verify') ||
+        url.startsWith('/v1/batch') ||
+        url.startsWith('/v1/jobs');
 
     if (isRuntimeRoute) {
         await rateLimit(request, rep, redis);
@@ -143,4 +149,6 @@ export function registerRoutes(app: FastifyInstance, pool: Pool, redis: IORedisT
     registerDataRoutes(app, pool);
     registerWebhookRoutes(app, pool);
     registerRulesRoutes(app, pool);
+    registerBatchRoutes(app, pool, redis);
+    registerJobRoutes(app, pool);
 }

@@ -21,6 +21,8 @@ import { Pool } from "pg";
 
 import { runLogRetention } from './cron/retention.js';
 import { environment } from "./environment.js";
+import { batchDedupeProcessor } from './jobs/batchDedupe.js';
+import { batchValidationProcessor } from './jobs/batchValidation.js';
 import { disposableProcessor } from './jobs/refreshDisposable.js';
 import { openapiValidation } from "./plugins/openapi.js";
 import startupGuard from './startup-guard.js';
@@ -342,6 +344,15 @@ export async function start(): Promise<void> {
 
         const disposableQueue = new Queue('disposable', { connection: appRedis });
         new Worker('disposable', disposableProcessor, { connection: appRedis });
+
+        // Batch operation workers
+        new Worker('batch_validation', async (job) => {
+            return batchValidationProcessor(job as any, pool!, appRedis!);
+        }, { connection: appRedis! });
+
+        new Worker('batch_dedupe', async (job) => {
+            return batchDedupeProcessor(job as any, pool!);
+        }, { connection: appRedis! });
 
         await disposableQueue.add('refresh', {}, {
             repeat: { pattern: '0 0 * * *' }

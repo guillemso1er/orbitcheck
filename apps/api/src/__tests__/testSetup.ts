@@ -142,6 +142,41 @@ jest.mock('@orbicheck/contracts', () => ({
     WEBHOOKS: {
       TEST_WEBHOOK: '/v1/webhooks/test',
     },
+    DATA: {
+      GET_EVENT_LOGS: '/v1/data/logs',
+      GET_USAGE_STATISTICS: '/v1/data/usage',
+    },
+    RULES: {
+      GET_AVAILABLE_RULES: '/v1/rules',
+      GET_REASON_CODE_CATALOG: '/v1/rules/catalog',
+      REGISTER_CUSTOM_RULES: '/v1/rules/register',
+    },
+  },
+  API_V1_ROUTES: {
+    BATCH: {
+      BATCH_VALIDATE_DATA: '/v1/batch/validate',
+      BATCH_DEDUPLICATE_DATA: '/v1/batch/dedupe',
+    },
+    JOBS: {
+      GET_JOB_STATUS: '/v1/jobs/:id',
+    },
+    VALIDATE: {
+      VALIDATE_EMAIL_ADDRESS: '/v1/validate/email',
+      VALIDATE_PHONE_NUMBER: '/v1/validate/phone',
+      VALIDATE_ADDRESS: '/v1/validate/address',
+      VALIDATE_TAX_ID: '/v1/validate/tax-id',
+    },
+    VERIFY: {
+      VERIFY_PHONE_OTP: '/v1/verify/phone',
+    },
+    DEDUPE: {
+      DEDUPLICATE_ADDRESS: '/v1/dedupe/address',
+      DEDUPLICATE_CUSTOMER: '/v1/dedupe/customer',
+      MERGE_DEDUPLICATED_RECORDS: '/v1/dedupe/merge',
+    },
+    ORDERS: {
+      EVALUATE_ORDER_FOR_RISK_AND_RULES: '/v1/orders/evaluate',
+    },
   },
 }));
 
@@ -249,7 +284,29 @@ export const createApp = async (): Promise<FastifyInstance> => {
   const app = Fastify({ logger: false });
 
   // Add mock session to request
-  app.decorateRequest('session', mockSession as any);
+  app.decorateRequest('session', {
+    getter() {
+      return mockSession;
+    },
+    setter(value: any) {
+      Object.assign(mockSession, value);
+    }
+  });
+
+  // Mock auth hook to set project_id
+  app.addHook('preHandler', (request, reply, done) => {
+    (request as any).project_id = 'test_project';
+    done();
+  });
+
+  // Register routes needed for tests
+  const { registerBatchRoutes } = await import('../routes/batch.js');
+  const { registerJobRoutes } = await import('../routes/jobs.js');
+  const { registerValidationRoutes } = await import('../routes/validation.js');
+
+  registerBatchRoutes(app, mockPool as any, mockRedisInstance as any);
+  registerJobRoutes(app, mockPool as any);
+  registerValidationRoutes(app, mockPool as any, mockRedisInstance as any);
 
   return app;
 };

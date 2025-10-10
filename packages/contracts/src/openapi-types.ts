@@ -408,6 +408,66 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/batch/validate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Batch validate data
+         * @description Performs batch validation of emails, phones, addresses, or tax IDs asynchronously
+         */
+        post: operations["batchValidate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/batch/dedupe": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Batch deduplicate data
+         * @description Performs batch deduplication of customers or addresses asynchronously
+         */
+        post: operations["batchDedupe"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/jobs/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get job status
+         * @description Retrieves the status and results of an asynchronous job
+         */
+        get: operations["getJobStatus"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1635,6 +1695,200 @@ export interface operations {
             };
             /** @description Failed to send request */
             500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    batchValidate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /**
+                     * @description The type of data to validate
+                     * @enum {string}
+                     */
+                    type: "email" | "phone" | "address" | "tax-id";
+                    /** @description Array of items to validate */
+                    data: Record<string, never>[];
+                };
+            };
+        };
+        responses: {
+            /** @description Batch validation job started */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Unique job identifier */
+                        job_id?: string;
+                        /**
+                         * @description Job status
+                         * @enum {string}
+                         */
+                        status?: "pending";
+                        /** @description Request identifier */
+                        request_id?: string;
+                    };
+                };
+            };
+            /** @description Invalid input data */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    batchDedupe: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /**
+                     * @description The type of data to deduplicate
+                     * @enum {string}
+                     */
+                    type: "customers" | "addresses";
+                    /** @description Array of items to deduplicate */
+                    data: Record<string, never>[];
+                };
+            };
+        };
+        responses: {
+            /** @description Batch deduplication job started */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Unique job identifier */
+                        job_id?: string;
+                        /**
+                         * @description Job status
+                         * @enum {string}
+                         */
+                        status?: "pending";
+                        /** @description Request identifier */
+                        request_id?: string;
+                    };
+                };
+            };
+            /** @description Invalid input data */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    getJobStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Job ID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Job status and results */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Unique job identifier */
+                        job_id?: string;
+                        /**
+                         * @description Current job status
+                         * @enum {string}
+                         */
+                        status?: "pending" | "processing" | "completed" | "failed";
+                        /** @description Progress information (only available during processing) */
+                        progress?: {
+                            /** @description Total items to process */
+                            total?: number;
+                            /** @description Items processed so far */
+                            processed?: number;
+                            /** @description Completion percentage (0-100) */
+                            percentage?: number;
+                        } | null;
+                        /** @description URL to download results (only available when completed) */
+                        result_url?: string | null;
+                        /** @description Error message (only available when failed) */
+                        error?: string | null;
+                        /**
+                         * Format: date-time
+                         * @description Job creation timestamp
+                         */
+                        created_at?: string;
+                        /**
+                         * Format: date-time
+                         * @description Last update timestamp
+                         */
+                        updated_at?: string;
+                        /** @description Request identifier */
+                        request_id?: string;
+                    };
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Job not found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
