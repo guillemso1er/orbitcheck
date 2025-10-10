@@ -1,3 +1,4 @@
+import { MGMT_V1_ROUTES } from "@orbicheck/contracts";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import fetch from "node-fetch";
 import type { Pool } from "pg";
@@ -5,7 +6,6 @@ import type { Pool } from "pg";
 import { ERROR_CODES, ERROR_MESSAGES, EVENT_TYPES, HTTP_STATUS, ORDER_ACTIONS, PAYLOAD_TYPES, REASON_CODES } from "../constants.js";
 import { logEvent } from "../hooks.js";
 import { generateRequestId, rateLimitResponse, securityHeader, sendError, unauthorizedResponse } from "./utils.js";
-import { MGMT_V1_ROUTES } from "@orbicheck/contracts";
 // Import route constants from contracts package
 // TODO: Update to use @orbicheck/contracts export once build issues are resolved
 const ROUTES = {

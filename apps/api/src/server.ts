@@ -6,10 +6,10 @@ import path from 'node:path';
 
 import cookie from "@fastify/cookie";
 import cors from "@fastify/cors";
-import metrics from "@immobiliarelabs/fastify-metrics";
 import secureSession from '@fastify/secure-session';
 import fastifySwagger from '@fastify/swagger';
 import fastifySwaggerUi from '@fastify/swagger-ui';
+import metrics from "@immobiliarelabs/fastify-metrics";
 import * as Sentry from '@sentry/node';
 import { Queue, Worker } from 'bullmq';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
@@ -141,9 +141,6 @@ export async function build(pool: Pool, redis: IORedisType): Promise<FastifyInst
         }
     });
 
-    // Enable metrics collection (before routes to avoid auth)
-    await app.register(metrics as any);
-
     // Add OIDC support for dashboard authentication (if configured)
     if (environment.OIDC_ENABLED && environment.OIDC_CLIENT_ID && environment.OIDC_CLIENT_SECRET) {
         // Register OIDC plugin here if using one
@@ -153,6 +150,9 @@ export async function build(pool: Pool, redis: IORedisType): Promise<FastifyInst
 
     // Register all API routes with shared pool and redis instances
     registerRoutes(app, pool, redis);
+
+    // Enable metrics collection (after routes to ensure auth hooks apply)
+    await app.register(metrics as any);
 
     // Register OpenAPI validation (after routes are registered)
     await openapiValidation(app);

@@ -68,53 +68,53 @@ All POST/GET; auth via Bearer API key; rate limited (300/min); idempotent.
 - Order: order.customer_dedupe_match, order.address_dedupe_match, order.duplicate_detected, order.po_box_block, order.address_mismatch, order.invalid_email, order.invalid_phone, order.cod_risk, order.high_value, order.server_error.
 - Webhook: webhook.send_failed.
 
-### 1. POST /validate/email
+### 1. POST /v1/validate/email
 **Body:** { "email": "string" }
 **Response (200):** { "valid": boolean, "normalized": "string", "disposable": boolean, "mx_found": boolean, "reason_codes": ["string"], "request_id": "string", "ttl_seconds": integer }
 **Example Request:** `{ "email": "test@example.com" }`
 **Example Response:** `{ "valid": true, "normalized": "test@example.com", "disposable": false, "mx_found": true, "reason_codes": [], "request_id": "uuid", "ttl_seconds": 2592000 }`
 
-### 2. POST /validate/phone
+### 2. POST /v1/validate/phone
 **Body:** { "phone": "string", "country"?: "string", "request_otp"?: boolean }
 **Response (200):** { "valid": boolean, "e164": "string", "country": "string|null", "reason_codes": ["string"], "request_id": "string", "ttl_seconds": integer, "verification_id"?: "string" }
 **Example Request:** `{ "phone": "+1 555 123 4567", "country": "US", "request_otp": true }`
 **Example Response:** `{ "valid": true, "e164": "+15551234567", "country": "US", "reason_codes": ["phone.otp_sent"], "request_id": "uuid", "ttl_seconds": 2592000, "verification_id": "uuid" }`
 
-### 3. POST /validate/address
+### 3. POST /v1/validate/address
 **Body:** { "address": { "line1": "string", "line2"?: "string", "city": "string", "postal_code": "string", "state"?: "string", "country": "string" } }
 **Response (200):** { "valid": boolean, "normalized": { "line1": "string", "line2": "string", "city": "string", "postal_code": "string", "state": "string", "country": "string" }, "geo"?: { "lat": number, "lng": number, "confidence": number }, "po_box": boolean, "postal_city_match": boolean, "reason_codes": ["string"], "request_id": "string", "ttl_seconds": integer }
 **Example Request:** `{ "address": { "line1": "123 Main St", "city": "New York", "postal_code": "10001", "country": "US" } }`
 **Example Response:** `{ "valid": true, "normalized": { "line1": "123 Main St", "line2": "", "city": "New York", "postal_code": "10001", "state": "", "country": "US" }, "geo": { "lat": 40.7128, "lng": -74.0060, "confidence": 0.9 }, "po_box": false, "postal_city_match": true, "reason_codes": [], "request_id": "uuid", "ttl_seconds": 604800 }`
 
-### 4. POST /validate/tax-id
+### 4. POST /v1/validate/tax-id
 **Body:** { "type": "string" (cpf|cnpj|rfc|cuit|rut|ruc|nit|nif|ein|vat), "value": "string", "country"?: "string" }
 **Response (200):** { "valid": boolean, "normalized": "string", "reason_codes": ["string"], "request_id": "string", "source"?: "string" (format|vies) }
 **Example Request:** `{ "type": "cpf", "value": "123.456.789-09" }`
 **Example Response:** `{ "valid": true, "normalized": "12345678909", "reason_codes": [], "request_id": "uuid", "source": "format" }`
 
-### 5. POST /dedupe/customer
+### 5. POST /v1/dedupe/customer
 **Body:** { "email"?: "string", "phone"?: "string", "first_name": "string", "last_name": "string" }
 **Response (200):** { "matches": [{ "id": "string", "similarity_score": number, "match_type": "string" (exact_email|exact_phone|fuzzy_name|fuzzy_email|fuzzy_phone), "data": object }], "suggested_action": "string" (create_new|merge_with|review), "request_id": "string" }
 **Example Request:** `{ "email": "test@example.com", "first_name": "John", "last_name": "Doe" }`
 **Example Response:** `{ "matches": [{ "id": "uuid", "similarity_score": 1.0, "match_type": "exact_email", "data": { "email": "test@example.com" } }], "suggested_action": "merge_with", "request_id": "uuid" }`
 
-### 6. POST /dedupe/address
+### 6. POST /v1/dedupe/address
 **Body:** { "address": { "line1": "string", "line2"?: "string", "city": "string", "postal_code": "string", "state"?: "string", "country": "string" } }
 **Response (200):** { "matches": [{ "id": "string", "similarity_score": number, "match_type": "string" (exact_postal|fuzzy_address), "data": object }], "suggested_action": "string", "request_id": "string" }
 **Example Request:** `{ "address": { "line1": "123 Main St", "city": "New York", "postal_code": "10001", "country": "US" } }`
 **Example Response:** `{ "matches": [{ "id": "uuid", "similarity_score": 1.0, "match_type": "exact_postal", "data": { "postal_code": "10001" } }], "suggested_action": "merge_with", "request_id": "uuid" }`
 
-### 7. POST /orders/evaluate
+### 7. POST /v1/orders/evaluate
 **Body:** { "order_id": "string", "customer": object, "shipping_address": object, "total_amount": number, "currency": "string", "payment_method"?: "string" }
 **Response (200):** { "order_id": "string", "risk_score": number (0-100), "action": "string" (approve|hold|block), "tags": ["string"], "reason_codes": ["string"], "customer_dedupe": object, "address_dedupe": object, "validations": { "email": object, "phone": object, "address": object }, "request_id": "string" }
 **Example Request:** `{ "order_id": "ORD-123", "customer": { "email": "test@example.com", "first_name": "John", "last_name": "Doe" }, "shipping_address": { "line1": "123 Main St", "city": "New York", "postal_code": "10001", "country": "US" }, "total_amount": 150.0, "currency": "USD", "payment_method": "cod" }`
 **Example Response:** `{ "order_id": "ORD-123", "risk_score": 50, "action": "hold", "tags": ["potential_duplicate_customer", "cod_order"], "reason_codes": ["order.customer_dedupe_match", "order.cod_risk"], "customer_dedupe": { "matches": [...], "suggested_action": "review" }, "address_dedupe": { "matches": [], "suggested_action": "create_new" }, "validations": { "email": { "valid": true, "reason_codes": [] }, "phone": { "valid": true, "reason_codes": [] }, "address": { "valid": true, "reason_codes": [] } }, "request_id": "uuid" }`
 
-### 8. GET /logs
+### 8. GET /v1/data/logs
 **Response (200):** { "data": [{ "id": "string", "type": "string", "endpoint": "string", "reason_codes": ["string"], "status": integer, "created_at": "string" }], "next_cursor": "string|null" }
 **Example:** `{ "data": [{ "id": "uuid", "type": "validation", "endpoint": "/validate/email", "reason_codes": [], "status": 200, "created_at": "2025-09-27T20:00:00Z" }], "next_cursor": null }`
 
-### 9. GET /usage
+### 9. GET /v1/data/usage
 **Response (200):** { "period": "string", "totals": { "validations": integer, "orders": integer }, "by_day": [{ "date": "string", "validations": integer, "orders": integer }], "request_id": "string" }
 **Example:** `{ "period": "month", "totals": { "validations": 100, "orders": 50 }, "by_day": [{ "date": "2025-09-27", "validations": 10, "orders": 5 }], "request_id": "uuid" }`
 
@@ -188,7 +188,7 @@ All POST/GET; auth via Bearer API key; rate limited (300/min); idempotent.
 For monorepo overview, see root README.md.
 
 **AI-Specific Troubleshooting:**
-- **Proxy/502 Error:** Edge (`apps/edge/nginx.conf`) proxies to api:8080; fails if API not reachable in network. Use direct localhost:8080. Fix: Ensure no HOST=127.0.0.1 override.
+- **Proxy/502 Error:** Caddy proxies to api:8080; fails if API not reachable in network. Use direct localhost:8080. Fix: Ensure no HOST=127.0.0.1 override.
 - **VIES/SOAP Slow:** Set VIES_DOWN=true in env to skip EU VAT (fallback to format check).
 - **Disposable Refresh:** BullMQ job runs on startup/cron; loads 71k+ domains from GitHub raw. If fails, manual: `pnpm exec ts-node src/jobs/refreshDisposable.ts`.
 - **Rate Limiting:** Redis-based; 300/min default. Increase for tests.

@@ -21,7 +21,7 @@ jest.mock('../routes/auth', () => {
     const actual = jest.requireActual('../routes/auth');
     return {
         ...actual,
-        verifyPAT: jest.fn(async (request_: unknown) => {
+        verifyPAT: jest.fn(async (request_: any) => {
             // Default: succeed and set ids
             request_.user_id = 'test_user';
             request_.project_id = 'test_project';

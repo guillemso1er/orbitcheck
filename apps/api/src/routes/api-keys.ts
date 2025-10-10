@@ -1,12 +1,12 @@
 import crypto from "node:crypto";
 
+import { MGMT_V1_ROUTES } from "@orbicheck/contracts";
 import type { FastifyInstance } from "fastify";
 import type { Pool } from "pg";
 
 import { API_KEY_PREFIX, ERROR_CODES, ERROR_MESSAGES, HTTP_STATUS, STATUS } from "../constants.js";
 import { environment } from "../environment.js";
 import { errorSchema, generateRequestId, rateLimitResponse, securityHeader, sendError, sendServerError, unauthorizedResponse } from "./utils.js";
-import { MGMT_V1_ROUTES } from "@orbicheck/contracts";
 
 
 export function registerApiKeysRoutes(app: FastifyInstance, pool: Pool): void {

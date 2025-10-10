@@ -48,7 +48,7 @@ export const mockTwilioInstance = {
 
 // Mock session object
 export const mockSession = {
-  user_id: null as string | null,
+  user_id: undefined as string | undefined,
   destroy: jest.fn().mockResolvedValue(undefined),
   save: jest.fn().mockResolvedValue(undefined),
 };
@@ -249,10 +249,7 @@ export const createApp = async (): Promise<FastifyInstance> => {
   const app = Fastify({ logger: false });
 
   // Add mock session to request
-  app.decorateRequest('session', null);
-  app.addHook('preHandler', async (request) => {
-    (request as any).session = mockSession;
-  });
+  app.decorateRequest('session', mockSession as any);
 
   return app;
 };
@@ -296,6 +293,14 @@ export const setupBeforeAll = async (): Promise<void> => {
   mockRedisInstance.quit.mockResolvedValue('OK');
   mockRedisInstance.ping.mockResolvedValue('PONG');
 };
+
+// Additional exports for test files
+export const hapi = jest.requireMock('@hapi/address');
+export const mockDns = jest.requireMock('node:dns/promises');
+export const mockValidateEmail = jest.requireMock('../validators/email.js');
+export const mockValidateAddress = jest.requireMock('../validators/address.js');
+export const mockValidatePhone = jest.requireMock('../validators/phone.js');
+export const libphone = jest.requireMock('libphonenumber-js');
 
 // Export loaded functions for tests
 export {

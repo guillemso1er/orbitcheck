@@ -1,3 +1,4 @@
+import type { FastifyInstance } from 'fastify';
 import jwt from 'jsonwebtoken';
 import request from 'supertest';
 
@@ -10,7 +11,7 @@ jest.mock('jsonwebtoken');
 const mockedJwtVerify = jwt.verify as jest.Mock;
 
 describe('Dashboard Authentication - /api-keys endpoint', () => {
-    let app: unknown;
+    let app: FastifyInstance;
 
     beforeAll(async () => {
         await setupBeforeAll();

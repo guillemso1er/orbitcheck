@@ -1,10 +1,11 @@
 // apps/api/src/__tests__/apiKeys.test.ts
 
+import * as nodeCrypto from 'node:crypto';
+
 import type { FastifyInstance } from 'fastify';
 import jwt from 'jsonwebtoken';
 import request from 'supertest';
 
-import * as nodeCrypto from 'node:crypto';
 import { createApp, mockPool, setupBeforeAll } from './testSetup.js';
 
 // Mock the JWT library

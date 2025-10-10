@@ -1,9 +1,9 @@
+import { MGMT_V1_ROUTES } from "@orbicheck/contracts";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import type { Pool } from "pg";
 
 import { REASON_CODES } from "../constants.js";
 import { generateRequestId, securityHeader, sendServerError } from "./utils.js";
-import { MGMT_V1_ROUTES } from "@orbicheck/contracts";
 
 const reasonCodes: any[] = Object.entries(REASON_CODES).map(([_key, code]) => {
   // Map from code to description, category, severity - this is a simplification; in practice, you'd have a full mapping

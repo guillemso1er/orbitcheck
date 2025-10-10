@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet" />
-  <style>.container{max-width:42rem;margin:0 auto;padding:0 1rem}</style>
+  <link rel="stylesheet" href="/css/common.css" />
 </head>
 <body class="bg-gray-50 text-gray-900 antialiased">
   <main class="container py-12">
@@ -20,10 +20,10 @@
       <noscript>
         <div class="mt-4 text-sm text-gray-700">
           JavaScript is disabled. To validate via CLI:
-<pre><code>curl -s https://api.orbicheck.com/v1/validate/vat \
+<pre><code>curl -s https://api.orbicheck.com/v1/validate/tax-id \
   -H "Authorization: Bearer YOUR_KEY" \
   -H "Content-Type: application/json" \
-  -d '{ "vat": "ESB12345678" }'
+  -d '{ "type": "vat", "value": "ESB12345678" }'
 </code></pre>
         </div>
       </noscript>

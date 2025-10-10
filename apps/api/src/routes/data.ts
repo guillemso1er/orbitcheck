@@ -1,9 +1,9 @@
+import { MGMT_V1_ROUTES } from "@orbicheck/contracts";
 import type { FastifyInstance } from "fastify";
 import type { Pool } from "pg";
 
 import { CACHE_HIT_PLACEHOLDER, HTTP_STATUS, LOGS_DEFAULT_LIMIT, LOGS_MAX_LIMIT, TOP_REASONS_LIMIT, USAGE_DAYS, USAGE_PERIOD } from "../constants.js";
 import { generateRequestId, rateLimitResponse, securityHeader, sendServerError, unauthorizedResponse } from "./utils.js";
-import { MGMT_V1_ROUTES } from "@orbicheck/contracts";
 // Import route constants from contracts package
 // TODO: Update to use @orbicheck/contracts export once build issues are resolved
 const ROUTES = {

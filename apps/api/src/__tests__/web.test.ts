@@ -1,5 +1,6 @@
 import type { FastifyReply } from 'fastify';
-import { createApp, mockPool, mockRedisInstance, mockSession, setupBeforeAll } from '../setupTest';
+
+import { createApp, mockPool, mockRedisInstance, mockSession, setupBeforeAll } from './testSetup.js';
 
 describe('Web Module', () => {
   let verifySession: any;
@@ -12,11 +13,11 @@ describe('Web Module', () => {
     await setupBeforeAll();
 
     // Import functions
-    const authModule = await import('../routes/auth');
+    const authModule = await import('../routes/auth.js');
     verifySession = authModule.verifySession;
     verifyPAT = authModule.verifyPAT;
 
-    const hooksModule = await import('../hooks');
+    const hooksModule = await import('../hooks.js');
     auth = hooksModule.auth;
     rateLimit = hooksModule.rateLimit;
     idempotency = hooksModule.idempotency;
@@ -28,13 +29,13 @@ describe('Web Module', () => {
 
   describe('authenticateRequest', () => {
     it('should skip auth for public endpoints', async () => {
-      const webModule = await import('../web');
       const mockRequest = { url: '/health', log: { info: jest.fn() } } as any;
       const mockReply = {} as FastifyReply;
 
       // This should be extracted to a testable function
       // For now, we'll test through registerRoutes
       const app = await createApp();
+      const webModule = await import('../web.js');
       webModule.registerRoutes(app, mockPool as any, mockRedisInstance as any);
 
       const response = await app.inject({
@@ -159,7 +160,7 @@ describe('Web Module', () => {
   describe('applyRateLimitingAndIdempotency', () => {
     it('should skip middleware for public routes', async () => {
       const app = await createApp();
-      const { registerRoutes } = await import('../web');
+      const { registerRoutes } = await import('../web.js');
 
       registerRoutes(app, mockPool as any, mockRedisInstance as any);
 
@@ -241,7 +242,7 @@ describe('Web Module', () => {
   describe('registerRoutes', () => {
     it('should register all route modules', async () => {
       const app = await createApp();
-      const { registerRoutes } = await import('../web');
+      const { registerRoutes } = await import('../web.js');
 
       // Mock all route registration functions
       jest.mock('../routes/api-keys', () => ({
@@ -262,7 +263,7 @@ describe('Web Module', () => {
 
     it('should handle authentication flow for different route types', async () => {
       const app = await createApp();
-      const { registerRoutes } = await import('../web');
+      const { registerRoutes } = await import('../web.js');
 
       registerRoutes(app, mockPool as any, mockRedisInstance as any);
 

@@ -52,7 +52,7 @@ If using an AI tool (e.g., in VS Code with Code mode):
 
 **AI-Specific Troubleshooting:**
 - **Podman Compose:** Use `podman compose` (native); if "command not found", install podman-compose or use docker compose. No sudo; enable user namespaces.
-- **Proxy 502:** Edge/nginx.conf proxies to api:8080; fails if API binds only 127.0.0.1 (logs show it, but 0.0.0.0 actual). Test direct localhost:8080; verify with `podman logs compose-api-1` and `podman exec ... curl localhost:8080/health`.
+- **Proxy 502:** Caddy proxies to api:8080; fails if API binds only 127.0.0.1 (logs show it, but 0.0.0.0 actual). Test direct localhost:8080; verify with `podman logs compose-api-1` and `podman exec ... curl localhost:8080/health`.
 - **BullMQ/Valkey Error:** `{ maxRetriesPerRequest: null }` in IORedis (src/server.ts:81); required for container Valkey.
 - **GeoNames 404:** Script URL outdated; download zips manually (http://download.geonames.org/export/zip/), unzip to data/, update importer.ts to process multiple. Or skip—use Nominatim for geo.
 - **Seed SASL/Password:** Ensure dotenv/config in command; DATABASE_URL correct (service names in container).

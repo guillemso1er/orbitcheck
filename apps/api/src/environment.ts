@@ -1,3 +1,5 @@
+import { randomBytes } from 'crypto';
+
 export const environment = {
     PORT: Number.parseInt(process.env.PORT || "8080", 10),
     DATABASE_URL: process.env.DATABASE_URL || "postgres://postgres:postgres@localhost:5432/orbicheck",
@@ -22,7 +24,7 @@ export const environment = {
     USE_GOOGLE_FALLBACK: process.env.USE_GOOGLE_FALLBACK === "true",
     JWT_SECRET: process.env.JWT_SECRET || (() => { throw new Error('JWT_SECRET must be set in environment'); })(),
     ENCRYPTION_KEY: process.env.ENCRYPTION_KEY || (() => { throw new Error('ENCRYPTION_KEY must be set in environment'); })(),
-    SESSION_SECRET: process.env.SESSION_SECRET || crypto.randomBytes(32).toString('hex'),
+    SESSION_SECRET: process.env.SESSION_SECRET || randomBytes(32).toString('hex'),
 
     // OIDC configuration (optional)
     OIDC_ENABLED: process.env.OIDC_ENABLED === 'true',

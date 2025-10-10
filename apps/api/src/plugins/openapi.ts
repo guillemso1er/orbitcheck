@@ -21,8 +21,8 @@ export async function openapiValidation(app: FastifyInstance): Promise<void> {
 
   // Add request/response validation hooks
   app.addHook('preHandler', async (request, _reply) => {
-    // Skip validation for health checks and documentation
-    if (request.url.startsWith('/health') || request.url.startsWith('/documentation')) {
+    // Skip validation for health checks, documentation, and metrics
+    if (request.url.startsWith('/health') || request.url.startsWith('/documentation') || request.url.startsWith('/metrics')) {
       return;
     }
 
@@ -30,8 +30,8 @@ export async function openapiValidation(app: FastifyInstance): Promise<void> {
   });
 
   app.addHook('preSerialization', async (request, reply, payload) => {
-    // Skip validation for health checks and documentation
-    if (request.url.startsWith('/health') || request.url.startsWith('/documentation')) {
+    // Skip validation for health checks, documentation, and metrics
+    if (request.url.startsWith('/health') || request.url.startsWith('/documentation') || request.url.startsWith('/metrics')) {
       return payload;
     }
 

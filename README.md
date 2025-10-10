@@ -92,21 +92,27 @@ Orbicheck supports webhook testing for integration verification:
 
 - **API (apps/api/)**: Fastify-based backend providing data validation, deduplication, order risk assessment, and management APIs. Connected to PostgreSQL (database), Valkey/Redis (cache), MinIO (object storage). Exposes metrics at /metrics for Prometheus monitoring.
 - **Dashboard (apps/dashboard/)**: React frontend for user authentication, API key management, log exploration, usage monitoring, and webhook testing. Connects to the API for data and authentication.
-- **Site (apps/site/)**: Static HTML/CSS/JS marketing website with documentation, pricing, and legal pages. Served via Caddy reverse proxy in development.
+- **Site (apps/site/)**: Static HTML/CSS/JS marketing website with documentation, pricing, legal pages, and interactive validation tools. Includes tools for testing email, phone, VAT, and tax ID validation. Served via Caddy reverse proxy in development.
 - **Contracts (packages/contracts/)**: Shared OpenAPI specifications, TypeScript types, and generated API clients.
 
 ## Observability Services
 
 Orbicheck includes a comprehensive observability stack for monitoring, logging, and alerting:
 
-- **Prometheus (localhost:9090)**: Metrics collection from the API service (/metrics endpoint). Provides time-series data for performance monitoring.
-- **Grafana (localhost:3000)**: Visualization dashboard connected to Prometheus and Loki. Default login: admin/admin.
-- **Loki (localhost:3100)**: Log aggregation system that collects logs from all services.
-- **Promtail**: Log shipping agent that forwards container logs to Loki.
-- **Statping (localhost:8082)**: Status monitoring tool that checks health of services like the API.
-- **Uptime Kuma (localhost:3001)**: Uptime monitoring with alerts for service availability.
+- **Prometheus (localhost:9090)**: Metrics collection from the API service (/metrics endpoint). Provides time-series data for performance monitoring and is connected to Grafana for visualization.
+- **Grafana (localhost:3000)**: Visualization dashboard connected to Prometheus and Loki. Default login: admin/admin. Displays metrics and logs from the API and other services.
+- **Loki (localhost:3100)**: Log aggregation system that collects logs from all services via Promtail.
+- **Promtail**: Log shipping agent that forwards container logs to Loki, automatically collecting API logs.
+- **Statping (localhost:8082)**: Status monitoring tool that can be configured via its web UI to check health endpoints like the API's /health. Requires manual setup to monitor specific services.
+- **Uptime Kuma (localhost:3001)**: Uptime monitoring with alerts for service availability. Can be configured via its web UI to monitor the API, Caddy proxy, and other endpoints.
 
-These services are automatically connected: Prometheus scrapes metrics from the API, Promtail ships logs to Loki, Grafana visualizes data from both, Statping monitors API health, and Uptime Kuma monitors the Caddy proxy.
+### Error Tracking
+- **Sentry/Glitchtip**: The API integrates with Sentry for error tracking. In production, errors are sent to a self-hosted Glitchtip instance (localhost:8030 in dev/prod compose). Set SENTRY_DSN environment variable to enable.
+
+### Secrets Management
+- **Infisical (localhost:8081 in prod)**: Secrets management tool running in production. Currently not integrated with the API; can be used for managing environment variables and secrets separately.
+
+Automatic connections: Prometheus scrapes API metrics, Promtail ships logs to Loki, Grafana visualizes data from Prometheus and Loki. Statping and Uptime Kuma require manual configuration via their web interfaces to monitor specific endpoints and provide value.
 
 ## Setup and Running the App
 
@@ -185,7 +191,7 @@ For production build:
 pnpm --filter @orbicheck/dashboard run build
 ```
 
-### Containerized Setup (Optional)
+### Containerized Setup (Development)
 Use Docker Compose for full stack (DB, Redis, API, Dashboard, monitoring services):
 ```
 podman compose -f infra/compose/dev.compose.yml up -d
@@ -199,6 +205,70 @@ Access services at:
 - **Loki**: http://localhost:3100 (log aggregation)
 - **Statping**: http://localhost:8082 (status monitoring)
 - **Uptime Kuma**: http://localhost:3001 (uptime monitoring)
+
+## Production Deployment
+
+For production deployment, use the production Docker Compose configuration:
+
+### Prerequisites for Production
+- Docker/Podman and Docker Compose
+- Domain name and SSL certificates (managed by Caddy)
+- Production environment variables (copy `.env.example` to `.env` and configure)
+
+### Required Production Environment Variables
+```
+# Database
+POSTGRES_PASSWORD=your_secure_postgres_password
+
+# Object Storage (MinIO)
+MINIO_ACCESS_KEY=your_minio_access_key
+MINIO_SECRET_KEY=your_minio_secret_key
+
+# Error Tracking
+GLITCHTIP_SECRET=your_glitchtip_secret_key
+
+# API Environment Variables (see .env.example for full list)
+JWT_SECRET=your_jwt_secret
+ENCRYPTION_KEY=your_32_character_encryption_key
+LOCATIONIQ_KEY=your_locationiq_api_key
+# ... other API variables
+```
+
+### Production Deployment Steps
+1. **Configure Environment**: Copy and update `.env` with production values
+2. **Build and Deploy**: Run the production compose
+   ```
+   podman compose -f infra/compose/prod.compose.yml up -d
+   ```
+3. **Database Migration**: Run migrations in the API container
+   ```
+   podman compose -f infra/compose/prod.compose.yml exec api pnpm run migrate
+   ```
+4. **Access Services**:
+   - **API**: https://yourdomain.com (reverse proxied by Caddy)
+   - **Dashboard**: https://yourdomain.com/dashboard
+   - **Site**: https://yourdomain.com (marketing pages)
+   - **Grafana**: https://yourdomain.com/grafana
+   - **Prometheus**: https://yourdomain.com/prometheus
+   - **MinIO Console**: https://yourdomain.com/minio
+
+### Production Services
+- **Caddy**: Reverse proxy with automatic SSL
+- **PostgreSQL**: Database with persistent volumes
+- **Valkey**: Redis-compatible cache
+- **MinIO**: S3-compatible object storage
+- **Glitchtip**: Self-hosted error tracking (alternative to Sentry)
+- **Prometheus/Grafana/Loki**: Monitoring stack
+- **Uptime Kuma**: Uptime monitoring
+- **Statping**: Status page
+- **Infisical**: Secrets management
+
+### Security Considerations
+- Change all default passwords and secrets
+- Use strong, unique values for JWT_SECRET and ENCRYPTION_KEY
+- Configure firewall rules for production ports
+- Enable OIDC or other authentication methods as needed
+- Regularly update Docker images and dependencies
 
 ## Testing
 

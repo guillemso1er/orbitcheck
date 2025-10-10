@@ -5,10 +5,10 @@
 }
 
 :80 {
-	# Serve static site files
-	root * ../../apps/site
-	try_files {path} {path}/ /index.html
-	file_server
+  # Serve static site files
+  root * /usr/share/caddy/site
+  try_files {path} {path}/ /index.html
+  file_server
 
 	# API routes
 	@api {

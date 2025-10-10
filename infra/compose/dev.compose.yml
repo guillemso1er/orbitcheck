@@ -61,6 +61,7 @@ services:
         - "8081:80"
       volumes:
         - ./dev.Caddyfile:/etc/caddy/Caddyfile
+        - ../../apps/site:/usr/share/caddy/site
         - caddy_data:/data
         - caddy_config:/config
       depends_on:
