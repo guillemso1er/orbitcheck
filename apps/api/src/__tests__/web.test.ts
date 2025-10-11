@@ -237,10 +237,12 @@ describe('Web Module', () => {
       } as unknown as FastifyReply;
 
       mockRedisInstance.incr.mockResolvedValue(101); // Over limit
+      mockRedisInstance.ttl.mockResolvedValue(30); // Remaining TTL
 
       await rateLimit(mockRequest, mockReply, mockRedisInstance as any);
 
       expect(mockReply.status).toHaveBeenCalledWith(429);
+      expect(mockReply.header).toHaveBeenCalledWith('Retry-After', '30');
     });
 
     it('should handle idempotency for runtime routes', async () => {

@@ -13,6 +13,7 @@ import { registerJobRoutes } from './routes/jobs.js';
 import { registerOrderRoutes } from './routes/orders.js';
 import { registerRulesRoutes } from './routes/rules.js';
 import { registerSettingsRoutes } from './routes/settings.js';
+import { registerNormalizeRoutes } from './routes/normalize.js';
 import { registerValidationRoutes } from './routes/validation.js';
 import { registerWebhookRoutes } from './routes/webhook.js';
 
@@ -59,6 +60,7 @@ export async function authenticateRequest(request: FastifyRequest, rep: FastifyR
     const isRuntimeRoute = url.startsWith('/v1/dedupe') ||
         url.startsWith('/v1/orders') ||
         url.startsWith('/v1/validate') ||
+        url.startsWith('/v1/normalize') ||
         url.startsWith('/v1/verify') ||
         url.startsWith('/v1/batch') ||
         url.startsWith('/v1/jobs');
@@ -115,6 +117,7 @@ export async function applyRateLimitingAndIdempotency(request: FastifyRequest, r
     const isRuntimeRoute = url.startsWith('/v1/dedupe') ||
         url.startsWith('/v1/orders') ||
         url.startsWith('/v1/validate') ||
+        url.startsWith('/v1/normalize') ||
         url.startsWith('/v1/verify') ||
         url.startsWith('/v1/batch') ||
         url.startsWith('/v1/jobs');
@@ -147,12 +150,13 @@ export function registerRoutes(app: FastifyInstance, pool: Pool, redis: IORedisT
     registerAuthRoutes(app, pool);
     registerApiKeysRoutes(app, pool);
     registerValidationRoutes(app, pool, redis);
+    registerNormalizeRoutes(app, pool);
     registerDedupeRoutes(app, pool);
     registerOrderRoutes(app, pool, redis);
     registerDataRoutes(app, pool);
     registerSettingsRoutes(app, pool);
     registerWebhookRoutes(app, pool);
-    registerRulesRoutes(app, pool);
+    registerRulesRoutes(app, pool, redis);
     registerBatchRoutes(app, pool, redis);
     registerJobRoutes(app, pool);
 }

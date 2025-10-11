@@ -275,6 +275,30 @@ export interface ReasonCode {
 /**
  * Severity level
  */
+export type ErrorCodeSeverity = typeof ErrorCodeSeverity[keyof typeof ErrorCodeSeverity];
+
+
+// eslint-disable-next-line @typescript-eslint/no-redeclare
+export const ErrorCodeSeverity = {
+  low: 'low',
+  medium: 'medium',
+  high: 'high',
+} as const;
+
+export interface ErrorCode {
+  /** Error code */
+  code?: string;
+  /** Description of the error code */
+  description?: string;
+  /** Category of the error code */
+  category?: string;
+  /** Severity level */
+  severity?: ErrorCodeSeverity;
+}
+
+/**
+ * Severity level
+ */
 export type CustomRuleSeverity = typeof CustomRuleSeverity[keyof typeof CustomRuleSeverity];
 
 
@@ -381,6 +405,37 @@ export type RevokeApiKey200 = {
   id?: string;
   /** API key status */
   status?: string;
+  request_id?: string;
+};
+
+export type NormalizeAddressBodyAddress = {
+  line1: string;
+  line2?: string;
+  city: string;
+  state?: string;
+  postal_code: string;
+  /**
+   * @minLength 2
+   * @maxLength 2
+   */
+  country: string;
+};
+
+export type NormalizeAddressBody = {
+  address: NormalizeAddressBodyAddress;
+};
+
+export type NormalizeAddress200Normalized = {
+  line1?: string;
+  line2?: string;
+  city?: string;
+  state?: string;
+  postal_code?: string;
+  country?: string;
+};
+
+export type NormalizeAddress200 = {
+  normalized?: NormalizeAddress200Normalized;
   request_id?: string;
 };
 
@@ -501,6 +556,21 @@ export type ValidateTaxId200 = {
   /** Whether the tax ID is valid */
   valid?: boolean;
   /** Normalized tax ID */
+  normalized?: string;
+  /** List of validation reason codes */
+  reason_codes?: string[];
+  request_id?: string;
+};
+
+export type ValidateNameBody = {
+  /** The name to validate and normalize */
+  name: string;
+};
+
+export type ValidateName200 = {
+  /** Whether the name is valid */
+  valid?: boolean;
+  /** Normalized name */
   normalized?: string;
   /** List of validation reason codes */
   reason_codes?: string[];
@@ -872,6 +942,11 @@ export type GetReasonCodeCatalog200 = {
   request_id?: string;
 };
 
+export type GetErrorCodeCatalog200 = {
+  error_codes?: ErrorCode[];
+  request_id?: string;
+};
+
 export type RegisterCustomRulesBody = {
   rules?: CustomRule[];
 };
@@ -881,6 +956,63 @@ export type RegisterCustomRules200 = {
   message?: string;
   /** List of registered rule IDs */
   registered_rules?: string[];
+  request_id?: string;
+};
+
+export type TestRulesBodyAddress = {
+  line1?: string;
+  line2?: string;
+  city?: string;
+  state?: string;
+  postal_code?: string;
+  country?: string;
+};
+
+export type TestRulesBody = {
+  email?: string;
+  phone?: string;
+  address?: TestRulesBodyAddress;
+  name?: string;
+};
+
+export type TestRules200ResultsEmail = {
+  valid?: boolean;
+  reason_codes?: string[];
+  normalized?: string;
+  disposable?: boolean;
+};
+
+export type TestRules200ResultsPhone = {
+  valid?: boolean;
+  reason_codes?: string[];
+  e164?: string;
+  country?: string;
+};
+
+export type TestRules200ResultsAddressNormalized = { [key: string]: unknown };
+
+export type TestRules200ResultsAddress = {
+  valid?: boolean;
+  reason_codes?: string[];
+  normalized?: TestRules200ResultsAddressNormalized;
+  po_box?: boolean;
+};
+
+export type TestRules200ResultsName = {
+  valid?: boolean;
+  reason_codes?: string[];
+  normalized?: string;
+};
+
+export type TestRules200Results = {
+  email?: TestRules200ResultsEmail;
+  phone?: TestRules200ResultsPhone;
+  address?: TestRules200ResultsAddress;
+  name?: TestRules200ResultsName;
+};
+
+export type TestRules200 = {
+  results?: TestRules200Results;
   request_id?: string;
 };
 
@@ -1215,6 +1347,19 @@ export const revokeApiKey = <TData = AxiosResponse<RevokeApiKey200>>(
   }
 
 /**
+ * Performs basic address normalization without geocoding or external lookups.
+ * @summary Normalize Address (Cheap)
+ */
+export const normalizeAddress = <TData = AxiosResponse<NormalizeAddress200>>(
+    normalizeAddressBody: NormalizeAddressBody, options?: AxiosRequestConfig
+ ): Promise<TData> => {
+    return axios.post(
+      `/v1/normalize/address`,
+      normalizeAddressBody,options
+    );
+  }
+
+/**
  * Performs comprehensive email validation including format, MX records, and disposable detection
  * @summary Validate email address
  */
@@ -1235,7 +1380,7 @@ export const validatePhone = <TData = AxiosResponse<ValidatePhone200>>(
     validatePhoneBody: ValidatePhoneBody, options?: AxiosRequestConfig
  ): Promise<TData> => {
     return axios.post(
-      `/validate/phone`,
+      `/v1/validate/phone`,
       validatePhoneBody,options
     );
   }
@@ -1248,7 +1393,7 @@ export const validateAddress = <TData = AxiosResponse<ValidateAddress200>>(
     validateAddressBody: ValidateAddressBody, options?: AxiosRequestConfig
  ): Promise<TData> => {
     return axios.post(
-      `/validate/address`,
+      `/v1/validate/address`,
       validateAddressBody,options
     );
   }
@@ -1261,8 +1406,21 @@ export const validateTaxId = <TData = AxiosResponse<ValidateTaxId200>>(
     validateTaxIdBody: ValidateTaxIdBody, options?: AxiosRequestConfig
  ): Promise<TData> => {
     return axios.post(
-      `/validate/tax-id`,
+      `/v1/validate/tax-id`,
       validateTaxIdBody,options
+    );
+  }
+
+/**
+ * Validates and normalizes a name string
+ * @summary Validate name
+ */
+export const validateName = <TData = AxiosResponse<ValidateName200>>(
+    validateNameBody: ValidateNameBody, options?: AxiosRequestConfig
+ ): Promise<TData> => {
+    return axios.post(
+      `/v1/validate/name`,
+      validateNameBody,options
     );
   }
 
@@ -1274,7 +1432,7 @@ export const verifyPhoneOtp = <TData = AxiosResponse<VerifyPhoneOtp200>>(
     verifyPhoneOtpBody: VerifyPhoneOtpBody, options?: AxiosRequestConfig
  ): Promise<TData> => {
     return axios.post(
-      `/verify/phone`,
+      `/v1/verify/phone`,
       verifyPhoneOtpBody,options
     );
   }
@@ -1287,7 +1445,7 @@ export const dedupeCustomer = <TData = AxiosResponse<DedupeCustomer200>>(
     dedupeCustomerBody: DedupeCustomerBody, options?: AxiosRequestConfig
  ): Promise<TData> => {
     return axios.post(
-      `/dedupe/customer`,
+      `/v1/dedupe/customer`,
       dedupeCustomerBody,options
     );
   }
@@ -1300,7 +1458,7 @@ export const dedupeAddress = <TData = AxiosResponse<DedupeAddress200>>(
     dedupeAddressBody: DedupeAddressBody, options?: AxiosRequestConfig
  ): Promise<TData> => {
     return axios.post(
-      `/dedupe/address`,
+      `/v1/dedupe/address`,
       dedupeAddressBody,options
     );
   }
@@ -1313,7 +1471,7 @@ export const mergeDeduplicated = <TData = AxiosResponse<MergeDeduplicated200>>(
     mergeDeduplicatedBody: MergeDeduplicatedBody, options?: AxiosRequestConfig
  ): Promise<TData> => {
     return axios.post(
-      `/dedupe/merge`,
+      `/v1/dedupe/merge`,
       mergeDeduplicatedBody,options
     );
   }
@@ -1326,7 +1484,7 @@ export const evaluateOrder = <TData = AxiosResponse<EvaluateOrder200>>(
     evaluateOrderBody: EvaluateOrderBody, options?: AxiosRequestConfig
  ): Promise<TData> => {
     return axios.post(
-      `/orders/evaluate`,
+      `/v1/orders/evaluate`,
       evaluateOrderBody,options
     );
   }
@@ -1415,7 +1573,7 @@ export const getRules = <TData = AxiosResponse<GetRules200>>(
      options?: AxiosRequestConfig
  ): Promise<TData> => {
     return axios.get(
-      `/rules`,options
+      `/v1/rules`,options
     );
   }
 
@@ -1427,7 +1585,19 @@ export const getReasonCodeCatalog = <TData = AxiosResponse<GetReasonCodeCatalog2
      options?: AxiosRequestConfig
  ): Promise<TData> => {
     return axios.get(
-      `/rules/catalog`,options
+      `/v1/rules/catalog`,options
+    );
+  }
+
+/**
+ * Returns a comprehensive list of all possible error codes
+ * @summary Get error code catalog
+ */
+export const getErrorCodeCatalog = <TData = AxiosResponse<GetErrorCodeCatalog200>>(
+     options?: AxiosRequestConfig
+ ): Promise<TData> => {
+    return axios.get(
+      `/v1/rules/error-codes`,options
     );
   }
 
@@ -1439,8 +1609,21 @@ export const registerCustomRules = <TData = AxiosResponse<RegisterCustomRules200
     registerCustomRulesBody: RegisterCustomRulesBody, options?: AxiosRequestConfig
  ): Promise<TData> => {
     return axios.post(
-      `/rules/register`,
+      `/v1/rules/register`,
       registerCustomRulesBody,options
+    );
+  }
+
+/**
+ * Performs a dry-run evaluation of a payload against all enabled validation rules.
+ * @summary Test Rules Against Payload
+ */
+export const testRules = <TData = AxiosResponse<TestRules200>>(
+    testRulesBody: TestRulesBody, options?: AxiosRequestConfig
+ ): Promise<TData> => {
+    return axios.post(
+      `/v1/rules/test`,
+      testRulesBody,options
     );
   }
 
@@ -1538,10 +1721,12 @@ export type LogoutUserResult = AxiosResponse<LogoutUser200>
 export type ListApiKeysResult = AxiosResponse<ListApiKeys200>
 export type CreateApiKeyResult = AxiosResponse<CreateApiKey201>
 export type RevokeApiKeyResult = AxiosResponse<RevokeApiKey200>
+export type NormalizeAddressResult = AxiosResponse<NormalizeAddress200>
 export type ValidateEmailResult = AxiosResponse<ValidateEmail200>
 export type ValidatePhoneResult = AxiosResponse<ValidatePhone200>
 export type ValidateAddressResult = AxiosResponse<ValidateAddress200>
 export type ValidateTaxIdResult = AxiosResponse<ValidateTaxId200>
+export type ValidateNameResult = AxiosResponse<ValidateName200>
 export type VerifyPhoneOtpResult = AxiosResponse<VerifyPhoneOtp200>
 export type DedupeCustomerResult = AxiosResponse<DedupeCustomer200>
 export type DedupeAddressResult = AxiosResponse<DedupeAddress200>
@@ -1555,7 +1740,9 @@ export type EraseDataResult = AxiosResponse<EraseData202>
 export type DeleteLogResult = AxiosResponse<DeleteLog200>
 export type GetRulesResult = AxiosResponse<GetRules200>
 export type GetReasonCodeCatalogResult = AxiosResponse<GetReasonCodeCatalog200>
+export type GetErrorCodeCatalogResult = AxiosResponse<GetErrorCodeCatalog200>
 export type RegisterCustomRulesResult = AxiosResponse<RegisterCustomRules200>
+export type TestRulesResult = AxiosResponse<TestRules200>
 export type ListWebhooksResult = AxiosResponse<ListWebhooks200>
 export type CreateWebhookResult = AxiosResponse<CreateWebhook201>
 export type DeleteWebhookResult = AxiosResponse<DeleteWebhook200>

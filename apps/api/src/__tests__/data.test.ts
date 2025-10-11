@@ -1,6 +1,23 @@
 import type { FastifyInstance } from 'fastify';
+import request from 'supertest';
 
+import * as hooks from '../hooks.js';
 import { createApp, mockPool, setupBeforeAll } from './testSetup.js';
+
+// Mock the auth module to bypass authentication
+jest.mock('../routes/auth', () => {
+  const actual = jest.requireActual('../routes/auth');
+  return {
+    ...actual,
+    verifyPAT: jest.fn(async (request_: any) => {
+      // Default: succeed and set ids
+      request_.user_id = 'test_user';
+      request_.project_id = 'test_project';
+    }),
+  };
+});
+
+const MOCK_JWT = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoidGVzdF91c2VyIn0.ignore';
 
 describe('Data Routes', () => {
   let app: FastifyInstance;
@@ -8,6 +25,16 @@ describe('Data Routes', () => {
   beforeAll(async () => {
     await setupBeforeAll();
     app = await createApp();
+
+    // Add auth hooks like the passing tests
+    const { authenticateRequest, applyRateLimitingAndIdempotency } = await import('../web.js');
+    const { mockPool, mockRedisInstance } = await import('./testSetup.js');
+    app.addHook("preHandler", async (request, rep) => {
+      await authenticateRequest(request, rep, mockPool as any);
+      await applyRateLimitingAndIdempotency(request, rep, mockRedisInstance as any);
+      return;
+    });
+
     await app.ready();
   });
 
@@ -19,123 +46,112 @@ describe('Data Routes', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+
+    // Mock logEvent like in passing tests
+    jest.spyOn(hooks, 'logEvent').mockImplementation(jest.fn().mockResolvedValue(undefined));
+
+    // Set up default mock for authentication queries
+    mockPool.query.mockImplementation((queryText: string, values: unknown[]) => {
+      const upperQuery = queryText.toUpperCase();
+      if (upperQuery.startsWith('SELECT ID FROM USERS WHERE ID = $1') && values[0] === 'test_user') {
+        return Promise.resolve({ rows: [{ id: 'test_user' }] });
+      }
+      if (upperQuery.startsWith('SELECT P.ID AS PROJECT_ID FROM PROJECTS P WHERE P.USER_ID = $1') && values[0] === 'test_user') {
+        return Promise.resolve({ rows: [{ project_id: 'test_project' }] });
+      }
+      return Promise.resolve({ rows: [] });
+    });
   });
 
   describe('POST /v1/data/erase', () => {
     it('should erase user data for GDPR compliance', async () => {
       mockPool.query.mockResolvedValueOnce({ rows: [] }); // DELETE logs
-      mockPool.query.mockResolvedValueOnce({ rows: [] }); // DELETE api_keys
 
-      const response = await app.inject({
-        method: 'POST',
-        url: '/v1/data/erase',
-        headers: {
-          authorization: 'Bearer test_token'
-        },
-        payload: { reason: 'gdpr' }
-      });
+      const res = await request(app.server)
+        .post('/v1/data/erase')
+        .set('Authorization', `Bearer ${MOCK_JWT}`)
+        .send({ reason: 'gdpr' });
 
-      expect(response.statusCode).toBe(202);
-      const body = response.json();
-      expect(body.message).toContain('Data erasure initiated for GDPR compliance');
-      expect(body.request_id).toBeDefined();
+      expect(res.statusCode).toBe(202);
+      expect(res.body.message).toContain('Data erasure initiated for GDPR compliance');
+      expect(res.body.request_id).toBeDefined();
     });
 
     it('should erase user data for CCPA compliance', async () => {
       mockPool.query.mockResolvedValueOnce({ rows: [] });
-      mockPool.query.mockResolvedValueOnce({ rows: [] });
 
-      const response = await app.inject({
-        method: 'POST',
-        url: '/v1/data/erase',
-        headers: {
-          authorization: 'Bearer test_token'
-        },
-        payload: { reason: 'ccpa' }
-      });
+      const res = await request(app.server)
+        .post('/v1/data/erase')
+        .set('Authorization', `Bearer ${MOCK_JWT}`)
+        .send({ reason: 'ccpa' });
 
-      expect(response.statusCode).toBe(202);
-      const body = response.json();
-      expect(body.message).toContain('Data erasure initiated for CCPA compliance');
+      expect(res.statusCode).toBe(202);
+      expect(res.body.message).toContain('Data erasure initiated for CCPA compliance');
     });
 
     it('should reject invalid reason', async () => {
-      const response = await app.inject({
-        method: 'POST',
-        url: '/v1/data/erase',
-        headers: {
-          authorization: 'Bearer test_token'
-        },
-        payload: { reason: 'invalid' }
-      });
+      const res = await request(app.server)
+        .post('/v1/data/erase')
+        .set('Authorization', `Bearer ${MOCK_JWT}`)
+        .send({ reason: 'invalid' });
 
-      expect(response.statusCode).toBe(400);
-      const body = response.json();
-      expect(body.error).toBe('INVALID_REQUEST');
+      expect(res.statusCode).toBe(400);
+      expect(res.body.error).toBe('INVALID_REQUEST');
     });
 
     it('should require reason field', async () => {
-      const response = await app.inject({
-        method: 'POST',
-        url: '/v1/data/erase',
-        headers: {
-          authorization: 'Bearer test_token'
-        },
-        payload: {}
-      });
+      const res = await request(app.server)
+        .post('/v1/data/erase')
+        .set('Authorization', `Bearer ${MOCK_JWT}`)
+        .send({});
 
-      expect(response.statusCode).toBe(400);
+      expect(res.statusCode).toBe(400);
     });
   });
 
   describe('DELETE /v1/logs/:id', () => {
     it('should delete a log entry', async () => {
-        mockPool.query.mockResolvedValueOnce({ rowCount: 1, rows: [{ id: 'test-log-id', status: 'deleted' }] });
+      mockPool.query.mockResolvedValueOnce({ rowCount: 1, rows: [] }); // DELETE query
 
-      const response = await app.inject({
-        method: 'DELETE',
-        url: '/v1/logs/test-log-id',
-        headers: {
-          authorization: 'Bearer test_token'
-        }
-      });
+      const res = await request(app.server)
+        .delete('/v1/logs/test-log-id')
+        .set('Authorization', `Bearer ${MOCK_JWT}`);
 
-      expect(response.statusCode).toBe(200);
-      const body = response.json();
-      expect(body.message).toBe('Log entry deleted successfully');
-      expect(body.request_id).toBeDefined();
+      expect(res.statusCode).toBe(200);
+      expect(res.body.message).toBe('Log entry deleted successfully');
+      expect(res.body.request_id).toBeDefined();
     });
 
     it('should return 404 for non-existent log', async () => {
-      mockPool.query.mockImplementation(() => Promise.resolve({ rowCount: 0, rows: [] }));
+      mockPool.query.mockResolvedValueOnce({ rowCount: 0, rows: [] }); // DELETE query with no rows deleted
 
-      const response = await app.inject({
-        method: 'DELETE',
-        url: '/v1/logs/non-existent-id',
-        headers: {
-          authorization: 'Bearer test_token'
-        }
-      });
+      const res = await request(app.server)
+        .delete('/v1/logs/non-existent-id')
+        .set('Authorization', `Bearer ${MOCK_JWT}`);
 
-      expect(response.statusCode).toBe(404);
-      const body = response.json();
-      expect(body.error.code).toBe('not_found');
+      expect(res.statusCode).toBe(404);
+      expect(res.body.error.code).toBe('not_found');
     });
 
     it('should handle database errors', async () => {
-      mockPool.query.mockImplementation(() => Promise.reject(new Error('DB error')));
+      mockPool.query.mockRejectedValueOnce(new Error('DB error')); // DELETE query fails
 
-      const response = await app.inject({
-        method: 'DELETE',
-        url: '/v1/logs/test-id',
-        headers: {
-          authorization: 'Bearer test_token'
-        }
-      });
-      const body = response.json();
+      const res = await request(app.server)
+        .delete('/v1/logs/test-id')
+        .set('Authorization', `Bearer ${MOCK_JWT}`);
 
-      expect(response.statusCode).toBe(500);
-      expect(body.error.code).toBe('server_error');
+      expect(res.statusCode).toBe(500);
+      expect(res.body.error.code).toBe('server_error');
     });
   });
 });
+
+// Helper function like in passing tests
+function expectStatus(res: request.Response, expected: number): void {
+  if (res.statusCode !== expected) {
+    console.log('FAILED status:', res.statusCode);
+    console.log('Response body:', res.body);
+    console.log('Response headers:', res.headers);
+  }
+  expect(res.statusCode).toBe(expected);
+}

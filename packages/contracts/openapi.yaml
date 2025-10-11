@@ -284,6 +284,88 @@ paths:
                 $ref: '#/components/schemas/Error'
 
   # Validation
+  # Normalization
+  /v1/normalize/address:
+    post:
+      tags:
+        - Runtime API
+      summary: Normalize Address (Cheap)
+      description: Performs basic address normalization without geocoding or external lookups.
+      operationId: normalizeAddress
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - address
+              properties:
+                address:
+                  type: object
+                  required:
+                    - line1
+                    - city
+                    - postal_code
+                    - country
+                  properties:
+                    line1:
+                      type: string
+                    line2:
+                      type: string
+                    city:
+                      type: string
+                    state:
+                      type: string
+                    postal_code:
+                      type: string
+                    country:
+                      type: string
+                      minLength: 2
+                      maxLength: 2
+      responses:
+        '200':
+          description: Successful normalization response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  normalized:
+                    type: object
+                    properties:
+                      line1:
+                        type: string
+                      line2:
+                        type: string
+                      city:
+                        type: string
+                      state:
+                        type: string
+                      postal_code:
+                        type: string
+                      country:
+                        type: string
+                  request_id:
+                    type: string
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
   /validate/email:
     post:
       tags:
@@ -340,7 +422,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
-  /validate/phone:
+  /v1/validate/phone:
     post:
       tags:
         - Runtime API
@@ -405,7 +487,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
-  /validate/address:
+  /v1/validate/address:
     post:
       tags:
         - Runtime API
@@ -498,7 +580,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
-  /validate/tax-id:
+  /v1/validate/tax-id:
     post:
       tags:
         - Runtime API
@@ -551,8 +633,55 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+  
+  /v1/validate/name:
+    post:
+      tags:
+        - Runtime API
+      summary: Validate name
+      description: Validates and normalizes a name string
+      operationId: validateName
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+              properties:
+                name:
+                  type: string
+                  description: The name to validate and normalize
+      responses:
+        '200':
+          description: Name validation result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  valid:
+                    type: boolean
+                    description: Whether the name is valid
+                  normalized:
+                    type: string
+                    description: Normalized name
+                  reason_codes:
+                    type: array
+                    items:
+                      type: string
+                    description: List of validation reason codes
+                  request_id:
+                    type: string
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
 
-  /verify/phone:
+  /v1/verify/phone:
     post:
       tags:
         - Runtime API
@@ -601,7 +730,7 @@ paths:
                 $ref: '#/components/schemas/Error'
 
   # Deduplication
-  /dedupe/customer:
+  /v1/dedupe/customer:
     post:
       tags:
         - Runtime API
@@ -660,7 +789,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
-  /dedupe/address:
+  /v1/dedupe/address:
     post:
       tags:
         - Runtime API
@@ -728,7 +857,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
-  /dedupe/merge:
+  /v1/dedupe/merge:
     post:
       tags:
         - Runtime API
@@ -785,7 +914,7 @@ paths:
                 $ref: '#/components/schemas/Error'
 
   # Order Evaluation
-  /orders/evaluate:
+  /v1/orders/evaluate:
     post:
       tags:
         - Runtime API
@@ -1181,7 +1310,7 @@ paths:
                 $ref: '#/components/schemas/Error'
 
   # Rules
-  /rules:
+  /v1/rules:
     get:
       tags:
         - Management API
@@ -1209,7 +1338,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
-  /rules/catalog:
+  /v1/rules/catalog:
     get:
       tags:
         - Management API
@@ -1237,7 +1366,35 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
-  /rules/register:
+  /v1/rules/error-codes:
+    get:
+      tags:
+        - Management API
+      summary: Get error code catalog
+      description: Returns a comprehensive list of all possible error codes
+      operationId: getErrorCodeCatalog
+      responses:
+        '200':
+          description: List of error codes
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error_codes:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ErrorCode'
+                  request_id:
+                    type: string
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /v1/rules/register:
     post:
       tags:
         - Management API
@@ -1279,6 +1436,105 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+  
+  /v1/rules/test:
+    post:
+      tags:
+        - Management API
+      summary: Test Rules Against Payload
+      description: Performs a dry-run evaluation of a payload against all enabled validation rules.
+      operationId: testRules
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                phone:
+                  type: string
+                address:
+                  type: object
+                  properties:
+                    line1:
+                      type: string
+                    line2:
+                      type: string
+                    city:
+                      type: string
+                    state:
+                      type: string
+                    postal_code:
+                      type: string
+                    country:
+                      type: string
+                name:
+                  type: string
+      responses:
+        "200":
+          description: Rules test results
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  results:
+                    type: object
+                    properties:
+                      email:
+                        type: object
+                        properties:
+                          valid:
+                            type: boolean
+                          reason_codes:
+                            type: array
+                            items:
+                              type: string
+                          normalized:
+                            type: string
+                          disposable:
+                            type: boolean
+                      phone:
+                        type: object
+                        properties:
+                          valid:
+                            type: boolean
+                          reason_codes:
+                            type: array
+                            items:
+                              type: string
+                          e164:
+                            type: string
+                          country:
+                            type: string
+                      address:
+                        type: object
+                        properties:
+                          valid:
+                            type: boolean
+                          reason_codes:
+                            type: array
+                            items:
+                              type: string
+                          normalized:
+                            type: object
+                          po_box:
+                            type: boolean
+                      name:
+                        type: object
+                        properties:
+                          valid:
+                            type: boolean
+                          reason_codes:
+                            type: array
+                            items:
+                              type: string
+                          normalized:
+                            type: string
+                  request_id:
+                    type: string
 
   # Webhooks
   /v1/webhooks:
@@ -1961,6 +2217,23 @@ components:
         category:
           type: string
           description: Category of the reason code
+        severity:
+          type: string
+          enum: [low, medium, high]
+          description: Severity level
+
+    ErrorCode:
+      type: object
+      properties:
+        code:
+          type: string
+          description: Error code
+        description:
+          type: string
+          description: Description of the error code
+        category:
+          type: string
+          description: Category of the error code
         severity:
           type: string
           enum: [low, medium, high]

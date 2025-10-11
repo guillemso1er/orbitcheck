@@ -149,6 +149,8 @@ export async function rateLimit(request: FastifyRequest, rep: FastifyReply, redi
     const cnt = await redis.incr(key);
     if (cnt === 1) await redis.expire(key, ttl);
     if (cnt > limit) {
+        const remainingTtl = await redis.ttl(key);
+        rep.header('Retry-After', Math.max(remainingTtl, 1).toString());
         rep.status(HTTP_STATUS.TOO_MANY_REQUESTS).send({ error: { code: ERROR_CODES.RATE_LIMITED, message: ERROR_MESSAGES[ERROR_CODES.RATE_LIMITED] } });
         return;
     }

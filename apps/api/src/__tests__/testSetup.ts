@@ -16,6 +16,7 @@ export const mockRedisInstance = {
   sismember: jest.fn(),
   incr: jest.fn(),
   expire: jest.fn(),
+  ttl: jest.fn(),
   get: jest.fn(),
   set: jest.fn(),
   quit: jest.fn(),
@@ -154,8 +155,10 @@ jest.mock('@orbicheck/contracts', () => ({
     },
     RULES: {
       GET_AVAILABLE_RULES: '/v1/rules',
+      GET_ERROR_CODE_CATALOG: '/v1/rules/error-codes',
       GET_REASON_CODE_CATALOG: '/v1/rules/catalog',
       REGISTER_CUSTOM_RULES: '/v1/rules/register',
+      TEST_RULES_AGAINST_PAYLOAD: '/v1/rules/test',
     },
     SETTINGS: {
       GET_TENANT_SETTINGS: '/v1/settings',
@@ -173,10 +176,14 @@ jest.mock('@orbicheck/contracts', () => ({
     JOBS: {
       GET_JOB_STATUS: '/v1/jobs/:id',
     },
+    NORMALIZE: {
+      NORMALIZE_ADDRESS_CHEAP: '/v1/normalize/address',
+    },
     VALIDATE: {
       VALIDATE_EMAIL_ADDRESS: '/v1/validate/email',
       VALIDATE_PHONE_NUMBER: '/v1/validate/phone',
       VALIDATE_ADDRESS: '/v1/validate/address',
+      VALIDATE_NAME: '/v1/validate/name',
       VALIDATE_TAX_ID: '/v1/validate/tax-id',
     },
     VERIFY: {
@@ -334,7 +341,7 @@ export const createApp = async (): Promise<FastifyInstance> => {
   registerDedupeRoutes(app, mockPool as any);
   registerJobRoutes(app, mockPool as any);
   registerOrderRoutes(app, mockPool as any, mockRedisInstance as any);
-  registerRulesRoutes(app, mockPool as any);
+  registerRulesRoutes(app, mockPool as any, mockRedisInstance as any);
   registerSettingsRoutes(app, mockPool as any);
   registerValidationRoutes(app, mockPool as any, mockRedisInstance as any);
   registerWebhookRoutes(app, mockPool as any);

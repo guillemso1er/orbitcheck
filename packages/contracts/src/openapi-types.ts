@@ -108,6 +108,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/normalize/address": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Normalize Address (Cheap)
+         * @description Performs basic address normalization without geocoding or external lookups.
+         */
+        post: operations["normalizeAddress"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/validate/email": {
         parameters: {
             query?: never;
@@ -128,7 +148,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/validate/phone": {
+    "/v1/validate/phone": {
         parameters: {
             query?: never;
             header?: never;
@@ -148,7 +168,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/validate/address": {
+    "/v1/validate/address": {
         parameters: {
             query?: never;
             header?: never;
@@ -168,7 +188,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/validate/tax-id": {
+    "/v1/validate/tax-id": {
         parameters: {
             query?: never;
             header?: never;
@@ -188,7 +208,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/verify/phone": {
+    "/v1/validate/name": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Validate name
+         * @description Validates and normalizes a name string
+         */
+        post: operations["validateName"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/verify/phone": {
         parameters: {
             query?: never;
             header?: never;
@@ -208,7 +248,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/dedupe/customer": {
+    "/v1/dedupe/customer": {
         parameters: {
             query?: never;
             header?: never;
@@ -228,7 +268,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/dedupe/address": {
+    "/v1/dedupe/address": {
         parameters: {
             query?: never;
             header?: never;
@@ -248,7 +288,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/dedupe/merge": {
+    "/v1/dedupe/merge": {
         parameters: {
             query?: never;
             header?: never;
@@ -268,7 +308,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/orders/evaluate": {
+    "/v1/orders/evaluate": {
         parameters: {
             query?: never;
             header?: never;
@@ -392,7 +432,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/rules": {
+    "/v1/rules": {
         parameters: {
             query?: never;
             header?: never;
@@ -412,7 +452,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/rules/catalog": {
+    "/v1/rules/catalog": {
         parameters: {
             query?: never;
             header?: never;
@@ -432,7 +472,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/rules/register": {
+    "/v1/rules/error-codes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get error code catalog
+         * @description Returns a comprehensive list of all possible error codes
+         */
+        get: operations["getErrorCodeCatalog"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/rules/register": {
         parameters: {
             query?: never;
             header?: never;
@@ -446,6 +506,26 @@ export interface paths {
          * @description Registers custom business rules for the project
          */
         post: operations["registerCustomRules"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/rules/test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Test Rules Against Payload
+         * @description Performs a dry-run evaluation of a payload against all enabled validation rules.
+         */
+        post: operations["testRules"];
         delete?: never;
         options?: never;
         head?: never;
@@ -764,6 +844,19 @@ export interface components {
              */
             severity?: "low" | "medium" | "high";
         };
+        ErrorCode: {
+            /** @description Error code */
+            code?: string;
+            /** @description Description of the error code */
+            description?: string;
+            /** @description Category of the error code */
+            category?: string;
+            /**
+             * @description Severity level
+             * @enum {string}
+             */
+            severity?: "low" | "medium" | "high";
+        };
         CustomRule: {
             /** @description Rule ID */
             id?: string;
@@ -1056,6 +1149,76 @@ export interface operations {
             };
         };
     };
+    normalizeAddress: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    address: {
+                        line1: string;
+                        line2?: string;
+                        city: string;
+                        state?: string;
+                        postal_code: string;
+                        country: string;
+                    };
+                };
+            };
+        };
+        responses: {
+            /** @description Successful normalization response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        normalized?: {
+                            line1?: string;
+                            line2?: string;
+                            city?: string;
+                            state?: string;
+                            postal_code?: string;
+                            country?: string;
+                        };
+                        request_id?: string;
+                    };
+                };
+            };
+            /** @description Validation error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
     validateEmail: {
         parameters: {
             query?: never;
@@ -1262,6 +1425,50 @@ export interface operations {
                         /** @description Whether the tax ID is valid */
                         valid?: boolean;
                         /** @description Normalized tax ID */
+                        normalized?: string;
+                        /** @description List of validation reason codes */
+                        reason_codes?: string[];
+                        request_id?: string;
+                    };
+                };
+            };
+            /** @description Validation error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    validateName: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description The name to validate and normalize */
+                    name: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Name validation result */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Whether the name is valid */
+                        valid?: boolean;
+                        /** @description Normalized name */
                         normalized?: string;
                         /** @description List of validation reason codes */
                         reason_codes?: string[];
@@ -1915,6 +2122,38 @@ export interface operations {
             };
         };
     };
+    getErrorCodeCatalog: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description List of error codes */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error_codes?: components["schemas"]["ErrorCode"][];
+                        request_id?: string;
+                    };
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
     registerCustomRules: {
         parameters: {
             query?: never;
@@ -1952,6 +2191,69 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    testRules: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    email?: string;
+                    phone?: string;
+                    address?: {
+                        line1?: string;
+                        line2?: string;
+                        city?: string;
+                        state?: string;
+                        postal_code?: string;
+                        country?: string;
+                    };
+                    name?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Rules test results */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        results?: {
+                            email?: {
+                                valid?: boolean;
+                                reason_codes?: string[];
+                                normalized?: string;
+                                disposable?: boolean;
+                            };
+                            phone?: {
+                                valid?: boolean;
+                                reason_codes?: string[];
+                                e164?: string;
+                                country?: string;
+                            };
+                            address?: {
+                                valid?: boolean;
+                                reason_codes?: string[];
+                                normalized?: Record<string, never>;
+                                po_box?: boolean;
+                            };
+                            name?: {
+                                valid?: boolean;
+                                reason_codes?: string[];
+                                normalized?: string;
+                            };
+                        };
+                        request_id?: string;
+                    };
                 };
             };
         };

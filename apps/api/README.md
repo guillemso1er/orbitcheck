@@ -56,11 +56,42 @@ TWILIO_PHONE_NUMBER=
 
 All POST/GET; auth via Bearer API key; rate limited (300/min); idempotent.
 
-**Common Errors:**
-- 400: { "error": { "code": "validation_error", "message": "..." } }
-- 401: { "error": { "code": "unauthorized", "message": "..." } }
-- 429: { "error": { "code": "rate_limited", "message": "..." } }
-- 500: { "error": { "code": "server_error", "message": "..." } }
+**Error Codes:**
+
+All API errors follow the format:
+```json
+{
+  "error": {
+    "code": "error_code",
+    "message": "Human-readable description"
+  },
+  "request_id": "uuid"
+}
+```
+
+**Common Error Codes:**
+
+| Code | HTTP Status | Category | Description |
+|------|-------------|----------|-------------|
+| `invalid_url` | 400 | validation | Valid HTTPS/HTTP URL required |
+| `missing_payload` | 400 | validation | Custom payload required for custom type |
+| `invalid_type` | 400 | validation | Invalid webhook payload_type |
+| `invalid_ids` | 400 | validation | Invalid or mismatched IDs |
+| `not_found` | 404 | resource | Requested resource not found |
+| `unauthorized` | 401 | auth | Authentication required but not provided |
+| `invalid_token` | 401 | auth | Provided authentication token is invalid or expired |
+| `no_project` | 403 | auth | No default project configured for user |
+| `user_exists` | 409 | auth | User with provided credentials already exists |
+| `invalid_credentials` | 401 | auth | Invalid login credentials provided |
+| `server_error` | 500 | server | Internal server error occurred |
+| `webhook_send_failed` | 502 | webhook | Failed to deliver webhook to configured endpoint |
+| `rate_limited` | 429 | rate_limit | Request rate limit exceeded |
+
+For a complete list of error codes with categories and severity levels, see the [Error Code Catalog API](#get-v1ruleserror-codes).
+
+**Reason Codes:**
+
+Validation and risk assessment responses include `reason_codes` arrays with standardized codes. For a complete catalog, see the [Reason Code Catalog API](#get-v1rulescatalog).
 
 **Reason Codes (deterministic):**
 - Validators: email.invalid_format, email.mx_not_found, email.disposable_domain, email.server_error, phone.invalid_format, phone.unparseable, phone.otp_sent, phone.otp_send_failed, address.po_box, address.postal_city_mismatch, taxid.invalid_format, taxid.invalid_checksum, taxid.vies_invalid, taxid.vies_unavailable.
@@ -145,22 +176,19 @@ All POST/GET; auth via Bearer API key; rate limited (300/min); idempotent.
 ### 16. DELETE /api-keys/:id
 **Response (200):** { "deleted": true }
 
-### 17. GET /data/logs
-**Query:** cursor?, limit?
-**Response (200):** { "data": [{ "id": "string", "type": "string", "endpoint": "string", "reason_codes": ["string"], "status": integer, "created_at": "string" }], "next_cursor": "string|null" }
 
-### 18. GET /data/usage
+### 17. GET /data/usage
 **Query:** period?
 **Response (200):** { "period": "string", "totals": { "validations": integer, "orders": integer }, "by_day": [{ "date": "string", "validations": integer, "orders": integer }], "request_id": "string" }
 
-### 19. GET /rules/catalog
+### 18. GET /rules/catalog
 **Response (200):** { "catalog": { "reason_codes": {...}, "severities": [...] } }
 
-### 20. POST /rules/register
+### 10. POST /rules/register
 **Body:** { "rules": [{ "id": "string", "name": "string", "description": "string", "reason_code": "string", "severity": "string", "enabled": boolean }] }
 **Response (200):** { "registered": ["string"] }
 
-### 21. POST /webhooks/test
+### 20. POST /webhooks/test
 **Body:** { "url": "string", "payload_type": "validation"|"order"|"custom", "custom_payload"?: object }
 **Response (200):** { "sent_to": "string", "response": { "status": integer, "body": "string" } }
 **Example Request:** `{ "url": "https://example.com/webhook", "payload_type": "validation" }`

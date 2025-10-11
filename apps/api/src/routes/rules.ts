@@ -2,7 +2,7 @@ import { MGMT_V1_ROUTES } from "@orbicheck/contracts";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import type { Pool } from "pg";
 
-import { REASON_CODES } from "../constants.js";
+import { ERROR_CODE_DESCRIPTIONS, ERROR_CODES, REASON_CODES } from "../constants.js";
 import { generateRequestId, securityHeader, sendServerError } from "./utils.js";
 
 const reasonCodes: any[] = Object.entries(REASON_CODES).map(([_key, code]) => {
@@ -18,6 +18,8 @@ const reasonCodes: any[] = Object.entries(REASON_CODES).map(([_key, code]) => {
     [REASON_CODES.PHONE_OTP_SEND_FAILED]: { description: 'Failed to send OTP', category: 'phone', severity: 'high' },
     [REASON_CODES.ADDRESS_PO_BOX]: { description: 'P.O. Box detected', category: 'address', severity: 'high' },
     [REASON_CODES.ADDRESS_POSTAL_CITY_MISMATCH]: { description: 'Postal code does not match city', category: 'address', severity: 'medium' },
+    [REASON_CODES.ADDRESS_GEO_OUT_OF_BOUNDS]: { description: 'Address geocoded outside expected bounds', category: 'address', severity: 'high' },
+    [REASON_CODES.ADDRESS_GEOCODE_FAILED]: { description: 'Failed to geocode address', category: 'address', severity: 'medium' },
     [REASON_CODES.TAXID_INVALID_FORMAT]: { description: 'Invalid tax ID format', category: 'taxid', severity: 'low' },
     [REASON_CODES.TAXID_INVALID_CHECKSUM]: { description: 'Invalid tax ID checksum', category: 'taxid', severity: 'medium' },
     [REASON_CODES.TAXID_VIES_INVALID]: { description: 'VAT number invalid per VIES', category: 'taxid', severity: 'high' },
@@ -26,20 +28,33 @@ const reasonCodes: any[] = Object.entries(REASON_CODES).map(([_key, code]) => {
     [REASON_CODES.ORDER_ADDRESS_DEDUPE_MATCH]: { description: 'Potential duplicate address detected', category: 'order', severity: 'medium' },
     [REASON_CODES.ORDER_PO_BOX_BLOCK]: { description: 'Order blocked due to P.O. Box', category: 'order', severity: 'high' },
     [REASON_CODES.ORDER_ADDRESS_MISMATCH]: { description: 'Address validation mismatch', category: 'order', severity: 'medium' },
-    [REASON_CODES.ORDER_INVALID_EMAIL]: { description: 'Invalid email in order', category: 'order', severity: 'medium' },
+    [REASON_CODES.ORDER_GEO_OUT_OF_BOUNDS]: { description: 'Order address geocoded outside bounds', category: 'order', severity: 'high' },
+    [REASON_CODES.ORDER_GEOCODE_FAILED]: { description: 'Failed to geocode order address', category: 'order', severity: 'medium' },
+    [REASON_CODES.ORDER_INVALID_ADDRESS]: { description: 'Invalid address in order', category: 'order', severity: 'medium' },
+    [REASON_CODES.ORDER_DISPOSABLE_EMAIL]: { description: 'Disposable email in order', category: 'order', severity: 'high' },
     [REASON_CODES.ORDER_INVALID_PHONE]: { description: 'Invalid phone in order', category: 'order', severity: 'medium' },
     [REASON_CODES.ORDER_DUPLICATE_DETECTED]: { description: 'Duplicate order detected', category: 'order', severity: 'high' },
     [REASON_CODES.ORDER_COD_RISK]: { description: 'Increased risk due to COD payment', category: 'order', severity: 'medium' },
+    [REASON_CODES.ORDER_HIGH_RISK_RTO]: { description: 'High risk return-to-origin detected', category: 'order', severity: 'high' },
     [REASON_CODES.ORDER_HIGH_VALUE]: { description: 'High value order flagged', category: 'order', severity: 'low' },
+    [REASON_CODES.ORDER_INVALID_EMAIL]: { description: 'Invalid email in order', category: 'order', severity: 'medium' },
     [REASON_CODES.ORDER_HOLD_FOR_REVIEW]: { description: 'Order held for manual review', category: 'order', severity: 'medium' },
     [REASON_CODES.ORDER_SERVER_ERROR]: { description: 'Server error during order evaluation', category: 'order', severity: 'high' },
     [REASON_CODES.DEDUP_SERVER_ERROR]: { description: 'Server error during deduplication', category: 'dedupe', severity: 'high' },
+    [REASON_CODES.WEBHOOK_SEND_FAILED]: { description: 'Failed to send webhook', category: 'webhook', severity: 'high' },
   };
   const desc = descriptions[code];
   return { code, description: desc ? desc.description : 'Unknown reason code', category: desc ? desc.category : 'unknown', severity: desc ? desc.severity : 'medium' };
 });
 
-export function registerRulesRoutes(app: FastifyInstance, _pool: Pool): void {
+const errorCodes: any[] = Object.entries(ERROR_CODE_DESCRIPTIONS).map(([code, desc]) => ({
+  code,
+  description: desc.description,
+  category: desc.category,
+  severity: desc.severity,
+}));
+
+export function registerRulesRoutes(app: FastifyInstance, pool: Pool, redis?: any): void {
   const rules: any[] = [
     {
       id: 'email_format',
@@ -202,6 +217,155 @@ export function registerRulesRoutes(app: FastifyInstance, _pool: Pool): void {
       return rep.send(response);
     } catch (error) {
       return sendServerError(request, rep, error, MGMT_V1_ROUTES.RULES.GET_REASON_CODE_CATALOG, generateRequestId());
+    }
+  });
+
+  // Error code catalog endpoint
+  app.get(MGMT_V1_ROUTES.RULES.GET_ERROR_CODE_CATALOG, {
+    schema: {
+      summary: 'Get Error Code Catalog',
+      description: 'Returns a comprehensive list of all possible error codes with descriptions and severity levels.',
+      tags: ['Rules'],
+      headers: securityHeader,
+      response: {
+        200: {
+          description: 'List of error codes',
+          type: 'object',
+          properties: {
+            error_codes: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  code: { type: 'string' },
+                  description: { type: 'string' },
+                  category: { type: 'string' },
+                  severity: { type: 'string', enum: ['low', 'medium', 'high'] },
+                },
+              },
+            },
+            request_id: { type: 'string' },
+          },
+        },
+      },
+    },
+  }, async (request: FastifyRequest, rep: FastifyReply) => {
+    try {
+      const request_id = generateRequestId();
+      const response: any = {
+        error_codes: errorCodes,
+        request_id,
+      };
+      return rep.send(response);
+    } catch (error) {
+      return sendServerError(request, rep, error, MGMT_V1_ROUTES.RULES.GET_ERROR_CODE_CATALOG, generateRequestId());
+    }
+  });
+
+  // Test rules endpoint (dry-run payload vs rules)
+  app.post(MGMT_V1_ROUTES.RULES.TEST_RULES_AGAINST_PAYLOAD, {
+    schema: {
+      summary: 'Test Rules Against Payload',
+      description: 'Performs a dry-run evaluation of a payload against all enabled validation rules.',
+      tags: ['Rules'],
+      headers: securityHeader,
+      body: {
+        type: 'object',
+        properties: {
+          email: { type: 'string' },
+          phone: { type: 'string' },
+          address: {
+            type: 'object',
+            properties: {
+              line1: { type: 'string' },
+              line2: { type: 'string' },
+              city: { type: 'string' },
+              state: { type: 'string' },
+              postal_code: { type: 'string' },
+              country: { type: 'string' }
+            }
+          },
+          name: { type: 'string' }
+        }
+      },
+      response: {
+        200: {
+          description: 'Rules test results',
+          type: 'object',
+          properties: {
+            results: {
+              type: 'object',
+              properties: {
+                email: { type: 'object', properties: { valid: { type: 'boolean' }, reason_codes: { type: 'array', items: { type: 'string' } }, normalized: { type: 'string' }, disposable: { type: 'boolean' } } },
+                phone: { type: 'object', properties: { valid: { type: 'boolean' }, reason_codes: { type: 'array', items: { type: 'string' } }, e164: { type: 'string' }, country: { type: 'string' } } },
+                address: { type: 'object', properties: { valid: { type: 'boolean' }, reason_codes: { type: 'array', items: { type: 'string' } }, normalized: { type: 'object' }, po_box: { type: 'boolean' } } },
+                name: { type: 'object', properties: { valid: { type: 'boolean' }, reason_codes: { type: 'array', items: { type: 'string' } }, normalized: { type: 'string' } } }
+              }
+            },
+            request_id: { type: 'string' }
+          }
+        }
+      }
+    }
+  }, async (request: FastifyRequest, rep: FastifyReply) => {
+    try {
+      const request_id = generateRequestId();
+      const body = request.body as any;
+      const results: any = {};
+
+      // Import validators dynamically to avoid circular deps
+      const { validateEmail } = await import('../validators/email.js');
+      const { validatePhone } = await import('../validators/phone.js');
+      const { validateAddress } = await import('../validators/address.js');
+      // Assume name validator exists or create simple one
+      const validateName = (name: string) => ({ valid: true, reason_codes: [], normalized: name.trim() });
+
+      if (body.email) {
+        const { validateEmail } = await import('../validators/email.js');
+        const emailResult = await validateEmail(body.email, redis);
+        results.email = {
+          valid: emailResult.valid,
+          reason_codes: emailResult.reason_codes,
+          normalized: emailResult.normalized,
+          disposable: emailResult.disposable
+        };
+      }
+
+      if (body.phone) {
+        const { validatePhone } = await import('../validators/phone.js');
+        const phoneResult = await validatePhone(body.phone, undefined, redis);
+        results.phone = {
+          valid: phoneResult.valid,
+          reason_codes: phoneResult.reason_codes,
+          e164: phoneResult.e164,
+          country: phoneResult.country
+        };
+      }
+
+      if (body.address) {
+        const { validateAddress } = await import('../validators/address.js');
+        const addressResult = await validateAddress(body.address, pool, redis);
+        results.address = {
+          valid: addressResult.valid,
+          reason_codes: addressResult.reason_codes,
+          normalized: addressResult.normalized,
+          po_box: addressResult.po_box
+        };
+      }
+
+      if (body.name) {
+        const { validateName } = await import('../validators/name.js');
+        const nameResult = validateName(body.name);
+        results.name = nameResult;
+      }
+
+      const response: any = {
+        results,
+        request_id
+      };
+      return rep.send(response);
+    } catch (error) {
+      return sendServerError(request, rep, error, MGMT_V1_ROUTES.RULES.TEST_RULES, generateRequestId());
     }
   });
 

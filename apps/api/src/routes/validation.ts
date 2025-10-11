@@ -248,6 +248,50 @@ export function registerValidationRoutes(app: FastifyInstance, pool: Pool, redis
             return sendServerError(request, rep, error, API_V1_ROUTES.VALIDATE.VALIDATE_TAX_ID, generateRequestId());
         }
     });
+
+    app.post(API_V1_ROUTES.VALIDATE.VALIDATE_NAME, {
+        schema: {
+            summary: 'Validate Name',
+            description: 'Validates and normalizes a name string.',
+            tags: ['Validation'],
+            headers: securityHeader,
+            body: {
+                type: 'object',
+                required: ['name'],
+                properties: {
+                    name: { type: 'string', description: 'The name to validate and normalize.' }
+                }
+            },
+            response: {
+                200: {
+                    description: 'Successful validation response',
+                    type: 'object',
+                    properties: {
+                        valid: { type: 'boolean' },
+                        normalized: { type: 'string' },
+                        reason_codes: { type: 'array', items: { type: 'string' } },
+                        request_id: { type: 'string' }
+                    }
+                },
+                ...unauthorizedResponse,
+                ...rateLimitResponse,
+                ...validationErrorResponse,
+            }
+        }
+    }, async (request, rep) => {
+        try {
+            const request_id = generateRequestId();
+            const body = request.body as any;
+            const { name } = body;
+            const { validateName } = await import('../validators/name.js');
+            const out = validateName(name);
+            const response: any = { ...out, request_id };
+            return rep.send(response);
+        } catch (error) {
+            return sendServerError(request, rep, error, API_V1_ROUTES.VALIDATE.VALIDATE_NAME, generateRequestId());
+        }
+    });
+
     // New endpoint for verifying OTP with Twilio Verify
     app.post(API_V1_ROUTES.VERIFY.VERIFY_PHONE_OTP, {
         schema: {

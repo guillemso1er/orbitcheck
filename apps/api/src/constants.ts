@@ -38,9 +38,26 @@ export const ERROR_MESSAGES = {
   [ERROR_CODES.NO_PROJECT]: 'No default project found',
   [ERROR_CODES.USER_EXISTS]: 'User already exists',
   [ERROR_CODES.INVALID_CREDENTIALS]: 'Invalid email or password',
-  [ERROR_CODES.SERVER_ERROR]: 'Twilio Verify not configured',
+  [ERROR_CODES.SERVER_ERROR]: 'Internal server error',
+  [ERROR_CODES.WEBHOOK_SEND_FAILED]: 'Failed to send webhook',
   [ERROR_CODES.RATE_LIMITED]: 'Rate limit exceeded',
 } as const;
+
+export const ERROR_CODE_DESCRIPTIONS: Record<string, { description: string, category: string, severity: 'low' | 'medium' | 'high' }> = {
+  [ERROR_CODES.INVALID_URL]: { description: 'Invalid URL format provided', category: 'validation', severity: 'low' },
+  [ERROR_CODES.MISSING_PAYLOAD]: { description: 'Required payload missing for custom webhook type', category: 'validation', severity: 'low' },
+  [ERROR_CODES.INVALID_TYPE]: { description: 'Invalid webhook payload type specified', category: 'validation', severity: 'low' },
+  [ERROR_CODES.INVALID_IDS]: { description: 'Provided IDs are invalid or do not match', category: 'validation', severity: 'medium' },
+  [ERROR_CODES.NOT_FOUND]: { description: 'Requested resource not found', category: 'resource', severity: 'medium' },
+  [ERROR_CODES.UNAUTHORIZED]: { description: 'Authentication required but not provided', category: 'auth', severity: 'high' },
+  [ERROR_CODES.INVALID_TOKEN]: { description: 'Provided authentication token is invalid or expired', category: 'auth', severity: 'high' },
+  [ERROR_CODES.NO_PROJECT]: { description: 'No default project configured for user', category: 'auth', severity: 'medium' },
+  [ERROR_CODES.USER_EXISTS]: { description: 'User with provided credentials already exists', category: 'auth', severity: 'low' },
+  [ERROR_CODES.INVALID_CREDENTIALS]: { description: 'Invalid login credentials provided', category: 'auth', severity: 'high' },
+  [ERROR_CODES.SERVER_ERROR]: { description: 'Internal server error occurred', category: 'server', severity: 'high' },
+  [ERROR_CODES.WEBHOOK_SEND_FAILED]: { description: 'Failed to deliver webhook to configured endpoint', category: 'webhook', severity: 'high' },
+  [ERROR_CODES.RATE_LIMITED]: { description: 'Request rate limit exceeded', category: 'rate_limit', severity: 'medium' },
+};
 
 export const REASON_CODES = {
   // Address
