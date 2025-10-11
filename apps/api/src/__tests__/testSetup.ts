@@ -325,6 +325,8 @@ export const createApp = async (): Promise<FastifyInstance> => {
   const { registerWebhookRoutes } = await import('../routes/webhook.js');
   const { registerSettingsRoutes } = await import('../routes/settings.js');
 
+
+
   registerAuthRoutes(app, mockPool as any);
   registerApiKeysRoutes(app, mockPool as any);
   registerBatchRoutes(app, mockPool as any, mockRedisInstance as any);

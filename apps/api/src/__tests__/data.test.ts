@@ -90,7 +90,7 @@ describe('Data Routes', () => {
 
   describe('DELETE /v1/logs/:id', () => {
     it('should delete a log entry', async () => {
-      mockPool.query.mockImplementation(() => Promise.resolve({ rowCount: 1 }));
+      mockPool.query.mockImplementation(() => Promise.resolve({ rowCount: 1, rows: [] }));
 
       const response = await app.inject({
         method: 'DELETE',
@@ -107,7 +107,7 @@ describe('Data Routes', () => {
     });
 
     it('should return 404 for non-existent log', async () => {
-      mockPool.query.mockResolvedValueOnce({ rowCount: 0, rows: [] });
+      mockPool.query.mockImplementation(() => Promise.resolve({ rowCount: 0, rows: [] }));
 
       const response = await app.inject({
         method: 'DELETE',
@@ -119,11 +119,11 @@ describe('Data Routes', () => {
 
       expect(response.statusCode).toBe(404);
       const body = response.json();
-      expect(body.error).toBe('NOT_FOUND');
+      expect(body.error.code).toBe('NOT_FOUND');
     });
 
     it('should handle database errors', async () => {
-      mockPool.query.mockRejectedValueOnce(new Error('DB error'));
+      mockPool.query.mockImplementation(() => Promise.reject(new Error('DB error')));
 
       const response = await app.inject({
         method: 'DELETE',
@@ -133,11 +133,9 @@ describe('Data Routes', () => {
         }
       });
       const body = response.json();
-      // const error = body.error.json();
-      const errorMessage = body.error.code;
-      console.log('Response body:', errorMessage); // Debug log
 
       expect(response.statusCode).toBe(500);
+      expect(body.error.code).toBe('server_error');
     });
   });
 });

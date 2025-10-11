@@ -303,8 +303,9 @@ export function registerDataRoutes(app: FastifyInstance, pool: Pool): void {
                 [id, project_id]
             );
 
-            if (result.rowCount === 0) {
-                return await sendError(rep, HTTP_STATUS.NOT_FOUND, ERROR_CODES.NOT_FOUND, 'Log entry not found', request_id);
+            if (result.rowCount === 0 ) {
+                sendError(rep, HTTP_STATUS.NOT_FOUND, ERROR_CODES.NOT_FOUND, 'Log entry not found', request_id);
+                return;
             }
             const response = {
                 message: 'Log entry deleted successfully',
