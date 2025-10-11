@@ -3,7 +3,7 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import type { Pool } from "pg";
 
 import { CACHE_HIT_PLACEHOLDER, ERROR_CODES, HTTP_STATUS, LOGS_DEFAULT_LIMIT, LOGS_MAX_LIMIT, TOP_REASONS_LIMIT, USAGE_DAYS, USAGE_PERIOD } from "../constants.js";
-import { generateRequestId, rateLimitResponse, securityHeader, sendError, sendServerError, unauthorizedResponse } from "./utils.js";
+import { errorSchema, generateRequestId, rateLimitResponse, securityHeader, sendError, sendServerError, unauthorizedResponse } from "./utils.js";
 // Import route constants from contracts package
 // TODO: Update to use @orbicheck/contracts export once build issues are resolved
 const ROUTES = {
@@ -279,15 +279,7 @@ export function registerDataRoutes(app: FastifyInstance, pool: Pool): void {
                         request_id: { type: 'string' }
                     }
                 },
-                404: {
-                    description: 'Log entry not found',
-                    type: 'object',
-                    properties: {
-                        error: { type: 'string' },
-                        message: { type: 'string' },
-                        request_id: { type: 'string' }
-                    }
-                },
+                404: { description: 'Log entry not found', ...errorSchema },
                 ...unauthorizedResponse,
                 ...rateLimitResponse
             }
@@ -303,9 +295,8 @@ export function registerDataRoutes(app: FastifyInstance, pool: Pool): void {
                 [id, project_id]
             );
 
-            if (result.rowCount === 0 ) {
-                sendError(rep, HTTP_STATUS.NOT_FOUND, ERROR_CODES.NOT_FOUND, 'Log entry not found', request_id);
-                return;
+            if (result.rowCount === 0 || result.rowCount === null || result.rowCount === undefined) {
+                return sendError(rep, HTTP_STATUS.NOT_FOUND, ERROR_CODES.NOT_FOUND, 'Log entry not found', request_id);
             }
             const response = {
                 message: 'Log entry deleted successfully',

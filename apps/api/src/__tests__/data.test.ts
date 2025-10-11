@@ -90,7 +90,7 @@ describe('Data Routes', () => {
 
   describe('DELETE /v1/logs/:id', () => {
     it('should delete a log entry', async () => {
-      mockPool.query.mockImplementation(() => Promise.resolve({ rowCount: 1, rows: [] }));
+        mockPool.query.mockResolvedValueOnce({ rowCount: 1, rows: [{ id: 'test-log-id', status: 'deleted' }] });
 
       const response = await app.inject({
         method: 'DELETE',
@@ -119,7 +119,7 @@ describe('Data Routes', () => {
 
       expect(response.statusCode).toBe(404);
       const body = response.json();
-      expect(body.error.code).toBe('NOT_FOUND');
+      expect(body.error.code).toBe('not_found');
     });
 
     it('should handle database errors', async () => {

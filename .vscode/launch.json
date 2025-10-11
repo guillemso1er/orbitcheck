@@ -6,12 +6,18 @@
       "request": "launch",
       "name": "Debug Fastify API",
       "runtimeExecutable": "pnpm",
-      "runtimeArgs": ["run", "dev"],
+      "runtimeArgs": [
+        "run",
+        "dev"
+      ],
       "cwd": "${workspaceFolder}/apps/api",
       "console": "integratedTerminal",
       "internalConsoleOptions": "neverOpen",
       "autoAttachChildProcesses": true,
-      "skipFiles": ["<node_internals>/**", "node_modules/**"]
+      "skipFiles": [
+        "<node_internals>/**",
+        "node_modules/**"
+      ]
     },
     {
       "type": "chrome",
@@ -20,12 +26,53 @@
       "url": "http://localhost:5173",
       "webRoot": "${workspaceFolder}/apps/dashboard",
       "preLaunchTask": "Start React App"
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Debug Jest API Tests",
+      "program": "${workspaceFolder}/node_modules/jest/bin/jest.js",
+      "args": [
+        "--config",
+        "${workspaceFolder}/apps/api/jest.config.mjs",
+        "--runInBand",
+        "${file}"
+      ],
+      "cwd": "${workspaceFolder}/apps/api/",
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen",
+      "skipFiles": [
+        "<node_internals>/**",
+        "node_modules/**"
+      ]
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Debug Jest Dashboard Tests",
+      "program": "${workspaceFolder}/node_modules/.bin/jest",
+      "args": [
+        "--config",
+        "${workspaceFolder}/apps/dashboard/jest.config.ts",
+        "--runInBand",
+        "${file}"
+      ],
+      "cwd": "${workspaceFolder}/apps/dashboard",
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen",
+      "skipFiles": [
+        "<node_internals>/**",
+        "node_modules/**"
+      ]
     }
   ],
   "compounds": [
     {
       "name": "Debug Full Stack",
-      "configurations": ["Debug Fastify API", "Debug React App"],
+      "configurations": [
+        "Debug Fastify API",
+        "Debug React App"
+      ],
       "stopAll": true
     }
   ]
