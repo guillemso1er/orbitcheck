@@ -37,7 +37,7 @@ export const batchValidationProcessor = async (job: Job<BatchValidationInput & {
 
         switch (type) {
           case 'email':
-            result = await validateEmail(item.email, redis);
+            result = await validateEmail(item, redis);
             break;
           case 'phone':
             result = await validatePhone(item.phone, item.country, redis);

@@ -366,6 +366,66 @@ export default function () {
         '[Get Usage] has data': (r) => r.status === 200 && (() => { const body = JSON.parse(r.body); return body && typeof body === 'object'; })()
     });
 
+    // Step 30b: Get tenant settings (Management API - use PAT)
+    const resGetSettings = http.get(`${BASE_URL}/v1/settings`, { headers: mgmtHeaders });
+    check(resGetSettings, {
+        '[Get Settings] status 200': (r) => r.status === 200,
+        '[Get Settings] has settings': (r) => {
+            const body = JSON.parse(r.body);
+            return body.country_defaults !== undefined && body.formatting !== undefined && body.risk_thresholds !== undefined;
+        }
+    });
+
+    // Step 30c: Update tenant settings (Management API - use PAT)
+    const updateSettingsPayload = JSON.stringify({
+        country_defaults: { default_country: 'US' },
+        formatting: { date_format: 'MM/DD/YYYY' },
+        risk_thresholds: { max_score: 0.8 }
+    });
+    const resUpdateSettings = http.put(`${BASE_URL}/v1/settings`, updateSettingsPayload, { headers: mgmtHeaders });
+    check(resUpdateSettings, {
+        '[Update Settings] status 200': (r) => r.status === 200,
+        '[Update Settings] success message': (r) => {
+            const body = JSON.parse(r.body);
+            return body.message && body.message.includes('updated');
+        }
+    });
+
+    // Step 30d: Create a log entry for deletion test (Runtime API - use API key)
+    const logEntryPayload = JSON.stringify({ email: 'log-test@example.com' });
+    http.post(`${API_V1_URL}/validate/email`, logEntryPayload, { headers: newRuntimeHeaders });
+
+    // Step 30e: Get logs to find one to delete (Management API - use PAT)
+    const resGetLogsForDelete = http.get(`${BASE_URL}/v1/data/logs?limit=1`, { headers: mgmtHeaders });
+    check(resGetLogsForDelete, {
+        '[Get Logs for Delete] status 200': (r) => r.status === 200
+    });
+    const logsForDelete = resGetLogsForDelete.status === 200 ? JSON.parse(resGetLogsForDelete.body).data : [];
+    const logToDelete = logsForDelete.length > 0 ? logsForDelete[0] : null;
+
+    // Step 30f: Delete a log entry (Management API - use PAT)
+    if (logToDelete) {
+        const resDeleteLog = http.del(`${BASE_URL}/v1/logs/${logToDelete.id}`, null, { headers: Object.assign({}, NO_BODY_HEADERS, { 'Authorization': `Bearer ${patToken}` }) });
+        check(resDeleteLog, {
+            '[Delete Log] status 200': (r) => r.status === 200,
+            '[Delete Log] success message': (r) => {
+                const body = JSON.parse(r.body);
+                return body.message && body.message.includes('deleted');
+            }
+        });
+    }
+
+    // Step 30g: Erase user data (Management API - use PAT)
+    const eraseDataPayload = JSON.stringify({ reason: 'gdpr' });
+    const resEraseData = http.post(`${BASE_URL}/v1/data/erase`, eraseDataPayload, { headers: mgmtHeaders });
+    check(resEraseData, {
+        '[Erase Data] status 202': (r) => r.status === 202,
+        '[Erase Data] confirmation message': (r) => {
+            const body = JSON.parse(r.body);
+            return body.message && body.message.includes('erasure');
+        }
+    });
+
     // Step 32: List webhooks (Management API - use PAT)
     const resListWebhooks = http.get(`${BASE_URL}/v1/webhooks`, { headers: mgmtHeaders });
     check(resListWebhooks, {

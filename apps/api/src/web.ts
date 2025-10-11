@@ -12,6 +12,7 @@ import { registerDedupeRoutes } from './routes/dedupe.js';
 import { registerJobRoutes } from './routes/jobs.js';
 import { registerOrderRoutes } from './routes/orders.js';
 import { registerRulesRoutes } from './routes/rules.js';
+import { registerSettingsRoutes } from './routes/settings.js';
 import { registerValidationRoutes } from './routes/validation.js';
 import { registerWebhookRoutes } from './routes/webhook.js';
 
@@ -49,7 +50,9 @@ export async function authenticateRequest(request: FastifyRequest, rep: FastifyR
     // Management routes - use PAT authentication, fallback to session
     const isMgmtRoute = url.startsWith('/v1/api-keys') ||
         url.startsWith('/v1/data') ||
+        url.startsWith('/v1/logs') ||
         url.startsWith('/v1/rules') ||
+        url.startsWith('/v1/settings') ||
         url.startsWith('/v1/webhooks');
 
     // Runtime routes - use API key with HMAC
@@ -147,6 +150,7 @@ export function registerRoutes(app: FastifyInstance, pool: Pool, redis: IORedisT
     registerDedupeRoutes(app, pool);
     registerOrderRoutes(app, pool, redis);
     registerDataRoutes(app, pool);
+    registerSettingsRoutes(app, pool);
     registerWebhookRoutes(app, pool);
     registerRulesRoutes(app, pool);
     registerBatchRoutes(app, pool, redis);

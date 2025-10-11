@@ -1008,6 +1008,178 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
+  /v1/settings:
+    get:
+      tags:
+        - Management API
+      summary: Get tenant settings
+      description: Retrieves tenant settings including country defaults, formatting, and risk thresholds
+      operationId: getSettings
+      responses:
+        '200':
+          description: Tenant settings
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  country_defaults:
+                    type: object
+                    description: Country-specific default settings
+                  formatting:
+                    type: object
+                    description: Formatting preferences
+                  risk_thresholds:
+                    type: object
+                    description: Risk assessment thresholds
+                  request_id:
+                    type: string
+                    description: Request identifier
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    put:
+      tags:
+        - Management API
+      summary: Update tenant settings
+      description: Updates tenant settings including country defaults, formatting, and risk thresholds
+      operationId: updateSettings
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                country_defaults:
+                  type: object
+                  description: Country-specific default settings
+                formatting:
+                  type: object
+                  description: Formatting preferences
+                risk_thresholds:
+                  type: object
+                  description: Risk assessment thresholds
+      responses:
+        '200':
+          description: Settings updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    description: Success message
+                  request_id:
+                    type: string
+                    description: Request identifier
+        '400':
+          description: Invalid input data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /v1/data/erase:
+    post:
+      tags:
+        - Management API
+      summary: Erase user data
+      description: Initiates data erasure for GDPR/CCPA compliance
+      operationId: eraseData
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - reason
+              properties:
+                reason:
+                  type: string
+                  description: Reason for data erasure (gdpr/ccpa)
+                  enum:
+                    - gdpr
+                    - ccpa
+      responses:
+        '202':
+          description: Data erasure initiated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    description: Confirmation message
+                  request_id:
+                    type: string
+                    description: Request identifier
+        '400':
+          description: Invalid input data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /v1/logs/{id}:
+    delete:
+      tags:
+        - Management API
+      summary: Delete log entry
+      description: Deletes a specific log entry
+      operationId: deleteLog
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID of the log entry to delete
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Log entry deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    description: Success message
+                  request_id:
+                    type: string
+                    description: Request identifier
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Log entry not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
   # Rules
   /rules:
     get:

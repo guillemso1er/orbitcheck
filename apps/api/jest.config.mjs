@@ -38,7 +38,7 @@ export default {
     testTimeout: 10_000,
 
     // Additions for compact, relevant failure logs:
-    silent: true,                 // hide raw console output; reporter will print relevant logs for failures
+    silent: false,                 // hide raw console output; reporter will print relevant logs for failures
     testLocationInResults: true,  // gives us line/column for tests (used by the reporter)
     reporters: [
         ['<rootDir>/jest/compact-reporter.cjs', {

@@ -774,6 +774,94 @@ export type GetUsage200 = {
   request_id?: string;
 };
 
+/**
+ * Country-specific default settings
+ */
+export type GetSettings200CountryDefaults = { [key: string]: unknown };
+
+/**
+ * Formatting preferences
+ */
+export type GetSettings200Formatting = { [key: string]: unknown };
+
+/**
+ * Risk assessment thresholds
+ */
+export type GetSettings200RiskThresholds = { [key: string]: unknown };
+
+export type GetSettings200 = {
+  /** Country-specific default settings */
+  country_defaults?: GetSettings200CountryDefaults;
+  /** Formatting preferences */
+  formatting?: GetSettings200Formatting;
+  /** Risk assessment thresholds */
+  risk_thresholds?: GetSettings200RiskThresholds;
+  /** Request identifier */
+  request_id?: string;
+};
+
+/**
+ * Country-specific default settings
+ */
+export type UpdateSettingsBodyCountryDefaults = { [key: string]: unknown };
+
+/**
+ * Formatting preferences
+ */
+export type UpdateSettingsBodyFormatting = { [key: string]: unknown };
+
+/**
+ * Risk assessment thresholds
+ */
+export type UpdateSettingsBodyRiskThresholds = { [key: string]: unknown };
+
+export type UpdateSettingsBody = {
+  /** Country-specific default settings */
+  country_defaults?: UpdateSettingsBodyCountryDefaults;
+  /** Formatting preferences */
+  formatting?: UpdateSettingsBodyFormatting;
+  /** Risk assessment thresholds */
+  risk_thresholds?: UpdateSettingsBodyRiskThresholds;
+};
+
+export type UpdateSettings200 = {
+  /** Success message */
+  message?: string;
+  /** Request identifier */
+  request_id?: string;
+};
+
+/**
+ * Reason for data erasure (gdpr/ccpa)
+ */
+export type EraseDataBodyReason = typeof EraseDataBodyReason[keyof typeof EraseDataBodyReason];
+
+
+// eslint-disable-next-line @typescript-eslint/no-redeclare
+export const EraseDataBodyReason = {
+  gdpr: 'gdpr',
+  ccpa: 'ccpa',
+} as const;
+
+export type EraseDataBody = {
+  /** Reason for data erasure (gdpr/ccpa) */
+  reason: EraseDataBodyReason;
+};
+
+export type EraseData202 = {
+  /** Confirmation message */
+  message?: string;
+  /** Request identifier */
+  request_id?: string;
+};
+
+export type DeleteLog200 = {
+  /** Success message */
+  message?: string;
+  /** Request identifier */
+  request_id?: string;
+};
+
 export type GetRules200 = {
   rules?: Rule[];
   request_id?: string;
@@ -1270,6 +1358,56 @@ export const getUsage = <TData = AxiosResponse<GetUsage200>>(
   }
 
 /**
+ * Retrieves tenant settings including country defaults, formatting, and risk thresholds
+ * @summary Get tenant settings
+ */
+export const getSettings = <TData = AxiosResponse<GetSettings200>>(
+     options?: AxiosRequestConfig
+ ): Promise<TData> => {
+    return axios.get(
+      `/v1/settings`,options
+    );
+  }
+
+/**
+ * Updates tenant settings including country defaults, formatting, and risk thresholds
+ * @summary Update tenant settings
+ */
+export const updateSettings = <TData = AxiosResponse<UpdateSettings200>>(
+    updateSettingsBody: UpdateSettingsBody, options?: AxiosRequestConfig
+ ): Promise<TData> => {
+    return axios.put(
+      `/v1/settings`,
+      updateSettingsBody,options
+    );
+  }
+
+/**
+ * Initiates data erasure for GDPR/CCPA compliance
+ * @summary Erase user data
+ */
+export const eraseData = <TData = AxiosResponse<EraseData202>>(
+    eraseDataBody: EraseDataBody, options?: AxiosRequestConfig
+ ): Promise<TData> => {
+    return axios.post(
+      `/v1/data/erase`,
+      eraseDataBody,options
+    );
+  }
+
+/**
+ * Deletes a specific log entry
+ * @summary Delete log entry
+ */
+export const deleteLog = <TData = AxiosResponse<DeleteLog200>>(
+    id: string, options?: AxiosRequestConfig
+ ): Promise<TData> => {
+    return axios.delete(
+      `/v1/logs/${id}`,options
+    );
+  }
+
+/**
  * Returns a list of all available validation and risk assessment rules
  * @summary Get available rules
  */
@@ -1411,6 +1549,10 @@ export type MergeDeduplicatedResult = AxiosResponse<MergeDeduplicated200>
 export type EvaluateOrderResult = AxiosResponse<EvaluateOrder200>
 export type GetLogsResult = AxiosResponse<GetLogs200>
 export type GetUsageResult = AxiosResponse<GetUsage200>
+export type GetSettingsResult = AxiosResponse<GetSettings200>
+export type UpdateSettingsResult = AxiosResponse<UpdateSettings200>
+export type EraseDataResult = AxiosResponse<EraseData202>
+export type DeleteLogResult = AxiosResponse<DeleteLog200>
 export type GetRulesResult = AxiosResponse<GetRules200>
 export type GetReasonCodeCatalogResult = AxiosResponse<GetReasonCodeCatalog200>
 export type RegisterCustomRulesResult = AxiosResponse<RegisterCustomRules200>

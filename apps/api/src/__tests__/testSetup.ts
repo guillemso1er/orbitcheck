@@ -148,6 +148,7 @@ jest.mock('@orbicheck/contracts', () => ({
       TEST_WEBHOOK: '/v1/webhooks/test',
     },
     DATA: {
+      ERASE_USER_DATA: '/v1/data/erase',
       GET_EVENT_LOGS: '/v1/data/logs',
       GET_USAGE_STATISTICS: '/v1/data/usage',
     },
@@ -155,6 +156,13 @@ jest.mock('@orbicheck/contracts', () => ({
       GET_AVAILABLE_RULES: '/v1/rules',
       GET_REASON_CODE_CATALOG: '/v1/rules/catalog',
       REGISTER_CUSTOM_RULES: '/v1/rules/register',
+    },
+    SETTINGS: {
+      GET_TENANT_SETTINGS: '/v1/settings',
+      UPDATE_TENANT_SETTINGS: '/v1/settings',
+    },
+    LOGS: {
+      DELETE_LOG_ENTRY: '/v1/logs/:id',
     },
   },
   API_V1_ROUTES: {
@@ -315,6 +323,7 @@ export const createApp = async (): Promise<FastifyInstance> => {
   const { registerRulesRoutes } = await import('../routes/rules.js');
   const { registerValidationRoutes } = await import('../routes/validation.js');
   const { registerWebhookRoutes } = await import('../routes/webhook.js');
+  const { registerSettingsRoutes } = await import('../routes/settings.js');
 
   registerAuthRoutes(app, mockPool as any);
   registerApiKeysRoutes(app, mockPool as any);
@@ -324,6 +333,7 @@ export const createApp = async (): Promise<FastifyInstance> => {
   registerJobRoutes(app, mockPool as any);
   registerOrderRoutes(app, mockPool as any, mockRedisInstance as any);
   registerRulesRoutes(app, mockPool as any);
+  registerSettingsRoutes(app, mockPool as any);
   registerValidationRoutes(app, mockPool as any, mockRedisInstance as any);
   registerWebhookRoutes(app, mockPool as any);
 
