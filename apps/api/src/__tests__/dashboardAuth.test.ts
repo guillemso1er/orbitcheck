@@ -16,6 +16,16 @@ describe('Dashboard Authentication - /api-keys endpoint', () => {
     beforeAll(async () => {
         await setupBeforeAll();
         app = await createApp();
+
+        // Add auth hooks for this test
+        const { authenticateRequest, applyRateLimitingAndIdempotency } = await import('../web.js');
+        const { mockPool, mockRedisInstance } = await import('./testSetup.js');
+        app.addHook("preHandler", async (request, rep) => {
+            await authenticateRequest(request, rep, mockPool as any);
+            await applyRateLimitingAndIdempotency(request, rep, mockRedisInstance as any);
+            return;
+        });
+
         await app.ready();
     });
 
@@ -136,9 +146,12 @@ describe('Dashboard Authentication - /api-keys endpoint', () => {
     });
 
     it('should return 403 when no project is found for user', async () => {
-        // Mock empty project result
+        // Mock PAT success but empty project result
         mockPool.query.mockImplementation((queryText: string) => {
             const upperQuery = queryText.toUpperCase();
+            if (upperQuery.includes('SELECT ID, USER_ID, SCOPES FROM PERSONAL_ACCESS_TOKENS')) {
+                return Promise.resolve({ rows: [{ id: 'pat_1', user_id: 'test_user', scopes: ['keys:read'] }] });
+            }
             if (upperQuery.includes('SELECT P.ID AS PROJECT_ID FROM PROJECTS P WHERE P.USER_ID')) {
                 return Promise.resolve({ rows: [] });
             }
@@ -149,25 +162,60 @@ describe('Dashboard Authentication - /api-keys endpoint', () => {
             .get('/v1/api-keys')
             .set('Authorization', 'Bearer valid_token');
 
-        expect(response.status).toBe(401); // Returns 401 due to failed auth flow
+        expect(response.status).toBe(403); // Returns 403 when no project is found for user
         expect(response.body.error).toBeDefined();
     });
 
-    it('should use JWT auth for /api-keys but API key auth for /v1/validate/email', async () => {
-        // Test that /api-keys uses JWT auth (already tested above)
-        const jwtToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.test';
-        const jwtResponse = await request(app.server)
+    it('should use PAT auth for /api-keys but API key auth for /v1/validate/email', async () => {
+        // Mock PAT for this test
+        mockPool.query.mockImplementation((queryText: string) => {
+            const upperQuery = queryText.toUpperCase();
+            if (upperQuery.includes('SELECT ID, USER_ID, SCOPES FROM PERSONAL_ACCESS_TOKENS')) {
+                return Promise.resolve({ rows: [{ id: 'pat_1', user_id: 'test_user', scopes: ['keys:read'] }] });
+            }
+            if (upperQuery.includes('SELECT ID FROM USERS')) {
+                return Promise.resolve({ rows: [{ id: 'test_user' }] });
+            }
+            if (upperQuery.includes('SELECT P.ID AS PROJECT_ID FROM PROJECTS P WHERE P.USER_ID')) {
+                return Promise.resolve({ rows: [{ project_id: 'test_project' }] });
+            }
+            if (upperQuery.includes('SELECT ID, PREFIX, NAME, STATUS, CREATED_AT, LAST_USED_AT FROM API_KEYS')) {
+                return Promise.resolve({
+                    rows: [
+                        {
+                            id: 'key_1',
+                            prefix: 'ok_abcd',
+                            name: 'Test Key',
+                            status: 'active',
+                            created_at: new Date().toISOString(),
+                            last_used_at: null
+                        }
+                    ]
+                });
+            }
+            if (upperQuery.includes('INSERT INTO AUDIT_LOGS')) {
+                return Promise.resolve({ rows: [] });
+            }
+            if (upperQuery.includes('UPDATE PERSONAL_ACCESS_TOKENS SET LAST_USED_AT')) {
+                return Promise.resolve({ rows: [] });
+            }
+            return Promise.resolve({ rows: [] });
+        });
+
+        // Test that /api-keys uses PAT auth (already tested above)
+        const patToken = 'pat_token_hash';
+        const patResponse = await request(app.server)
             .get('/v1/api-keys')
-            .set('Authorization', `Bearer ${jwtToken}`);
+            .set('Authorization', `Bearer ${patToken}`);
 
-        expect(jwtResponse.status).toBe(200);
+        expect(patResponse.status).toBe(200);
 
-        // Test that /v1/validate/email does not use JWT auth (should return 404 since route doesn't exist)
+        // Test that /v1/validate/email uses API key auth, not PAT
         const apiResponse = await request(app.server)
             .get('/v1/validate/email')
-            .set('Authorization', `Bearer ${jwtToken}`);
+            .set('Authorization', `Bearer ${patToken}`);
 
-        // Should not be 401 (unauthorized) since it would use API key auth, not JWT
-        expect(apiResponse.status).not.toBe(401);
+        // Should be 401 since patToken is not a valid API key
+        expect(apiResponse.status).toBe(401);
     });
 });

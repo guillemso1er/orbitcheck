@@ -29,7 +29,7 @@ const AUTH_LOGOUT = DASHBOARD_ROUTES.USER_LOGOUT;
  * @param pool - PostgreSQL connection pool
  * @returns {Promise<void>} Resolves after authentication or sends error response
  */
-async function authenticateRequest(request: FastifyRequest, rep: FastifyReply, pool: Pool): Promise<void> {
+export async function authenticateRequest(request: FastifyRequest, rep: FastifyReply, pool: Pool): Promise<void> {
     const url = request.url;
 
     // Skip authentication for public endpoints: health checks, API docs, metrics, and auth routes
@@ -95,7 +95,7 @@ async function authenticateRequest(request: FastifyRequest, rep: FastifyReply, p
  * @param redis - Redis client for rate counters and idempotency storage.
  * @returns {Promise<void>} Resolves after middleware or sends 429/200 replay.
  */
-async function applyRateLimitingAndIdempotency(request: FastifyRequest, rep: FastifyReply, redis: IORedisType): Promise<void> {
+export async function applyRateLimitingAndIdempotency(request: FastifyRequest, rep: FastifyReply, redis: IORedisType): Promise<void> {
     const url = request.url;
 
     // Skip middleware for health, docs, metrics, and auth

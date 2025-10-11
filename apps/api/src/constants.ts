@@ -6,6 +6,7 @@ export const HTTP_STATUS = {
   UNAUTHORIZED: 401,
   FORBIDDEN: 403,
   NOT_FOUND: 404,
+  TOO_MANY_REQUESTS: 429,
   INTERNAL_SERVER_ERROR: 500,
   BAD_GATEWAY: 502,
 } as const;
@@ -179,6 +180,8 @@ export const PAYMENT_METHODS = {
 export const EVENT_TYPES = {
   VALIDATION_RESULT: 'validation_result',
   ORDER_EVALUATED: 'order_evaluated',
+  DEDUPE_COMPLETED: 'dedupe_completed',
+  JOB_COMPLETED: 'job_completed',
 } as const;
 
 export const PAYLOAD_TYPES = {

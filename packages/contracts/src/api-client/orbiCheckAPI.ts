@@ -52,6 +52,37 @@ export interface ApiKey {
   last_used_at?: string | null;
 }
 
+/**
+ * Webhook status
+ */
+export type WebhookStatus = typeof WebhookStatus[keyof typeof WebhookStatus];
+
+
+// eslint-disable-next-line @typescript-eslint/no-redeclare
+export const WebhookStatus = {
+  active: 'active',
+  inactive: 'inactive',
+  deleted: 'deleted',
+} as const;
+
+export interface Webhook {
+  /** Webhook ID */
+  id?: string;
+  /** Webhook URL */
+  url?: string;
+  /** Events this webhook is subscribed to */
+  events?: string[];
+  /** Webhook status */
+  status?: WebhookStatus;
+  /** Creation timestamp */
+  created_at?: string;
+  /**
+   * Last time webhook was fired
+   * @nullable
+   */
+  last_fired_at?: string | null;
+}
+
 export interface Address {
   /** Street address line 1 */
   line1?: string;
@@ -765,6 +796,53 @@ export type RegisterCustomRules200 = {
   request_id?: string;
 };
 
+export type ListWebhooks200 = {
+  data?: Webhook[];
+  request_id?: string;
+};
+
+export type CreateWebhookBodyEventsItem = typeof CreateWebhookBodyEventsItem[keyof typeof CreateWebhookBodyEventsItem];
+
+
+// eslint-disable-next-line @typescript-eslint/no-redeclare
+export const CreateWebhookBodyEventsItem = {
+  validation_result: 'validation_result',
+  order_evaluated: 'order_evaluated',
+  dedupe_completed: 'dedupe_completed',
+  job_completed: 'job_completed',
+} as const;
+
+export type CreateWebhookBody = {
+  /** The webhook URL to send events to */
+  url: string;
+  /** Events to subscribe to */
+  events: CreateWebhookBodyEventsItem[];
+};
+
+export type CreateWebhook201 = {
+  /** Webhook ID */
+  id?: string;
+  /** Webhook URL */
+  url?: string;
+  /** Subscribed events */
+  events?: string[];
+  /** Webhook secret for signature verification */
+  secret?: string;
+  /** Webhook status */
+  status?: string;
+  /** Creation timestamp */
+  created_at?: string;
+  request_id?: string;
+};
+
+export type DeleteWebhook200 = {
+  /** Webhook ID */
+  id?: string;
+  /** Webhook status (deleted) */
+  status?: string;
+  request_id?: string;
+};
+
 /**
  * Type of sample payload to send
  */
@@ -1229,6 +1307,43 @@ export const registerCustomRules = <TData = AxiosResponse<RegisterCustomRules200
   }
 
 /**
+ * Retrieves webhooks for the authenticated project
+ * @summary List webhooks
+ */
+export const listWebhooks = <TData = AxiosResponse<ListWebhooks200>>(
+     options?: AxiosRequestConfig
+ ): Promise<TData> => {
+    return axios.get(
+      `/v1/webhooks`,options
+    );
+  }
+
+/**
+ * Creates a new webhook subscription for the authenticated project
+ * @summary Create webhook
+ */
+export const createWebhook = <TData = AxiosResponse<CreateWebhook201>>(
+    createWebhookBody: CreateWebhookBody, options?: AxiosRequestConfig
+ ): Promise<TData> => {
+    return axios.post(
+      `/v1/webhooks`,
+      createWebhookBody,options
+    );
+  }
+
+/**
+ * Deletes a webhook subscription
+ * @summary Delete webhook
+ */
+export const deleteWebhook = <TData = AxiosResponse<DeleteWebhook200>>(
+    id: string, options?: AxiosRequestConfig
+ ): Promise<TData> => {
+    return axios.delete(
+      `/v1/webhooks/${id}`,options
+    );
+  }
+
+/**
  * Sends a sample payload to the provided webhook URL
  * @summary Test webhook
  */
@@ -1299,6 +1414,9 @@ export type GetUsageResult = AxiosResponse<GetUsage200>
 export type GetRulesResult = AxiosResponse<GetRules200>
 export type GetReasonCodeCatalogResult = AxiosResponse<GetReasonCodeCatalog200>
 export type RegisterCustomRulesResult = AxiosResponse<RegisterCustomRules200>
+export type ListWebhooksResult = AxiosResponse<ListWebhooks200>
+export type CreateWebhookResult = AxiosResponse<CreateWebhook201>
+export type DeleteWebhookResult = AxiosResponse<DeleteWebhook200>
 export type TestWebhookResult = AxiosResponse<TestWebhook200>
 export type BatchValidateResult = AxiosResponse<BatchValidate202>
 export type BatchDedupeResult = AxiosResponse<BatchDedupe202>

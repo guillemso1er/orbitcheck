@@ -366,7 +366,55 @@ export default function () {
         '[Get Usage] has data': (r) => r.status === 200 && (() => { const body = JSON.parse(r.body); return body && typeof body === 'object'; })()
     });
 
-    // Step 32: Test webhook (Management API - use PAT)
+    // Step 32: List webhooks (Management API - use PAT)
+    const resListWebhooks = http.get(`${BASE_URL}/v1/webhooks`, { headers: mgmtHeaders });
+    check(resListWebhooks, {
+        '[List Webhooks] status 200': (r) => r.status === 200,
+        '[List Webhooks] is array': (r) => r.status === 200 && Array.isArray(JSON.parse(r.body).data)
+    });
+    const initialWebhooks = resListWebhooks.status === 200 ? JSON.parse(resListWebhooks.body).data : [];
+    console.log('Initial webhooks count:', initialWebhooks.length);
+
+    // Step 33: Create webhook (Management API - use PAT)
+    const createWebhookPayload = JSON.stringify({
+        url: 'https://httpbin.org/post',
+        events: ['validation_result', 'order_evaluated']
+    });
+    const resCreateWebhook = http.post(`${BASE_URL}/v1/webhooks`, createWebhookPayload, { headers: mgmtHeaders });
+    check(resCreateWebhook, {
+        '[Create Webhook] status 201': (r) => r.status === 201,
+        '[Create Webhook] has webhook': (r) => {
+            const body = JSON.parse(r.body);
+            return body.id && body.url && body.events;
+        }
+    });
+    const createWebhookBody = resCreateWebhook.status === 201 ? JSON.parse(resCreateWebhook.body) : { id: null };
+    console.log('Create Webhook response:', JSON.stringify(createWebhookBody));
+    const webhookId = createWebhookBody.id;
+
+    // Step 34: List webhooks again (Management API - use PAT)
+    const resListWebhooks2 = http.get(`${BASE_URL}/v1/webhooks`, { headers: mgmtHeaders });
+    check(resListWebhooks2, {
+        '[List Webhooks After Create] status 200': (r) => r.status === 200,
+        '[List Webhooks After Create] has one more webhook': (r) => r.status === 200 && JSON.parse(r.body).data.length === initialWebhooks.length + 1
+    });
+
+    // Step 35: Delete webhook (Management API - use PAT)
+    if (webhookId) {
+        const resDeleteWebhook = http.del(`${BASE_URL}/v1/webhooks/${webhookId}`, null, { headers: Object.assign({}, NO_BODY_HEADERS, { 'Authorization': `Bearer ${patToken}` }) });
+        check(resDeleteWebhook, {
+            '[Delete Webhook] status 200': (r) => r.status === 200
+        });
+    }
+
+    // Step 36: List webhooks after delete (Management API - use PAT)
+    const resListWebhooks3 = http.get(`${BASE_URL}/v1/webhooks`, { headers: mgmtHeaders });
+    check(resListWebhooks3, {
+        '[List Webhooks After Delete] status 200': (r) => r.status === 200,
+        '[List Webhooks After Delete] back to initial count': (r) => r.status === 200 && JSON.parse(r.body).data.length === initialWebhooks.length
+    });
+
+    // Step 37: Test webhook (Management API - use PAT)
     const webhookPayload = JSON.stringify({ url: 'https://httpbin.org/post', payload_type: 'validation' });
     const resTestWebhook = http.post(`${BASE_URL}/v1/webhooks/test`, webhookPayload, { headers: mgmtHeaders });
     check(resTestWebhook, {
@@ -377,21 +425,21 @@ export default function () {
         }
     });
 
-    // Step 33: Revoke API key (Management API - use PAT)
+    // Step 38: Revoke API key (Management API - use PAT)
     const keyId = createBody.id;
     const resRevokeKey = http.del(`${BASE_URL}/v1/api-keys/${keyId}`, null, { headers: Object.assign({}, NO_BODY_HEADERS, { 'Authorization': `Bearer ${patToken}` }) });
     check(resRevokeKey, {
         '[Revoke API Key] status 200': (r) => r.status === 200
     });
 
-    // Step 34: List API keys to verify revocation (Management API - use PAT)
+    // Step 39: List API keys to verify revocation (Management API - use PAT)
     const resListKeys3 = http.get(`${BASE_URL}/v1/api-keys`, { headers: mgmtHeaders });
     check(resListKeys3, {
         '[List API Keys After Revoke] status 200': (r) => r.status === 200,
         '[List API Keys After Revoke] still has revoked key': (r) => r.status === 200 && JSON.parse(r.body).data.length === initialKeys.length + 1
     });
 
-    // Step 35: Test HMAC authentication (optional) - Runtime API
+    // Step 40: Test HMAC authentication (optional) - Runtime API
     const timestamp = Date.now().toString();
     const nonce = Math.random().toString(36).substring(7);
 

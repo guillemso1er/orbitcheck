@@ -130,9 +130,9 @@ describe('Auth Routes', () => {
     });
 
     expect(response.statusCode).toBe(201);
-    const body = response.json<{ token: string; user: { id: string } }>();
-    expect(jwt.sign).toHaveBeenCalled();
-    expect(body.token).toBe('mock_jwt_token');
+    const body = response.json<{ pat_token: string; api_key: string; user: { id: string } }>();
+    expect(body.pat_token).toBeDefined();
+    expect(body.api_key).toBeDefined();
     expect(body.user.id).toBe('user_1');
   });
 
@@ -146,8 +146,8 @@ describe('Auth Routes', () => {
     }
 
     mockPool.query.mockImplementation((queryText: string): Promise<QueryResult<UserRow>> => {
-      if (queryText.includes('SELECT id, password_hash FROM users')) {
-        return Promise.resolve({ rows: [{ id: 'user_1', password_hash: 'hashed_password' }] });
+      if (queryText.includes('SELECT id, email, password_hash FROM users')) {
+        return Promise.resolve({ rows: [{ id: 'user_1', email: 'test@example.com', password_hash: 'hashed_password' }] });
       }
       return Promise.resolve({ rows: [] });
     });
@@ -159,11 +159,10 @@ describe('Auth Routes', () => {
     });
 
     expect(response.statusCode).toBe(200);
-    const body = response.json<{ token: string; user: { id: string } }>();
+    const body = response.json<{ user: { id: string; email: string }; request_id: string }>();
     expect(bcrypt.compare).toHaveBeenCalled();
-    expect(jwt.sign).toHaveBeenCalled();
-    expect(body.token).toBe('mock_jwt_token');
     expect(body.user.id).toBe('user_1');
+    expect(body.user.email).toBe('test@example.com');
   });
 
   it('should reject login with invalid credentials', async () => {

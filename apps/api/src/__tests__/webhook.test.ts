@@ -34,12 +34,165 @@ const fetchMock = fetch as unknown as jest.Mock;
 
 const MOCK_JWT = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoidGVzdF91c2VyIn0.ignore';
 
+describe('Webhook Management Routes', () => {
+    let app: FastifyInstance;
+
+    beforeAll(async () => {
+        await setupBeforeAll();
+        app = await createApp();
+
+        // Add auth hooks for this test
+        const { authenticateRequest, applyRateLimitingAndIdempotency } = await import('../web.js');
+        const { mockPool, mockRedisInstance } = await import('./testSetup.js');
+        app.addHook("preHandler", async (request, rep) => {
+            await authenticateRequest(request, rep, mockPool as any);
+            await applyRateLimitingAndIdempotency(request, rep, mockRedisInstance as any);
+            return;
+        });
+
+        await app.ready();
+    });
+
+    afterAll(async () => {
+        if (app) {
+            await app.close();
+        }
+    });
+
+    beforeEach(() => {
+        jest.clearAllMocks();
+
+        jest.spyOn(hooks, 'logEvent').mockImplementation(jest.fn().mockResolvedValue(undefined));
+
+        mockPool.query.mockImplementation((queryText: string, values: unknown[]) => {
+            const upperQuery = queryText.toUpperCase();
+            if (upperQuery.startsWith('SELECT ID FROM USERS WHERE ID = $1') && values[0] === 'test_user') {
+                return Promise.resolve({ rows: [{ id: 'test_user' }] });
+            }
+            if (upperQuery.startsWith('SELECT P.ID AS PROJECT_ID FROM PROJECTS P WHERE P.USER_ID = $1') && values[0] === 'test_user') {
+                return Promise.resolve({ rows: [{ project_id: 'test_project' }] });
+            }
+            return Promise.resolve({ rows: [] });
+        });
+    });
+
+    it('should list webhooks successfully', async () => {
+        const mockWebhooks = [
+            {
+                id: 'webhook-1',
+                url: 'https://example.com/webhook1',
+                events: ['validation_result'],
+                status: 'active',
+                created_at: '2023-01-01T00:00:00Z',
+                last_fired_at: null
+            }
+        ];
+
+        mockPool.query.mockResolvedValueOnce({ rows: mockWebhooks });
+
+        const res = await request(app.server)
+            .get('/v1/webhooks')
+            .set('Authorization', `Bearer ${MOCK_JWT}`);
+
+        expectStatus(res, 200);
+        expect(res.body.data).toEqual(mockWebhooks);
+        expect(hooks.logEvent).toHaveBeenCalled();
+    });
+
+    it('should create webhook successfully', async () => {
+        const mockWebhook = {
+            id: 'webhook-1',
+            url: 'https://example.com/webhook',
+            events: ['validation_result'],
+            secret: 'mock-secret',
+            status: 'active',
+            created_at: '2023-01-01T00:00:00Z'
+        };
+
+        mockPool.query.mockResolvedValueOnce({ rows: [mockWebhook] });
+
+        const res = await request(app.server)
+            .post('/v1/webhooks')
+            .set('Authorization', `Bearer ${MOCK_JWT}`)
+            .send({
+                url: 'https://example.com/webhook',
+                events: ['validation_result']
+            });
+
+        expectStatus(res, 201);
+        expect(res.body.id).toBe('webhook-1');
+        expect(res.body.url).toBe('https://example.com/webhook');
+        expect(res.body.events).toEqual(['validation_result']);
+        expect(hooks.logEvent).toHaveBeenCalled();
+    });
+
+    it('should reject create webhook with invalid URL', async () => {
+        const res = await request(app.server)
+            .post('/v1/webhooks')
+            .set('Authorization', `Bearer ${MOCK_JWT}`)
+            .send({
+                url: 'ftp://example.com',
+                events: ['validation_result']
+            });
+
+        expectStatus(res, 400);
+        expect(res.body.error.code).toBe('invalid_url');
+    });
+
+    it('should reject create webhook with invalid events', async () => {
+        const res = await request(app.server)
+            .post('/v1/webhooks')
+            .set('Authorization', `Bearer ${MOCK_JWT}`)
+            .send({
+                url: 'https://example.com/webhook',
+                events: ['invalid_event']
+            });
+
+        expectStatus(res, 400);
+        expect(res.body.error.code).toBe('invalid_type');
+    });
+
+    it('should delete webhook successfully', async () => {
+        mockPool.query.mockResolvedValueOnce({ rowCount: 1, rows: [{ id: 'webhook-1', status: 'deleted' }] });
+
+        const res = await request(app.server)
+            .delete('/v1/webhooks/webhook-1')
+            .set('Authorization', `Bearer ${MOCK_JWT}`);
+
+        expectStatus(res, 200);
+        expect(res.body.id).toBe('webhook-1');
+        expect(res.body.status).toBe('deleted');
+        expect(hooks.logEvent).toHaveBeenCalled();
+    });
+
+    it('should return 404 when deleting non-existent webhook', async () => {
+        mockPool.query.mockResolvedValueOnce({ rowCount: 0, rows: [] });
+
+        const res = await request(app.server)
+            .delete('/v1/webhooks/non-existent')
+            .set('Authorization', `Bearer ${MOCK_JWT}`);
+
+        expectStatus(res, 404);
+        expect(res.body.error.code).toBe('not_found');
+    });
+});
+
 describe('Webhook Test Routes (JWT Auth)', () => {
     let app: FastifyInstance;
 
     beforeAll(async () => {
         await setupBeforeAll();
         app = await createApp();
+
+        // Add auth hooks for this test
+        const { authenticateRequest, applyRateLimitingAndIdempotency } = await import('../web.js');
+        const { mockPool, mockRedisInstance } = await import('./testSetup.js');
+        app.addHook("preHandler", async (request, rep) => {
+            await authenticateRequest(request, rep, mockPool as any);
+            await applyRateLimitingAndIdempotency(request, rep, mockRedisInstance as any);
+            return;
+        });
+
         await app.ready();
     });
 

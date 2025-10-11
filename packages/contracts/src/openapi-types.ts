@@ -388,6 +388,50 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/webhooks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List webhooks
+         * @description Retrieves webhooks for the authenticated project
+         */
+        get: operations["listWebhooks"];
+        put?: never;
+        /**
+         * Create webhook
+         * @description Creates a new webhook subscription for the authenticated project
+         */
+        post: operations["createWebhook"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/webhooks/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete webhook
+         * @description Deletes a webhook subscription
+         */
+        delete: operations["deleteWebhook"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/webhooks/test": {
         parameters: {
             query?: never;
@@ -502,6 +546,32 @@ export interface components {
              * @description Last used timestamp
              */
             last_used_at?: string | null;
+        };
+        Webhook: {
+            /** @description Webhook ID */
+            id?: string;
+            /**
+             * Format: uri
+             * @description Webhook URL
+             */
+            url?: string;
+            /** @description Events this webhook is subscribed to */
+            events?: string[];
+            /**
+             * @description Webhook status
+             * @enum {string}
+             */
+            status?: "active" | "inactive" | "deleted";
+            /**
+             * Format: date-time
+             * @description Creation timestamp
+             */
+            created_at?: string;
+            /**
+             * Format: date-time
+             * @description Last time webhook was fired
+             */
+            last_fired_at?: string | null;
         };
         Address: {
             /** @description Street address line 1 */
@@ -1622,6 +1692,152 @@ export interface operations {
             };
             /** @description Unauthorized */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    listWebhooks: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description List of webhooks */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["Webhook"][];
+                        request_id?: string;
+                    };
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    createWebhook: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /**
+                     * Format: uri
+                     * @description The webhook URL to send events to
+                     */
+                    url: string;
+                    /** @description Events to subscribe to */
+                    events: ("validation_result" | "order_evaluated" | "dedupe_completed" | "job_completed")[];
+                };
+            };
+        };
+        responses: {
+            /** @description Webhook created successfully */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Webhook ID */
+                        id?: string;
+                        /** @description Webhook URL */
+                        url?: string;
+                        /** @description Subscribed events */
+                        events?: string[];
+                        /** @description Webhook secret for signature verification */
+                        secret?: string;
+                        /** @description Webhook status */
+                        status?: string;
+                        /**
+                         * Format: date-time
+                         * @description Creation timestamp
+                         */
+                        created_at?: string;
+                        request_id?: string;
+                    };
+                };
+            };
+            /** @description Invalid input data */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    deleteWebhook: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description ID of the webhook to delete */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Webhook deleted successfully */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Webhook ID */
+                        id?: string;
+                        /** @description Webhook status (deleted) */
+                        status?: string;
+                        request_id?: string;
+                    };
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Webhook not found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

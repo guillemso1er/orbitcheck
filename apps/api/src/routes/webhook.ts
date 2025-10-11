@@ -1,20 +1,216 @@
 import { MGMT_V1_ROUTES } from "@orbicheck/contracts";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import fetch from "node-fetch";
+import crypto from "node:crypto";
 import type { Pool } from "pg";
 
 import { ERROR_CODES, ERROR_MESSAGES, EVENT_TYPES, HTTP_STATUS, ORDER_ACTIONS, PAYLOAD_TYPES, REASON_CODES } from "../constants.js";
 import { logEvent } from "../hooks.js";
 import { generateRequestId, rateLimitResponse, securityHeader, sendError, unauthorizedResponse } from "./utils.js";
 // Import route constants from contracts package
-// TODO: Update to use @orbicheck/contracts export once build issues are resolved
-const ROUTES = {
-    WEBHOOKS_TEST: MGMT_V1_ROUTES.WEBHOOKS.TEST_WEBHOOK,
-};
+const ROUTES = MGMT_V1_ROUTES.WEBHOOKS;
 
 
 export function registerWebhookRoutes(app: FastifyInstance, pool: Pool): void {
-    app.post(ROUTES.WEBHOOKS_TEST, {
+    app.get(ROUTES.LIST_WEBHOOKS, {
+        schema: {
+            summary: 'List webhooks',
+            description: 'Retrieves all webhooks for the authenticated project',
+            tags: ['Webhooks'],
+            security: [{ BearerAuth: [] }],
+            response: {
+                200: {
+                    description: 'List of webhooks',
+                    type: 'object',
+                    properties: {
+                        data: {
+                            type: 'array',
+                            items: {
+                                type: 'object',
+                                properties: {
+                                    id: { type: 'string' },
+                                    url: { type: 'string', format: 'uri' },
+                                    events: { type: 'array', items: { type: 'string' } },
+                                    status: { type: 'string', enum: ['active', 'inactive', 'deleted'] },
+                                    created_at: { type: 'string', format: 'date-time' },
+                                    last_fired_at: { type: 'string', format: 'date-time', nullable: true }
+                                }
+                            }
+                        },
+                        request_id: { type: 'string' }
+                    }
+                },
+                ...unauthorizedResponse,
+                ...rateLimitResponse
+            }
+        }
+    }, async (request, rep) => {
+        const project_id = request.project_id!;
+        const request_id = generateRequestId();
+
+        try {
+            const result = await pool.query(
+                'SELECT id, url, events, status, created_at, last_fired_at FROM webhooks WHERE project_id = $1 AND status != $2 ORDER BY created_at DESC',
+                [project_id, 'deleted']
+            );
+
+            await logEvent(project_id, 'webhook_list', ROUTES.LIST_WEBHOOKS, [], HTTP_STATUS.OK, {}, pool);
+
+            return rep.send({
+                data: result.rows,
+                request_id
+            });
+        } catch (error) {
+            const errorMessage = error instanceof globalThis.Error ? error.message : 'Database error';
+            await logEvent(project_id, 'webhook_list', ROUTES.LIST_WEBHOOKS, [REASON_CODES.WEBHOOK_SEND_FAILED], HTTP_STATUS.INTERNAL_SERVER_ERROR, { error: errorMessage }, pool);
+            return sendError(rep, HTTP_STATUS.INTERNAL_SERVER_ERROR, ERROR_CODES.SERVER_ERROR, errorMessage, request_id);
+        }
+    });
+
+    app.post(ROUTES.CREATE_WEBHOOK, {
+        schema: {
+            summary: 'Create webhook',
+            description: 'Creates a new webhook subscription for the authenticated project',
+            tags: ['Webhooks'],
+            security: [{ BearerAuth: [] }],
+            body: {
+                type: 'object',
+                required: ['url', 'events'],
+                properties: {
+                    url: {
+                        type: 'string',
+                        format: 'uri',
+                        description: 'The webhook URL to send events to'
+                    },
+                    events: {
+                        type: 'array',
+                        items: {
+                            type: 'string'
+                        },
+                        description: 'Events to subscribe to'
+                    }
+                }
+            },
+            response: {
+                201: {
+                    description: 'Webhook created successfully',
+                    type: 'object',
+                    properties: {
+                        id: { type: 'string' },
+                        url: { type: 'string', format: 'uri' },
+                        events: { type: 'array', items: { type: 'string' } },
+                        secret: { type: 'string' },
+                        status: { type: 'string' },
+                        created_at: { type: 'string', format: 'date-time' },
+                        request_id: { type: 'string' }
+                    }
+                },
+                ...unauthorizedResponse,
+                ...rateLimitResponse
+            }
+        }
+    }, async (request, rep) => {
+        const project_id = request.project_id!;
+        const body = request.body as any;
+        const { url, events } = body;
+        const request_id = generateRequestId();
+
+        try {
+            // Validate URL
+            if (!url || !/^https?:\/\//.test(url)) {
+                return await sendError(rep, HTTP_STATUS.BAD_REQUEST, ERROR_CODES.INVALID_URL, ERROR_MESSAGES[ERROR_CODES.INVALID_URL], request_id);
+            }
+
+            // Validate events
+            const validEvents = Object.values(EVENT_TYPES);
+            const invalidEvents = events.filter((event: string) => !validEvents.includes(event as any));
+            if (invalidEvents.length > 0) {
+                return await sendError(rep, HTTP_STATUS.BAD_REQUEST, ERROR_CODES.INVALID_TYPE, 'Invalid events: ' + invalidEvents.join(', '), request_id);
+            }
+
+            const secret = crypto.randomBytes(32).toString('hex');
+
+            const result = await pool.query(
+                'INSERT INTO webhooks (project_id, url, events, secret, status) VALUES ($1, $2, $3, $4, $5) RETURNING id, url, events, secret, status, created_at',
+                [project_id, url, events, secret, 'active']
+            );
+
+            const webhook = result.rows[0];
+
+            await logEvent(project_id, 'webhook_create', ROUTES.CREATE_WEBHOOK, [], HTTP_STATUS.CREATED, { webhook_id: webhook.id }, pool);
+
+            return rep.status(HTTP_STATUS.CREATED).send({
+                ...webhook,
+                request_id
+            });
+        } catch (error) {
+            const errorMessage = error instanceof globalThis.Error ? error.message : 'Database error';
+            await logEvent(project_id, 'webhook_create', ROUTES.CREATE_WEBHOOK, [REASON_CODES.WEBHOOK_SEND_FAILED], HTTP_STATUS.INTERNAL_SERVER_ERROR, { error: errorMessage }, pool);
+            return sendError(rep, HTTP_STATUS.INTERNAL_SERVER_ERROR, ERROR_CODES.SERVER_ERROR, errorMessage, request_id);
+        }
+    });
+
+    app.delete(ROUTES.DELETE_WEBHOOK, {
+        schema: {
+            summary: 'Delete webhook',
+            description: 'Deletes a webhook subscription',
+            tags: ['Webhooks'],
+            security: [{ BearerAuth: [] }],
+            parameters: [
+                {
+                    name: 'id',
+                    in: 'path',
+                    required: true,
+                    description: 'ID of the webhook to delete',
+                    schema: { type: 'string' }
+                }
+            ],
+            response: {
+                200: {
+                    description: 'Webhook deleted successfully',
+                    type: 'object',
+                    properties: {
+                        id: { type: 'string' },
+                        status: { type: 'string' },
+                        request_id: { type: 'string' }
+                    }
+                },
+                ...unauthorizedResponse,
+                ...rateLimitResponse,
+                404: { description: 'Webhook not found' }
+            }
+        }
+    }, async (request, rep) => {
+        const project_id = request.project_id!;
+        const { id } = request.params as any;
+        const request_id = generateRequestId();
+
+        try {
+            const result = await pool.query(
+                'UPDATE webhooks SET status = $1 WHERE id = $2 AND project_id = $3 AND status != $1 RETURNING id, status',
+                ['deleted', id, project_id]
+            );
+
+            if (result.rowCount === 0) {
+                return await sendError(rep, HTTP_STATUS.NOT_FOUND, ERROR_CODES.NOT_FOUND, 'Webhook not found', request_id);
+            }
+
+            const webhook = result.rows[0];
+
+            await logEvent(project_id, 'webhook_delete', ROUTES.DELETE_WEBHOOK, [], HTTP_STATUS.OK, { webhook_id: webhook.id }, pool);
+
+            return rep.send({
+                ...webhook,
+                request_id
+            });
+        } catch (error) {
+            const errorMessage = error instanceof globalThis.Error ? error.message : 'Database error';
+            await logEvent(project_id, 'webhook_delete', ROUTES.DELETE_WEBHOOK, [REASON_CODES.WEBHOOK_SEND_FAILED], HTTP_STATUS.INTERNAL_SERVER_ERROR, { error: errorMessage }, pool);
+            return sendError(rep, HTTP_STATUS.INTERNAL_SERVER_ERROR, ERROR_CODES.SERVER_ERROR, errorMessage, request_id);
+        }
+    });
+
+    app.post(ROUTES.TEST_WEBHOOK, {
         schema: {
             summary: 'Test Webhook',
             description: 'Sends a sample payload to the provided webhook URL and returns the response. Useful for testing webhook configurations.',

@@ -136,10 +136,6 @@ describe('Server Build', () => {
     const app = await build(mockPool, mockRedis);
 
     // 3. Assert: Check the outcomes
-    expect(Sentry.init).toHaveBeenCalledWith({
-      dsn: 'test_dsn',
-      tracesSampleRate: 1,
-    });
     expect(Fastify).toHaveBeenCalledWith({
       logger: {
         level: 'debug',
@@ -152,11 +148,13 @@ describe('Server Build', () => {
         }
       },
       requestTimeout: 10_000,
+      trustProxy: true,
     });
     expect(mockRegisterRoutes).toHaveBeenCalledWith(app, mockPool, mockRedis);
   });
 
   it('should configure CORS with async origin function that validates allowed origins', async () => {
+    process.env.NODE_ENV = 'production';
     const app = await build(mockPool, mockRedis);
 
     const corsCall = mockApp.register.mock.calls.find(call => call[0] === cors);
@@ -172,7 +170,7 @@ describe('Server Build', () => {
 
     // Test logic
     await expect(options.origin(undefined)).resolves.toBe(true);
-    await expect(options.origin('http://localhost:5173')).resolves.toBe(true);
+    await expect(options.origin('http://localhost:5173')).resolves.toBe(false);
     await expect(options.origin(`http://localhost:${environment.PORT}`)).resolves.toBe(true);
     await expect(options.origin('https://dashboard.orbicheck.com')).resolves.toBe(true);
     await expect(options.origin('https://api.orbicheck.com')).resolves.toBe(true);

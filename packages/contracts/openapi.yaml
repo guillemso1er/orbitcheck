@@ -1109,6 +1109,146 @@ paths:
                 $ref: '#/components/schemas/Error'
 
   # Webhooks
+  /v1/webhooks:
+    get:
+      tags:
+        - Management API
+      summary: List webhooks
+      description: Retrieves webhooks for the authenticated project
+      operationId: listWebhooks
+      responses:
+        '200':
+          description: List of webhooks
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Webhook'
+                  request_id:
+                    type: string
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    post:
+      tags:
+        - Management API
+      summary: Create webhook
+      description: Creates a new webhook subscription for the authenticated project
+      operationId: createWebhook
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - url
+                - events
+              properties:
+                url:
+                  type: string
+                  format: uri
+                  description: The webhook URL to send events to
+                events:
+                  type: array
+                  items:
+                    type: string
+                    enum: [validation_result, order_evaluated, dedupe_completed, job_completed]
+                  description: Events to subscribe to
+      responses:
+        '201':
+          description: Webhook created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    description: Webhook ID
+                  url:
+                    type: string
+                    description: Webhook URL
+                  events:
+                    type: array
+                    items:
+                      type: string
+                    description: Subscribed events
+                  secret:
+                    type: string
+                    description: Webhook secret for signature verification
+                  status:
+                    type: string
+                    description: Webhook status
+                  created_at:
+                    type: string
+                    format: date-time
+                    description: Creation timestamp
+                  request_id:
+                    type: string
+        '400':
+          description: Invalid input data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /v1/webhooks/{id}:
+    delete:
+      tags:
+        - Management API
+      summary: Delete webhook
+      description: Deletes a webhook subscription
+      operationId: deleteWebhook
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID of the webhook to delete
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Webhook deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    description: Webhook ID
+                  status:
+                    type: string
+                    description: Webhook status (deleted)
+                  request_id:
+                    type: string
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Webhook not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
   /v1/webhooks/test:
     post:
       tags:
@@ -1423,6 +1563,35 @@ components:
           format: date-time
           nullable: true
           description: Last used timestamp
+
+    Webhook:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Webhook ID
+        url:
+          type: string
+          format: uri
+          description: Webhook URL
+        events:
+          type: array
+          items:
+            type: string
+          description: Events this webhook is subscribed to
+        status:
+          type: string
+          enum: [active, inactive, deleted]
+          description: Webhook status
+        created_at:
+          type: string
+          format: date-time
+          description: Creation timestamp
+        last_fired_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: Last time webhook was fired
 
     Address:
       type: object

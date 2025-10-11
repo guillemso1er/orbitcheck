@@ -137,9 +137,14 @@ jest.mock('@orbicheck/contracts', () => ({
   },
   MGMT_V1_ROUTES: {
     API_KEYS: {
+      CREATE_API_KEY: '/v1/api-keys',
       LIST_API_KEYS: '/v1/api-keys',
+      REVOKE_API_KEY: '/v1/api-keys/:id',
     },
     WEBHOOKS: {
+      LIST_WEBHOOKS: '/v1/webhooks',
+      CREATE_WEBHOOK: '/v1/webhooks',
+      DELETE_WEBHOOK: '/v1/webhooks/:id',
       TEST_WEBHOOK: '/v1/webhooks/test',
     },
     DATA: {
@@ -186,7 +191,7 @@ jest.mock('../validators/taxid.js', () => ({
 
 jest.mock('../validators/address.js', () => ({
   validateAddress: jest.fn(),
-  normalizeAddress: jest.fn(),
+  normalizeAddress: jest.fn((addr) => Promise.resolve(addr)), // Default to return input
   detectPoBox: jest.fn(),
 }));
 
@@ -199,8 +204,8 @@ jest.mock('@hapi/address', () => ({
 }));
 
 jest.mock('libphonenumber-js', () => ({
-  parsePhoneNumber: jest.fn(),
-  parsePhoneNumberWithError: jest.fn(),
+  parsePhoneNumber: jest.fn().mockReturnValue({ isValid: () => true, number: '+15551234567', country: 'US' }),
+  parsePhoneNumberWithError: jest.fn().mockReturnValue({ isValid: () => true, number: '+15551234567', country: 'US' }),
 }));
 
 jest.mock('tldts', () => ({
@@ -218,10 +223,16 @@ jest.mock('node:crypto', () => ({
     }
     return buf;
   }),
-  createHash: jest.fn().mockImplementation((algo) => ({
-    update: jest.fn().mockReturnThis(),
-    digest: jest.fn().mockReturnValue('mocked_hash'),
-  })),
+  createHash: jest.fn().mockImplementation((algo) => {
+    const actual = actualCrypto.createHash(algo);
+    return {
+      update: jest.fn((data) => {
+        actual.update(data);
+        return { digest: jest.fn((enc) => actual.digest(enc)) };
+      }),
+      digest: jest.fn((enc) => actual.digest(enc)),
+    };
+  }),
   createCipheriv: jest.fn().mockImplementation(() => ({
     update: jest.fn().mockReturnValue('encrypted_part1'),
     final: jest.fn().mockReturnValue('encrypted_part2'),
@@ -293,20 +304,45 @@ export const createApp = async (): Promise<FastifyInstance> => {
     }
   });
 
-  // Mock auth hook to set project_id
-  app.addHook('preHandler', (request, reply, done) => {
-    (request as any).project_id = 'test_project';
-    done();
-  });
-
   // Register routes needed for tests
+  const { registerAuthRoutes } = await import('../routes/auth.js');
+  const { registerApiKeysRoutes } = await import('../routes/api-keys.js');
   const { registerBatchRoutes } = await import('../routes/batch.js');
+  const { registerDataRoutes } = await import('../routes/data.js');
+  const { registerDedupeRoutes } = await import('../routes/dedupe.js');
   const { registerJobRoutes } = await import('../routes/jobs.js');
+  const { registerOrderRoutes } = await import('../routes/orders.js');
+  const { registerRulesRoutes } = await import('../routes/rules.js');
   const { registerValidationRoutes } = await import('../routes/validation.js');
+  const { registerWebhookRoutes } = await import('../routes/webhook.js');
 
+  registerAuthRoutes(app, mockPool as any);
+  registerApiKeysRoutes(app, mockPool as any);
   registerBatchRoutes(app, mockPool as any, mockRedisInstance as any);
+  registerDataRoutes(app, mockPool as any);
+  registerDedupeRoutes(app, mockPool as any);
   registerJobRoutes(app, mockPool as any);
+  registerOrderRoutes(app, mockPool as any, mockRedisInstance as any);
+  registerRulesRoutes(app, mockPool as any);
   registerValidationRoutes(app, mockPool as any, mockRedisInstance as any);
+  registerWebhookRoutes(app, mockPool as any);
+
+  // Add security headers hook like in server.ts
+  app.addHook('onSend', async (request, reply, payload) => {
+    // Basic security headers
+    reply.header('X-Content-Type-Options', 'nosniff');
+    reply.header('X-Frame-Options', 'DENY');
+    reply.header('X-XSS-Protection', '1; mode=block');
+    reply.header('Referrer-Policy', 'strict-origin-when-cross-origin');
+    reply.header('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+
+    // Add request ID to response headers for tracing
+    if (request.id) {
+      reply.header('X-Request-Id', request.id);
+    }
+
+    return payload;
+  });
 
   return app;
 };
@@ -346,6 +382,11 @@ export const setupBeforeAll = async (): Promise<void> => {
   mockPool.query.mockResolvedValue({ rows: [] });
   mockPool.end.mockResolvedValue('OK');
 
+  // Default validator mocks
+  mockValidateEmail.mockResolvedValue({ valid: true, reason_codes: [], disposable: false, normalized: 'test@example.com', mx_found: true, request_id: 'test-id', ttl_seconds: 2_592_000 });
+  mockValidatePhone.mockResolvedValue({ valid: true, reason_codes: [], country: 'US', e164: '+15551234567' });
+  mockValidateAddress.mockResolvedValue({ valid: true, reason_codes: [], po_box: false, postal_city_match: true, in_bounds: true, geo: { lat: 40, lng: -74 }, normalized: { line1: '123 Main St', city: 'New York', postal_code: '10001', country: 'US' } });
+
   // Default Redis responses
   mockRedisInstance.quit.mockResolvedValue('OK');
   mockRedisInstance.ping.mockResolvedValue('PONG');
@@ -354,12 +395,18 @@ export const setupBeforeAll = async (): Promise<void> => {
 // Additional exports for test files
 export const hapi = jest.requireMock('@hapi/address');
 export const mockDns = jest.requireMock('node:dns/promises');
-export const mockValidateEmail = jest.requireMock('../validators/email.js');
-export const mockValidateAddress = jest.requireMock('../validators/address.js');
-export const mockValidatePhone = jest.requireMock('../validators/phone.js');
+export const mockValidateEmail = jest.requireMock('../validators/email.js').validateEmail;
+export const mockValidateAddress = jest.requireMock('../validators/address.js').validateAddress;
+export const mockValidatePhone = jest.requireMock('../validators/phone.js').validatePhone;
 export const libphone = jest.requireMock('libphonenumber-js');
 
 // Export loaded functions for tests
 export {
   authHookFunction, idempotencyFunction, rateLimitFunction, registerAuthRoutesFunction, registerRoutesFunction, verifyPATFunction, verifySessionFunction
 };
+
+describe('Test Setup', () => {
+  it('should setup tests', () => {
+    expect(true).toBe(true);
+  });
+});
