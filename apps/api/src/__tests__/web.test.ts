@@ -1,5 +1,5 @@
-import Fastify from 'fastify';
 import type { FastifyReply } from 'fastify';
+import Fastify from 'fastify';
 
 import { createApp, mockPool, mockRedisInstance, mockSession, setupBeforeAll } from './testSetup.js';
 

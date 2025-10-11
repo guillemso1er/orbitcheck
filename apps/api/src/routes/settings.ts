@@ -1,6 +1,7 @@
 import { MGMT_V1_ROUTES } from '@orbicheck/contracts';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import type { Pool } from 'pg';
+
 import { generateRequestId, sendServerError } from './utils.js';
 
 // Import route constants from contracts package

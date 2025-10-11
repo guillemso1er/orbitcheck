@@ -25,6 +25,9 @@ export const ERROR_CODES = {
   SERVER_ERROR: 'server_error',
   WEBHOOK_SEND_FAILED: 'send_failed',
   RATE_LIMITED: 'rate_limited',
+  MISSING_JWT_SECRET: 'missing_jwt_secret',
+  MISSING_ENCRYPTION_KEY: 'missing_encryption_key',
+  ERASE_INVALID_REQUEST: 'erase_invalid_request',
 } as const;
 
 export const ERROR_MESSAGES = {
@@ -41,6 +44,9 @@ export const ERROR_MESSAGES = {
   [ERROR_CODES.SERVER_ERROR]: 'Internal server error',
   [ERROR_CODES.WEBHOOK_SEND_FAILED]: 'Failed to send webhook',
   [ERROR_CODES.RATE_LIMITED]: 'Rate limit exceeded',
+  [ERROR_CODES.MISSING_JWT_SECRET]: 'JWT_SECRET must be set in environment',
+  [ERROR_CODES.MISSING_ENCRYPTION_KEY]: 'ENCRYPTION_KEY must be set in environment',
+  [ERROR_CODES.ERASE_INVALID_REQUEST]: 'INVALID_REQUEST',
 } as const;
 
 export const ERROR_CODE_DESCRIPTIONS: Record<string, { description: string, category: string, severity: 'low' | 'medium' | 'high' }> = {
@@ -274,3 +280,40 @@ export const TTL_PHONE = PHONE_VALIDATION_TTL_DAYS * 24 * 3600;
 
 
 export const TWILIO_CHANNEL_SMS = 'sms' as const;
+
+export const CONTENT_TYPES = {
+  APPLICATION_JSON: 'application/json',
+  APPLICATION_X_WWW_FORM_URLENCODED: 'application/x-www-form-urlencoded',
+  TEXT_PLAIN: 'text/plain',
+} as const;
+
+export const URL_PATTERNS = {
+  HTTPS_OPTIONAL: /^https?:\/\//,
+} as const;
+
+export const MESSAGES = {
+  LOG_ENTRY_NOT_FOUND: 'Log entry not found',
+  INVALID_EVENTS: 'Invalid events: ',
+  DATA_ERASURE_INITIATED: (compliance: string) => `Data erasure initiated for ${compliance} compliance`,
+  LOG_ENTRY_DELETED: 'Log entry deleted successfully',
+  SETTINGS_UPDATED: 'Settings updated successfully',
+  WEBHOOK_NOT_FOUND: 'Webhook not found',
+  API_KEY_REVOKED: 'API key revoked successfully',
+  DATABASE_ERROR: 'Database error',
+  UNKNOWN_ERROR: 'Unknown error',
+  ERASE_INVALID_REQUEST_MESSAGE: 'Reason must be either "gdpr" or "ccpa"',
+  INVALID_SERVER_RESPONSE: 'Invalid response from server',
+  POSTGRESQL_CONNECTION_FAILED: (error: string) => `FATAL: Could not connect to PostgreSQL. Shutting down. ${error}`,
+  REDIS_CONNECTION_FAILED: (error: string) => `FATAL: Could not connect to Redis. Shutting down. ${error}`,
+  STARTUP_SMOKE_TEST_FAILED: (statusCode: number, body: string) => `Startup smoke test failed: /health returned ${statusCode}. Body: ${body}`,
+  UNSUPPORTED_DEDUPE_TYPE: (type: string) => `Unsupported dedupe type: ${type}`,
+  UNSUPPORTED_VALIDATION_TYPE: (type: string) => `Unsupported validation type: ${type}`,
+} as const;
+
+export const COMPLIANCE_REASONS = {
+  GDPR: 'gdpr',
+  CCPA: 'ccpa',
+} as const;
+
+export const CRYPTO_KEY_BYTES = 32 as const;
+export const CRYPTO_IV_BYTES = 16 as const;

@@ -2,7 +2,7 @@ import { MGMT_V1_ROUTES } from "@orbicheck/contracts";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import type { Pool } from "pg";
 
-import { CACHE_HIT_PLACEHOLDER, ERROR_CODES, HTTP_STATUS, LOGS_DEFAULT_LIMIT, LOGS_MAX_LIMIT, TOP_REASONS_LIMIT, USAGE_DAYS, USAGE_PERIOD } from "../constants.js";
+import { CACHE_HIT_PLACEHOLDER, COMPLIANCE_REASONS, ERROR_CODES, HTTP_STATUS, LOGS_DEFAULT_LIMIT, LOGS_MAX_LIMIT, MESSAGES, TOP_REASONS_LIMIT, USAGE_DAYS, USAGE_PERIOD } from "../constants.js";
 import { errorSchema, generateRequestId, rateLimitResponse, securityHeader, sendError, sendServerError, unauthorizedResponse } from "./utils.js";
 // Import route constants from contracts package
 // TODO: Update to use @orbicheck/contracts export once build issues are resolved
@@ -225,12 +225,8 @@ export function registerDataRoutes(app: FastifyInstance, pool: Pool): void {
             const project_id = (request as any).project_id;
             const { reason } = request.body;
 
-            if (!reason || !['gdpr', 'ccpa'].includes(reason)) {
-                return rep.code(400).send({
-                    error: 'INVALID_REQUEST',
-                    message: 'Reason must be either "gdpr" or "ccpa"',
-                    request_id
-                });
+            if (!reason || !Object.values(COMPLIANCE_REASONS).includes(reason as any)) {
+                return sendError(rep, HTTP_STATUS.BAD_REQUEST, ERROR_CODES.ERASE_INVALID_REQUEST, MESSAGES.ERASE_INVALID_REQUEST_MESSAGE, request_id);
             }
 
             // For GDPR/CCPA compliance, we would typically:
@@ -248,7 +244,7 @@ export function registerDataRoutes(app: FastifyInstance, pool: Pool): void {
             // For now, we don't delete API keys to allow testing revoke functionality
 
             const response = {
-                message: `Data erasure initiated for ${reason.toUpperCase()} compliance`,
+                message: MESSAGES.DATA_ERASURE_INITIATED(reason.toUpperCase()),
                 request_id
             };
             return rep.code(202).send(response);
@@ -296,10 +292,10 @@ export function registerDataRoutes(app: FastifyInstance, pool: Pool): void {
             );
 
             if (result.rowCount === 0 || result.rowCount === null || result.rowCount === undefined) {
-                return sendError(rep, HTTP_STATUS.NOT_FOUND, ERROR_CODES.NOT_FOUND, 'Log entry not found', request_id);
+                return sendError(rep, HTTP_STATUS.NOT_FOUND, ERROR_CODES.NOT_FOUND, MESSAGES.LOG_ENTRY_NOT_FOUND, request_id);
             }
             const response = {
-                message: 'Log entry deleted successfully',
+                message: MESSAGES.LOG_ENTRY_DELETED,
                 request_id
             };
             return rep.send(response);

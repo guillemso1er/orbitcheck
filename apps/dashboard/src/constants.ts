@@ -125,5 +125,6 @@ export const ERROR_MESSAGES = {
   FETCH_USAGE: `${UI_STRINGS.ERROR_FETCH} usage data`,
   FETCH_LOGS: `${UI_STRINGS.ERROR_FETCH} logs`,
   SEND_WEBHOOK: `${UI_STRINGS.ERROR_SEND} test payload`,
+  INVALID_SERVER_RESPONSE: 'Invalid response from server',
   UNKNOWN: 'Unknown error',
 } as const;

@@ -19,6 +19,7 @@ import yaml from 'js-yaml';
 import cron from 'node-cron';
 import { Pool } from "pg";
 
+import { MESSAGES } from "./constants.js";
 import { runLogRetention } from './cron/retention.js';
 import { environment } from "./environment.js";
 import { batchDedupeProcessor } from './jobs/batchDedupe.js';
@@ -306,7 +307,7 @@ export async function start(): Promise<void> {
             await client.query('SELECT 1');
             client.release();
         } catch (error) {
-            throw new Error(`FATAL: Could not connect to PostgreSQL. Shutting down. ${String(error)}`);
+            throw new Error(MESSAGES.POSTGRESQL_CONNECTION_FAILED(String(error)));
         }
 
         // --- Create a dedicated client just for the startup check ---
@@ -323,7 +324,7 @@ export async function start(): Promise<void> {
             // We are done with this client, disconnect it.
             await verificationRedis.quit();
         } catch (error) {
-            throw new Error(`FATAL: Could not connect to Redis. Shutting down. ${String(error)}`);
+            throw new Error(MESSAGES.REDIS_CONNECTION_FAILED(String(error)));
         }
 
         // --- Create the main Redis client for the application with BullMQ's required options ---
@@ -350,7 +351,7 @@ export async function start(): Promise<void> {
             );
 
             if (response.statusCode !== 200) {
-                throw new Error(`Startup smoke test failed: /health returned ${response.statusCode}. Body: ${response.body}`);
+                throw new Error(MESSAGES.STARTUP_SMOKE_TEST_FAILED(response.statusCode, response.body));
             }
             app.log.info('Startup smoke test passed.');
         } catch (error) {

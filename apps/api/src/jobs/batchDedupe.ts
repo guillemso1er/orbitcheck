@@ -3,8 +3,9 @@ import crypto from "node:crypto";
 import type { Job } from "bullmq";
 import type { Pool } from "pg";
 
-import { DEDUPE_ACTIONS, MATCH_TYPES, SIMILARITY_EXACT, SIMILARITY_FUZZY_THRESHOLD } from "../constants.js";
+import { DEDUPE_ACTIONS, MATCH_TYPES, MESSAGES,SIMILARITY_EXACT, SIMILARITY_FUZZY_THRESHOLD } from "../constants.js";
 import { normalizeAddress } from "../validators/address.js";
+import { processBatchJob } from "./batchJobProcessor.js";
 
 export interface BatchDedupeInput {
   type: 'customers' | 'addresses';
@@ -14,95 +15,49 @@ export interface BatchDedupeInput {
 export interface DedupeResult {
   index: number;
   input: any;
-  matches: any[];
-  suggested_action: 'create_new' | 'merge_with' | 'review';
-  canonical_id: string | null;
+  matches?: any[];
+  suggested_action?: 'create_new' | 'merge_with' | 'review';
+  canonical_id?: string | null;
   error?: string;
 }
 
 export const batchDedupeProcessor = async (job: Job<BatchDedupeInput & { project_id: string }>, pool: Pool): Promise<DedupeResult[]> => {
-   const { type, data, project_id } = job.data;
-  const results: DedupeResult[] = [];
+   const { type } = job.data;
 
-  // Update job status to processing
-  await pool.query(
-    'UPDATE jobs SET status = $1, total_items = $2 WHERE id = $3',
-    ['processing', data.length, job.id]
-  );
+   const itemProcessor = async (item: any, project_id: string, pool: Pool): Promise<DedupeResult> => {
+     let matches: any[] = [];
 
-  try {
-    for (let i = 0; i < data.length; i++) {
-      const item = data[i];
-      try {
-        let matches: any[] = [];
+     if (type === 'customers') {
+       matches = await dedupeCustomer(item, project_id, pool);
+     } else if (type === 'addresses') {
+       matches = await dedupeAddress(item, project_id, pool);
+     } else {
+       throw new Error(MESSAGES.UNSUPPORTED_DEDUPE_TYPE(type));
+     }
 
-        if (type === 'customers') {
-          matches = await dedupeCustomer(item, project_id, pool);
-        } else if (type === 'addresses') {
-          matches = await dedupeAddress(item, project_id, pool);
-        } else {
-          throw new Error(`Unsupported dedupe type: ${type}`);
-        }
+     // Determine suggested action
+     let suggested_action: 'create_new' | 'merge_with' | 'review' = DEDUPE_ACTIONS.CREATE_NEW;
+     let canonical_id: string | null = null;
 
-        // Determine suggested action
-        let suggested_action: 'create_new' | 'merge_with' | 'review' = DEDUPE_ACTIONS.CREATE_NEW;
-        let canonical_id: string | null = null;
+     if (matches.length > 0) {
+       const bestMatch = matches[0];
+       if (bestMatch.similarity_score === SIMILARITY_EXACT) {
+         suggested_action = DEDUPE_ACTIONS.MERGE_WITH;
+         canonical_id = bestMatch.id;
+       } else if (bestMatch.similarity_score > SIMILARITY_FUZZY_THRESHOLD) {
+         suggested_action = DEDUPE_ACTIONS.REVIEW;
+         canonical_id = bestMatch.id;
+       }
+     }
 
-        if (matches.length > 0) {
-          const bestMatch = matches[0];
-          if (bestMatch.similarity_score === SIMILARITY_EXACT) {
-            suggested_action = DEDUPE_ACTIONS.MERGE_WITH;
-            canonical_id = bestMatch.id;
-          } else if (bestMatch.similarity_score > SIMILARITY_FUZZY_THRESHOLD) {
-            suggested_action = DEDUPE_ACTIONS.REVIEW;
-            canonical_id = bestMatch.id;
-          }
-        }
+     return {
+       matches,
+       suggested_action,
+       canonical_id
+     };
+   };
 
-        results.push({
-          index: i,
-          input: item,
-          matches,
-          suggested_action,
-          canonical_id
-        });
-      } catch (error) {
-        console.error(`Error deduping item ${i}:`, error);
-        results.push({
-          index: i,
-          input: item,
-          matches: [],
-          suggested_action: 'create_new',
-          canonical_id: null,
-          error: error instanceof Error ? error.message : 'Unknown error'
-        });
-      }
-
-      // Update progress
-      await pool.query(
-        'UPDATE jobs SET processed_items = $1 WHERE id = $2',
-        [i + 1, job.id]
-      );
-
-      // Update job progress for BullMQ
-      job.updateProgress(Math.round(((i + 1) / data.length) * 100));
-    }
-
-    // Store results and mark as completed
-    await pool.query(
-      'UPDATE jobs SET status = $1, result_data = $2, completed_at = now() WHERE id = $3',
-      ['completed', JSON.stringify(results), job.id]
-    );
-
-    return results;
-  } catch (error) {
-    console.error('Batch dedupe job failed:', error);
-    await pool.query(
-      'UPDATE jobs SET status = $1, error_message = $2 WHERE id = $3',
-      ['failed', error instanceof Error ? error.message : 'Unknown error', job.id]
-    );
-    throw error;
-  }
+   return processBatchJob(job, pool, undefined, itemProcessor) as DedupeResult[];
 };
 
 async function dedupeCustomer(customerData: any, project_id: string, pool: Pool): Promise<any[]> {

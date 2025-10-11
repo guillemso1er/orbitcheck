@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
-import { API_BASE } from '../constants';
+import { API_BASE, ERROR_MESSAGES } from '../constants';
 import { createApiClient } from '@orbicheck/contracts';
 
 interface User {
@@ -101,7 +101,7 @@ const Login: React.FC = () => {
         login(user);
         navigate('/api-keys');
       } else {
-        throw new Error('Invalid response from server');
+        throw new Error(ERROR_MESSAGES.INVALID_SERVER_RESPONSE);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An unexpected error occurred. Please try again.');

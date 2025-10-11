@@ -1,10 +1,11 @@
+import crypto from "node:crypto";
+
 import { MGMT_V1_ROUTES } from "@orbicheck/contracts";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import fetch from "node-fetch";
-import crypto from "node:crypto";
 import type { Pool } from "pg";
 
-import { ERROR_CODES, ERROR_MESSAGES, EVENT_TYPES, HTTP_STATUS, ORDER_ACTIONS, PAYLOAD_TYPES, REASON_CODES } from "../constants.js";
+import { CONTENT_TYPES, CRYPTO_KEY_BYTES, ERROR_CODES, ERROR_MESSAGES, EVENT_TYPES, HTTP_STATUS, MESSAGES, ORDER_ACTIONS, PAYLOAD_TYPES, REASON_CODES, URL_PATTERNS } from "../constants.js";
 import { logEvent } from "../hooks.js";
 import { generateRequestId, rateLimitResponse, securityHeader, sendError, unauthorizedResponse } from "./utils.js";
 // Import route constants from contracts package
@@ -61,7 +62,7 @@ export function registerWebhookRoutes(app: FastifyInstance, pool: Pool): void {
                 request_id
             });
         } catch (error) {
-            const errorMessage = error instanceof globalThis.Error ? error.message : 'Database error';
+            const errorMessage = error instanceof globalThis.Error ? error.message : MESSAGES.DATABASE_ERROR;
             await logEvent(project_id, 'webhook_list', ROUTES.LIST_WEBHOOKS, [REASON_CODES.WEBHOOK_SEND_FAILED], HTTP_STATUS.INTERNAL_SERVER_ERROR, { error: errorMessage }, pool);
             return sendError(rep, HTTP_STATUS.INTERNAL_SERVER_ERROR, ERROR_CODES.SERVER_ERROR, errorMessage, request_id);
         }
@@ -117,7 +118,7 @@ export function registerWebhookRoutes(app: FastifyInstance, pool: Pool): void {
 
         try {
             // Validate URL
-            if (!url || !/^https?:\/\//.test(url)) {
+            if (!url || !URL_PATTERNS.HTTPS_OPTIONAL.test(url)) {
                 return await sendError(rep, HTTP_STATUS.BAD_REQUEST, ERROR_CODES.INVALID_URL, ERROR_MESSAGES[ERROR_CODES.INVALID_URL], request_id);
             }
 
@@ -125,10 +126,10 @@ export function registerWebhookRoutes(app: FastifyInstance, pool: Pool): void {
             const validEvents = Object.values(EVENT_TYPES);
             const invalidEvents = events.filter((event: string) => !validEvents.includes(event as any));
             if (invalidEvents.length > 0) {
-                return await sendError(rep, HTTP_STATUS.BAD_REQUEST, ERROR_CODES.INVALID_TYPE, 'Invalid events: ' + invalidEvents.join(', '), request_id);
+                return await sendError(rep, HTTP_STATUS.BAD_REQUEST, ERROR_CODES.INVALID_TYPE, MESSAGES.INVALID_EVENTS + invalidEvents.join(', '), request_id);
             }
 
-            const secret = crypto.randomBytes(32).toString('hex');
+            const secret = crypto.randomBytes(CRYPTO_KEY_BYTES).toString('hex');
 
             const result = await pool.query(
                 'INSERT INTO webhooks (project_id, url, events, secret, status) VALUES ($1, $2, $3, $4, $5) RETURNING id, url, events, secret, status, created_at',
@@ -144,7 +145,7 @@ export function registerWebhookRoutes(app: FastifyInstance, pool: Pool): void {
                 request_id
             });
         } catch (error) {
-            const errorMessage = error instanceof globalThis.Error ? error.message : 'Database error';
+            const errorMessage = error instanceof globalThis.Error ? error.message : MESSAGES.DATABASE_ERROR;
             await logEvent(project_id, 'webhook_create', ROUTES.CREATE_WEBHOOK, [REASON_CODES.WEBHOOK_SEND_FAILED], HTTP_STATUS.INTERNAL_SERVER_ERROR, { error: errorMessage }, pool);
             return sendError(rep, HTTP_STATUS.INTERNAL_SERVER_ERROR, ERROR_CODES.SERVER_ERROR, errorMessage, request_id);
         }
@@ -192,7 +193,7 @@ export function registerWebhookRoutes(app: FastifyInstance, pool: Pool): void {
             );
 
             if (result.rowCount === 0) {
-                return await sendError(rep, HTTP_STATUS.NOT_FOUND, ERROR_CODES.NOT_FOUND, 'Webhook not found', request_id);
+                return await sendError(rep, HTTP_STATUS.NOT_FOUND, ERROR_CODES.NOT_FOUND, MESSAGES.WEBHOOK_NOT_FOUND, request_id);
             }
 
             const webhook = result.rows[0];
@@ -204,7 +205,7 @@ export function registerWebhookRoutes(app: FastifyInstance, pool: Pool): void {
                 request_id
             });
         } catch (error) {
-            const errorMessage = error instanceof globalThis.Error ? error.message : 'Database error';
+            const errorMessage = error instanceof globalThis.Error ? error.message : MESSAGES.DATABASE_ERROR;
             await logEvent(project_id, 'webhook_delete', ROUTES.DELETE_WEBHOOK, [REASON_CODES.WEBHOOK_SEND_FAILED], HTTP_STATUS.INTERNAL_SERVER_ERROR, { error: errorMessage }, pool);
             return sendError(rep, HTTP_STATUS.INTERNAL_SERVER_ERROR, ERROR_CODES.SERVER_ERROR, errorMessage, request_id);
         }
@@ -273,7 +274,7 @@ export function registerWebhookRoutes(app: FastifyInstance, pool: Pool): void {
         try {
             const request_id = generateRequestId();
 
-            if (!url || !/^https?:\/\//.test(url)) {
+            if (!url || !URL_PATTERNS.HTTPS_OPTIONAL.test(url)) {
                 return await sendError(rep, HTTP_STATUS.BAD_REQUEST, ERROR_CODES.INVALID_URL, ERROR_MESSAGES[ERROR_CODES.INVALID_URL], request_id);
             }
 
@@ -327,7 +328,7 @@ export function registerWebhookRoutes(app: FastifyInstance, pool: Pool): void {
             const response = await fetch(url, {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json',
+                    'Content-Type': CONTENT_TYPES.APPLICATION_JSON,
                     'User-Agent': 'OrbiCheck-Webhook-Tester/1.0'
                 },
                 body: JSON.stringify(payload)
@@ -360,7 +361,7 @@ export function registerWebhookRoutes(app: FastifyInstance, pool: Pool): void {
             return rep.send(result);
         } catch (error) {
             const request_id = generateRequestId();
-            const errorMessage = error instanceof globalThis.Error ? (error).message : 'Unknown error';
+            const errorMessage = error instanceof globalThis.Error ? (error).message : MESSAGES.UNKNOWN_ERROR;
             await logEvent(project_id, 'webhook_test', MGMT_V1_ROUTES.WEBHOOKS.TEST_WEBHOOK, [REASON_CODES.WEBHOOK_SEND_FAILED], HTTP_STATUS.INTERNAL_SERVER_ERROR, {
                 url,
                 payload_type,

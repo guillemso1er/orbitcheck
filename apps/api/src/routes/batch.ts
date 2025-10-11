@@ -1,6 +1,6 @@
 import { API_V1_ROUTES } from "@orbicheck/contracts";
-import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { Queue } from 'bullmq';
+import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import type { Redis as IORedisType } from 'ioredis';
 import type { Pool } from "pg";
 

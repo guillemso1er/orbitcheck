@@ -10,10 +10,10 @@ import { registerBatchRoutes } from './routes/batch.js';
 import { registerDataRoutes } from './routes/data.js';
 import { registerDedupeRoutes } from './routes/dedupe.js';
 import { registerJobRoutes } from './routes/jobs.js';
+import { registerNormalizeRoutes } from './routes/normalize.js';
 import { registerOrderRoutes } from './routes/orders.js';
 import { registerRulesRoutes } from './routes/rules.js';
 import { registerSettingsRoutes } from './routes/settings.js';
-import { registerNormalizeRoutes } from './routes/normalize.js';
 import { registerValidationRoutes } from './routes/validation.js';
 import { registerWebhookRoutes } from './routes/webhook.js';
 

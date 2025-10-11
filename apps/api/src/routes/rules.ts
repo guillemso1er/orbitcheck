@@ -3,7 +3,11 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import type { Pool } from "pg";
 
 import { ERROR_CODE_DESCRIPTIONS, ERROR_CODES, REASON_CODES } from "../constants.js";
-import { generateRequestId, securityHeader, sendServerError } from "./utils.js";
+import { validateAddress } from "../validators/address.js";
+import { validateEmail } from "../validators/email.js";
+import { validateName } from "../validators/name.js";
+import { validatePhone } from "../validators/phone.js";
+import { buildAddressValidationResult, buildEmailValidationResult, buildNameValidationResult,buildPhoneValidationResult, generateRequestId, securityHeader, sendServerError } from "./utils.js";
 
 const reasonCodes: any[] = Object.entries(REASON_CODES).map(([_key, code]) => {
   // Map from code to description, category, severity - this is a simplification; in practice, you'd have a full mapping
@@ -313,50 +317,24 @@ export function registerRulesRoutes(app: FastifyInstance, pool: Pool, redis?: an
       const body = request.body as any;
       const results: any = {};
 
-      // Import validators dynamically to avoid circular deps
-      const { validateEmail } = await import('../validators/email.js');
-      const { validatePhone } = await import('../validators/phone.js');
-      const { validateAddress } = await import('../validators/address.js');
-      // Assume name validator exists or create simple one
-      const validateName = (name: string) => ({ valid: true, reason_codes: [], normalized: name.trim() });
-
       if (body.email) {
-        const { validateEmail } = await import('../validators/email.js');
         const emailResult = await validateEmail(body.email, redis);
-        results.email = {
-          valid: emailResult.valid,
-          reason_codes: emailResult.reason_codes,
-          normalized: emailResult.normalized,
-          disposable: emailResult.disposable
-        };
+        results.email = buildEmailValidationResult(emailResult);
       }
 
       if (body.phone) {
-        const { validatePhone } = await import('../validators/phone.js');
         const phoneResult = await validatePhone(body.phone, undefined, redis);
-        results.phone = {
-          valid: phoneResult.valid,
-          reason_codes: phoneResult.reason_codes,
-          e164: phoneResult.e164,
-          country: phoneResult.country
-        };
+        results.phone = buildPhoneValidationResult(phoneResult);
       }
 
       if (body.address) {
-        const { validateAddress } = await import('../validators/address.js');
         const addressResult = await validateAddress(body.address, pool, redis);
-        results.address = {
-          valid: addressResult.valid,
-          reason_codes: addressResult.reason_codes,
-          normalized: addressResult.normalized,
-          po_box: addressResult.po_box
-        };
+        results.address = buildAddressValidationResult(addressResult);
       }
 
       if (body.name) {
-        const { validateName } = await import('../validators/name.js');
         const nameResult = validateName(body.name);
-        results.name = nameResult;
+        results.name = buildNameValidationResult(nameResult);
       }
 
       const response: any = {
@@ -365,7 +343,7 @@ export function registerRulesRoutes(app: FastifyInstance, pool: Pool, redis?: an
       };
       return rep.send(response);
     } catch (error) {
-      return sendServerError(request, rep, error, MGMT_V1_ROUTES.RULES.TEST_RULES, generateRequestId());
+      return sendServerError(request, rep, error, MGMT_V1_ROUTES.RULES.TEST_RULES_AGAINST_PAYLOAD, generateRequestId());
     }
   });
 

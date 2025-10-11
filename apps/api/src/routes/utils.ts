@@ -2,6 +2,8 @@ import crypto from "node:crypto";
 
 import type { FastifyReply, FastifyRequest } from "fastify";
 
+import { ERROR_CODES, ERROR_MESSAGES } from "../constants.js";
+
 export const errorSchema = {
     type: 'object',
     properties: {
@@ -53,9 +55,44 @@ export function sendServerError(request: FastifyRequest, rep: FastifyReply, erro
     if (request.log) {
         request.log.error(error, `${endpoint} error`);
     }
-    const response: ErrorResponse = { error: { code: 'server_error', message: 'Internal server error' } };
+    const response: ErrorResponse = { error: { code: ERROR_CODES.SERVER_ERROR, message: ERROR_MESSAGES[ERROR_CODES.SERVER_ERROR] } };
     if (requestId) {
         response.request_id = requestId;
     }
     return rep.status(500).send(response);
+}
+
+export function buildEmailValidationResult(result: { valid: boolean; reason_codes: string[]; normalized: string; disposable: boolean }) {
+    return {
+        valid: result.valid,
+        reason_codes: result.reason_codes,
+        normalized: result.normalized,
+        disposable: result.disposable,
+    };
+}
+
+export function buildPhoneValidationResult(result: { valid: boolean; reason_codes: string[]; e164: string; country: string | null }) {
+    return {
+        valid: result.valid,
+        reason_codes: result.reason_codes,
+        e164: result.e164,
+        country: result.country,
+    };
+}
+
+export function buildAddressValidationResult(result: { valid: boolean; reason_codes: string[]; normalized: any; po_box: boolean }) {
+    return {
+        valid: result.valid,
+        reason_codes: result.reason_codes,
+        normalized: result.normalized,
+        po_box: result.po_box,
+    };
+}
+
+export function buildNameValidationResult(result: { valid: boolean; reason_codes: string[]; normalized: string }) {
+    return {
+        valid: result.valid,
+        reason_codes: result.reason_codes,
+        normalized: result.normalized,
+    };
 }

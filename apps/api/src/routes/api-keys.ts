@@ -4,7 +4,7 @@ import { MGMT_V1_ROUTES } from "@orbicheck/contracts";
 import type { FastifyInstance } from "fastify";
 import type { Pool } from "pg";
 
-import { API_KEY_PREFIX, ERROR_CODES, ERROR_MESSAGES, HTTP_STATUS, STATUS } from "../constants.js";
+import { API_KEY_PREFIX, CRYPTO_IV_BYTES, CRYPTO_KEY_BYTES, ERROR_CODES, ERROR_MESSAGES, HTTP_STATUS, STATUS } from "../constants.js";
 import { environment } from "../environment.js";
 import { errorSchema, generateRequestId, rateLimitResponse, securityHeader, sendError, sendServerError, unauthorizedResponse } from "./utils.js";
 
@@ -98,7 +98,7 @@ export function registerApiKeysRoutes(app: FastifyInstance, pool: Pool): void {
             // Generate full key
             const buf = new Promise<Buffer>((resolve, reject) => {
                 // eslint-disable-next-line promise/prefer-await-to-callbacks
-                crypto.randomBytes(32, (error, buf) => {
+                crypto.randomBytes(CRYPTO_KEY_BYTES, (error, buf) => {
                     if (error) reject(error);
                     else resolve(buf);
                 });
@@ -108,7 +108,7 @@ export function registerApiKeysRoutes(app: FastifyInstance, pool: Pool): void {
             const keyHash = crypto.createHash('sha256').update(full_key).digest('hex');
 
             // Encrypt the full key
-            const iv = crypto.randomBytes(16);
+            const iv = crypto.randomBytes(CRYPTO_IV_BYTES);
             const cipher = crypto.createCipheriv('aes-256-cbc', Buffer.from(environment.ENCRYPTION_KEY, 'hex'), iv);
             let encrypted = cipher.update(full_key, 'utf8', 'hex');
             encrypted += cipher.final('hex');

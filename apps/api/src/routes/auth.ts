@@ -5,7 +5,7 @@ import bcrypt from 'bcryptjs';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import type { Pool } from "pg";
 
-import { API_KEY_NAMES, API_KEY_PREFIX, ERROR_CODES, ERROR_MESSAGES, HTTP_STATUS, PG_UNIQUE_VIOLATION, PLAN_TYPES, PROJECT_NAMES, STATUS } from "../constants.js";
+import { API_KEY_NAMES, API_KEY_PREFIX, CRYPTO_IV_BYTES, CRYPTO_KEY_BYTES, ERROR_CODES, ERROR_MESSAGES, HTTP_STATUS, PG_UNIQUE_VIOLATION, PLAN_TYPES, PROJECT_NAMES, STATUS } from "../constants.js";
 import { environment } from "../environment.js";
 import { errorSchema, generateRequestId, sendError, sendServerError } from "./utils.js";
 
@@ -174,7 +174,7 @@ export function registerAuthRoutes(app: FastifyInstance, pool: Pool): void {
 
             // Generate API key for runtime endpoints
             const buf = await new Promise<Buffer>((resolve, reject) => {
-                crypto.randomBytes(32, (error, buf) => {
+                crypto.randomBytes(CRYPTO_KEY_BYTES, (error, buf) => {
                     if (error) reject(error);
                     else resolve(buf);
                 });
@@ -185,7 +185,7 @@ export function registerAuthRoutes(app: FastifyInstance, pool: Pool): void {
 
             // Encrypt the full key for HMAC verification
             const iv = await new Promise<Buffer>((resolve, reject) => {
-                crypto.randomBytes(16, (error, buf) => {
+                crypto.randomBytes(CRYPTO_IV_BYTES, (error, buf) => {
                     if (error) reject(error);
                     else resolve(buf);
                 });
@@ -202,7 +202,7 @@ export function registerAuthRoutes(app: FastifyInstance, pool: Pool): void {
 
             // Generate PAT for management API access
             const patBuf = await new Promise<Buffer>((resolve, reject) => {
-                crypto.randomBytes(32, (error, buf) => {
+                crypto.randomBytes(CRYPTO_KEY_BYTES, (error, buf) => {
                     if (error) reject(error);
                     else resolve(buf);
                 });
