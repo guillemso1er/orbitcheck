@@ -263,8 +263,20 @@ describe('Server Startup', () => {
 
     // Assert that process.exit was called
     expect(mockProcessExit).toHaveBeenCalledWith(1);
-    
+
     // Clear the timeout that was set in the error handler
     jest.clearAllTimers();
+  });
+
+  it('should register /v1/status endpoint', async () => {
+    const app = await build(mockPool, mockRedis);
+
+    // Check that get method was called for /v1/status
+    const statusCall = mockApp.get.mock.calls.find(call => call[0] === '/v1/status');
+    expect(statusCall).toBeDefined();
+
+    // Verify the handler function exists
+    const handler = statusCall[1];
+    expect(typeof handler).toBe('function');
   });
 });

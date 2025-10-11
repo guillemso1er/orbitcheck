@@ -117,9 +117,12 @@ export async function build(pool: Pool, redis: IORedisType): Promise<FastifyInst
             'Content-Type',
             'Authorization', // For PAT and API keys
             'X-Idempotency-Key', // For idempotency
-            'X-Request-Id' // For request tracking
+            'Idempotency-Key', // For idempotency (standard header)
+            'X-Request-Id', // For request tracking
+            'Correlation-Id', // For correlation tracking
+            'X-Correlation-Id' // For correlation tracking
         ],
-        exposedHeaders: ['X-Request-Id', 'X-RateLimit-Remaining', 'X-RateLimit-Reset'],
+        exposedHeaders: ['X-Request-Id', 'Correlation-Id', 'X-RateLimit-Remaining', 'X-RateLimit-Reset'],
     });
 
     // Register cookie support (required for secure sessions)
@@ -185,13 +188,28 @@ export async function build(pool: Pool, redis: IORedisType): Promise<FastifyInst
             reply.header('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
         }
 
-        // Add request ID to response headers for tracing
+        // Add request ID and correlation ID to response headers for tracing
         if (request.id) {
             reply.header('X-Request-Id', request.id);
         }
 
-        return payload;
-    });
+        // Support Correlation-Id header for request tracing
+        const correlationId = request.headers['correlation-id'] || request.headers['x-correlation-id'];
+        if (correlationId && typeof correlationId === 'string') {
+            reply.header('Correlation-Id', correlationId);
+        } else if (request.id) {
+            reply.header('Correlation-Id', request.id);
+        }
+    
+            return payload;
+        });
+    
+        // Status endpoint (public, no auth required)
+        app.get("/v1/status", async (): Promise<{ status: string; version: string; timestamp: string }> => ({
+            status: "healthy",
+            version: "0.1.0",
+            timestamp: new Date().toISOString()
+        }));
 
     // Health check endpoint (public, no auth required)
     app.get("/health", async (): Promise<{ ok: true; timestamp: string; environment: string }> => ({

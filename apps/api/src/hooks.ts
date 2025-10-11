@@ -167,7 +167,7 @@ export async function rateLimit(request: FastifyRequest, rep: FastifyReply, redi
  * @returns {Promise<void|FastifyReply>} Sends cached response if found, otherwise attaches saveIdem.
  */
 export async function idempotency(request: FastifyRequest, rep: FastifyReply, redis: IORedisType): Promise<void> {
-    const idem = request.headers["idempotency-key"];
+    const idem = request.headers["idempotency-key"] || request.headers["Idempotency-Key"];
     if (!idem || typeof idem !== "string") return;
     const cacheKey = `idem:${request.project_id}:${idem}`;
     const cached = await redis.get(cacheKey);
