@@ -145,6 +145,18 @@ export function testValidateTaxid(headers, check) {
     });
 }
 
+export function testValidateName(headers, check) {
+    const namePayload = JSON.stringify({ name: 'John Doe' });
+    const res = http.post(`${BASE_URL}/validate/name`, namePayload, { headers });
+    check(res, {
+        '[Validate Name] status 200': (r) => r.status === 200,
+        '[Validate Name] has result': (r) => {
+            const body = JSON.parse(r.body);
+            return body.valid !== undefined;
+        }
+    });
+}
+
 export default function (check) {
     // If check is not provided (when running this file directly),
     // use the original k6check as a fallback.

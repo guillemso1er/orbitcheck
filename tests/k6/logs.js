@@ -36,8 +36,8 @@ export function testGetLogsForDelete(headers, check) {
 
 export function testDeleteLog(log, headers, check) {
     if (!log || !log.id) return;
-    const NO_BODY_HEADERS = {};
-    const delHeaders = Object.assign({}, NO_BODY_HEADERS, headers);
+    const delHeaders = Object.assign({}, headers);
+    delete delHeaders['Content-Type'];
     const res = http.del(`${BASE_URL}/v1/logs/${log.id}`, null, { headers: delHeaders });
     check(res, {
         '[Delete Log] status 200': (r) => r.status === 200,

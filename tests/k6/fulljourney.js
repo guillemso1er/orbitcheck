@@ -3,10 +3,10 @@ import http from 'k6/http';
 import { testRegister, testLogin, testListApiKeys, testCreateApiKey, testListApiKeysAfterCreate, testRevokeApiKey, testListApiKeysAfterRevoke, testLogout, testHmacAuth } from './auth.js';
 import { testValidateEmail, testBatchValidate, testGetValidateJobStatus } from './email.js';
 import { testValidatePhoneSimple, testVerifyPhone } from './phone.js';
-import { testValidateAddress } from './address.js';
-import { testValidateTaxid } from './taxid.js';
+import { testValidateAddress, testNormalizeAddress } from './address.js';
+import { testValidateTaxid, testValidateName } from './taxid.js';
 import { testEvaluateOrder } from './order.js';
-import { testGetRulesFirst, testGetRulesCatalog, testRegisterRules } from './rules.js';
+import { testGetRulesFirst, testGetRulesCatalog, testRegisterRules, testGetRulesErrorCodes, testTestRules } from './rules.js';
 import { testGetLogs, testGetLogsForDelete, testDeleteLog, testEraseData } from './logs.js';
 import { testGetUsage } from './usage.js';
 import { testGetSettings, testUpdateSettings } from './settings.js';
@@ -90,7 +90,11 @@ export default function () {
 
     testValidateAddress(newRuntimeHeaders, check);
 
+    testNormalizeAddress(newRuntimeHeaders, check);
+
     testValidateTaxid(newRuntimeHeaders, check);
+
+    testValidateName(newRuntimeHeaders, check);
 
     // Step 11: Batch validation (Runtime API - use API key)
     const validateJobId = testBatchValidate(newRuntimeHeaders, check);
@@ -124,7 +128,9 @@ export default function () {
     // Step 26-29: Rules endpoints (Management API - use PAT)
     testGetRulesFirst(mgmtHeaders, check);
     testGetRulesCatalog(mgmtHeaders, check);
+    testGetRulesErrorCodes(mgmtHeaders, check);
     testRegisterRules(mgmtHeaders, check);
+    testTestRules(mgmtHeaders, check);
 
     // Step 30-31: Data endpoints (Management API - use PAT)
     testGetLogs(mgmtHeaders, check);

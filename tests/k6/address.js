@@ -148,6 +148,26 @@ export function testValidateAddress(headers, check) {
     });
 }
 
+export function testNormalizeAddress(headers, check) {
+    const normalizePayload = JSON.stringify({
+        address: {
+            line1: '123 main st',
+            city: 'anytown',
+            postal_code: '12345',
+            state: 'ca',
+            country: 'us'
+        }
+    });
+    const res = http.post(`${BASE_URL}/normalize/address`, normalizePayload, { headers });
+    check(res, {
+        '[Normalize Address] status 200': (r) => r.status === 200,
+        '[Normalize Address] has normalized': (r) => {
+            const body = JSON.parse(r.body);
+            return body.normalized !== undefined;
+        }
+    });
+}
+
 export default function (check) {
     // If check is not provided (when running this file directly),
     // use the original k6check as a fallback.

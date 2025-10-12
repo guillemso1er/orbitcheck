@@ -61,6 +61,32 @@ export function testRegisterRules(headers, check) {
     });
 }
 
+export function testGetRulesErrorCodes(headers, check) {
+    const res = http.get(`${BASE_URL}/rules/error-codes`, { headers });
+    check(res, {
+        '[Get Error Codes] status 200': (r) => r.status === 200,
+        '[Get Error Codes] has error_codes': (r) => r.status === 200 && Array.isArray(JSON.parse(r.body).error_codes)
+    });
+}
+
+export function testTestRules(headers, check) {
+    const payload = JSON.stringify({
+        data: {
+            email: 'test@example.com',
+            name: 'Test User'
+        },
+        rules: ['k6-custom-rule']
+    });
+    const res = http.post(`${BASE_URL}/rules/test`, payload, { headers });
+    check(res, {
+        '[Test Rules] status 200': (r) => r.status === 200,
+        '[Test Rules] has results': (r) => {
+            const body = JSON.parse(r.body);
+            return body.results !== undefined;
+        }
+    });
+}
+
 export default function (check) {
     // If check is not provided (when running this file directly),
     // use the original k6check as a fallback.

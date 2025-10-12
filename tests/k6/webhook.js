@@ -49,9 +49,9 @@ export function testListWebhooksAfterCreate(headers, check) {
 }
 
 export function testDeleteWebhook(headers, check, webhookId) {
-    const NO_BODY_HEADERS = {};
-    const delHeaders = Object.assign({}, NO_BODY_HEADERS, headers);
-    const res = http.del(`${BASE_URL}/v1/webhooks/${webhookId}`, null, { headers: delHeaders });
+    const delHeaders = Object.assign({}, headers);
+    delete delHeaders['Content-Type'];
+    const res = http.del(`${BASE_URL}/v1/webhooks/${webhookId.id}`, null, { headers: delHeaders });
     check(res, {
         '[Delete Webhook] status 200': (r) => r.status === 200
     });
@@ -110,7 +110,7 @@ export default function (check) {
         testListWebhooksAfterCreate(check, webhookId);
 
         // Test Case 4: Delete webhook
-        testDeleteWebhook(check, webhookId);
+        testDeleteWebhook(check, {}, webhookId);
     }
 
     // Test Case 5: Create webhook with multiple events

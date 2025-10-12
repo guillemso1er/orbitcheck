@@ -146,7 +146,9 @@ export function testListApiKeysAfterRevoke(patToken, check) {
 }
 
 export function testLogout(check) {
-    const res = http.post(`${BASE_URL}/auth/logout`, null, { headers: HEADERS });
+    const logoutHeaders = Object.assign({}, HEADERS);
+    delete logoutHeaders['Content-Type'];
+    const res = http.post(`${BASE_URL}/auth/logout`, null, { headers: logoutHeaders });
 
     check(res, {
         '[Logout] status 200': (r) => r.status === 200
