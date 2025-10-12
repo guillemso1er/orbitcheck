@@ -1,10 +1,11 @@
 import crypto from "node:crypto";
 
 import type { FastifyReply, FastifyRequest } from "fastify";
+import fetch from "node-fetch";
 import { type Redis as IORedisType } from 'ioredis';
 import type { Pool } from "pg";
 
-import { ERROR_CODES, ERROR_MESSAGES, HTTP_STATUS, STATUS } from "./constants.js";
+import { CONTENT_TYPES, ERROR_CODES, ERROR_MESSAGES, EVENT_TYPES, HASH_ALGORITHM, HTTP_STATUS, STATUS } from "./constants.js";
 import { environment } from "./environment.js";
 
 
@@ -35,7 +36,7 @@ export async function auth(request: FastifyRequest, rep: FastifyReply, pool: Poo
         const prefix = key.slice(0, 6);
 
         // Compute SHA-256 hash for secure storage and comparison (avoids storing plaintext keys)
-        const keyHash = crypto.createHash('sha256').update(key).digest('hex');
+        const keyHash = crypto.createHash(HASH_ALGORITHM).update(key).digest('hex');
 
         // Query for active key matching full hash and prefix (efficient indexing on hash/prefix)
         const { rows } = await pool.query(
@@ -106,7 +107,7 @@ export async function auth(request: FastifyRequest, rep: FastifyReply, pool: Poo
         // Compute expected signature: HMAC-SHA256 of method + url + body + ts + nonce
         const body = request.body ? JSON.stringify(request.body) : '';
         const message = request.method + request.url + body + ts + nonce;
-        const expectedSignature = crypto.createHmac('sha256', fullKey).update(message).digest('hex');
+        const expectedSignature = crypto.createHmac(HASH_ALGORITHM, fullKey).update(message).digest('hex');
 
         if (signature !== expectedSignature) {
             request.log.info('HMAC signature mismatch');
@@ -185,9 +186,70 @@ export async function idempotency(request: FastifyRequest, rep: FastifyReply, re
 
 
 /**
+ * Maps log event types to webhook event types.
+ */
+function getWebhookEventType(logType: string): string | null {
+    switch (logType) {
+        case 'validation':
+            return EVENT_TYPES.VALIDATION_RESULT;
+        case 'order':
+            return EVENT_TYPES.ORDER_EVALUATED;
+        case 'dedupe':
+            return EVENT_TYPES.DEDUPE_COMPLETED;
+        case 'batch':
+        case 'jobs':
+            return EVENT_TYPES.JOB_COMPLETED;
+        default:
+            return null;
+    }
+}
+
+/**
+ * Sends webhooks for the given event asynchronously.
+ */
+async function sendWebhooks(project_id: string, event: string, payload: Record<string, unknown>, pool: Pool): Promise<void> {
+    try {
+        // Get active webhooks for this project that subscribe to this event
+        const webhooks = await pool.query(
+            'SELECT id, url, secret FROM webhooks WHERE project_id = $1 AND status = $2 AND $3 = ANY(events)',
+            [project_id, 'active', event]
+        );
+
+        for (const webhook of webhooks.rows) {
+            // Create signature
+            const signature = crypto.createHmac(HASH_ALGORITHM, webhook.secret).update(JSON.stringify(payload)).digest('hex');
+
+            try {
+                await fetch(webhook.url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': CONTENT_TYPES.APPLICATION_JSON,
+                        'X-OrbiCheck-Signature': `sha256=${signature}`,
+                        'User-Agent': 'OrbiCheck-Webhook/1.0'
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                // Update last_fired_at
+                await pool.query(
+                    'UPDATE webhooks SET last_fired_at = now() WHERE id = $1',
+                    [webhook.id]
+                );
+            } catch (error) {
+                // Log webhook send failure, but don't fail the main operation
+                console.error(`Webhook send failed for ${webhook.url}:`, error);
+            }
+        }
+    } catch (error) {
+        console.error('Error sending webhooks:', error);
+    }
+}
+
+/**
  * Logs an event to the 'logs' table for observability, auditing, and analytics.
  * Records project_id, event type, endpoint, reason codes, HTTP status, and metadata (JSON).
  * Enables querying for usage stats, error tracking, and compliance reporting.
+ * Also sends webhooks asynchronously if the event type matches a webhook event.
  *
  * @param project_id - Unique identifier for the project.
  * @param type - Event category (e.g., 'validation', 'order', 'dedupe').
@@ -203,4 +265,20 @@ export async function logEvent(project_id: string, type: string, endpoint: strin
         "insert into logs (project_id, type, endpoint, reason_codes, status, meta) values ($1, $2, $3, $4, $5, $6)",
         [project_id, type, endpoint, reason_codes, status, meta]
     );
+
+    // Send webhooks asynchronously
+    const webhookEvent = getWebhookEventType(type);
+    if (webhookEvent) {
+        const payload = {
+            project_id,
+            event: webhookEvent,
+            timestamp: new Date().toISOString(),
+            endpoint,
+            reason_codes,
+            status,
+            ...meta
+        };
+        // Fire and forget
+        setImmediate(() => sendWebhooks(project_id, webhookEvent, payload, pool));
+    }
 }

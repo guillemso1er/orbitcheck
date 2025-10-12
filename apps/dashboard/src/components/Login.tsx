@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
-import { API_BASE, ERROR_MESSAGES } from '../constants';
+import { API_BASE, ERROR_MESSAGES, LOCAL_STORAGE_KEYS, VALIDATION_MESSAGES } from '../constants';
 import { createApiClient } from '@orbicheck/contracts';
 
 interface User {
@@ -40,15 +40,15 @@ const Login: React.FC = () => {
    */
   const validateForm = () => {
     if (!form.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
-      setError('Please enter a valid email address');
+      setError(VALIDATION_MESSAGES.INVALID_EMAIL);
       return false;
     }
     if (form.password.length < 8 && isRegister) {
-      setError('Password must be at least 8 characters long');
+      setError(VALIDATION_MESSAGES.PASSWORD_TOO_SHORT);
       return false;
     }
     if (!form.password) {
-      setError('Password is required');
+      setError(VALIDATION_MESSAGES.PASSWORD_REQUIRED);
       return false;
     }
     setError(null);
@@ -96,7 +96,7 @@ const Login: React.FC = () => {
         // For registration, use pat_token; for login, no token returned, rely on session
         const token = (data as any).pat_token || data.token;
         if (token) {
-          localStorage.setItem('auth_token', token);
+          localStorage.setItem(LOCAL_STORAGE_KEYS.AUTH_TOKEN, token);
         }
         login(user);
         navigate('/api-keys');
@@ -104,7 +104,7 @@ const Login: React.FC = () => {
         throw new Error(ERROR_MESSAGES.INVALID_SERVER_RESPONSE);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An unexpected error occurred. Please try again.');
+      setError(err instanceof Error ? err.message : ERROR_MESSAGES.UNEXPECTED_ERROR);
     } finally {
       setLoading(false);
     }

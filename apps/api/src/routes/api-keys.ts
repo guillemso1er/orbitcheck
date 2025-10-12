@@ -4,7 +4,7 @@ import { MGMT_V1_ROUTES } from "@orbicheck/contracts";
 import type { FastifyInstance } from "fastify";
 import type { Pool } from "pg";
 
-import { API_KEY_PREFIX, CRYPTO_IV_BYTES, CRYPTO_KEY_BYTES, ERROR_CODES, ERROR_MESSAGES, HTTP_STATUS, STATUS } from "../constants.js";
+import { API_KEY_PREFIX, CRYPTO_IV_BYTES, CRYPTO_KEY_BYTES, ERROR_CODES, ERROR_MESSAGES, HASH_ALGORITHM, HTTP_STATUS, STATUS } from "../constants.js";
 import { environment } from "../environment.js";
 import { errorSchema, generateRequestId, rateLimitResponse, securityHeader, sendError, sendServerError, unauthorizedResponse } from "./utils.js";
 
@@ -44,13 +44,11 @@ export function registerApiKeysRoutes(app: FastifyInstance, pool: Pool): void {
     }, async (request, rep) => {
         try {
             const project_id = request.project_id!;
-            console.log('Listing API keys for project_id:', project_id);
             const request_id = generateRequestId();
             const { rows } = await pool.query(
                 "SELECT id, prefix, name, status, created_at, last_used_at FROM api_keys WHERE project_id = $1 ORDER BY created_at DESC",
                 [project_id]
             );
-            console.log('Found api keys:', rows.length);
             const response: any = { data: rows, request_id };
             return rep.send(response);
         } catch (error) {
@@ -105,7 +103,7 @@ export function registerApiKeysRoutes(app: FastifyInstance, pool: Pool): void {
             });
             const full_key = API_KEY_PREFIX + (await buf).toString('hex');
             const prefix = full_key.slice(0, 6);
-            const keyHash = crypto.createHash('sha256').update(full_key).digest('hex');
+            const keyHash = crypto.createHash(HASH_ALGORITHM).update(full_key).digest('hex');
 
             // Encrypt the full key
             const iv = crypto.randomBytes(CRYPTO_IV_BYTES);
@@ -173,13 +171,11 @@ export function registerApiKeysRoutes(app: FastifyInstance, pool: Pool): void {
             const project_id = request.project_id!;
             const { id } = request.params as { id: string };
             const request_id = generateRequestId();
-            console.log('Revoking API key id:', id, 'project_id:', project_id);
 
             const { rowCount } = await pool.query(
                 "UPDATE api_keys SET status = $3 WHERE id = $1 AND project_id = $2",
                 [id, project_id, STATUS.REVOKED]
             );
-            console.log('Revoke rowCount:', rowCount);
 
             if (rowCount === 0) {
                 return await sendError(rep, HTTP_STATUS.NOT_FOUND, ERROR_CODES.NOT_FOUND, ERROR_MESSAGES[ERROR_CODES.NOT_FOUND], request_id);
@@ -188,7 +184,6 @@ export function registerApiKeysRoutes(app: FastifyInstance, pool: Pool): void {
             const response: any = { id, status: STATUS.REVOKED, request_id };
             return rep.send(response);
         } catch (error) {
-            console.log('Revoke error:', error);
             return sendServerError(request, rep, error, `${MGMT_V1_ROUTES.API_KEYS.LIST_API_KEYS}/:id`, generateRequestId());
         }
     });

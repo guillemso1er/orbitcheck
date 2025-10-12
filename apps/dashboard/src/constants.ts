@@ -118,6 +118,12 @@ export const CSV_HEADERS = {
 
 
 
+export const VALIDATION_MESSAGES = {
+  INVALID_EMAIL: 'Please enter a valid email address',
+  PASSWORD_TOO_SHORT: 'Password must be at least 8 characters long',
+  PASSWORD_REQUIRED: 'Password is required',
+} as const;
+
 export const ERROR_MESSAGES = {
   FETCH_API_KEYS: `${UI_STRINGS.ERROR_FETCH} API keys`,
   CREATE_API_KEY: `${UI_STRINGS.ERROR_CREATE} API key`,
@@ -127,4 +133,9 @@ export const ERROR_MESSAGES = {
   SEND_WEBHOOK: `${UI_STRINGS.ERROR_SEND} test payload`,
   INVALID_SERVER_RESPONSE: 'Invalid response from server',
   UNKNOWN: 'Unknown error',
+  UNEXPECTED_ERROR: 'An unexpected error occurred. Please try again.',
+} as const;
+
+export const LOCAL_STORAGE_KEYS = {
+  AUTH_TOKEN: 'auth_token',
 } as const;

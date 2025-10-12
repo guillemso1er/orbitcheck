@@ -6,6 +6,7 @@ import type { Redis } from "ioredis";
 import type { Pool } from "pg";
 
 import { DEDUPE_ACTIONS, HIGH_VALUE_THRESHOLD, HTTP_STATUS, MATCH_TYPES, ORDER_ACTIONS, ORDER_TAGS, PAYMENT_METHODS, REASON_CODES, RISK_ADDRESS_DEDUPE, RISK_BLOCK_THRESHOLD, RISK_COD, RISK_COD_HIGH, RISK_CUSTOMER_DEDUPE, RISK_GEO_OUT, RISK_GEOCODE_FAIL, RISK_HIGH_VALUE, RISK_HOLD_THRESHOLD, RISK_INVALID_ADDR, RISK_INVALID_EMAIL_PHONE, RISK_PO_BOX, RISK_POSTAL_MISMATCH, SIMILARITY_EXACT } from "../constants.js";
+import { dedupeAddress, dedupeCustomer } from "../dedupe.js";
 import { logEvent } from "../hooks.js";
 import { validateAddress } from "../validators/address.js";
 import { validateEmail } from "../validators/email.js";
@@ -146,58 +147,17 @@ export function registerOrderRoutes(app: FastifyInstance, pool: Pool, redis: Red
             }
 
             const customer_matches: any[] = [];
-            const seenIds = new Set<string>();
             if (customer) {
-                const normEmail = customer.email ? customer.email.trim().toLowerCase() : null;
-                const _normPhone = customer.phone ? customer.phone.replaceAll(/[^\d+]/g, '') : null;
-                const full_name = `${customer.first_name || ''} ${customer.last_name || ''}`.trim();
-
-                if (normEmail) {
-                    const { rows } = await pool.query(
-                        `SELECT id, email, phone, first_name, last_name, 1.0 as similarity_score FROM customers WHERE project_id = $1 AND normalized_email = $2`,
-                        [project_id, normEmail]
-                    );
-                    for (const row of rows) {
-                        if (!seenIds.has(row.id)) {
-                            customer_matches.push({
-                                id: row.id,
-                                email: row.email,
-                                phone: row.phone,
-                                first_name: row.first_name,
-                                last_name: row.last_name,
-                                similarity_score: 1,
-                                match_type: MATCH_TYPES.EXACT_EMAIL
-                            });
-                            seenIds.add(row.id);
-                        }
-                    }
-                }
-
-                if (full_name) {
-                    const { rows } = await pool.query(
-                        `SELECT id, email, phone, first_name, last_name,
-                         similarity((first_name || ' ' || last_name), $2) as similarity_score
-                         FROM customers
-                         WHERE project_id = $1 AND similarity((first_name || ' ' || last_name), $2) > 0.85
-                         ORDER BY similarity_score DESC LIMIT 5`,
-                        [project_id, full_name]
-                    );
-                    for (const row of rows) {
-                        if (!seenIds.has(row.id)) {
-                            customer_matches.push({
-                                id: row.id,
-                                email: row.email,
-                                phone: row.phone,
-                                first_name: row.first_name,
-                                last_name: row.last_name,
-                                similarity_score: row.similarity_score,
-                                match_type: MATCH_TYPES.FUZZY_NAME
-                            });
-                            seenIds.add(row.id);
-                        }
-                    }
-                }
-                customer_matches.sort((a, b) => b.similarity_score - a.similarity_score);
+                const result = await dedupeCustomer(customer, project_id, pool);
+                customer_matches.push(...result.matches.map(m => ({
+                    id: m.id,
+                    email: m.data.email,
+                    phone: m.data.phone,
+                    first_name: m.data.first_name,
+                    last_name: m.data.last_name,
+                    similarity_score: m.similarity_score,
+                    match_type: m.match_type
+                })));
             }
             if (customer_matches.length > 0) {
                 risk_score += RISK_CUSTOMER_DEDUPE;
@@ -205,7 +165,6 @@ export function registerOrderRoutes(app: FastifyInstance, pool: Pool, redis: Red
                 reason_codes.push(REASON_CODES.ORDER_CUSTOMER_DEDUPE_MATCH);
             }
 
-            let address_matches: any[] = [];
             const addressValidation = await validateAddress({
                 line1: shipping_address.line1!,
                 line2: shipping_address.line2,
@@ -215,67 +174,20 @@ export function registerOrderRoutes(app: FastifyInstance, pool: Pool, redis: Red
                 country: shipping_address.country!
             }, pool, redis);
             const normAddr = addressValidation.normalized;
-            const addrHash = crypto.createHash('sha256').update(JSON.stringify(normAddr)).digest('hex');
-
-            const hashQuery = 'SELECT id, line1, line2, city, state, postal_code, country, lat, lng FROM addresses WHERE project_id = $1 AND address_hash = $2 LIMIT 1';
-            const { rows: hashMatches } = await pool.query(hashQuery, [project_id, addrHash]);
-            if (hashMatches.length > 0) {
-                const row = hashMatches[0];
-                address_matches.push({
-                    id: row.id,
-                    line1: row.line1,
-                    city: row.city,
-                    state: row.state,
-                    postal_code: row.postal_code,
-                    country: row.country,
-                    similarity_score: 1,
-                    match_type: MATCH_TYPES.EXACT_ADDRESS
-                });
-            } else {
-                const postalQuery = 'SELECT id, line1, line2, city, state, postal_code, country, lat, lng, 1.0 as similarity_score, \'exact_postal\' as match_type FROM addresses WHERE project_id = $1 AND postal_code = $2 AND lower(city) = lower($3) AND country = $4 LIMIT 1';
-                const { rows: postalMatches } = await pool.query(postalQuery, [project_id, normAddr.postal_code, normAddr.city, normAddr.country]);
-                if (postalMatches.length > 0) {
-                    address_matches.push({
-                        id: postalMatches[0].id,
-                        line1: postalMatches[0].line1,
-                        line2: postalMatches[0].line2,
-                        city: postalMatches[0].city,
-                        state: postalMatches[0].state,
-                        postal_code: postalMatches[0].postal_code,
-                        country: postalMatches[0].country,
-                        lat: postalMatches[0].lat,
-                        lng: postalMatches[0].lng,
-                        similarity_score: SIMILARITY_EXACT,
-                        match_type: MATCH_TYPES.EXACT_POSTAL
-                    });
-                }
-
-                const fuzzyQuery = `SELECT id, line1, line2, city, state, postal_code, country, lat, lng,
-                                    greatest(similarity(line1, $2), similarity(city, $3)) as similarity_score,
-                                    'fuzzy_address' as match_type
-                                    FROM addresses
-                                    WHERE project_id = $1 AND (similarity(line1, $2) > 0.85 OR similarity(city, $3) > 0.85)
-                                    ORDER BY similarity_score DESC LIMIT 3`;
-                const { rows: fuzzyMatches } = await pool.query(fuzzyQuery, [project_id, normAddr.line1, normAddr.city]);
-                address_matches = [
-                    ...address_matches,
-                    ...fuzzyMatches
-                        .filter(m => !address_matches.some(am => am.id === m.id))
-                        .map(row => ({
-                            id: row.id,
-                            line1: row.line1,
-                            line2: row.line2,
-                            city: row.city,
-                            state: row.state,
-                            postal_code: row.postal_code,
-                            country: row.country,
-                            lat: row.lat,
-                            lng: row.lng,
-                            similarity_score: row.similarity_score,
-                            match_type: MATCH_TYPES.FUZZY_ADDRESS
-                        }))
-                ];
-            }
+            const result = await dedupeAddress(shipping_address, project_id, pool);
+            const address_matches = result.matches.map(m => ({
+                id: m.id,
+                line1: m.data.line1,
+                line2: m.data.line2,
+                city: m.data.city,
+                state: m.data.state,
+                postal_code: m.data.postal_code,
+                country: m.data.country,
+                lat: m.data.lat,
+                lng: m.data.lng,
+                similarity_score: m.similarity_score,
+                match_type: m.match_type
+            }));
 
             app.log.info({ request_id, address_matches }, "Address dedupe matches found");
 
@@ -388,8 +300,8 @@ export function registerOrderRoutes(app: FastifyInstance, pool: Pool, redis: Red
                 action,
                 tags,
                 reason_codes: [...new Set(reason_codes)], // De-duplicate reason codes
-                customer_dedupe: { matches: customer_matches, suggested_action: customer_matches.length > 0 ? (customer_matches[0].similarity_score === SIMILARITY_EXACT ? DEDUPE_ACTIONS.MERGE_WITH : DEDUPE_ACTIONS.REVIEW) : DEDUPE_ACTIONS.CREATE_NEW, canonical_id: customer_matches.length > 0 ? customer_matches[0].id : null },
-                address_dedupe: { matches: address_matches, suggested_action: address_matches.length > 0 ? (address_matches[0].similarity_score === SIMILARITY_EXACT ? DEDUPE_ACTIONS.MERGE_WITH : DEDUPE_ACTIONS.REVIEW) : DEDUPE_ACTIONS.CREATE_NEW, canonical_id: address_matches.length > 0 ? address_matches[0].id : null },
+                customer_dedupe: customer_matches.length > 0 ? { matches: customer_matches, suggested_action: customer_matches[0].similarity_score === SIMILARITY_EXACT ? DEDUPE_ACTIONS.MERGE_WITH : DEDUPE_ACTIONS.REVIEW, canonical_id: customer_matches[0].id } : { matches: [], suggested_action: DEDUPE_ACTIONS.CREATE_NEW, canonical_id: null },
+                address_dedupe: address_matches.length > 0 ? { matches: address_matches, suggested_action: address_matches[0].similarity_score === SIMILARITY_EXACT ? DEDUPE_ACTIONS.MERGE_WITH : DEDUPE_ACTIONS.REVIEW, canonical_id: address_matches[0].id } : { matches: [], suggested_action: DEDUPE_ACTIONS.CREATE_NEW, canonical_id: null },
                 validations,
                 request_id
             };

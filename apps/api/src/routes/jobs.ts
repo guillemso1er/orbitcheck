@@ -2,7 +2,7 @@ import { API_V1_ROUTES } from "@orbicheck/contracts";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import type { Pool } from "pg";
 
-import { HTTP_STATUS } from "../constants.js";
+import { ERROR_CODES, ERROR_MESSAGES, HTTP_STATUS } from "../constants.js";
 import { logEvent } from "../hooks.js";
 import { generateRequestId, rateLimitResponse, securityHeader, sendServerError, unauthorizedResponse, validationErrorResponse } from "./utils.js";
 
@@ -65,7 +65,7 @@ export function registerJobRoutes(app: FastifyInstance, pool: Pool): void {
 
             if (!job) {
                 return rep.status(HTTP_STATUS.NOT_FOUND).send({
-                    error: { code: 'NOT_FOUND', message: 'Job not found' }
+                    error: { code: ERROR_CODES.NOT_FOUND, message: ERROR_MESSAGES[ERROR_CODES.NOT_FOUND] }
                 });
             }
 

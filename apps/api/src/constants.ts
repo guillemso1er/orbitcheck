@@ -16,6 +16,7 @@ export const ERROR_CODES = {
   MISSING_PAYLOAD: 'missing_payload',
   INVALID_TYPE: 'invalid_type',
   INVALID_IDS: 'invalid_ids',
+  INVALID_INPUT: 'invalid_input',
   NOT_FOUND: 'not_found',
   UNAUTHORIZED: 'unauthorized',
   INVALID_TOKEN: 'invalid_token',
@@ -35,7 +36,8 @@ export const ERROR_MESSAGES = {
   [ERROR_CODES.MISSING_PAYLOAD]: 'Custom payload required for custom type',
   [ERROR_CODES.INVALID_TYPE]: 'Invalid payload_type',
   [ERROR_CODES.INVALID_IDS]: 'Invalid or mismatched IDs',
-  [ERROR_CODES.NOT_FOUND]: 'API key not found',
+  [ERROR_CODES.INVALID_INPUT]: 'Data must be an array with 1-10000 items',
+  [ERROR_CODES.NOT_FOUND]: 'Resource not found',
   [ERROR_CODES.UNAUTHORIZED]: 'Missing JWT token',
   [ERROR_CODES.INVALID_TOKEN]: 'Invalid token',
   [ERROR_CODES.NO_PROJECT]: 'No default project found',
@@ -54,7 +56,8 @@ export const ERROR_CODE_DESCRIPTIONS: Record<string, { description: string, cate
   [ERROR_CODES.MISSING_PAYLOAD]: { description: 'Required payload missing for custom webhook type', category: 'validation', severity: 'low' },
   [ERROR_CODES.INVALID_TYPE]: { description: 'Invalid webhook payload type specified', category: 'validation', severity: 'low' },
   [ERROR_CODES.INVALID_IDS]: { description: 'Provided IDs are invalid or do not match', category: 'validation', severity: 'medium' },
-  [ERROR_CODES.NOT_FOUND]: { description: 'Requested resource not found', category: 'resource', severity: 'medium' },
+  [ERROR_CODES.INVALID_INPUT]: { description: 'Invalid input data provided', category: 'validation', severity: 'medium' },
+  [ERROR_CODES.NOT_FOUND]: { description: 'Resource not found', category: 'resource', severity: 'medium' },
   [ERROR_CODES.UNAUTHORIZED]: { description: 'Authentication required but not provided', category: 'auth', severity: 'high' },
   [ERROR_CODES.INVALID_TOKEN]: { description: 'Provided authentication token is invalid or expired', category: 'auth', severity: 'high' },
   [ERROR_CODES.NO_PROJECT]: { description: 'No default project configured for user', category: 'auth', severity: 'medium' },
@@ -317,3 +320,32 @@ export const COMPLIANCE_REASONS = {
 
 export const CRYPTO_KEY_BYTES = 32 as const;
 export const CRYPTO_IV_BYTES = 16 as const;
+
+export const AUTHORIZATION_HEADER = 'authorization' as const;
+
+export const BEARER_PREFIX = 'Bearer ' as const;
+
+export const HASH_ALGORITHM = 'sha256' as const;
+
+export const PAT_PREFIX = 'pat_' as const;
+
+export const DEFAULT_PAT_NAME = 'Default PAT' as const;
+
+export const LOGOUT_MESSAGE = 'Logged out successfully' as const;
+
+export const AUDIT_RESOURCE_API = 'api' as const;
+
+export const AUDIT_ACTION_PAT_USED = 'pat_used' as const;
+
+export const PAT_SCOPES_ALL = ['*'] as const;
+
+export const DEDUPE_FUZZY_LIMIT = 5 as const;
+
+export const PHONE_NORMALIZE_REGEX = /[^\d+]/g;
+
+export const FULL_NAME_SEPARATOR = ' ' as const;
+
+export const DEDUPE_TYPES = {
+  CUSTOMERS: 'customers',
+  ADDRESSES: 'addresses',
+} as const;

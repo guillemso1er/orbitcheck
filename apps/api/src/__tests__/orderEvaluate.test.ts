@@ -74,26 +74,23 @@ describe('Order Evaluation Endpoints', () => {
         it('should detect customer dedupe via fuzzy name match', async () => {
             // FIX: Make the mock handle the entire execution path for this specific test.
             mockPool.query.mockImplementation((queryText: string) => {
-                const upperQuery = queryText.toUpperCase();
-
-                // 1. When the email query runs, return NO matches.
-                if (upperQuery.includes('NORMALIZED_EMAIL')) {
+                if (queryText.includes('api_keys')) {
+                    return Promise.resolve({ rows: [{ id: 'test_key_id', project_id: 'test_project' }] });
+                }
+                if (queryText.includes('INSERT')) {
+                    return Promise.resolve({ rowCount: 1, rows: [] });
+                }
+                if (queryText.includes('normalized_email')) {
                     return Promise.resolve({ rows: [] });
                 }
-
-                // 2. When the similarity query runs, return the fuzzy match.
-                if (upperQuery.includes('CUSTOMERS') && upperQuery.includes('SIMILARITY')) {
+                if (queryText.includes('name_score')) {
                     return Promise.resolve({
                         rows: [{
                             id: 'cust-2', email: null, phone: null, first_name: 'Jon', last_name: 'Doh',
-                            similarity_score: 0.9
+                            name_score: 0.9
                         }]
                     });
                 }
-
-                if (upperQuery.startsWith('INSERT')) { return Promise.resolve({ rowCount: 1, rows: [] }); }
-
-                // 3. Default to no matches for any other query.
                 return Promise.resolve({ rows: [] });
             });
 

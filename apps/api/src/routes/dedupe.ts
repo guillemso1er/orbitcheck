@@ -4,9 +4,9 @@ import { API_V1_ROUTES } from "@orbicheck/contracts";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import type { Pool } from "pg";
 
-import { DEDUPE_ACTIONS, ERROR_CODES, ERROR_MESSAGES, HTTP_STATUS, MATCH_TYPES, MERGE_TYPES, SIMILARITY_EXACT, SIMILARITY_FUZZY_THRESHOLD } from "../constants.js";
+import { DEDUPE_ACTIONS, ERROR_CODES, ERROR_MESSAGES, HTTP_STATUS, MERGE_TYPES } from "../constants.js";
+import { dedupeAddress, dedupeCustomer } from "../dedupe.js";
 import { logEvent } from "../hooks.js";
-import { normalizeAddress } from "../validators/address.js";
 import { generateRequestId, rateLimitResponse, securityHeader, sendServerError, unauthorizedResponse, validationErrorResponse } from "./utils.js";
 
 export function registerDedupeRoutes(app: FastifyInstance, pool: Pool): void {
@@ -57,92 +57,13 @@ export function registerDedupeRoutes(app: FastifyInstance, pool: Pool): void {
         try {
             const request_id = generateRequestId();
             const body = request.body as any;
-            const { email, phone, first_name, last_name } = body;
             const project_id = (request as any).project_id;
             const reason_codes: string[] = [];
-            const matches: any[] = [];
 
-            // Deterministic matches using normalized fields
-            const normEmail = email ? email.trim().toLowerCase() : null;
-            const normPhone = phone ? phone.replaceAll(/[^\d+]/g, '') : null; // Simple E.164 prep
-
-            if (normEmail) {
-                const { rows: emailMatches } = await pool.query(
-                    'SELECT id, email, phone, first_name, last_name FROM customers WHERE project_id = $2 AND normalized_email = $1',
-                    [normEmail, project_id]
-                );
-                for (const row of emailMatches) {
-                    if (row.id) {
-                        matches.push({
-                            id: row.id,
-                            similarity_score: 1,
-                            match_type: MATCH_TYPES.EXACT_EMAIL,
-                            data: row
-                        });
-                    }
-                }
-            }
-
-            if (normPhone) {
-                const { rows: phoneMatches } = await pool.query(
-                    'SELECT id, email, phone, first_name, last_name FROM customers WHERE project_id = $2 AND normalized_phone = $1',
-                    [normPhone, project_id]
-                );
-                for (const row of phoneMatches) {
-                    if (row.id) {
-                        matches.push({
-                            id: row.id,
-                            similarity_score: 1,
-                            match_type: MATCH_TYPES.EXACT_PHONE,
-                            data: row
-                        });
-                    }
-                }
-            }
-
-            // Fuzzy matches with 0.85 threshold on name
-            const full_name = `${first_name || ''} ${last_name || ''}`.trim();
-            if (full_name) {
-                const { rows: nameMatches } = await pool.query(
-                    `SELECT id, email, phone, first_name, last_name,
-                     similarity((first_name || ' ' || last_name), $1) as name_score
-                     FROM customers
-                     WHERE project_id = $2
-                     AND similarity((first_name || ' ' || last_name), $1) > 0.85
-                     ORDER BY name_score DESC LIMIT 5`,
-                    [full_name, project_id]
-                );
-                for (const row of nameMatches) {
-                    const score = row.name_score;
-                    if (score > 0.85) {
-                        matches.push({
-                            id: row.id,
-                            similarity_score: score,
-                            match_type: MATCH_TYPES.FUZZY_NAME,
-                            data: row
-                        });
-                    }
-                }
-            }
-            // Sort matches by score descending
-            matches.sort((a, b) => b.similarity_score - a.similarity_score);
-
-            let suggested_action: 'create_new' | 'merge_with' | 'review' = DEDUPE_ACTIONS.CREATE_NEW;
-            let canonical_id: string | null = null;
-            if (matches.length > 0) {
-                const bestMatch = matches[0];
-                if (bestMatch.similarity_score === SIMILARITY_EXACT) {
-                    suggested_action = DEDUPE_ACTIONS.MERGE_WITH;
-                    canonical_id = bestMatch.id;
-                } else if (bestMatch.similarity_score > SIMILARITY_FUZZY_THRESHOLD) {
-                    suggested_action = DEDUPE_ACTIONS.REVIEW;
-                    canonical_id = bestMatch.id; // Suggest the highest score as canonical
-                }
-            }
-
-            const response: any = { matches, suggested_action, canonical_id, request_id };
+            const result = await dedupeCustomer(body, project_id, pool);
+            const response: any = { ...result, request_id };
             await (rep as any).saveIdem?.(response);
-            await logEvent(project_id, 'dedupe', '/dedupe/customer', reason_codes, HTTP_STATUS.OK, { matches_count: matches.length, suggested_action }, pool);
+            await logEvent(project_id, 'dedupe', '/dedupe/customer', reason_codes, HTTP_STATUS.OK, { matches_count: result.matches.length, suggested_action: result.suggested_action }, pool);
             return rep.send(response);
         } catch (error) {
             return sendServerError(request, rep, error, API_V1_ROUTES.DEDUPE.DEDUPLICATE_CUSTOMER, generateRequestId());
@@ -198,96 +119,15 @@ export function registerDedupeRoutes(app: FastifyInstance, pool: Pool): void {
         try {
             const request_id = generateRequestId();
             const body = request.body as any;
-            const { line1, line2, city, state, postal_code, country } = body;
             const project_id = (request as any).project_id;
             const reason_codes: string[] = [];
-            const matches: any[] = [];
 
-            // Normalize the input address
-            const normAddr = await normalizeAddress({ line1, line2: line2 || '', city, state: state || '', postal_code, country });
-            const addrHash = crypto.createHash('sha256').update(JSON.stringify(normAddr)).digest('hex');
-
-            // Deterministic match: exact address_hash
-
-            const { rows: hashMatches } = await pool.query(
-                'SELECT id, line1, line2, city, state, postal_code, country, lat, lng FROM addresses WHERE project_id = $1 AND address_hash = $2',
-                [project_id, addrHash]  // Note: swapped order to match $1, $2
-            );
-            for (const row of hashMatches) {
-                if (row.id) {
-                    matches.push({
-                        id: row.id,
-                        similarity_score: 1,
-                        match_type: MATCH_TYPES.EXACT_ADDRESS,
-                        data: row
-                    });
-                }
-            }
-
-
-            // Fallback deterministic: exact postal_code + city + country
-            if (matches.length === 0) {
-                const { rows: exactMatches } = await pool.query(
-                    'SELECT id, line1, line2, city, state, postal_code, country, lat, lng FROM addresses WHERE project_id = $1 AND postal_code = $2 AND lower(city) = lower($3) AND country = $4',
-                    [project_id, normAddr.postal_code, normAddr.city, normAddr.country]
-                );
-                for (const row of exactMatches) {
-                    if (row.id && !matches.some(m => m.id === row.id)) {
-                        matches.push({
-                            id: row.id,
-                            similarity_score: 1,
-                            match_type: MATCH_TYPES.EXACT_POSTAL,
-                            data: row
-                        });
-                    }
-                }
-            }
-
-            // Fuzzy matches with 0.85 threshold on line1, city
-            const { rows: fuzzyMatches } = await pool.query(
-                `SELECT id, line1, line2, city, state, postal_code, country, lat, lng,
-                 greatest(similarity(line1, $2), similarity(city, $3)) as score
-                 FROM addresses
-                 WHERE project_id = $1
-                 AND (similarity(line1, $2) > 0.85 OR similarity(city, $3) > 0.85)
-                 ORDER BY score DESC LIMIT 5`,
-                [project_id, normAddr.line1, normAddr.city]
-            );
-            for (const row of fuzzyMatches) {
-                if (row.id && !matches.some(m => m.id === row.id)) {  // Avoid duplicates
-                    matches.push({
-                        id: row.id,
-                        similarity_score: row.score,
-                        match_type: MATCH_TYPES.FUZZY_ADDRESS,
-                        data: row
-                    });
-                }
-            }
-
-
-            // Sort matches by score descending
-            matches.sort((a, b) => b.similarity_score - a.similarity_score);
-
-            let suggested_action: 'create_new' | 'merge_with' | 'review' = DEDUPE_ACTIONS.CREATE_NEW;
-            let canonical_id: string | null = null;
-            if (matches.length > 0) {
-                const bestMatch = matches[0];
-                if (bestMatch.similarity_score === SIMILARITY_EXACT) {
-                    suggested_action = DEDUPE_ACTIONS.MERGE_WITH;
-                    canonical_id = bestMatch.id;
-                } else if (bestMatch.similarity_score > SIMILARITY_FUZZY_THRESHOLD) {
-                    suggested_action = DEDUPE_ACTIONS.REVIEW;
-                    canonical_id = bestMatch.id; // Suggest the highest score as canonical
-                }
-            }
-
-            const response: any = { matches, suggested_action, canonical_id, request_id };
-            console.log('Dedupe address response:', JSON.stringify(response));
+            const result = await dedupeAddress(body, project_id, pool);
+            const response: any = { ...result, request_id };
             await (rep as any).saveIdem?.(response);
-            await logEvent(project_id, 'dedupe', '/dedupe/address', reason_codes, HTTP_STATUS.OK, { matches_count: matches.length, suggested_action }, pool);
+            await logEvent(project_id, 'dedupe', '/dedupe/address', reason_codes, HTTP_STATUS.OK, { matches_count: result.matches.length, suggested_action: result.suggested_action }, pool);
             return rep.send(response);
         } catch (error) {
-            console.log('Dedupe address error:', error);
             return sendServerError(request, rep, error, API_V1_ROUTES.DEDUPE.DEDUPLICATE_ADDRESS, generateRequestId());
         }
     });

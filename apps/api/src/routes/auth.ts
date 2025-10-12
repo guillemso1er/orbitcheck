@@ -5,9 +5,9 @@ import bcrypt from 'bcryptjs';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import type { Pool } from "pg";
 
-import { API_KEY_NAMES, API_KEY_PREFIX, CRYPTO_IV_BYTES, CRYPTO_KEY_BYTES, ERROR_CODES, ERROR_MESSAGES, HTTP_STATUS, PG_UNIQUE_VIOLATION, PLAN_TYPES, PROJECT_NAMES, STATUS } from "../constants.js";
+import { API_KEY_NAMES, API_KEY_PREFIX, AUDIT_ACTION_PAT_USED, AUDIT_RESOURCE_API, AUTHORIZATION_HEADER, BEARER_PREFIX, CRYPTO_IV_BYTES, CRYPTO_KEY_BYTES, DEFAULT_PAT_NAME, ERROR_CODES, ERROR_MESSAGES, HASH_ALGORITHM, HTTP_STATUS, LOGOUT_MESSAGE, PAT_PREFIX, PAT_SCOPES_ALL, PG_UNIQUE_VIOLATION, PLAN_TYPES, PROJECT_NAMES, STATUS } from "../constants.js";
 import { environment } from "../environment.js";
-import { errorSchema, generateRequestId, sendError, sendServerError } from "./utils.js";
+import { errorSchema, generateRequestId, getDefaultProjectId, sendError, sendServerError } from "./utils.js";
 
 /**
  * Verifies session cookie for dashboard authentication.
@@ -37,16 +37,14 @@ export async function verifySession(request: FastifyRequest, rep: FastifyReply, 
     request.user_id = user_id;
 
     // Get default project for user
-    const { rows: projectRows } = await pool.query(
-        'SELECT p.id as project_id FROM projects p WHERE p.user_id = $1 AND p.name = $2',
-        [user_id, PROJECT_NAMES.DEFAULT]
-    );
-    if (projectRows.length === 0) {
+    try {
+        const projectId = await getDefaultProjectId(pool, user_id);
+        // eslint-disable-next-line require-atomic-updates
+        request.project_id = projectId;
+    } catch (error) {
         rep.status(HTTP_STATUS.FORBIDDEN).send({ error: { code: ERROR_CODES.NO_PROJECT, message: ERROR_MESSAGES[ERROR_CODES.NO_PROJECT] } });
         return;
     }
-    // eslint-disable-next-line require-atomic-updates
-    request.project_id = projectRows[0].project_id;
 }
 
 /**
@@ -60,14 +58,14 @@ export async function verifySession(request: FastifyRequest, rep: FastifyReply, 
  * @returns {Promise<void>} Resolves on success, sends 401 on failure
  */
 export async function verifyPAT(request: FastifyRequest, rep: FastifyReply, pool: Pool): Promise<void> {
-    const header = request.headers["authorization"];
-    if (!header || !header.startsWith("Bearer ")) {
+    const header = request.headers[AUTHORIZATION_HEADER];
+    if (!header || !header.startsWith(BEARER_PREFIX)) {
         request.log.info('No or invalid Bearer header for PAT auth');
         rep.status(HTTP_STATUS.UNAUTHORIZED).send({ error: { code: ERROR_CODES.UNAUTHORIZED, message: ERROR_MESSAGES[ERROR_CODES.UNAUTHORIZED] } });
         return;
     }
     const token = header.slice(7).trim();
-    const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+    const tokenHash = crypto.createHash(HASH_ALGORITHM).update(token).digest('hex');
 
     request.log.info('Verifying PAT with hash');
 
@@ -95,21 +93,19 @@ export async function verifyPAT(request: FastifyRequest, rep: FastifyReply, pool
     request.pat_scopes = rows[0].scopes || [];
 
     // Get default project for user
-    const { rows: projectRows } = await pool.query(
-        'SELECT p.id as project_id FROM projects p WHERE p.user_id = $1 AND p.name = $2',
-        [rows[0].user_id, PROJECT_NAMES.DEFAULT]
-    );
-    if (projectRows.length === 0) {
+    try {
+        const projectId = await getDefaultProjectId(pool, rows[0].user_id);
+        // eslint-disable-next-line require-atomic-updates
+        request.project_id = projectId;
+    } catch (error) {
         rep.status(HTTP_STATUS.FORBIDDEN).send({ error: { code: ERROR_CODES.NO_PROJECT, message: ERROR_MESSAGES[ERROR_CODES.NO_PROJECT] } });
         return;
     }
-    // eslint-disable-next-line require-atomic-updates
-    request.project_id = projectRows[0].project_id;
 
     // Audit PAT usage
     await pool.query(
         "INSERT INTO audit_logs (user_id, action, resource, details) VALUES ($1, $2, $3, $4)",
-        [rows[0].user_id, 'pat_used', 'api', JSON.stringify({ token_id: rows[0].id, url: request.url })]
+        [rows[0].user_id, AUDIT_ACTION_PAT_USED, AUDIT_RESOURCE_API, JSON.stringify({ token_id: rows[0].id, url: request.url })]
     );
 }
 
@@ -207,12 +203,12 @@ export function registerAuthRoutes(app: FastifyInstance, pool: Pool): void {
                     else resolve(buf);
                 });
             });
-            const patToken = 'pat_' + patBuf.toString('hex');
-            const patHash = crypto.createHash('sha256').update(patToken).digest('hex');
+            const patToken = PAT_PREFIX + patBuf.toString('hex');
+            const patHash = crypto.createHash(HASH_ALGORITHM).update(patToken).digest('hex');
 
             await pool.query(
                 "INSERT INTO personal_access_tokens (user_id, name, token_hash, scopes, expires_at) VALUES ($1, $2, $3, $4, $5)",
-                [user.id, 'Default PAT', patHash, ['*'], null]
+                [user.id, DEFAULT_PAT_NAME, patHash, PAT_SCOPES_ALL, null]
             );
 
             // Set session cookie for dashboard access
@@ -291,16 +287,14 @@ export function registerAuthRoutes(app: FastifyInstance, pool: Pool): void {
     // Add logout endpoint
     app.post(DASHBOARD_ROUTES.USER_LOGOUT, async (request, rep) => {
         try {
-            console.log('Logout request.session exists:', !!request.session);
             // Clear session if it exists
             if (request.session) {
                 request.session.user_id = undefined;
             }
             // For secure-session, we don't need destroy, just clear the data
 
-            return rep.send({ message: 'Logged out successfully' });
+            return rep.send({ message: LOGOUT_MESSAGE });
         } catch (error) {
-            console.log('Logout error:', error);
             return sendServerError(request, rep, error, DASHBOARD_ROUTES.USER_LOGOUT, generateRequestId());
         }
     });

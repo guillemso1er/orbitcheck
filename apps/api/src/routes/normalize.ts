@@ -72,7 +72,7 @@ export function registerNormalizeRoutes(app: FastifyInstance, pool: Pool): void 
             const response: any = { normalized, request_id };
             return rep.send(response);
         } catch (error) {
-            return sendServerError(request, rep, error, API_V1_ROUTES.NORMALIZE.NORMALIZE_ADDRESS, generateRequestId());
+            return sendServerError(request, rep, error, API_V1_ROUTES.NORMALIZE.NORMALIZE_ADDRESS_CHEAP, generateRequestId());
         }
     });
 }

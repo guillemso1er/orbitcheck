@@ -1,8 +1,9 @@
 import crypto from "node:crypto";
 
 import type { FastifyReply, FastifyRequest } from "fastify";
+import type { Pool } from "pg";
 
-import { ERROR_CODES, ERROR_MESSAGES } from "../constants.js";
+import { ERROR_CODES, ERROR_MESSAGES, HTTP_STATUS, PROJECT_NAMES } from "../constants.js";
 
 export const errorSchema = {
     type: 'object',
@@ -62,37 +63,59 @@ export function sendServerError(request: FastifyRequest, rep: FastifyReply, erro
     return rep.status(500).send(response);
 }
 
-export function buildEmailValidationResult(result: { valid: boolean; reason_codes: string[]; normalized: string; disposable: boolean }) {
+export function buildValidationResult(result: { valid: boolean; reason_codes: string[] }, additionalFields: Record<string, any> = {}) {
     return {
         valid: result.valid,
         reason_codes: result.reason_codes,
+        ...additionalFields,
+    };
+}
+
+// Deprecated: Use buildValidationResult instead
+export function buildEmailValidationResult(result: { valid: boolean; reason_codes: string[]; normalized: string; disposable: boolean }) {
+    return buildValidationResult(result, {
         normalized: result.normalized,
         disposable: result.disposable,
-    };
+    });
 }
 
+// Deprecated: Use buildValidationResult instead
 export function buildPhoneValidationResult(result: { valid: boolean; reason_codes: string[]; e164: string; country: string | null }) {
-    return {
-        valid: result.valid,
-        reason_codes: result.reason_codes,
+    return buildValidationResult(result, {
         e164: result.e164,
         country: result.country,
-    };
+    });
 }
 
+// Deprecated: Use buildValidationResult instead
 export function buildAddressValidationResult(result: { valid: boolean; reason_codes: string[]; normalized: any; po_box: boolean }) {
-    return {
-        valid: result.valid,
-        reason_codes: result.reason_codes,
+    return buildValidationResult(result, {
         normalized: result.normalized,
         po_box: result.po_box,
-    };
+    });
 }
 
+// Deprecated: Use buildValidationResult instead
 export function buildNameValidationResult(result: { valid: boolean; reason_codes: string[]; normalized: string }) {
-    return {
-        valid: result.valid,
-        reason_codes: result.reason_codes,
+    return buildValidationResult(result, {
         normalized: result.normalized,
-    };
+    });
+}
+
+/**
+ * Retrieves the default project ID for a given user.
+ * @param pool - PostgreSQL connection pool
+ * @param userId - User ID to get the default project for
+ * @returns Promise resolving to the project ID string
+ * @throws Error if no default project is found
+ */
+export async function getDefaultProjectId(pool: Pool, userId: string): Promise<string> {
+    const { rows } = await pool.query(
+        'SELECT p.id as project_id FROM projects p WHERE p.user_id = $1 AND p.name = $2',
+        [userId, PROJECT_NAMES.DEFAULT]
+    );
+    if (rows.length === 0) {
+        throw new Error('No default project found');
+    }
+    return rows[0].project_id;
 }

@@ -1,9 +1,3 @@
-// const jwtModule = require('jsonwebtoken');
-// console.log('[debug] is jwt.verify mocked at test level?', typeof jwtModule.verify, 'isMock=', !!jwtModule.verify._isMockFunction);
-// if (jwtModule.default) {
-//   console.log('[debug] is jwt.default.verify mocked?', typeof jwtModule.default.verify, 'isMock=', !!jwtModule.default.verify?._isMockFunction);
-// }
-
 import type { FastifyInstance } from 'fastify';
 import fetch from 'node-fetch';
 import request from 'supertest';
@@ -329,6 +323,102 @@ describe('Webhook Test Routes (JWT Auth)', () => {
 
         expectStatus(res, 401);
         expect(res.body.error.code).toBe('invalid_token');
+        expect(fetchMock).not.toHaveBeenCalled();
+    });
+});
+
+describe('Webhook Event Sending', () => {
+    let app: FastifyInstance;
+
+    beforeAll(async () => {
+        await setupBeforeAll();
+        app = await createApp();
+
+        // Add auth hooks for this test
+        const { authenticateRequest, applyRateLimitingAndIdempotency } = await import('../web.js');
+        const { mockPool, mockRedisInstance } = await import('./testSetup.js');
+        app.addHook("preHandler", async (request, rep) => {
+            await authenticateRequest(request, rep, mockPool as any);
+            await applyRateLimitingAndIdempotency(request, rep, mockRedisInstance as any);
+            return;
+        });
+
+        await app.ready();
+    });
+
+    afterAll(async () => {
+        if (app) {
+            await app.close();
+        }
+    });
+
+    beforeEach(() => {
+        jest.clearAllMocks();
+
+        // Default mock for successful fetch requests
+        fetchMock.mockResolvedValue({
+            status: 200,
+            statusText: 'OK',
+            headers: new Map([['content-type', 'application/json']]),
+            text: jest.fn().mockResolvedValue('{"status": "ok"}'),
+            json: jest.fn().mockResolvedValue({ status: 'ok' }),
+        });
+
+        mockPool.query.mockImplementation((queryText: string, values: unknown[]) => {
+            const upperQuery = queryText.toUpperCase();
+            if (upperQuery.startsWith('INSERT INTO LOGS')) {
+                return Promise.resolve({ rowCount: 1 });
+            }
+            if (upperQuery.startsWith('SELECT ID FROM USERS WHERE ID = $1') && values[0] === 'test_user') {
+                return Promise.resolve({ rows: [{ id: 'test_user' }] });
+            }
+            if (upperQuery.startsWith('SELECT P.ID AS PROJECT_ID FROM PROJECTS P WHERE P.USER_ID = $1') && values[0] === 'test_user') {
+                return Promise.resolve({ rows: [{ project_id: 'test_project' }] });
+            }
+            if (upperQuery.startsWith('SELECT ID, URL, SECRET FROM WEBHOOKS WHERE PROJECT_ID = $1 AND STATUS = $2 AND $3 = ANY(EVENTS)')) {
+                // Mock webhook query
+                return Promise.resolve({ rows: [{ id: 'webhook-1', url: 'https://example.com/webhook', secret: 'test-secret' }] });
+            }
+            if (upperQuery.startsWith('UPDATE WEBHOOKS SET LAST_FIRED_AT = NOW() WHERE ID = $1')) {
+                return Promise.resolve({ rowCount: 1 });
+            }
+            return Promise.resolve({ rows: [] });
+        });
+    });
+
+    afterEach(() => {
+        jest.restoreAllMocks();
+    });
+
+    it('should send webhook when validation event is logged', async () => {
+        // Call logEvent directly
+        await hooks.logEvent('test_project', 'validation', '/v1/validate/email', [], 200, { domain: 'example.com' }, mockPool as any);
+
+        // Wait for async operations
+        await new Promise(resolve => setImmediate(resolve));
+
+        expect(fetchMock).toHaveBeenCalledTimes(1);
+        const call = fetchMock.mock.calls[0];
+        expect(call[0]).toBe('https://example.com/webhook');
+        expect(call[1].method).toBe('POST');
+        expect(call[1].headers['X-OrbiCheck-Signature']).toMatch(/^sha256=[a-f0-9]+$/);
+
+        const payload = JSON.parse(call[1].body as string);
+        expect(payload).toMatchObject({
+            project_id: 'test_project',
+            event: 'validation_result',
+            endpoint: '/v1/validate/email',
+            reason_codes: [],
+            status: 200,
+            domain: 'example.com'
+        });
+    });
+
+    it('should not send webhook for unsupported event types', async () => {
+        await hooks.logEvent('test_project', 'verification', '/v1/verify/phone', [], 200, {}, mockPool as any);
+
+        await new Promise(resolve => setImmediate(resolve));
+
         expect(fetchMock).not.toHaveBeenCalled();
     });
 });

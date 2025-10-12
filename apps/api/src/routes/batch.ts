@@ -4,7 +4,7 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import type { Redis as IORedisType } from 'ioredis';
 import type { Pool } from "pg";
 
-import { HTTP_STATUS } from "../constants.js";
+import { ERROR_CODES, ERROR_MESSAGES, HTTP_STATUS } from "../constants.js";
 import { logEvent } from "../hooks.js";
 import { generateRequestId, rateLimitResponse, securityHeader, sendServerError, unauthorizedResponse, validationErrorResponse } from "./utils.js";
 
@@ -56,7 +56,7 @@ export function registerBatchRoutes(app: FastifyInstance, pool: Pool, redis: IOR
             // Validate input
             if (!data || !Array.isArray(data) || data.length === 0 || data.length > 10000) {
                 return rep.status(HTTP_STATUS.BAD_REQUEST).send({
-                    error: { code: 'INVALID_INPUT', message: 'Data must be an array with 1-10000 items' }
+                    error: { code: ERROR_CODES.INVALID_INPUT, message: ERROR_MESSAGES[ERROR_CODES.INVALID_INPUT] }
                 });
             }
 
@@ -137,7 +137,7 @@ export function registerBatchRoutes(app: FastifyInstance, pool: Pool, redis: IOR
             // Validate input
             if (!data || !Array.isArray(data) || data.length === 0 || data.length > 10000) {
                 return rep.status(HTTP_STATUS.BAD_REQUEST).send({
-                    error: { code: 'INVALID_INPUT', message: 'Data must be an array with 1-10000 items' }
+                    error: { code: ERROR_CODES.INVALID_INPUT, message: ERROR_MESSAGES[ERROR_CODES.INVALID_INPUT] }
                 });
             }
 

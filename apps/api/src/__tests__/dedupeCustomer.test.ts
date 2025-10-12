@@ -113,7 +113,7 @@ describe('Customer Deduplication Endpoints', () => {
                 const upperQuery = queryText.toUpperCase();
 
                 // Specific case for this test: find a fuzzy name match
-                if (upperQuery.includes("SIMILARITY((FIRST_NAME || ' ' || LAST_NAME), $1) > 0.85")) {
+                if (upperQuery.includes("SIMILARITY((COALESCE(FIRST_NAME, '') || ' ' || COALESCE(LAST_NAME, '')), $1) > $3")) {
                     return Promise.resolve({
                         rows: [{ id: 'uuid-2', first_name: 'Jon', last_name: 'Doe', name_score: 0.9 }]
                     });

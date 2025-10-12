@@ -111,7 +111,7 @@ describe('Batch Endpoints', () => {
                 });
 
             expect(response.status).toBe(400);
-            expect(response.body.error.code).toBe('INVALID_INPUT');
+            expect(response.body.error.code).toBe('invalid_input');
         });
 
         it('should reject request with too many items', async () => {
@@ -125,7 +125,7 @@ describe('Batch Endpoints', () => {
                 });
 
             expect(response.status).toBe(400);
-            expect(response.body.error.code).toBe('INVALID_INPUT');
+            expect(response.body.error.code).toBe('invalid_input');
         });
 
         it('should reject request with invalid type', async () => {
@@ -185,7 +185,7 @@ describe('Batch Endpoints', () => {
                 });
 
             expect(response.status).toBe(400);
-            expect(response.body.error.code).toBe('INVALID_INPUT');
+            expect(response.body.error.code).toBe('invalid_input');
         });
 
         it('should reject request with too many items', async () => {
@@ -199,7 +199,7 @@ describe('Batch Endpoints', () => {
                 });
 
             expect(response.status).toBe(400);
-            expect(response.body.error.code).toBe('INVALID_INPUT');
+            expect(response.body.error.code).toBe('invalid_input');
         });
     });
 });

@@ -96,7 +96,7 @@ describe('Data Routes', () => {
         .send({ reason: 'invalid' });
 
       expect(res.statusCode).toBe(400);
-      expect(res.body.error).toBe('INVALID_REQUEST');
+      expect(res.body.error.code).toBe('erase_invalid_request');
     });
 
     it('should require reason field', async () => {

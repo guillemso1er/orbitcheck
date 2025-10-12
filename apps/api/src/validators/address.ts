@@ -69,11 +69,8 @@ export async function normalizeAddress(addr: { line1: string; line2?: string; ci
     ].filter(Boolean);
     const joined = components.join(", ");
 
-    console.log('normalizeAddress called with:', joined);
     try {
-        console.log('executing parse-address');
         const { stdout } = await exec("/usr/local/bin/parse-address", [joined]);
-        console.log('parse-address stdout:', stdout);
         const parts: Record<string, string> = {};
         for (const line of stdout.split("\n")) {
             const [k, v] = line.split(":").map(s => s?.trim());

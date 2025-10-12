@@ -201,8 +201,8 @@ describe('Jobs Endpoints', () => {
                 .set('Authorization', 'Bearer valid_key');
 
             expect(response.status).toBe(404);
-            expect(response.body.error.code).toBe('NOT_FOUND');
-            expect(response.body.error.message).toBe('Job not found');
+            expect(response.body.error.code).toBe('not_found');
+            expect(response.body.error.message).toBe('Resource not found');
         });
     });
 });
