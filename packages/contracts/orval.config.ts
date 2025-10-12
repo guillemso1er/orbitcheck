@@ -2,7 +2,7 @@ import type { Client } from "@orval/core";
 
 const apiClient: Client = {
   api: {
-    input: "./openapi.yaml",
+    input: "./dist/openapi.yaml",
     output: "./src/api-client",
     entrypoint: "index.ts",
     method: "split",
