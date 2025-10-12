@@ -2,6 +2,8 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import type { Pool } from "pg";
 import Stripe from 'stripe';
 
+import { MGMT_V1_ROUTES } from "@orbicheck/contracts";
+
 import { ERROR_CODES, HTTP_STATUS } from "../constants.js";
 import { environment } from "../environment.js";
 import { generateRequestId, rateLimitResponse, sendError, unauthorizedResponse } from "./utils.js";
@@ -12,7 +14,7 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 });
 
 export function registerBillingRoutes(app: FastifyInstance, pool: Pool): void {
-    app.post('/api/billing/checkout', {
+    app.post(MGMT_V1_ROUTES.BILLING.CREATE_STRIPE_CHECKOUT_SESSION, {
         schema: {
             summary: 'Create Stripe Checkout session',
             description: 'Creates a Stripe Checkout session with base plan and usage-based line items',
@@ -116,7 +118,7 @@ export function registerBillingRoutes(app: FastifyInstance, pool: Pool): void {
         }
     });
 
-    app.post('/api/billing/portal', {
+    app.post(MGMT_V1_ROUTES.BILLING.CREATE_STRIPE_CUSTOMER_PORTAL_SESSION, {
         schema: {
             summary: 'Create Stripe Customer Portal session',
             description: 'Creates a Stripe Customer Portal session for managing billing',

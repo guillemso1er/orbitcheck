@@ -13,11 +13,9 @@ export { beforeRequest } from './hooks/beforeRequest.js';
 // Export the OpenAPI types
 export type * from './openapi-types.js';
 
-// Export route constants
-export { API_V1_ROUTES, DASHBOARD_ROUTES, MGMT_V1_ROUTES } from './routes.js';
-
-// Export the route constants
-export * from './routes.js';
+// Export route constants from src
+export * from '../dist/routes.js';
+export { API_V1_ROUTES, DASHBOARD_ROUTES, MGMT_V1_ROUTES } from '../dist/routes.js';
 
 // Export the OpenAPI schema as a string
 import { readFileSync } from 'fs';

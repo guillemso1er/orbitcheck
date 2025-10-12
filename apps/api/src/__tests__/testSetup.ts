@@ -190,6 +190,10 @@ jest.mock('@orbicheck/contracts', () => ({
     LOGS: {
       DELETE_LOG_ENTRY: '/v1/logs/:id',
     },
+    BILLING: {
+      CREATE_STRIPE_CHECKOUT_SESSION: '/v1/billing/checkout',
+      CREATE_STRIPE_CUSTOMER_PORTAL_SESSION: '/v1/billing/portal',
+    },
   },
   API_V1_ROUTES: {
     BATCH: {
