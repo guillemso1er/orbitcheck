@@ -11,29 +11,52 @@ export const options = {
     }
 };
 
-const KEY = (__ENV.KEY || '').trim();
-const BASE_URL = 'http://localhost:8081/v1';
-const DATA_BASE_URL = 'http://localhost:8081/v1/data';
+const BASE_URL = 'http://localhost:8080';
+const API_V1_URL = `${BASE_URL}/v1`;
 
-export function testGetLogsFirst(check) {
-    const res = http.get(`${DATA_BASE_URL}/logs?limit=10`, { headers: getHeaders() });
+export function testGetLogs(headers, check) {
+    const res = http.get(`${BASE_URL}/v1/data/logs`, { headers });
     check(res, {
-        '[Logs] status 200 (first req)': (r) => r.status === 200,
-        '[Logs] data array (first req)': (r) => {
+        '[Get Logs] status 200': (r) => r.status === 200,
+        '[Get Logs] is array': (r) => r.status === 200 && Array.isArray(JSON.parse(r.body).data)
+    });
+}
+
+export function testGetLogsForDelete(headers, check) {
+    const res = http.get(`${BASE_URL}/v1/data/logs?limit=1`, { headers });
+    check(res, {
+        '[Get Logs for Delete] status 200': (r) => r.status === 200
+    });
+    if (res.status === 200) {
+        const body = JSON.parse(res.body);
+        return body.data && body.data.length > 0 ? body.data[0] : null;
+    }
+    return null;
+}
+
+export function testDeleteLog(log, headers, check) {
+    if (!log || !log.id) return;
+    const NO_BODY_HEADERS = {};
+    const delHeaders = Object.assign({}, NO_BODY_HEADERS, headers);
+    const res = http.del(`${BASE_URL}/v1/logs/${log.id}`, null, { headers: delHeaders });
+    check(res, {
+        '[Delete Log] status 200': (r) => r.status === 200,
+        '[Delete Log] success message': (r) => {
             const body = JSON.parse(r.body);
-            return Array.isArray(body.data);
-        },
-        '[Logs] next_cursor defined (first req)': (r) => {
-            const body = JSON.parse(r.body);
-            return body.next_cursor !== undefined; // can be null or string
+            return body.message && body.message.includes('deleted');
         }
     });
 }
 
-export function testGetLogsSecond(check) {
-    const res = http.get(`${DATA_BASE_URL}/logs?limit=10`, { headers: getHeaders() });
+export function testEraseData(headers, check) {
+    const eraseDataPayload = JSON.stringify({ reason: 'gdpr' });
+    const res = http.post(`${BASE_URL}/v1/data/erase`, eraseDataPayload, { headers });
     check(res, {
-        '[Logs] status 200 (second req)': (r) => r.status === 200
+        '[Erase Data] status 202': (r) => r.status === 202,
+        '[Erase Data] confirmation message': (r) => {
+            const body = JSON.parse(r.body);
+            return body.message && body.message.includes('erasure');
+        }
     });
 }
 
@@ -42,8 +65,9 @@ export default function (check) {
     // use the original k6check as a fallback.
     check = check || k6check;
 
-    testGetLogsFirst(check);
-    testGetLogsSecond(check);
+    testGetLogs(check);
+    const logToDelete = testGetLogsForDelete(check);
+    testDeleteLog(logToDelete, check);
 
     sleep(0.1);
 }

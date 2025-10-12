@@ -11,8 +11,7 @@ export const options = {
     }
 };
 
-const KEY = (__ENV.KEY || '').trim();
-const BASE_URL = 'http://localhost:8081/v1';
+const BASE_URL = 'http://localhost:8080/v1';
 
 export function testLowRiskOrderFirst(check) {
     const suffix = Math.random().toString(36).substring(2, 8);
@@ -211,8 +210,41 @@ export function testMediumRiskOrderSecond(check) {
     });
 }
 
+export function testEvaluateOrder(headers, check) {
+    const orderPayload = JSON.stringify({
+        order_id: `k6-order-${Date.now()}`,
+        customer: {
+            email: 'customer@example.com',
+            phone: '+1234567890',
+            first_name: 'John',
+            last_name: 'Doe'
+        },
+        shipping_address: {
+            line1: '123 Main St',
+            city: 'Anytown',
+            postal_code: '12345',
+            state: 'CA',
+            country: 'US'
+        },
+        total_amount: 100,
+        currency: 'USD',
+        payment_method: 'card'
+    });
+    const res = http.post(`${BASE_URL}/orders/evaluate`, orderPayload, { headers });
+    check(res, {
+        '[Evaluate Order] status 200': (r) => r.status === 200,
+        '[Evaluate Order] has action': (r) => {
+            const body = JSON.parse(r.body);
+            return body.action;
+        }
+    });
+}
+
 export default function (check) {
     check = check || k6check;
+
+    // Evaluate order
+    testEvaluateOrder(check);
 
     testLowRiskOrderFirst(check);
     testLowRiskOrderSecond(check);

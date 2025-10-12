@@ -11,7 +11,7 @@ export const options = {
     }
 };
 
-const BASE_URL = 'http://localhost:8081/v1';
+const BASE_URL = 'http://localhost:8080/v1';
 
 export function testValidPhoneFirst(check) {
     const payload = JSON.stringify({ phone: '+16502530000' });
@@ -103,7 +103,34 @@ export function testInvalidPhoneWithCountrySecond(check) {
     });
 }
 
-export function testVerifyPhone(check) {
+export function testValidatePhoneSimple(headers, check) {
+    const phonePayload = JSON.stringify({ phone: '+1234567890', request_otp: true });
+    const res = http.post(`${BASE_URL}/validate/phone`, phonePayload, { headers });
+    check(res, {
+        '[Validate Phone] status 200': (r) => r.status === 200,
+        '[Validate Phone] has result': (r) => {
+            const body = JSON.parse(r.body);
+            return body.valid !== undefined;
+        }
+    });
+    const phoneBody = JSON.parse(res.body);
+    return phoneBody.verification_sid;
+}
+
+export function testVerifyPhone(headers, check, verificationSid) {
+    if (!verificationSid) return;
+    const verifyPayload = JSON.stringify({ verification_sid: verificationSid, code: '123456' });
+    const res = http.post(`${BASE_URL}/verify/phone`, verifyPayload, { headers });
+    check(res, {
+        '[Verify Phone] status 200': (r) => r.status === 200,
+        '[Verify Phone] has result': (r) => {
+            const body = JSON.parse(r.body);
+            return body.valid !== undefined;
+        }
+    });
+}
+
+export function testVerifyPhoneOld(check) {
     const payload = JSON.stringify({
         verification_sid: 'test_sid',
         code: '123456'
@@ -115,9 +142,17 @@ export function testVerifyPhone(check) {
 }
 
 export default function (check) {
-    // 3. If check is not provided (when running this file directly),
-    //    use the original k6check as a fallback.
+    // If check is not provided (when running this file directly),
+    // use the original k6check as a fallback.
     check = check || k6check;
+
+    // Validate phone
+    const verificationSid = testValidatePhoneSimple(check);
+
+    // Verify phone
+    testVerifyPhone(check, verificationSid);
+
+    // Old tests
     testValidPhoneFirst(check);
     testValidPhoneSecond(check);
     testValidPhoneWithCountryFirst(check);
@@ -126,6 +161,6 @@ export default function (check) {
     testInvalidPhoneFormatSecond(check);
     testInvalidPhoneWithCountryFirst(check);
     testInvalidPhoneWithCountrySecond(check);
-    testVerifyPhone(check);
+    testVerifyPhoneOld(check);
     sleep(0.1);
 }

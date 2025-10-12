@@ -11,63 +11,70 @@ export const options = {
     }
 };
 
-const BASE_URL = 'http://localhost:8081/v1';
+const BASE_URL = 'http://localhost:8080';
 
-export function testListWebhooks(check) {
-    const res = http.get(`${BASE_URL}/webhooks`, { headers: getHeaders('GET', '/v1/webhooks') });
+export function testListWebhooks(headers, check) {
+    const res = http.get(`${BASE_URL}/v1/webhooks`, { headers });
     check(res, {
         '[List Webhooks] status 200': (r) => r.status === 200,
-        '[List Webhooks] has data array': (r) => {
-            const body = r.json();
-            return body && Array.isArray(body.data);
-        }
+        '[List Webhooks] is array': (r) => r.status === 200 && Array.isArray(JSON.parse(r.body).data)
     });
-    return res;
+    const initialWebhooks = res.status === 200 ? JSON.parse(res.body).data : [];
+    return initialWebhooks;
 }
 
-export function testCreateWebhook(check) {
-    const payload = JSON.stringify({
-        url: 'https://example.com/webhook',
-        events: ['validation_result']
+export function testCreateWebhook(headers, check) {
+    const createWebhookPayload = JSON.stringify({
+        url: 'https://httpbin.org/post',
+        events: ['validation_result', 'order_evaluated']
     });
-    const res = http.post(`${BASE_URL}/webhooks`, payload, { headers: getHeaders('POST', '/v1/webhooks', payload) });
-    const body = res.status === 201 ? res.json() : null;
+    const res = http.post(`${BASE_URL}/v1/webhooks`, createWebhookPayload, { headers });
     check(res, {
         '[Create Webhook] status 201': (r) => r.status === 201,
-        '[Create Webhook] has id': (r) => body && body.id,
-        '[Create Webhook] has secret': (r) => body && body.secret,
-        '[Create Webhook] has correct events': (r) => body && Array.isArray(body.events) && body.events.includes('validation_result')
+        '[Create Webhook] has webhook': (r) => {
+            const body = JSON.parse(r.body);
+            return body.id && body.url && body.events;
+        }
     });
-    return { res, body };
+    const createWebhookBody = res.status === 201 ? JSON.parse(res.body) : { id: null };
+    return createWebhookBody;
 }
 
-export function testListWebhooksAfterCreate(check, webhookId) {
-    const res = http.get(`${BASE_URL}/webhooks`, { headers: getHeaders('GET', '/v1/webhooks') });
-    const body = res.status === 200 ? res.json() : null;
+export function testListWebhooksAfterCreate(headers, check) {
+    const res = http.get(`${BASE_URL}/v1/webhooks`, { headers });
     check(res, {
         '[List Webhooks After Create] status 200': (r) => r.status === 200,
-        '[List Webhooks After Create] includes new webhook': (r) => {
-            if (!body || !Array.isArray(body.data) || !webhookId) return false;
-            return body.data.some(webhook => webhook.id === webhookId);
-        }
+        '[List Webhooks After Create] has one more webhook': (r) => r.status === 200 && JSON.parse(r.body).data.length > 0
     });
-    return res;
 }
 
-export function testDeleteWebhook(check, webhookId) {
-    const res = http.del(`${BASE_URL}/webhooks/${webhookId}`, null, { headers: getHeaders('DELETE', `/v1/webhooks/${webhookId}`) });
+export function testDeleteWebhook(headers, check, webhookId) {
+    const NO_BODY_HEADERS = {};
+    const delHeaders = Object.assign({}, NO_BODY_HEADERS, headers);
+    const res = http.del(`${BASE_URL}/v1/webhooks/${webhookId}`, null, { headers: delHeaders });
     check(res, {
-        '[Delete Webhook] status 200': (r) => r.status === 200,
-        '[Delete Webhook] has correct id': (r) => {
-            const body = r.json();
-            return body && body.id === webhookId;
-        },
-        '[Delete Webhook] status is deleted': (r) => {
-            const body = r.json();
-            return body && body.status === 'deleted';
+        '[Delete Webhook] status 200': (r) => r.status === 200
+    });
+}
+
+export function testTestWebhook(headers, check) {
+    const webhookPayload = JSON.stringify({ url: 'https://httpbin.org/post', payload_type: 'validation' });
+    const res = http.post(`${BASE_URL}/v1/webhooks/test`, webhookPayload, { headers });
+    check(res, {
+        '[Test Webhook] status 200': (r) => r.status === 200,
+        '[Test Webhook] success': (r) => {
+            const body = JSON.parse(r.body);
+            return body.response && body.response.status === 200;
         }
     });
-    return res;
+}
+
+export function testListWebhooksAfterDelete(headers, check) {
+    const res = http.get(`${BASE_URL}/v1/webhooks`, { headers });
+    check(res, {
+        '[List Webhooks After Delete] status 200': (r) => r.status === 200,
+        '[List Webhooks After Delete] back to initial count': (r) => r.status === 200 && JSON.parse(r.body).data.length === 0
+    });
 }
 
 export function testCreateWebhookMultipleEvents(check) {

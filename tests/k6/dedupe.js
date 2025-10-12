@@ -11,7 +11,7 @@ export const options = {
     }
 };
 
-const BASE_URL = 'http://localhost:8081/v1';
+const BASE_URL = 'http://localhost:8080/v1';
 
 export function testNoMatchFirst(check) {
     const timestamp = Date.now();
@@ -166,6 +166,92 @@ export function testDedupeAddress(check) {
     });
 }
 
+export function testDedupeCustomer(headers, check) {
+    const dedupeCustomerPayload = JSON.stringify({
+        email: 'customer@example.com',
+        phone: '+1234567890',
+        first_name: 'John',
+        last_name: 'Doe'
+    });
+    const res = http.post(`${BASE_URL}/dedupe/customer`, dedupeCustomerPayload, { headers });
+    check(res, {
+        '[Dedupe Customer] status 200': (r) => r.status === 200,
+        '[Dedupe Customer] has matches': (r) => {
+            const body = JSON.parse(r.body);
+            return body.matches !== undefined;
+        }
+    });
+    const dedupeCustomerBody = JSON.parse(res.body);
+    return dedupeCustomerBody.canonical_id || null;
+}
+
+export function testDedupeMergeCustomer(customerId, headers, check) {
+    if (!customerId) return;
+    const mergeCustomerPayload = JSON.stringify({
+        type: 'customer',
+        ids: [customerId],
+        canonical_id: customerId
+    });
+    const res = http.post(`${BASE_URL}/dedupe/merge`, mergeCustomerPayload, { headers });
+    check(res, {
+        '[Dedupe Merge Customer] status 200': (r) => r.status === 200,
+        '[Dedupe Merge Customer] success': (r) => {
+            const body = JSON.parse(r.body);
+            return body.success !== undefined;
+        }
+    });
+}
+
+export function testBatchDedupe(headers, check) {
+    const batchDedupePayload = JSON.stringify({
+        type: 'customers',
+        data: [
+            { email: 'batch-customer1@example.com', first_name: 'John', last_name: 'Doe' },
+            { email: 'batch-customer2@example.com', first_name: 'Jane', last_name: 'Smith' }
+        ]
+    });
+    const res = http.post(`${BASE_URL}/batch/dedupe`, batchDedupePayload, { headers });
+    check(res, {
+        '[Batch Dedupe] status 202': (r) => r.status === 202,
+        '[Batch Dedupe] has job_id': (r) => {
+            const body = JSON.parse(r.body);
+            return body.job_id && body.status === 'pending';
+        }
+    });
+    const batchDedupeBody = JSON.parse(res.body);
+    return batchDedupeBody.job_id;
+}
+
+export function testGetDedupeJobStatus(jobId, headers, check) {
+    if (!jobId) return;
+    const res = http.get(`${BASE_URL}/jobs/${jobId}`, { headers });
+    check(res, {
+        '[Get Dedupe Job Status] status 200': (r) => r.status === 200,
+        '[Get Dedupe Job Status] has status': (r) => {
+            const body = JSON.parse(r.body);
+            return body.status && body.job_id === jobId;
+        }
+    });
+}
+
+export function testDedupeAddressSimple(headers, check) {
+    const dedupeAddressPayload = JSON.stringify({
+        line1: '123 Main St',
+        city: 'Anytown',
+        postal_code: '12345',
+        state: 'CA',
+        country: 'US'
+    });
+    const res = http.post(`${BASE_URL}/dedupe/address`, dedupeAddressPayload, { headers });
+    check(res, {
+        '[Dedupe Address] status 200': (r) => r.status === 200,
+        '[Dedupe Address] has matches': (r) => {
+            const body = JSON.parse(r.body);
+            return body.matches !== undefined;
+        }
+    });
+}
+
 export function testMerge(check) {
     const payload = JSON.stringify({
         type: 'customer',
@@ -183,6 +269,21 @@ export default function (check) {
     // use the original k6check as a fallback.
     check = check || k6check;
 
+    // Dedupe customer
+    const customerId = testDedupeCustomer(check);
+
+    // Dedupe merge customer
+    testDedupeMergeCustomer(customerId, check);
+
+    // Dedupe address
+    testDedupeAddressSimple(check);
+
+    // Batch dedupe
+    const dedupeJobId = testBatchDedupe(check);
+
+    // Get dedupe job status
+    testGetDedupeJobStatus(dedupeJobId, check);
+
     // Scenario 1: Test dedupe with no matches (new customer)
     testNoMatchFirst(check);
     testNoMatchSecond(check);
@@ -195,7 +296,7 @@ export default function (check) {
     testExactMatchFirst(check);
     testExactMatchSecond(check);
 
-    // Scenario 4: Test dedupe address
+    // Scenario 4: Test dedupe address (old)
     testDedupeAddress(check);
 
     // Scenario 5: Test dedupe merge (assuming some IDs exist, but since it's new, might fail or be empty)

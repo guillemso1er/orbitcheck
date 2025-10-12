@@ -11,8 +11,7 @@ export const options = {
     }
 };
 
-const KEY = (__ENV.KEY || '').trim();
-const BASE_URL = 'http://localhost:8081/v1';
+const BASE_URL = 'http://localhost:8080/v1';
 
 export function testVatValidationFirst(check) {
     const payload = JSON.stringify({
@@ -134,10 +133,25 @@ export function testInvalidCnpjSecond(check) {
     });
 }
 
+export function testValidateTaxid(headers, check) {
+    const taxidPayload = JSON.stringify({ type: 'ssn', value: '123-45-6789', country: 'US' });
+    const res = http.post(`${BASE_URL}/validate/tax-id`, taxidPayload, { headers });
+    check(res, {
+        '[Validate Tax ID] status 200': (r) => r.status === 200,
+        '[Validate Tax ID] has result': (r) => {
+            const body = JSON.parse(r.body);
+            return body.valid !== undefined;
+        }
+    });
+}
+
 export default function (check) {
     // If check is not provided (when running this file directly),
     // use the original k6check as a fallback.
     check = check || k6check;
+
+    // Validate tax id
+    testValidateTaxid(check);
 
     testVatValidationFirst(check);
     testVatValidationSecond(check);

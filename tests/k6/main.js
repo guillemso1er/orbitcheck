@@ -9,6 +9,7 @@ import { default as logsTest } from './logs.js';
 import { default as orderTest } from './order.js';
 import { default as phoneTest } from './phone.js';
 import { default as rulesTest } from './rules.js';
+import { default as settingsTest } from './settings.js';
 import { default as taxidTest } from './taxid.js';
 import { default as usageTest } from './usage.js';
 
@@ -74,6 +75,10 @@ export function rulesScenario() {
     rulesTest(createCheckFor('rules'));
 }
 
+export function settingsScenario() {
+    settingsTest(createCheckFor('settings'));
+}
+
 export function taxidScenario() {
     taxidTest(createCheckFor('taxid'));
 }
@@ -117,6 +122,9 @@ export default function () {
     console.log('Running rules tests...');
     rulesTest(createCheckFor('rules'));
 
+    console.log('Running settings tests...');
+    settingsTest(createCheckFor('settings'));
+
     console.log('Running taxid tests...');
     taxidTest(createCheckFor('taxid'));
 
@@ -137,6 +145,7 @@ export function runSpecificTests(testNames = []) {
         order: () => orderTest(createCheckFor('order')),
         phone: () => phoneTest(createCheckFor('phone')),
         rules: () => rulesTest(createCheckFor('rules')),
+        settings: () => settingsTest(createCheckFor('settings')),
         taxid: () => taxidTest(createCheckFor('taxid')),
         usage: () => usageTest(createCheckFor('usage'))
     };

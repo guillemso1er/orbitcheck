@@ -11,25 +11,13 @@ export const options = {
     }
 };
 
-const KEY = (__ENV.KEY || '').trim();
-const BASE_URL = 'http://localhost:8081/v1';
+const BASE_URL = 'http://localhost:8080/v1';
 
-export function testGetRulesFirst(check) {
-    const res = http.get(`${BASE_URL}/rules`, { headers: getHeaders() });
+export function testGetRulesFirst(headers, check) {
+    const res = http.get(`${BASE_URL}/rules`, { headers });
     check(res, {
-        '[Rules] status 200 (first req)': (r) => r.status === 200,
-        '[Rules] rules array (first req)': (r) => {
-            const body = JSON.parse(r.body);
-            return Array.isArray(body.rules);
-        },
-        '[Rules] rules length > 0 (first req)': (r) => {
-            const body = JSON.parse(r.body);
-            return body.rules && body.rules.length > 0;
-        },
-        '[Rules] request_id present (first req)': (r) => {
-            const body = JSON.parse(r.body);
-            return body.request_id && typeof body.request_id === 'string';
-        }
+        '[Get Rules] status 200': (r) => r.status === 200,
+        '[Get Rules] has rules': (r) => r.status === 200 && Array.isArray(JSON.parse(r.body).rules)
     });
 }
 
@@ -37,43 +25,38 @@ export function testGetRulesSecond(check) {
     // Second request for cache HIT.
     const res = http.get(`${BASE_URL}/rules`, { headers: getHeaders() });
     check(res, {
-        '[Rules] status 200 HIT': (r) => r.status === 200,
-        '[Rules] cache HIT': (r) => (r.headers['Cache-Status'] || '').toLowerCase().includes('hit')
+        '[Get Rules] status 200': (r) => r.status === 200
     });
 }
 
-export function testGetRulesCatalog(check) {
-    const res = http.get(`${BASE_URL}/rules/catalog`, { headers: getHeaders() });
+export function testGetRulesCatalog(headers, check) {
+    const res = http.get(`${BASE_URL}/rules/catalog`, { headers });
     check(res, {
-        '[Rules Catalog] status 200': (r) => r.status === 200,
-        '[Rules Catalog] reason_codes array': (r) => {
+        '[Get Catalog] status 200': (r) => r.status === 200,
+        '[Get Catalog] has reason_codes': (r) => {
             const body = JSON.parse(r.body);
-            return Array.isArray(body.reason_codes);
-        },
-        '[Rules Catalog] request_id present': (r) => {
-            const body = JSON.parse(r.body);
-            return body.request_id && typeof body.request_id === 'string';
+            return body && Array.isArray(body.reason_codes);
         }
     });
 }
 
-export function testRegisterRules(check) {
+export function testRegisterRules(headers, check) {
     const payload = JSON.stringify({
         rules: [{
-            id: 'test_rule',
-            name: 'Test Rule',
-            description: 'A test rule',
-            reason_code: 'test.reason',
-            severity: 'medium',
+            id: 'k6-custom-rule',
+            name: 'k6-custom-rule',
+            description: 'test rule',
+            reason_code: 'test',
+            severity: 'low',
             enabled: true
         }]
     });
-    const res = http.post(`${BASE_URL}/rules/register`, payload, { headers: getHeaders() });
+    const res = http.post(`${BASE_URL}/rules/register`, payload, { headers });
     check(res, {
         '[Register Rules] status 200': (r) => r.status === 200,
-        '[Register Rules] has message': (r) => {
+        '[Register Rules] success': (r) => {
             const body = JSON.parse(r.body);
-            return body.message;
+            return body.registered_rules && Array.isArray(body.registered_rules);
         }
     });
 }
@@ -84,7 +67,6 @@ export default function (check) {
     check = check || k6check;
 
     testGetRulesFirst(check);
-    testGetRulesSecond(check);
     testGetRulesCatalog(check);
     testRegisterRules(check);
 

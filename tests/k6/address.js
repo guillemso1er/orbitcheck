@@ -12,7 +12,7 @@ export const options = {
     }
 };
 
-const BASE_URL = 'http://localhost:8081/v1'; // This should point to your Nginx proxy
+const BASE_URL = 'http://localhost:8080/v1';
 
 export function testAddressMismatchFirst(check) {
     const payload = JSON.stringify({
@@ -128,10 +128,34 @@ export function testInvalidCitySecond(check) {
     });
 }
 
+export function testValidateAddress(headers, check) {
+    const addressPayload = JSON.stringify({
+        address: {
+            line1: '123 Main St',
+            city: 'Anytown',
+            postal_code: '12345',
+            state: 'CA',
+            country: 'US'
+        }
+    });
+    const res = http.post(`${BASE_URL}/validate/address`, addressPayload, { headers });
+    check(res, {
+        '[Validate Address] status 200': (r) => r.status === 200,
+        '[Validate Address] has result': (r) => {
+            const body = JSON.parse(r.body);
+            return body.valid !== undefined;
+        }
+    });
+}
+
 export default function (check) {
-    // 3. If check is not provided (when running this file directly),
-    //    use the original k6check as a fallback.
+    // If check is not provided (when running this file directly),
+    // use the original k6check as a fallback.
     check = check || k6check;
+
+    // Validate address
+    testValidateAddress(check);
+
     // Scenario 1: Test an address with a known postal/city mismatch
     testAddressMismatchFirst(check);
     testAddressMismatchSecond(check);

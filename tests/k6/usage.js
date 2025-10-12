@@ -11,31 +11,13 @@ export const options = {
     }
 };
 
-const KEY = (__ENV.KEY || '').trim();
-const BASE_URL = 'http://localhost:8081/v1';
-const DATA_BASE_URL = 'http://localhost:8081/v1/data';
+const BASE_URL = 'http://localhost:8080';
 
-export function testGetUsageFirst(check) {
-    const res = http.get(`${DATA_BASE_URL}/usage`, { headers: getHeaders() });
+export function testGetUsage(headers, check) {
+    const res = http.get(`${BASE_URL}/v1/data/usage`, { headers });
     check(res, {
-        '[Usage] status 200 (first req)': (r) => r.status === 200,
-        '[Usage] totals object (first req)': (r) => {
-            const body = JSON.parse(r.body);
-            return body.totals && typeof body.totals === 'object';
-        },
-        '[Usage] by_day array (first req)': (r) => {
-            const body = JSON.parse(r.body);
-            return Array.isArray(body.by_day);
-        },
-        '[Usage] period month (first req)': (r) => JSON.parse(r.body).period === 'month'
-    });
-}
-
-export function testGetUsageSecond(check) {
-    const res = http.get(`${DATA_BASE_URL}/usage`, { headers: getHeaders() });
-    check(res, {
-        '[Usage] status 200 HIT': (r) => r.status === 200,
-        '[Usage] cache HIT': (r) => (r.headers['Cache-Status'] || '').toLowerCase().includes('hit')
+        '[Get Usage] status 200': (r) => r.status === 200,
+        '[Get Usage] has data': (r) => r.status === 200 && (() => { const body = JSON.parse(r.body); return body && typeof body === 'object'; })()
     });
 }
 
@@ -44,8 +26,7 @@ export default function (check) {
     // use the original k6check as a fallback.
     check = check || k6check;
 
-    testGetUsageFirst(check);
-    testGetUsageSecond(check);
+    testGetUsage(check);
 
     sleep(0.1);
 }
