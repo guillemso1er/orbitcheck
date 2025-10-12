@@ -2,8 +2,10 @@ import React, { useEffect, useState } from 'react';
 import { Link, Navigate, NavLink, Route, Routes } from 'react-router-dom';
 import { useAuth } from './AuthContext';
 import ApiKeys from './components/ApiKeys';
+import BulkCsvTool from './components/BulkCsvTool';
 import LogExplorer from './components/LogExplorer';
 import Login from './components/Login';
+import Rules from './components/Rules';
 import UsageDashboard from './components/UsageDashboard';
 import WebhookTester from './components/WebhookTester';
 import { UI_STRINGS } from './constants';
@@ -50,8 +52,10 @@ function App() {
 
   const navItems = [
     { path: '/api-keys', label: UI_STRINGS.API_KEYS_MANAGEMENT, icon: '🔑', component: ApiKeys },
+    { path: '/bulk-csv', label: UI_STRINGS.BULK_CSV_TOOL, icon: '📄', component: BulkCsvTool },
     { path: '/usage', label: UI_STRINGS.USAGE_DASHBOARD, icon: '📊', component: UsageDashboard },
     { path: '/logs', label: UI_STRINGS.LOG_EXPLORER, icon: '📋', component: LogExplorer },
+    { path: '/rules', label: UI_STRINGS.RULES_EDITOR, icon: '⚖️', component: Rules },
     { path: '/webhooks', label: UI_STRINGS.WEBHOOK_TESTER, icon: '🪝', component: WebhookTester },
   ];
 
@@ -120,6 +124,16 @@ function App() {
             }
           />
           <Route
+            path="/bulk-csv"
+            element={
+              <ProtectedRoute>
+                <div role="region" aria-label={UI_STRINGS.BULK_CSV_TOOL}>
+                  <BulkCsvTool />
+                </div>
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="/usage"
             element={
               <ProtectedRoute>
@@ -135,6 +149,16 @@ function App() {
               <ProtectedRoute>
                 <div role="region" aria-label={UI_STRINGS.LOG_EXPLORER}>
                   <LogExplorer />
+                </div>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/rules"
+            element={
+              <ProtectedRoute>
+                <div role="region" aria-label={UI_STRINGS.RULES_EDITOR}>
+                  <Rules />
                 </div>
               </ProtectedRoute>
             }

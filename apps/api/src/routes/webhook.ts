@@ -4,12 +4,18 @@ import { MGMT_V1_ROUTES } from "@orbicheck/contracts";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import fetch from "node-fetch";
 import type { Pool } from "pg";
+import Stripe from 'stripe';
 
 import { CONTENT_TYPES, CRYPTO_KEY_BYTES, ERROR_CODES, ERROR_MESSAGES, EVENT_TYPES, HTTP_STATUS, MESSAGES, ORDER_ACTIONS, PAYLOAD_TYPES, REASON_CODES, URL_PATTERNS } from "../constants.js";
 import { logEvent } from "../hooks.js";
 import { generateRequestId, rateLimitResponse, securityHeader, sendError, unauthorizedResponse } from "./utils.js";
 // Import route constants from contracts package
 const ROUTES = MGMT_V1_ROUTES.WEBHOOKS;
+
+// Stripe configuration for webhook verification
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+    apiVersion: '2025-09-30.clover',
+});
 
 
 export function registerWebhookRoutes(app: FastifyInstance, pool: Pool): void {
@@ -369,6 +375,152 @@ export function registerWebhookRoutes(app: FastifyInstance, pool: Pool): void {
             }, pool);
 
             return sendError(rep, HTTP_STATUS.BAD_GATEWAY, ERROR_CODES.WEBHOOK_SEND_FAILED, errorMessage, request_id);
+        }
+    });
+
+    // Stripe webhook endpoint for billing events
+    app.post('/api/stripe/webhook', {
+        schema: {
+            summary: 'Stripe webhook endpoint',
+            description: 'Handles Stripe webhook events for billing',
+            tags: ['Billing'],
+            response: {
+                200: {
+                    description: 'Webhook processed successfully'
+                },
+                400: { description: 'Invalid webhook signature or payload' }
+            }
+        }
+    }, async (request, rep) => {
+        const sig = request.headers['stripe-signature'] as string;
+        const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
+
+        if (!endpointSecret) {
+            request.log.error('Stripe webhook secret not configured');
+            return rep.status(HTTP_STATUS.BAD_REQUEST).send({ error: 'Webhook secret not configured' });
+        }
+
+        let event: Stripe.Event;
+
+        try {
+            event = stripe.webhooks.constructEvent(request.body as string | Buffer, sig, endpointSecret);
+        } catch (err) {
+            request.log.error({ err }, 'Webhook signature verification failed');
+            return rep.status(HTTP_STATUS.BAD_REQUEST).send({ error: 'Webhook signature verification failed' });
+        }
+
+        try {
+            switch (event.type) {
+                case 'checkout.session.completed': {
+                    const session = event.data.object as Stripe.Checkout.Session;
+                    const accountId = session.client_reference_id;
+
+                    if (!accountId) {
+                        request.log.warn('No client_reference_id in checkout session');
+                        break;
+                    }
+
+                    // Store subscription and item IDs
+                    if (session.subscription && session.subscription instanceof Object) {
+                        const subscriptionId = (session.subscription as any).id;
+                        const itemIds = session.line_items?.data.map(item => item.price?.id).filter(Boolean) || [];
+
+                        await pool.query(
+                            'UPDATE accounts SET stripe_subscription_id = $1, stripe_item_ids = $2, billing_status = $3 WHERE id = $4',
+                            [subscriptionId, JSON.stringify(itemIds), 'active', accountId]
+                        );
+
+                        request.log.info({ accountId, subscriptionId, itemIds }, 'Subscription created');
+                    }
+
+                    // Create customer if not exists
+                    if (session.customer) {
+                        await pool.query(
+                            'UPDATE accounts SET stripe_customer_id = $1 WHERE id = $2 AND stripe_customer_id IS NULL',
+                            [session.customer, accountId]
+                        );
+                    }
+                    break;
+                }
+
+                case 'invoice.payment_succeeded': {
+                    const invoice = event.data.object as Stripe.Invoice;
+                    const subscriptionId = (invoice as any).subscription;
+                    if (subscriptionId && typeof subscriptionId === 'string') {
+                        // Update billing status to active on successful payment
+                        await pool.query(
+                            'UPDATE accounts SET billing_status = $1 WHERE stripe_subscription_id = $2',
+                            ['active', subscriptionId]
+                        );
+                    }
+                    break;
+                }
+
+                case 'invoice.payment_failed': {
+                    const invoice = event.data.object as Stripe.Invoice;
+                    const subscriptionId = (invoice as any).subscription;
+                    if (subscriptionId && typeof subscriptionId === 'string') {
+                        // Update billing status to past_due on failed payment
+                        await pool.query(
+                            'UPDATE accounts SET billing_status = $1 WHERE stripe_subscription_id = $2',
+                            ['past_due', subscriptionId]
+                        );
+                    }
+                    break;
+                }
+
+                case 'customer.subscription.updated': {
+                    const subscription = event.data.object as Stripe.Subscription;
+                    const accountResult = await pool.query(
+                        'SELECT id FROM accounts WHERE stripe_subscription_id = $1',
+                        [subscription.id]
+                    );
+
+                    if (accountResult.rows.length > 0) {
+                        const account = accountResult.rows[0];
+
+                        // Update plan and included quantities
+                        const itemIds = subscription.items.data.map(item => item.price.id);
+                        let includedValidations = 0;
+                        let includedStores = 0;
+
+                        // Parse plan details from subscription items (this would need to match your pricing structure)
+                        for (const item of subscription.items.data) {
+                            // This is a simplified example - you'd need to map price IDs to plan features
+                            if (item.price.id.includes('plan')) {
+                                includedValidations = item.quantity || 0;
+                            } else if (item.price.id.includes('store')) {
+                                includedStores = item.quantity || 0;
+                            }
+                        }
+
+                        await pool.query(
+                            'UPDATE accounts SET stripe_item_ids = $1, included_validations = $2, included_stores = $3 WHERE id = $4',
+                            [JSON.stringify(itemIds), includedValidations, includedStores, account.id]
+                        );
+
+                        request.log.info({ accountId: account.id, itemIds, includedValidations, includedStores }, 'Subscription updated');
+                    }
+                    break;
+                }
+
+                case 'customer.subscription.deleted': {
+                    // Restrict production access when subscription is cancelled
+                    await pool.query(
+                        'UPDATE accounts SET billing_status = $1 WHERE stripe_subscription_id = $2',
+                        ['cancelled', event.data.object.id]
+                    );
+                    break;
+                }
+
+                default:
+                    request.log.info({ eventType: event.type }, 'Unhandled Stripe event');
+            }
+
+            return rep.status(HTTP_STATUS.OK).send({ received: true });
+        } catch (error) {
+            request.log.error({ err: error, eventType: event.type }, 'Error processing Stripe webhook');
+            return rep.status(HTTP_STATUS.BAD_REQUEST).send({ error: 'Webhook processing failed' });
         }
     });
 }

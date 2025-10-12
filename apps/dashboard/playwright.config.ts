@@ -83,9 +83,16 @@ export default defineConfig({
   ],
 
   /* Run your local dev server before starting the tests */
-  webServer: {
-    command: 'pnpm dev',
-    url: 'http://localhost:5173/',
-    reuseExistingServer: true,
-  },
+  webServer: [
+    {
+      command: 'pnpm --filter @orbicheck/api dev',
+      url: 'http://localhost:8080/health',
+      reuseExistingServer: true,
+    },
+    {
+      command: 'pnpm --filter @orbicheck/dashboard dev',
+      url: 'http://localhost:5173/',
+      reuseExistingServer: true,
+    }
+  ],
 });

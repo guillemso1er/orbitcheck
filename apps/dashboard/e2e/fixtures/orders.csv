@@ -1,0 +1,4 @@
+order_id,customer_email,total,items
+ORD001,test@example.com,99.99,"Widget A, Widget B"
+ORD002,user@test.com,149.50,"Gadget X"
+ORD003,another@example.org,75.00,"Tool Z"

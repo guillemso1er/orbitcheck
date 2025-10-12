@@ -1,4 +1,4 @@
-import { DASHBOARD_ROUTES, MGMT_V1_ROUTES } from "@orbicheck/contracts";
+import { MGMT_V1_ROUTES, API_V1_ROUTES } from "@orbicheck/contracts";
 
 export const API_BASE = import.meta.env.VITE_API_BASE ?? '/_api';
 
@@ -7,6 +7,13 @@ export const API_ENDPOINTS = {
   USAGE: MGMT_V1_ROUTES.DATA.GET_USAGE_STATISTICS,
   LOGS: MGMT_V1_ROUTES.DATA.GET_EVENT_LOGS,
   WEBHOOKS_TEST: MGMT_V1_ROUTES.WEBHOOKS.TEST_WEBHOOK,
+  BATCH_VALIDATE: API_V1_ROUTES.BATCH.BATCH_VALIDATE_DATA,
+  BATCH_DEDUPE: API_V1_ROUTES.BATCH.BATCH_DEDUPLICATE_DATA,
+  GET_JOB_STATUS: API_V1_ROUTES.JOBS.GET_JOB_STATUS,
+  ORDER_EVALUATE: API_V1_ROUTES.ORDERS.EVALUATE_ORDER_FOR_RISK_AND_RULES,
+  GET_AVAILABLE_RULES: MGMT_V1_ROUTES.RULES.GET_AVAILABLE_RULES,
+  TEST_RULES_AGAINST_PAYLOAD: MGMT_V1_ROUTES.RULES.TEST_RULES_AGAINST_PAYLOAD,
+  REGISTER_CUSTOM_RULES: MGMT_V1_ROUTES.RULES.REGISTER_CUSTOM_RULES,
 } as const;
 
 
@@ -59,8 +66,33 @@ export const UI_STRINGS = {
   DAILY_USAGE: 'Daily Usage',
   TOP_REASON_CODES: 'Top Reason Codes',
   LOG_EXPLORER: 'Log Explorer',
+  BULK_CSV_TOOL: 'Bulk CSV Tool',
+  UPLOAD_CSV_FILE: 'Upload CSV File',
+  PROCESSING_CSV: 'Processing CSV...',
+  DOWNLOAD_RESULTS: 'Download Results',
+  CSV_TYPE_CUSTOMERS: 'Customers CSV',
+  CSV_TYPE_ORDERS: 'Orders CSV',
+  SELECT_CSV_TYPE: 'Select CSV Type',
+  DRAG_DROP_OR_CLICK: 'Drag and drop a CSV file here, or click to select',
+  PROCESSING: 'Processing...',
+  JOB_STATUS_PENDING: 'Job queued for processing',
+  JOB_STATUS_PROCESSING: 'Processing your data...',
+  JOB_STATUS_COMPLETED: 'Processing completed',
+  JOB_STATUS_FAILED: 'Processing failed',
   LOGIN: 'Login',
   LOGOUT: 'Logout',
+  RULES_EDITOR: 'Rules Editor',
+  RULE_EDITOR: 'Rule Editor',
+  TEST_HARNESS: 'Test Harness',
+  RULE_CONDITION: 'Rule Condition',
+  RULE_ACTION: 'Rule Action',
+  ADD_RULE: 'Add Rule',
+  SAVE_RULES: 'Save Rules',
+  TEST_RULE: 'Test Rule',
+  TEST_PAYLOAD: 'Test Payload',
+  RULE_TEST_RESULT: 'Rule Test Result',
+  INVALID_RULE: 'Invalid rule syntax',
+  RULE_SAVED: 'Rule saved successfully',
 } as const;
 
 export const API_KEY_STATUS = {
@@ -134,6 +166,7 @@ export const ERROR_MESSAGES = {
   INVALID_SERVER_RESPONSE: 'Invalid response from server',
   UNKNOWN: 'Unknown error',
   UNEXPECTED_ERROR: 'An unexpected error occurred. Please try again.',
+  INVALID_JSON: 'Invalid JSON',
 } as const;
 
 export const LOCAL_STORAGE_KEYS = {

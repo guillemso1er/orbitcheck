@@ -7,6 +7,7 @@ import { auth, idempotency, rateLimit } from "./hooks.js";
 import { registerApiKeysRoutes } from './routes/api-keys.js';
 import { registerAuthRoutes, verifyPAT, verifySession } from "./routes/auth.js";
 import { registerBatchRoutes } from './routes/batch.js';
+import { registerBillingRoutes } from './routes/billing.js';
 import { registerDataRoutes } from './routes/data.js';
 import { registerDedupeRoutes } from './routes/dedupe.js';
 import { registerJobRoutes } from './routes/jobs.js';
@@ -156,6 +157,7 @@ export function registerRoutes(app: FastifyInstance, pool: Pool, redis: IORedisT
     registerDataRoutes(app, pool);
     registerSettingsRoutes(app, pool);
     registerWebhookRoutes(app, pool);
+    registerBillingRoutes(app, pool);
     registerRulesRoutes(app, pool, redis);
     registerBatchRoutes(app, pool, redis);
     registerJobRoutes(app, pool);

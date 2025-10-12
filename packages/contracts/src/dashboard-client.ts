@@ -14,7 +14,14 @@ import type {
   RegisterUserBody,
   RevokeApiKey200,
   TestWebhook200,
-  TestWebhookBody
+  TestWebhookBody,
+  BatchValidateBody,
+  BatchValidate202,
+  BatchDedupeBody,
+  BatchDedupe202,
+  GetJobStatus200,
+  EvaluateOrderBody,
+  EvaluateOrder200
 } from './api-client/orbiCheckAPI.js';
 
 import {
@@ -25,7 +32,11 @@ import {
   loginUser,
   registerUser,
   revokeApiKey,
-  testWebhook
+  testWebhook,
+  batchValidate,
+  batchDedupe,
+  getJobStatus,
+  evaluateOrder
 } from './api-client/orbiCheckAPI.js';
 
 export interface ApiClientConfig {
@@ -126,6 +137,43 @@ export class ApiClient {
       body.custom_payload = payload;
     }
     const response = await testWebhook(body, {
+      baseURL: this.baseURL,
+      withCredentials: true,
+      headers: this.getHeaders()
+    });
+    return response.data;
+  }
+
+  // Batch Operations API
+  async batchValidateData(body: BatchValidateBody): Promise<BatchValidate202> {
+    const response = await batchValidate(body, {
+      baseURL: this.baseURL,
+      withCredentials: true,
+      headers: this.getHeaders()
+    });
+    return response.data;
+  }
+
+  async batchDedupeData(body: BatchDedupeBody): Promise<BatchDedupe202> {
+    const response = await batchDedupe(body, {
+      baseURL: this.baseURL,
+      withCredentials: true,
+      headers: this.getHeaders()
+    });
+    return response.data;
+  }
+
+  async getJobStatus(jobId: string): Promise<GetJobStatus200> {
+    const response = await getJobStatus(jobId, {
+      baseURL: this.baseURL,
+      withCredentials: true,
+      headers: this.getHeaders()
+    });
+    return response.data;
+  }
+
+  async evaluateOrder(body: EvaluateOrderBody): Promise<EvaluateOrder200> {
+    const response = await evaluateOrder(body, {
       baseURL: this.baseURL,
       withCredentials: true,
       headers: this.getHeaders()
