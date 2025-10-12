@@ -5,13 +5,10 @@
   "type": "module",
   "main": "dist/index.js",
   "scripts": {
-    "generate:types": "openapi-typescript openapi.yaml -o src/openapi-types.ts & pnpm build",
-    "generate:client": "orval && pnpm build",
-    "generate:routes": "node generate-routes.js && pnpm build",
-    "generate": "pnpm generate:routes && pnpm generate:types && pnpm generate:client",
+    "generate": "node generate-routes.js",
     "validate": "openapi-typescript openapi.yaml --strict",
     "lint": "eslint src/ --ext .ts --fix",
-    "build": "tsc"
+    "build": "node generate-routes.js && tsc"
   },
   "dependencies": {
     "js-yaml": "^4.1.0"
@@ -27,6 +24,6 @@
   "files": [
     "src/",
     "dist/",
-    "openapi.yaml"
+    "dist/openapi.yaml"
   ]
 }

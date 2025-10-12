@@ -108,6 +108,314 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/webhooks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List webhooks
+         * @description Retrieves all webhooks for the authenticated project
+         */
+        get: operations["listWebhooks"];
+        put?: never;
+        /**
+         * Create webhook
+         * @description Creates a new webhook subscription for the authenticated project
+         */
+        post: operations["createWebhook"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/webhooks/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete webhook
+         * @description Deletes a webhook subscription
+         */
+        delete: operations["deleteWebhook"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/webhooks/test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Test Webhook
+         * @description Sends a sample payload to the provided webhook URL and returns the response. Useful for testing webhook configurations.
+         */
+        post: operations["testWebhook"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/rules": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get available rules
+         * @description Retrieves a list of all available validation rules and their configurations
+         */
+        get: operations["getAvailableRules"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/rules/error-codes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get error code catalog
+         * @description Retrieves a catalog of all possible error codes and their descriptions
+         */
+        get: operations["getErrorCodeCatalog"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/rules/catalog": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get reason code catalog
+         * @description Retrieves a catalog of all possible reason codes and their descriptions
+         */
+        get: operations["getReasonCodeCatalog"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/rules/test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Test rules against payload
+         * @description Tests rules against a sample payload and returns triggered rules
+         */
+        post: operations["testRulesAgainstPayload"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/rules/register": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Register custom rules
+         * @description Registers new custom validation rules for the project
+         */
+        post: operations["registerCustomRules"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/data/logs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get event logs
+         * @description Retrieves event logs for the project with optional filters
+         */
+        get: operations["getLogs"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/data/usage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get usage statistics
+         * @description Retrieves usage statistics for the project
+         */
+        get: operations["getUsage"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get tenant settings
+         * @description Retrieves tenant settings including country defaults, formatting, and risk thresholds
+         */
+        get: operations["getSettings"];
+        /**
+         * Update tenant settings
+         * @description Updates tenant settings including country defaults, formatting, and risk thresholds
+         */
+        put: operations["updateSettings"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/data/erase": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Erase user data
+         * @description Initiates data erasure for GDPR/CCPA compliance
+         */
+        post: operations["eraseData"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/billing/checkout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create Stripe Checkout session
+         * @description Creates a Stripe Checkout session with base plan and usage-based line items
+         */
+        post: operations["createCheckoutSession"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/billing/portal": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create Stripe Customer Portal session
+         * @description Creates a Stripe Customer Portal session for managing billing
+         */
+        post: operations["createCustomerPortalSession"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/logs/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete log entry
+         * @description Deletes a specific log entry
+         */
+        delete: operations["deleteLog"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/normalize/address": {
         parameters: {
             query?: never;
@@ -128,7 +436,167 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/validate/email": {
+    "/v1/batch/validate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Batch validate data
+         * @description Performs batch validation of emails, phones, addresses, or tax IDs asynchronously
+         */
+        post: operations["batchValidate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/batch/dedupe": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Batch deduplicate data
+         * @description Performs batch deduplication of customers or addresses asynchronously
+         */
+        post: operations["batchDedupe"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/dedupe/customer": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Deduplicate customer
+         * @description Searches for existing customers using deterministic and fuzzy matching
+         */
+        post: operations["dedupeCustomer"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/dedupe/address": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Deduplicate address
+         * @description Searches for existing addresses using deterministic and fuzzy matching
+         */
+        post: operations["dedupeAddress"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/dedupe/merge": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Merge deduplicated records
+         * @description Merges multiple customer or address records into a canonical one
+         */
+        post: operations["mergeDeduplicated"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/jobs/:id": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get job status
+         * @description Retrieves the status and results of an asynchronous job.
+         */
+        get: operations["getJobStatusById"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orders/evaluate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Evaluate order for risk and rules
+         * @description Evaluates an order for deduplication, validation, and applies business rules
+         */
+        post: operations["evaluateOrder"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/verify/phone": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Verify phone OTP
+         * @description Verifies OTP sent to phone number
+         */
+        post: operations["verifyPhoneOtp"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/validate/email": {
         parameters: {
             query?: never;
             header?: never;
@@ -222,414 +690,6 @@ export interface paths {
          * @description Validates and normalizes a name string
          */
         post: operations["validateName"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/verify/phone": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Verify phone OTP
-         * @description Verifies OTP sent to phone number
-         */
-        post: operations["verifyPhoneOtp"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/dedupe/customer": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Deduplicate customer
-         * @description Searches for existing customers using deterministic and fuzzy matching
-         */
-        post: operations["dedupeCustomer"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/dedupe/address": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Deduplicate address
-         * @description Searches for existing addresses using deterministic and fuzzy matching
-         */
-        post: operations["dedupeAddress"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/dedupe/merge": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Merge deduplicated records
-         * @description Merges multiple customer or address records into a canonical one
-         */
-        post: operations["mergeDeduplicated"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/orders/evaluate": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Evaluate order for risk and rules
-         * @description Evaluates an order for deduplication, validation, and applies business rules
-         */
-        post: operations["evaluateOrder"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/data/logs": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get event logs
-         * @description Retrieves event logs for the project with optional filters
-         */
-        get: operations["getLogs"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/data/usage": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get usage statistics
-         * @description Retrieves usage statistics for the project
-         */
-        get: operations["getUsage"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/settings": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get tenant settings
-         * @description Retrieves tenant settings including country defaults, formatting, and risk thresholds
-         */
-        get: operations["getSettings"];
-        /**
-         * Update tenant settings
-         * @description Updates tenant settings including country defaults, formatting, and risk thresholds
-         */
-        put: operations["updateSettings"];
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/data/erase": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Erase user data
-         * @description Initiates data erasure for GDPR/CCPA compliance
-         */
-        post: operations["eraseData"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/logs/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        /**
-         * Delete log entry
-         * @description Deletes a specific log entry
-         */
-        delete: operations["deleteLog"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/rules": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get available rules
-         * @description Returns a list of all available validation and risk assessment rules
-         */
-        get: operations["getRules"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/rules/catalog": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get reason code catalog
-         * @description Returns a comprehensive list of all possible reason codes
-         */
-        get: operations["getReasonCodeCatalog"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/rules/error-codes": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get error code catalog
-         * @description Returns a comprehensive list of all possible error codes
-         */
-        get: operations["getErrorCodeCatalog"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/rules/register": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Register custom rules
-         * @description Registers custom business rules for the project
-         */
-        post: operations["registerCustomRules"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/rules/test": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Test Rules Against Payload
-         * @description Performs a dry-run evaluation of a payload against all enabled validation rules.
-         */
-        post: operations["testRules"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/webhooks": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * List webhooks
-         * @description Retrieves webhooks for the authenticated project
-         */
-        get: operations["listWebhooks"];
-        put?: never;
-        /**
-         * Create webhook
-         * @description Creates a new webhook subscription for the authenticated project
-         */
-        post: operations["createWebhook"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/webhooks/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        /**
-         * Delete webhook
-         * @description Deletes a webhook subscription
-         */
-        delete: operations["deleteWebhook"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/webhooks/test": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Test webhook
-         * @description Sends a sample payload to the provided webhook URL
-         */
-        post: operations["testWebhook"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/batch/validate": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Batch validate data
-         * @description Performs batch validation of emails, phones, addresses, or tax IDs asynchronously
-         */
-        post: operations["batchValidate"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/batch/dedupe": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Batch deduplicate data
-         * @description Performs batch deduplication of customers or addresses asynchronously
-         */
-        post: operations["batchDedupe"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1149,7 +1209,50 @@ export interface operations {
             };
         };
     };
-    normalizeAddress: {
+    listWebhooks: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description List of webhooks */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: {
+                            id?: string;
+                            /** Format: uri */
+                            url?: string;
+                            events?: string[];
+                            /** @enum {string} */
+                            status?: "active" | "inactive" | "deleted";
+                            /** Format: date-time */
+                            created_at?: string;
+                            /** Format: date-time */
+                            last_fired_at?: string | null;
+                        }[];
+                        request_id?: string;
+                    };
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    createWebhook: {
         parameters: {
             query?: never;
             header?: never;
@@ -1159,38 +1262,143 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": {
-                    address: {
-                        line1: string;
-                        line2?: string;
-                        city: string;
-                        state?: string;
-                        postal_code: string;
-                        country: string;
-                    };
+                    /**
+                     * Format: uri
+                     * @description The webhook URL to send events to
+                     */
+                    url: string;
+                    /** @description Events to subscribe to */
+                    events: string[];
                 };
             };
         };
         responses: {
-            /** @description Successful normalization response */
+            /** @description Webhook created successfully */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        id?: string;
+                        /** Format: uri */
+                        url?: string;
+                        events?: string[];
+                        secret?: string;
+                        status?: string;
+                        /** Format: date-time */
+                        created_at?: string;
+                        request_id?: string;
+                    };
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    deleteWebhook: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description ID of the webhook to delete */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Webhook deleted successfully */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
                     "application/json": {
-                        normalized?: {
-                            line1?: string;
-                            line2?: string;
-                            city?: string;
-                            state?: string;
-                            postal_code?: string;
-                            country?: string;
+                        id?: string;
+                        status?: string;
+                        request_id?: string;
+                    };
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Webhook not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    testWebhook: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /**
+                     * Format: uri
+                     * @description The webhook URL to send the payload to
+                     */
+                    url: string;
+                    /**
+                     * @description Type of sample payload to send
+                     * @default validation
+                     * @enum {string}
+                     */
+                    payload_type: "validation" | "order" | "custom";
+                    /** @description Custom payload if payload_type is "custom" */
+                    custom_payload?: {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+        responses: {
+            /** @description Webhook test result */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        sent_to?: string;
+                        payload?: {
+                            [key: string]: unknown;
+                        };
+                        response?: {
+                            status?: number;
+                            status_text?: string;
+                            headers?: Record<string, never>;
+                            body?: string;
                         };
                         request_id?: string;
                     };
                 };
             };
-            /** @description Validation error */
+            /** @description Invalid URL or payload */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -1208,8 +1416,8 @@ export interface operations {
                     "application/json": components["schemas"]["Error"];
                 };
             };
-            /** @description Rate limit exceeded */
-            429: {
+            /** @description Failed to send request */
+            500: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -1219,7 +1427,142 @@ export interface operations {
             };
         };
     };
-    validateEmail: {
+    getAvailableRules: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description List of available rules */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        rules?: {
+                            /** @description Rule identifier */
+                            id?: string;
+                            /** @description Human-readable rule name */
+                            name?: string;
+                            /** @description Rule description */
+                            description?: string;
+                            /** @description Rule category */
+                            category?: string;
+                            /**
+                             * @description Rule severity level
+                             * @enum {string}
+                             */
+                            severity?: "low" | "medium" | "high" | "critical";
+                            /** @description Whether the rule is enabled */
+                            enabled?: boolean;
+                            /** @description Rule configuration options */
+                            config?: {
+                                [key: string]: unknown;
+                            };
+                        }[];
+                        request_id?: string;
+                    };
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    getErrorCodeCatalog: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Error code catalog */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error_codes?: {
+                            /** @description Error code */
+                            code?: string;
+                            /** @description Error description */
+                            description?: string;
+                            /** @description Error category */
+                            category?: string;
+                        }[];
+                        request_id?: string;
+                    };
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    getReasonCodeCatalog: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Reason code catalog */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        reason_codes?: {
+                            /** @description Reason code */
+                            code?: string;
+                            /** @description Reason description */
+                            description?: string;
+                            /** @description Reason category */
+                            category?: string;
+                            /**
+                             * @description Reason severity
+                             * @enum {string}
+                             */
+                            severity?: "info" | "warning" | "error";
+                        }[];
+                        request_id?: string;
+                    };
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    testRulesAgainstPayload: {
         parameters: {
             query?: never;
             header?: never;
@@ -1229,36 +1572,41 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": {
-                    /** @description The email address to validate */
-                    email: string;
+                    /** @description Sample payload to test rules against */
+                    payload: {
+                        [key: string]: unknown;
+                    };
+                    /** @description Optional list of specific rule IDs to test */
+                    rule_ids?: string[];
                 };
             };
         };
         responses: {
-            /** @description Email validation result */
+            /** @description Rule test results */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
                     "application/json": {
-                        /** @description Whether the email is valid */
-                        valid?: boolean;
-                        /** @description Normalized email address */
-                        normalized?: string;
-                        /** @description Whether the email is from a disposable service */
-                        disposable?: boolean;
-                        /** @description Whether MX records were found */
-                        mx_found?: boolean;
-                        /** @description List of validation reason codes */
-                        reason_codes?: string[];
+                        triggered_rules?: {
+                            /** @description ID of triggered rule */
+                            rule_id?: string;
+                            /** @description Name of triggered rule */
+                            rule_name?: string;
+                            /**
+                             * @description Rule severity
+                             * @enum {string}
+                             */
+                            severity?: "low" | "medium" | "high" | "critical";
+                            /** @description Reason codes generated */
+                            reason_codes?: string[];
+                        }[];
                         request_id?: string;
-                        /** @description Cache TTL in seconds */
-                        ttl_seconds?: number;
                     };
                 };
             };
-            /** @description Validation error */
+            /** @description Invalid payload */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -1267,56 +1615,8 @@ export interface operations {
                     "application/json": components["schemas"]["Error"];
                 };
             };
-        };
-    };
-    validatePhone: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": {
-                    /** @description The phone number to validate */
-                    phone: string;
-                    /** @description Optional two-letter country code hint */
-                    country?: string;
-                    /**
-                     * @description Request OTP for verification
-                     * @default false
-                     */
-                    request_otp?: boolean;
-                };
-            };
-        };
-        responses: {
-            /** @description Phone validation result */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        /** @description Whether the phone number is valid */
-                        valid?: boolean;
-                        /** @description Phone number in E.164 format */
-                        e164?: string;
-                        /** @description Country code */
-                        country?: string | null;
-                        /** @description List of validation reason codes */
-                        reason_codes?: string[];
-                        request_id?: string;
-                        /** @description Cache TTL in seconds */
-                        ttl_seconds?: number;
-                        /** @description Twilio Verify SID for OTP verification */
-                        verification_sid?: string | null;
-                    };
-                };
-            };
-            /** @description Validation error */
-            400: {
+            /** @description Unauthorized */
+            401: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -1326,7 +1626,7 @@ export interface operations {
             };
         };
     };
-    validateAddress: {
+    registerCustomRules: {
         parameters: {
             query?: never;
             header?: never;
@@ -1336,299 +1636,50 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": {
-                    address: {
-                        /** @description Street address line 1 */
-                        line1: string;
-                        /** @description Street address line 2 */
-                        line2?: string;
-                        /** @description City */
-                        city: string;
-                        /** @description State or province */
-                        state?: string;
-                        /** @description Postal code */
-                        postal_code: string;
-                        /** @description Two-letter country code */
-                        country: string;
-                    };
-                };
-            };
-        };
-        responses: {
-            /** @description Address validation result */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        /** @description Whether the address is valid */
-                        valid?: boolean;
-                        normalized?: components["schemas"]["Address"];
-                        geo?: {
-                            /** @description Latitude */
-                            lat?: number;
-                            /** @description Longitude */
-                            lng?: number;
-                            /** @description Geocoding confidence score */
-                            confidence?: number;
-                        } | null;
-                        /** @description Whether the address is a P.O. Box */
-                        po_box?: boolean;
-                        /** @description Whether postal code matches city */
-                        postal_city_match?: boolean;
-                        /** @description List of validation reason codes */
-                        reason_codes?: string[];
-                        request_id?: string;
-                        /** @description Cache TTL in seconds */
-                        ttl_seconds?: number;
-                    };
-                };
-            };
-            /** @description Validation error */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-        };
-    };
-    validateTaxId: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": {
-                    /** @description Type of tax ID (e.g., "vat", "euvat", "br_cnpj") */
-                    type: string;
-                    /** @description The tax ID number */
-                    value: string;
-                    /** @description Optional two-letter country code */
-                    country?: string;
-                };
-            };
-        };
-        responses: {
-            /** @description Tax ID validation result */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        /** @description Whether the tax ID is valid */
-                        valid?: boolean;
-                        /** @description Normalized tax ID */
-                        normalized?: string;
-                        /** @description List of validation reason codes */
-                        reason_codes?: string[];
-                        request_id?: string;
-                    };
-                };
-            };
-            /** @description Validation error */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-        };
-    };
-    validateName: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": {
-                    /** @description The name to validate and normalize */
-                    name: string;
-                };
-            };
-        };
-        responses: {
-            /** @description Name validation result */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        /** @description Whether the name is valid */
-                        valid?: boolean;
-                        /** @description Normalized name */
-                        normalized?: string;
-                        /** @description List of validation reason codes */
-                        reason_codes?: string[];
-                        request_id?: string;
-                    };
-                };
-            };
-            /** @description Validation error */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-        };
-    };
-    verifyPhoneOtp: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": {
-                    /** @description Twilio Verify SID from validation response */
-                    verification_sid: string;
-                    /** @description OTP code entered by user */
-                    code: string;
-                };
-            };
-        };
-        responses: {
-            /** @description OTP verification result */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        /** @description Whether OTP is valid */
-                        valid?: boolean;
-                        /** @description List of reason codes */
-                        reason_codes?: string[];
-                        request_id?: string;
-                    };
-                };
-            };
-            /** @description Invalid OTP */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-        };
-    };
-    dedupeCustomer: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": {
-                    /** @description Customer email */
-                    email: string;
-                    /** @description Customer phone */
-                    phone?: string;
-                    /** @description Customer first name */
-                    first_name: string;
-                    /** @description Customer last name */
-                    last_name: string;
-                };
-            };
-        };
-        responses: {
-            /** @description Deduplication results */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        matches?: components["schemas"]["CustomerMatch"][];
+                    /** @description Array of custom rules to register */
+                    rules: {
+                        /** @description Custom rule name */
+                        name: string;
+                        /** @description Rule description */
+                        description?: string;
+                        /** @description Rule logic expression */
+                        logic: string;
                         /**
-                         * @description Suggested action
+                         * @description Rule severity
+                         * @default medium
                          * @enum {string}
                          */
-                        suggested_action?: "create_new" | "merge_with" | "review";
-                        /** @description Suggested canonical ID */
-                        canonical_id?: string | null;
-                        request_id?: string;
-                    };
-                };
-            };
-            /** @description Validation error */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-        };
-    };
-    dedupeAddress: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": {
-                    /** @description Street address line 1 */
-                    line1: string;
-                    /** @description Street address line 2 */
-                    line2?: string;
-                    /** @description City */
-                    city: string;
-                    /** @description State or province */
-                    state?: string;
-                    /** @description Postal code */
-                    postal_code: string;
-                    /** @description Two-letter country code */
-                    country: string;
-                };
-            };
-        };
-        responses: {
-            /** @description Deduplication results */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        matches?: components["schemas"]["AddressMatch"][];
+                        severity?: "low" | "medium" | "high" | "critical";
                         /**
-                         * @description Suggested action
-                         * @enum {string}
+                         * @description Whether the rule is enabled
+                         * @default true
                          */
-                        suggested_action?: "create_new" | "merge_with" | "review";
-                        /** @description Suggested canonical ID */
-                        canonical_id?: string | null;
+                        enabled?: boolean;
+                    }[];
+                };
+            };
+        };
+        responses: {
+            /** @description Custom rules registered successfully */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        registered_rules?: {
+                            /** @description Registered rule ID */
+                            id?: string;
+                            /** @description Rule name */
+                            name?: string;
+                            /** @description Registration status */
+                            status?: string;
+                        }[];
                         request_id?: string;
                     };
                 };
             };
-            /** @description Validation error */
+            /** @description Invalid rule definitions */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -1637,119 +1688,8 @@ export interface operations {
                     "application/json": components["schemas"]["Error"];
                 };
             };
-        };
-    };
-    mergeDeduplicated: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": {
-                    /**
-                     * @description Type of records to merge
-                     * @enum {string}
-                     */
-                    type: "customer" | "address";
-                    /** @description IDs to merge */
-                    ids: string[];
-                    /** @description ID of canonical record to keep */
-                    canonical_id: string;
-                };
-            };
-        };
-        responses: {
-            /** @description Merge result */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        /** @description Whether merge was successful */
-                        success?: boolean;
-                        /** @description Number of records merged */
-                        merged_count?: number;
-                        /** @description ID of canonical record */
-                        canonical_id?: string;
-                        request_id?: string;
-                    };
-                };
-            };
-            /** @description Validation error */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-        };
-    };
-    evaluateOrder: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": {
-                    /** @description Unique order identifier */
-                    order_id: string;
-                    customer: components["schemas"]["Customer"];
-                    shipping_address: components["schemas"]["Address"];
-                    /** @description Order total amount */
-                    total_amount: number;
-                    /** @description Currency code (e.g., USD, EUR) */
-                    currency: string;
-                    /**
-                     * @description Payment method
-                     * @enum {string}
-                     */
-                    payment_method?: "card" | "cod" | "bank_transfer";
-                };
-            };
-        };
-        responses: {
-            /** @description Order evaluation results */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        /** @description Order ID */
-                        order_id?: string;
-                        /** @description Risk score (0-100) */
-                        risk_score?: number;
-                        /**
-                         * @description Recommended action
-                         * @enum {string}
-                         */
-                        action?: "approve" | "hold" | "block";
-                        /** @description Order tags */
-                        tags?: string[];
-                        /** @description List of reason codes */
-                        reason_codes?: string[];
-                        customer_dedupe?: components["schemas"]["DedupeResult"];
-                        address_dedupe?: components["schemas"]["DedupeResult"];
-                        validations?: {
-                            email?: components["schemas"]["ValidationResult"];
-                            phone?: components["schemas"]["ValidationResult"];
-                            address?: components["schemas"]["AddressValidationResult"];
-                        };
-                        request_id?: string;
-                    };
-                };
-            };
-            /** @description Validation error */
-            400: {
+            /** @description Unauthorized */
+            401: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -2012,6 +1952,100 @@ export interface operations {
             };
         };
     };
+    createCheckoutSession: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Checkout session created */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uri */
+                        session_url?: string;
+                        session_id?: string;
+                        request_id?: string;
+                    };
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    createCustomerPortalSession: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Portal session created */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uri */
+                        portal_url?: string;
+                        request_id?: string;
+                    };
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No billing account found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Rate limit exceeded */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
     deleteLog: {
         parameters: {
             query?: never;
@@ -2058,103 +2092,7 @@ export interface operations {
             };
         };
     };
-    getRules: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description List of rules */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        rules?: components["schemas"]["Rule"][];
-                        request_id?: string;
-                    };
-                };
-            };
-            /** @description Unauthorized */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-        };
-    };
-    getReasonCodeCatalog: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description List of reason codes */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        reason_codes?: components["schemas"]["ReasonCode"][];
-                        request_id?: string;
-                    };
-                };
-            };
-            /** @description Unauthorized */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-        };
-    };
-    getErrorCodeCatalog: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description List of error codes */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        error_codes?: components["schemas"]["ErrorCode"][];
-                        request_id?: string;
-                    };
-                };
-            };
-            /** @description Unauthorized */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-        };
-    };
-    registerCustomRules: {
+    normalizeAddress: {
         parameters: {
             query?: never;
             header?: never;
@@ -2164,222 +2102,51 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": {
-                    rules?: components["schemas"]["CustomRule"][];
-                };
-            };
-        };
-        responses: {
-            /** @description Rules registered successfully */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        /** @description Success message */
-                        message?: string;
-                        /** @description List of registered rule IDs */
-                        registered_rules?: string[];
-                        request_id?: string;
-                    };
-                };
-            };
-            /** @description Unauthorized */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-        };
-    };
-    testRules: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": {
-                    email?: string;
-                    phone?: string;
-                    address?: {
-                        line1?: string;
+                    address: {
+                        line1: string;
                         line2?: string;
-                        city?: string;
+                        city: string;
                         state?: string;
-                        postal_code?: string;
-                        country?: string;
+                        postal_code: string;
+                        country: string;
                     };
-                    name?: string;
                 };
             };
         };
         responses: {
-            /** @description Rules test results */
+            /** @description Successful normalization response */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
                     "application/json": {
-                        results?: {
-                            email?: {
-                                valid?: boolean;
-                                reason_codes?: string[];
-                                normalized?: string;
-                                disposable?: boolean;
-                            };
-                            phone?: {
-                                valid?: boolean;
-                                reason_codes?: string[];
-                                e164?: string;
-                                country?: string;
-                            };
-                            address?: {
-                                valid?: boolean;
-                                reason_codes?: string[];
-                                normalized?: Record<string, never>;
-                                po_box?: boolean;
-                            };
-                            name?: {
-                                valid?: boolean;
-                                reason_codes?: string[];
-                                normalized?: string;
-                            };
+                        normalized?: {
+                            line1?: string;
+                            line2?: string;
+                            city?: string;
+                            state?: string;
+                            postal_code?: string;
+                            country?: string;
                         };
                         request_id?: string;
                     };
                 };
             };
-        };
-    };
-    listWebhooks: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description List of webhooks */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        data?: components["schemas"]["Webhook"][];
-                        request_id?: string;
-                    };
-                };
-            };
-            /** @description Unauthorized */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-        };
-    };
-    createWebhook: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": {
-                    /**
-                     * Format: uri
-                     * @description The webhook URL to send events to
-                     */
-                    url: string;
-                    /** @description Events to subscribe to */
-                    events: ("validation_result" | "order_evaluated" | "dedupe_completed" | "job_completed")[];
-                };
-            };
-        };
-        responses: {
-            /** @description Webhook created successfully */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        /** @description Webhook ID */
-                        id?: string;
-                        /** @description Webhook URL */
-                        url?: string;
-                        /** @description Subscribed events */
-                        events?: string[];
-                        /** @description Webhook secret for signature verification */
-                        secret?: string;
-                        /** @description Webhook status */
-                        status?: string;
-                        /**
-                         * Format: date-time
-                         * @description Creation timestamp
-                         */
-                        created_at?: string;
-                        request_id?: string;
-                    };
-                };
-            };
-            /** @description Invalid input data */
+            /** @description Validation error */
             400: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Unauthorized */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-        };
-    };
-    deleteWebhook: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description ID of the webhook to delete */
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Webhook deleted successfully */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
                     "application/json": {
-                        /** @description Webhook ID */
-                        id?: string;
-                        /** @description Webhook status (deleted) */
-                        status?: string;
+                        error?: {
+                            /** @description Error code */
+                            code?: string;
+                            /** @description Error message */
+                            message?: string;
+                        };
+                        /** @description Request identifier */
                         request_id?: string;
                     };
                 };
@@ -2390,89 +2157,34 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Error"];
+                    "application/json": {
+                        error?: {
+                            /** @description Error code */
+                            code?: string;
+                            /** @description Error message */
+                            message?: string;
+                        };
+                        /** @description Request identifier */
+                        request_id?: string;
+                    };
                 };
             };
-            /** @description Webhook not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-        };
-    };
-    testWebhook: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": {
-                    /**
-                     * Format: uri
-                     * @description The webhook URL to send the payload to
-                     */
-                    url: string;
-                    /**
-                     * @description Type of sample payload to send
-                     * @enum {string}
-                     */
-                    payload_type: "validation" | "order" | "custom";
-                    /** @description Custom payload if payload_type is "custom" */
-                    custom_payload?: Record<string, never>;
-                };
-            };
-        };
-        responses: {
-            /** @description Webhook test result */
-            200: {
+            /** @description Rate limit exceeded */
+            429: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
                     "application/json": {
-                        /** @description URL sent to */
-                        sent_to?: string;
-                        /** @description Payload sent */
-                        payload?: {
-                            [key: string]: unknown;
+                        error?: {
+                            /** @description Error code */
+                            code?: string;
+                            /** @description Error message */
+                            message?: string;
                         };
-                        response?: {
-                            /** @description HTTP status code */
-                            status?: number;
-                            /** @description HTTP status text */
-                            status_text?: string;
-                            /** @description Response headers */
-                            headers?: Record<string, never>;
-                            /** @description Response body */
-                            body?: string;
-                        };
+                        /** @description Request identifier */
                         request_id?: string;
                     };
-                };
-            };
-            /** @description Invalid URL or payload */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Failed to send request */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
                 };
             };
         };
@@ -2523,7 +2235,16 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Error"];
+                    "application/json": {
+                        error?: {
+                            /** @description Error code */
+                            code?: string;
+                            /** @description Error message */
+                            message?: string;
+                        };
+                        /** @description Request identifier */
+                        request_id?: string;
+                    };
                 };
             };
             /** @description Unauthorized */
@@ -2532,7 +2253,16 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Error"];
+                    "application/json": {
+                        error?: {
+                            /** @description Error code */
+                            code?: string;
+                            /** @description Error message */
+                            message?: string;
+                        };
+                        /** @description Request identifier */
+                        request_id?: string;
+                    };
                 };
             };
         };
@@ -2583,7 +2313,16 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Error"];
+                    "application/json": {
+                        error?: {
+                            /** @description Error code */
+                            code?: string;
+                            /** @description Error message */
+                            message?: string;
+                        };
+                        /** @description Request identifier */
+                        request_id?: string;
+                    };
                 };
             };
             /** @description Unauthorized */
@@ -2592,7 +2331,850 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Error"];
+                    "application/json": {
+                        error?: {
+                            /** @description Error code */
+                            code?: string;
+                            /** @description Error message */
+                            message?: string;
+                        };
+                        /** @description Request identifier */
+                        request_id?: string;
+                    };
+                };
+            };
+        };
+    };
+    dedupeCustomer: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Customer email */
+                    email: string;
+                    /** @description Customer phone */
+                    phone?: string;
+                    /** @description Customer first name */
+                    first_name: string;
+                    /** @description Customer last name */
+                    last_name: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Deduplication results */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        matches?: {
+                            /** @description Customer ID */
+                            id?: string;
+                            /** @description Similarity score (0-1) */
+                            similarity_score?: number;
+                            /**
+                             * @description Type of match
+                             * @enum {string}
+                             */
+                            match_type?: "exact_email" | "exact_phone" | "fuzzy_name";
+                            data?: {
+                                /** @description Customer email */
+                                email?: string;
+                                /** @description Customer phone */
+                                phone?: string;
+                                /** @description Customer first name */
+                                first_name?: string;
+                                /** @description Customer last name */
+                                last_name?: string;
+                            };
+                        }[];
+                        /**
+                         * @description Suggested action
+                         * @enum {string}
+                         */
+                        suggested_action?: "create_new" | "merge_with" | "review";
+                        /** @description Suggested canonical ID */
+                        canonical_id?: string | null;
+                        request_id?: string;
+                    };
+                };
+            };
+            /** @description Validation error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error?: {
+                            /** @description Error code */
+                            code?: string;
+                            /** @description Error message */
+                            message?: string;
+                        };
+                        /** @description Request identifier */
+                        request_id?: string;
+                    };
+                };
+            };
+        };
+    };
+    dedupeAddress: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Street address line 1 */
+                    line1: string;
+                    /** @description Street address line 2 */
+                    line2?: string;
+                    /** @description City */
+                    city: string;
+                    /** @description State or province */
+                    state?: string;
+                    /** @description Postal code */
+                    postal_code: string;
+                    /** @description Two-letter country code */
+                    country: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Deduplication results */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        matches?: {
+                            /** @description Address ID */
+                            id?: string;
+                            /** @description Similarity score (0-1) */
+                            similarity_score?: number;
+                            /**
+                             * @description Type of match
+                             * @enum {string}
+                             */
+                            match_type?: "exact_address" | "exact_postal" | "fuzzy_address";
+                            data?: {
+                                /** @description Street address line 1 */
+                                line1?: string;
+                                /** @description Street address line 2 */
+                                line2?: string;
+                                /** @description City */
+                                city?: string;
+                                /** @description State or province */
+                                state?: string;
+                                /** @description Postal code */
+                                postal_code?: string;
+                                /** @description Two-letter country code */
+                                country?: string;
+                                /** @description Latitude */
+                                lat?: number | null;
+                                /** @description Longitude */
+                                lng?: number | null;
+                            };
+                        }[];
+                        /**
+                         * @description Suggested action
+                         * @enum {string}
+                         */
+                        suggested_action?: "create_new" | "merge_with" | "review";
+                        /** @description Suggested canonical ID */
+                        canonical_id?: string | null;
+                        request_id?: string;
+                    };
+                };
+            };
+            /** @description Validation error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error?: {
+                            /** @description Error code */
+                            code?: string;
+                            /** @description Error message */
+                            message?: string;
+                        };
+                        /** @description Request identifier */
+                        request_id?: string;
+                    };
+                };
+            };
+        };
+    };
+    mergeDeduplicated: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /**
+                     * @description Type of records to merge
+                     * @enum {string}
+                     */
+                    type: "customer" | "address";
+                    /** @description IDs to merge */
+                    ids: string[];
+                    /** @description ID of canonical record to keep */
+                    canonical_id: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Merge result */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Whether merge was successful */
+                        success?: boolean;
+                        /** @description Number of records merged */
+                        merged_count?: number;
+                        /** @description ID of canonical record */
+                        canonical_id?: string;
+                        request_id?: string;
+                    };
+                };
+            };
+            /** @description Validation error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error?: {
+                            /** @description Error code */
+                            code?: string;
+                            /** @description Error message */
+                            message?: string;
+                        };
+                        /** @description Request identifier */
+                        request_id?: string;
+                    };
+                };
+            };
+        };
+    };
+    getJobStatusById: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Job ID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Job status information */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Job ID */
+                        id?: string;
+                        /**
+                         * @description Current job status
+                         * @enum {string}
+                         */
+                        status?: "pending" | "running" | "completed" | "failed";
+                        /** @description Job completion percentage */
+                        progress?: number;
+                        /** @description Job result data */
+                        result?: {
+                            [key: string]: unknown;
+                        } | null;
+                        /** @description Error message if job failed */
+                        error?: string | null;
+                        /**
+                         * Format: date-time
+                         * @description Job creation timestamp
+                         */
+                        created_at?: string;
+                        /**
+                         * Format: date-time
+                         * @description Last update timestamp
+                         */
+                        updated_at?: string;
+                        request_id?: string;
+                    };
+                };
+            };
+            /** @description Job not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error?: {
+                            /** @description Error code */
+                            code?: string;
+                            /** @description Error message */
+                            message?: string;
+                        };
+                        /** @description Request identifier */
+                        request_id?: string;
+                    };
+                };
+            };
+        };
+    };
+    evaluateOrder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Unique order identifier */
+                    order_id: string;
+                    customer: {
+                        /** @description Customer email */
+                        email?: string;
+                        /** @description Customer phone */
+                        phone?: string;
+                        /** @description Customer first name */
+                        first_name?: string;
+                        /** @description Customer last name */
+                        last_name?: string;
+                    };
+                    shipping_address: {
+                        /** @description Street address line 1 */
+                        line1?: string;
+                        /** @description Street address line 2 */
+                        line2?: string;
+                        /** @description City */
+                        city?: string;
+                        /** @description State or province */
+                        state?: string;
+                        /** @description Postal code */
+                        postal_code?: string;
+                        /** @description Two-letter country code */
+                        country?: string;
+                        /** @description Latitude */
+                        lat?: number | null;
+                        /** @description Longitude */
+                        lng?: number | null;
+                    };
+                    /** @description Order total amount */
+                    total_amount: number;
+                    /** @description Currency code (e.g., USD, EUR) */
+                    currency: string;
+                    /**
+                     * @description Payment method
+                     * @enum {string}
+                     */
+                    payment_method?: "card" | "cod" | "bank_transfer";
+                };
+            };
+        };
+        responses: {
+            /** @description Order evaluation results */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Order ID */
+                        order_id?: string;
+                        /** @description Risk score (0-100) */
+                        risk_score?: number;
+                        /**
+                         * @description Recommended action
+                         * @enum {string}
+                         */
+                        action?: "approve" | "hold" | "block";
+                        /** @description Order tags */
+                        tags?: string[];
+                        /** @description List of reason codes */
+                        reason_codes?: string[];
+                        customer_dedupe?: {
+                            matches?: {
+                                id?: string;
+                                similarity_score?: number;
+                                match_type?: string;
+                                data?: Record<string, never>;
+                            }[];
+                            /** @enum {string} */
+                            suggested_action?: "create_new" | "merge_with" | "review";
+                            canonical_id?: string | null;
+                        };
+                        address_dedupe?: {
+                            matches?: {
+                                id?: string;
+                                similarity_score?: number;
+                                match_type?: string;
+                                data?: Record<string, never>;
+                            }[];
+                            /** @enum {string} */
+                            suggested_action?: "create_new" | "merge_with" | "review";
+                            canonical_id?: string | null;
+                        };
+                        validations?: {
+                            email?: {
+                                /** @description Whether the validation passed */
+                                valid?: boolean;
+                                /** @description List of reason codes */
+                                reason_codes?: string[];
+                                /** @description Whether the result is disposable (for email) */
+                                disposable?: boolean;
+                            };
+                            phone?: {
+                                /** @description Whether the validation passed */
+                                valid?: boolean;
+                                /** @description List of reason codes */
+                                reason_codes?: string[];
+                                /** @description Whether the result is disposable (for email) */
+                                disposable?: boolean;
+                            };
+                            address?: {
+                                /** @description Whether the address is valid */
+                                valid?: boolean;
+                                /** @description List of reason codes */
+                                reason_codes?: string[];
+                                /** @description Whether the address is a P.O. Box */
+                                po_box?: boolean;
+                                /** @description Whether postal code matches city */
+                                postal_city_match?: boolean;
+                                /** @description Whether the address is within bounds */
+                                in_bounds?: boolean;
+                            };
+                        };
+                        request_id?: string;
+                    };
+                };
+            };
+            /** @description Validation error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error?: {
+                            /** @description Error code */
+                            code?: string;
+                            /** @description Error message */
+                            message?: string;
+                        };
+                        /** @description Request identifier */
+                        request_id?: string;
+                    };
+                };
+            };
+        };
+    };
+    verifyPhoneOtp: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Twilio Verify SID from validation response */
+                    verification_sid: string;
+                    /** @description OTP code entered by user */
+                    code: string;
+                };
+            };
+        };
+        responses: {
+            /** @description OTP verification result */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Whether OTP is valid */
+                        valid?: boolean;
+                        /** @description List of reason codes */
+                        reason_codes?: string[];
+                        request_id?: string;
+                    };
+                };
+            };
+            /** @description Invalid OTP */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error?: {
+                            /** @description Error code */
+                            code?: string;
+                            /** @description Error message */
+                            message?: string;
+                        };
+                        /** @description Request identifier */
+                        request_id?: string;
+                    };
+                };
+            };
+        };
+    };
+    validateEmail: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description The email address to validate */
+                    email: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Email validation result */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Whether the email is valid */
+                        valid?: boolean;
+                        /** @description Normalized email address */
+                        normalized?: string;
+                        /** @description Whether the email is from a disposable service */
+                        disposable?: boolean;
+                        /** @description Whether MX records were found */
+                        mx_found?: boolean;
+                        /** @description List of validation reason codes */
+                        reason_codes?: string[];
+                        request_id?: string;
+                        /** @description Cache TTL in seconds */
+                        ttl_seconds?: number;
+                    };
+                };
+            };
+            /** @description Validation error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error?: {
+                            /** @description Error code */
+                            code?: string;
+                            /** @description Error message */
+                            message?: string;
+                        };
+                        /** @description Request identifier */
+                        request_id?: string;
+                    };
+                };
+            };
+        };
+    };
+    validatePhone: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description The phone number to validate */
+                    phone: string;
+                    /** @description Optional two-letter country code hint */
+                    country?: string;
+                    /**
+                     * @description Request OTP for verification
+                     * @default false
+                     */
+                    request_otp?: boolean;
+                };
+            };
+        };
+        responses: {
+            /** @description Phone validation result */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Whether the phone number is valid */
+                        valid?: boolean;
+                        /** @description Phone number in E.164 format */
+                        e164?: string;
+                        /** @description Country code */
+                        country?: string | null;
+                        /** @description List of validation reason codes */
+                        reason_codes?: string[];
+                        request_id?: string;
+                        /** @description Cache TTL in seconds */
+                        ttl_seconds?: number;
+                        /** @description Twilio Verify SID for OTP verification */
+                        verification_sid?: string | null;
+                    };
+                };
+            };
+            /** @description Validation error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error?: {
+                            /** @description Error code */
+                            code?: string;
+                            /** @description Error message */
+                            message?: string;
+                        };
+                        /** @description Request identifier */
+                        request_id?: string;
+                    };
+                };
+            };
+        };
+    };
+    validateAddress: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    address: {
+                        /** @description Street address line 1 */
+                        line1: string;
+                        /** @description Street address line 2 */
+                        line2?: string;
+                        /** @description City */
+                        city: string;
+                        /** @description State or province */
+                        state?: string;
+                        /** @description Postal code */
+                        postal_code: string;
+                        /** @description Two-letter country code */
+                        country: string;
+                    };
+                };
+            };
+        };
+        responses: {
+            /** @description Address validation result */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Whether the address is valid */
+                        valid?: boolean;
+                        normalized?: {
+                            /** @description Street address line 1 */
+                            line1?: string;
+                            /** @description Street address line 2 */
+                            line2?: string;
+                            /** @description City */
+                            city?: string;
+                            /** @description State or province */
+                            state?: string;
+                            /** @description Postal code */
+                            postal_code?: string;
+                            /** @description Two-letter country code */
+                            country?: string;
+                            /** @description Latitude */
+                            lat?: number | null;
+                            /** @description Longitude */
+                            lng?: number | null;
+                        };
+                        geo?: {
+                            /** @description Latitude */
+                            lat?: number;
+                            /** @description Longitude */
+                            lng?: number;
+                            /** @description Geocoding confidence score */
+                            confidence?: number;
+                        } | null;
+                        /** @description Whether the address is a P.O. Box */
+                        po_box?: boolean;
+                        /** @description Whether postal code matches city */
+                        postal_city_match?: boolean;
+                        /** @description List of validation reason codes */
+                        reason_codes?: string[];
+                        request_id?: string;
+                        /** @description Cache TTL in seconds */
+                        ttl_seconds?: number;
+                    };
+                };
+            };
+            /** @description Validation error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error?: {
+                            /** @description Error code */
+                            code?: string;
+                            /** @description Error message */
+                            message?: string;
+                        };
+                        /** @description Request identifier */
+                        request_id?: string;
+                    };
+                };
+            };
+        };
+    };
+    validateTaxId: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Type of tax ID (e.g., "vat", "euvat", "br_cnpj") */
+                    type: string;
+                    /** @description The tax ID number */
+                    value: string;
+                    /** @description Optional two-letter country code */
+                    country?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Tax ID validation result */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Whether the tax ID is valid */
+                        valid?: boolean;
+                        /** @description Normalized tax ID */
+                        normalized?: string;
+                        /** @description List of validation reason codes */
+                        reason_codes?: string[];
+                        request_id?: string;
+                    };
+                };
+            };
+            /** @description Validation error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error?: {
+                            /** @description Error code */
+                            code?: string;
+                            /** @description Error message */
+                            message?: string;
+                        };
+                        /** @description Request identifier */
+                        request_id?: string;
+                    };
+                };
+            };
+        };
+    };
+    validateName: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description The name to validate and normalize */
+                    name: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Name validation result */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Whether the name is valid */
+                        valid?: boolean;
+                        /** @description Normalized name */
+                        normalized?: string;
+                        /** @description List of validation reason codes */
+                        reason_codes?: string[];
+                        request_id?: string;
+                    };
+                };
+            };
+            /** @description Validation error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error?: {
+                            /** @description Error code */
+                            code?: string;
+                            /** @description Error message */
+                            message?: string;
+                        };
+                        /** @description Request identifier */
+                        request_id?: string;
+                    };
                 };
             };
         };
@@ -2657,7 +3239,16 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Error"];
+                    "application/json": {
+                        error?: {
+                            /** @description Error code */
+                            code?: string;
+                            /** @description Error message */
+                            message?: string;
+                        };
+                        /** @description Request identifier */
+                        request_id?: string;
+                    };
                 };
             };
             /** @description Job not found */
@@ -2666,7 +3257,16 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Error"];
+                    "application/json": {
+                        error?: {
+                            /** @description Error code */
+                            code?: string;
+                            /** @description Error message */
+                            message?: string;
+                        };
+                        /** @description Request identifier */
+                        request_id?: string;
+                    };
                 };
             };
         };

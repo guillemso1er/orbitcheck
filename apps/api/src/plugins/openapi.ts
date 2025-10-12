@@ -1,12 +1,9 @@
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
-
 import type { FastifyInstance, FastifyRequest } from "fastify";
 import yaml from 'js-yaml';
+import { openapiYaml } from '@orbicheck/contracts';
 
 // Load OpenAPI spec
-const openapiPath = join(process.cwd(), '..', '..', 'packages', 'contracts', 'openapi.yaml');
-const openapiSchema = yaml.load(readFileSync(openapiPath, 'utf8'));
+const openapiSchema = yaml.load(openapiYaml);
 
 /**
  * OpenAPI validation plugin for Fastify

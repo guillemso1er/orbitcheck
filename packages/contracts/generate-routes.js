@@ -3,9 +3,93 @@
 import fs from 'fs';
 import path from 'path';
 import yaml from 'js-yaml';
+import { execSync } from 'child_process';
 
-// Load OpenAPI schema
-const openapiPath = path.join(process.cwd(), 'openapi.yaml');
+// --- Merge OpenAPI specs first ---
+const splitDir = 'specs';
+const files = ['ui-endpoints.yaml', 'management-api.yaml', 'runtime-api.yaml', 'internal.yaml'];
+
+// Define the complete tag objects to ensure all tags are included
+const completeTags = [
+  { name: 'UI Endpoints', description: 'Endpoints used exclusively by the web application UI, such as user authentication.' },
+  { name: 'Management API', description: 'Endpoints for managing your account, data, API keys, and configurations.' },
+  { name: 'Runtime API', description: 'Core operational endpoints for data validation, deduplication, and order processing.' },
+  { name: 'Internal', description: 'Internal endpoints for system administration and maintenance.' }
+];
+
+let mergedSpec = {
+  openapi: '3.0.3',
+  info: {
+    title: 'OrbiCheck API',
+    description: 'API for validation, deduplication, and risk assessment services',
+    version: '1.0.0',
+    contact: {
+      name: 'OrbiCheck Team',
+      email: 'support@orbicheck.com'
+    }
+  },
+  servers: [
+    {
+      url: 'https://api.orbicheck.com/v1',
+      description: 'Production server'
+    },
+    {
+      url: 'https://dev-api.orbicheck.com/v1',
+      description: 'Development server'
+    }
+  ],
+  security: [
+    {
+      BearerAuth: []
+    }
+  ],
+  tags: completeTags,
+  paths: {},
+  components: {}
+};
+let allPaths = {};
+
+files.forEach(file => {
+  const filePath = path.join(splitDir, file);
+  const spec = yaml.load(fs.readFileSync(filePath, 'utf8'));
+
+  // Merge components
+  if (spec.components) {
+    Object.assign(mergedSpec.components, spec.components);
+  }
+
+  // Merge paths, but exclude non-path keys like 'components' that might be at the same level
+  if (spec.paths) {
+    Object.keys(spec.paths).forEach(pathKey => {
+      if (pathKey.startsWith('/')) {
+        allPaths[pathKey] = spec.paths[pathKey];
+      }
+    });
+  }
+});
+
+// Filter out invalid paths
+const validPaths = {};
+Object.entries(allPaths).forEach(([path, methods]) => {
+  if (methods && typeof methods === 'object' && Object.keys(methods).length > 0) {
+    validPaths[path] = methods;
+  }
+});
+mergedSpec.paths = validPaths;
+
+// Ensure dist directory exists
+const distDir = path.join(process.cwd(), 'dist');
+if (!fs.existsSync(distDir)) {
+  fs.mkdirSync(distDir, { recursive: true });
+}
+
+// Write the merged spec to dist/openapi.yaml
+fs.writeFileSync(path.join(distDir, 'openapi.yaml'), yaml.dump(mergedSpec, { indent: 2, noRefs: true }));
+
+console.log('Merged openapi.yaml created successfully.');
+
+// --- Now load the merged OpenAPI schema ---
+const openapiPath = path.join(process.cwd(), 'dist', 'openapi.yaml');
 const openapiDoc = yaml.load(fs.readFileSync(openapiPath, 'utf8'));
 
 // Initialize route objects
@@ -25,6 +109,10 @@ const createConstantName = (summary) => {
 
 // --- Process each path in the OpenAPI document ---
 Object.entries(openapiDoc.paths).forEach(([path, methods]) => {
+  if (!methods || typeof methods !== 'object') {
+    console.warn(`[!] Skipping path "${path}" as it has no valid methods.`);
+    return;
+  }
   Object.entries(methods).forEach(([method, methodConfig]) => {
     const { tags, summary } = methodConfig;
     const constantName = createConstantName(summary || `${method}_${path}`);
@@ -138,3 +226,15 @@ fs.writeFileSync(routesPath, output.trim() + '\n');
 
 console.log('✅ Route constants generated successfully!');
 console.log(`📁 Updated: ${routesPath}`);
+
+// --- Execute generate:types equivalent ---
+console.log('Generating types...');
+execSync('npx openapi-typescript dist/openapi.yaml -o src/openapi-types.ts', { stdio: 'inherit' });
+execSync('pnpm build', { stdio: 'inherit' });
+
+// --- Execute generate:client equivalent ---
+console.log('Generating client...');
+execSync('npx orval', { stdio: 'inherit' });
+execSync('pnpm build', { stdio: 'inherit' });
+
+console.log('All generations completed successfully!');

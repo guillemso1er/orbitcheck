@@ -63,8 +63,8 @@ export async function build(pool: Pool, redis: IORedisType): Promise<FastifyInst
     });
 
     // Load OpenAPI spec from contracts package
-    const openapiPath = path.join(process.cwd(), '..', '..', 'packages', 'contracts', 'openapi.yaml');
-    const openapiSpec = yaml.load(readFileSync(openapiPath, 'utf8'));
+    const { openapiYaml } = await import('@orbicheck/contracts');
+    const openapiSpec = yaml.load(openapiYaml);
 
     // Register OpenAPI/Swagger for automatic API documentation generation
     await app.register(fastifySwagger, {

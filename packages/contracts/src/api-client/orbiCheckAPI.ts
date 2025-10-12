@@ -408,367 +408,268 @@ export type RevokeApiKey200 = {
   request_id?: string;
 };
 
-export type NormalizeAddressBodyAddress = {
-  line1: string;
-  line2?: string;
-  city: string;
-  state?: string;
-  postal_code: string;
-  /**
-   * @minLength 2
-   * @maxLength 2
-   */
-  country: string;
-};
+export type ListWebhooks200DataItemStatus = typeof ListWebhooks200DataItemStatus[keyof typeof ListWebhooks200DataItemStatus];
 
-export type NormalizeAddressBody = {
-  address: NormalizeAddressBodyAddress;
-};
 
-export type NormalizeAddress200Normalized = {
-  line1?: string;
-  line2?: string;
-  city?: string;
-  state?: string;
-  postal_code?: string;
-  country?: string;
-};
+// eslint-disable-next-line @typescript-eslint/no-redeclare
+export const ListWebhooks200DataItemStatus = {
+  active: 'active',
+  inactive: 'inactive',
+  deleted: 'deleted',
+} as const;
 
-export type NormalizeAddress200 = {
-  normalized?: NormalizeAddress200Normalized;
-  request_id?: string;
-};
-
-export type ValidateEmailBody = {
-  /** The email address to validate */
-  email: string;
-};
-
-export type ValidateEmail200 = {
-  /** Whether the email is valid */
-  valid?: boolean;
-  /** Normalized email address */
-  normalized?: string;
-  /** Whether the email is from a disposable service */
-  disposable?: boolean;
-  /** Whether MX records were found */
-  mx_found?: boolean;
-  /** List of validation reason codes */
-  reason_codes?: string[];
-  request_id?: string;
-  /** Cache TTL in seconds */
-  ttl_seconds?: number;
-};
-
-export type ValidatePhoneBody = {
-  /** The phone number to validate */
-  phone: string;
-  /** Optional two-letter country code hint */
-  country?: string;
-  /** Request OTP for verification */
-  request_otp?: boolean;
-};
-
-export type ValidatePhone200 = {
-  /** Whether the phone number is valid */
-  valid?: boolean;
-  /** Phone number in E.164 format */
-  e164?: string;
-  /**
-   * Country code
-   * @nullable
-   */
-  country?: string | null;
-  /** List of validation reason codes */
-  reason_codes?: string[];
-  request_id?: string;
-  /** Cache TTL in seconds */
-  ttl_seconds?: number;
-  /**
-   * Twilio Verify SID for OTP verification
-   * @nullable
-   */
-  verification_sid?: string | null;
-};
-
-export type ValidateAddressBodyAddress = {
-  /** Street address line 1 */
-  line1: string;
-  /** Street address line 2 */
-  line2?: string;
-  /** City */
-  city: string;
-  /** State or province */
-  state?: string;
-  /** Postal code */
-  postal_code: string;
-  /**
-   * Two-letter country code
-   * @minLength 2
-   * @maxLength 2
-   */
-  country: string;
-};
-
-export type ValidateAddressBody = {
-  address: ValidateAddressBodyAddress;
-};
-
-/**
- * @nullable
- */
-export type ValidateAddress200Geo = {
-  /** Latitude */
-  lat?: number;
-  /** Longitude */
-  lng?: number;
-  /** Geocoding confidence score */
-  confidence?: number;
-} | null;
-
-export type ValidateAddress200 = {
-  /** Whether the address is valid */
-  valid?: boolean;
-  normalized?: Address;
+export type ListWebhooks200DataItem = {
+  id?: string;
+  url?: string;
+  events?: string[];
+  status?: ListWebhooks200DataItemStatus;
+  created_at?: string;
   /** @nullable */
-  geo?: ValidateAddress200Geo;
-  /** Whether the address is a P.O. Box */
-  po_box?: boolean;
-  /** Whether postal code matches city */
-  postal_city_match?: boolean;
-  /** List of validation reason codes */
-  reason_codes?: string[];
-  request_id?: string;
-  /** Cache TTL in seconds */
-  ttl_seconds?: number;
+  last_fired_at?: string | null;
 };
 
-export type ValidateTaxIdBody = {
-  /** Type of tax ID (e.g., "vat", "euvat", "br_cnpj") */
-  type: string;
-  /** The tax ID number */
-  value: string;
-  /** Optional two-letter country code */
-  country?: string;
-};
-
-export type ValidateTaxId200 = {
-  /** Whether the tax ID is valid */
-  valid?: boolean;
-  /** Normalized tax ID */
-  normalized?: string;
-  /** List of validation reason codes */
-  reason_codes?: string[];
+export type ListWebhooks200 = {
+  data?: ListWebhooks200DataItem[];
   request_id?: string;
 };
 
-export type ValidateNameBody = {
-  /** The name to validate and normalize */
+export type CreateWebhookBody = {
+  /** The webhook URL to send events to */
+  url: string;
+  /** Events to subscribe to */
+  events: string[];
+};
+
+export type CreateWebhook201 = {
+  id?: string;
+  url?: string;
+  events?: string[];
+  secret?: string;
+  status?: string;
+  created_at?: string;
+  request_id?: string;
+};
+
+export type DeleteWebhook200 = {
+  id?: string;
+  status?: string;
+  request_id?: string;
+};
+
+/**
+ * Type of sample payload to send
+ */
+export type TestWebhookBodyPayloadType = typeof TestWebhookBodyPayloadType[keyof typeof TestWebhookBodyPayloadType];
+
+
+// eslint-disable-next-line @typescript-eslint/no-redeclare
+export const TestWebhookBodyPayloadType = {
+  validation: 'validation',
+  order: 'order',
+  custom: 'custom',
+} as const;
+
+/**
+ * Custom payload if payload_type is "custom"
+ */
+export type TestWebhookBodyCustomPayload = { [key: string]: unknown };
+
+export type TestWebhookBody = {
+  /** The webhook URL to send the payload to */
+  url: string;
+  /** Type of sample payload to send */
+  payload_type: TestWebhookBodyPayloadType;
+  /** Custom payload if payload_type is "custom" */
+  custom_payload?: TestWebhookBodyCustomPayload;
+};
+
+export type TestWebhook200Payload = { [key: string]: unknown };
+
+export type TestWebhook200ResponseHeaders = { [key: string]: unknown };
+
+export type TestWebhook200Response = {
+  status?: number;
+  status_text?: string;
+  headers?: TestWebhook200ResponseHeaders;
+  body?: string;
+};
+
+export type TestWebhook200 = {
+  sent_to?: string;
+  payload?: TestWebhook200Payload;
+  response?: TestWebhook200Response;
+  request_id?: string;
+};
+
+/**
+ * Rule severity level
+ */
+export type GetAvailableRules200RulesItemSeverity = typeof GetAvailableRules200RulesItemSeverity[keyof typeof GetAvailableRules200RulesItemSeverity];
+
+
+// eslint-disable-next-line @typescript-eslint/no-redeclare
+export const GetAvailableRules200RulesItemSeverity = {
+  low: 'low',
+  medium: 'medium',
+  high: 'high',
+  critical: 'critical',
+} as const;
+
+/**
+ * Rule configuration options
+ */
+export type GetAvailableRules200RulesItemConfig = { [key: string]: unknown };
+
+export type GetAvailableRules200RulesItem = {
+  /** Rule identifier */
+  id?: string;
+  /** Human-readable rule name */
+  name?: string;
+  /** Rule description */
+  description?: string;
+  /** Rule category */
+  category?: string;
+  /** Rule severity level */
+  severity?: GetAvailableRules200RulesItemSeverity;
+  /** Whether the rule is enabled */
+  enabled?: boolean;
+  /** Rule configuration options */
+  config?: GetAvailableRules200RulesItemConfig;
+};
+
+export type GetAvailableRules200 = {
+  rules?: GetAvailableRules200RulesItem[];
+  request_id?: string;
+};
+
+export type GetErrorCodeCatalog200ErrorCodesItem = {
+  /** Error code */
+  code?: string;
+  /** Error description */
+  description?: string;
+  /** Error category */
+  category?: string;
+};
+
+export type GetErrorCodeCatalog200 = {
+  error_codes?: GetErrorCodeCatalog200ErrorCodesItem[];
+  request_id?: string;
+};
+
+/**
+ * Reason severity
+ */
+export type GetReasonCodeCatalog200ReasonCodesItemSeverity = typeof GetReasonCodeCatalog200ReasonCodesItemSeverity[keyof typeof GetReasonCodeCatalog200ReasonCodesItemSeverity];
+
+
+// eslint-disable-next-line @typescript-eslint/no-redeclare
+export const GetReasonCodeCatalog200ReasonCodesItemSeverity = {
+  info: 'info',
+  warning: 'warning',
+  error: 'error',
+} as const;
+
+export type GetReasonCodeCatalog200ReasonCodesItem = {
+  /** Reason code */
+  code?: string;
+  /** Reason description */
+  description?: string;
+  /** Reason category */
+  category?: string;
+  /** Reason severity */
+  severity?: GetReasonCodeCatalog200ReasonCodesItemSeverity;
+};
+
+export type GetReasonCodeCatalog200 = {
+  reason_codes?: GetReasonCodeCatalog200ReasonCodesItem[];
+  request_id?: string;
+};
+
+/**
+ * Sample payload to test rules against
+ */
+export type TestRulesAgainstPayloadBodyPayload = { [key: string]: unknown };
+
+export type TestRulesAgainstPayloadBody = {
+  /** Sample payload to test rules against */
+  payload: TestRulesAgainstPayloadBodyPayload;
+  /** Optional list of specific rule IDs to test */
+  rule_ids?: string[];
+};
+
+/**
+ * Rule severity
+ */
+export type TestRulesAgainstPayload200TriggeredRulesItemSeverity = typeof TestRulesAgainstPayload200TriggeredRulesItemSeverity[keyof typeof TestRulesAgainstPayload200TriggeredRulesItemSeverity];
+
+
+// eslint-disable-next-line @typescript-eslint/no-redeclare
+export const TestRulesAgainstPayload200TriggeredRulesItemSeverity = {
+  low: 'low',
+  medium: 'medium',
+  high: 'high',
+  critical: 'critical',
+} as const;
+
+export type TestRulesAgainstPayload200TriggeredRulesItem = {
+  /** ID of triggered rule */
+  rule_id?: string;
+  /** Name of triggered rule */
+  rule_name?: string;
+  /** Rule severity */
+  severity?: TestRulesAgainstPayload200TriggeredRulesItemSeverity;
+  /** Reason codes generated */
+  reason_codes?: string[];
+};
+
+export type TestRulesAgainstPayload200 = {
+  triggered_rules?: TestRulesAgainstPayload200TriggeredRulesItem[];
+  request_id?: string;
+};
+
+/**
+ * Rule severity
+ */
+export type RegisterCustomRulesBodyRulesItemSeverity = typeof RegisterCustomRulesBodyRulesItemSeverity[keyof typeof RegisterCustomRulesBodyRulesItemSeverity];
+
+
+// eslint-disable-next-line @typescript-eslint/no-redeclare
+export const RegisterCustomRulesBodyRulesItemSeverity = {
+  low: 'low',
+  medium: 'medium',
+  high: 'high',
+  critical: 'critical',
+} as const;
+
+export type RegisterCustomRulesBodyRulesItem = {
+  /** Custom rule name */
   name: string;
+  /** Rule description */
+  description?: string;
+  /** Rule logic expression */
+  logic: string;
+  /** Rule severity */
+  severity?: RegisterCustomRulesBodyRulesItemSeverity;
+  /** Whether the rule is enabled */
+  enabled?: boolean;
 };
 
-export type ValidateName200 = {
-  /** Whether the name is valid */
-  valid?: boolean;
-  /** Normalized name */
-  normalized?: string;
-  /** List of validation reason codes */
-  reason_codes?: string[];
-  request_id?: string;
+export type RegisterCustomRulesBody = {
+  /** Array of custom rules to register */
+  rules: RegisterCustomRulesBodyRulesItem[];
 };
 
-export type VerifyPhoneOtpBody = {
-  /** Twilio Verify SID from validation response */
-  verification_sid: string;
-  /** OTP code entered by user */
-  code: string;
+export type RegisterCustomRules201RegisteredRulesItem = {
+  /** Registered rule ID */
+  id?: string;
+  /** Rule name */
+  name?: string;
+  /** Registration status */
+  status?: string;
 };
 
-export type VerifyPhoneOtp200 = {
-  /** Whether OTP is valid */
-  valid?: boolean;
-  /** List of reason codes */
-  reason_codes?: string[];
-  request_id?: string;
-};
-
-export type DedupeCustomerBody = {
-  /** Customer email */
-  email: string;
-  /** Customer phone */
-  phone?: string;
-  /** Customer first name */
-  first_name: string;
-  /** Customer last name */
-  last_name: string;
-};
-
-/**
- * Suggested action
- */
-export type DedupeCustomer200SuggestedAction = typeof DedupeCustomer200SuggestedAction[keyof typeof DedupeCustomer200SuggestedAction];
-
-
-// eslint-disable-next-line @typescript-eslint/no-redeclare
-export const DedupeCustomer200SuggestedAction = {
-  create_new: 'create_new',
-  merge_with: 'merge_with',
-  review: 'review',
-} as const;
-
-export type DedupeCustomer200 = {
-  matches?: CustomerMatch[];
-  /** Suggested action */
-  suggested_action?: DedupeCustomer200SuggestedAction;
-  /**
-   * Suggested canonical ID
-   * @nullable
-   */
-  canonical_id?: string | null;
-  request_id?: string;
-};
-
-export type DedupeAddressBody = {
-  /** Street address line 1 */
-  line1: string;
-  /** Street address line 2 */
-  line2?: string;
-  /** City */
-  city: string;
-  /** State or province */
-  state?: string;
-  /** Postal code */
-  postal_code: string;
-  /**
-   * Two-letter country code
-   * @minLength 2
-   * @maxLength 2
-   */
-  country: string;
-};
-
-/**
- * Suggested action
- */
-export type DedupeAddress200SuggestedAction = typeof DedupeAddress200SuggestedAction[keyof typeof DedupeAddress200SuggestedAction];
-
-
-// eslint-disable-next-line @typescript-eslint/no-redeclare
-export const DedupeAddress200SuggestedAction = {
-  create_new: 'create_new',
-  merge_with: 'merge_with',
-  review: 'review',
-} as const;
-
-export type DedupeAddress200 = {
-  matches?: AddressMatch[];
-  /** Suggested action */
-  suggested_action?: DedupeAddress200SuggestedAction;
-  /**
-   * Suggested canonical ID
-   * @nullable
-   */
-  canonical_id?: string | null;
-  request_id?: string;
-};
-
-/**
- * Type of records to merge
- */
-export type MergeDeduplicatedBodyType = typeof MergeDeduplicatedBodyType[keyof typeof MergeDeduplicatedBodyType];
-
-
-// eslint-disable-next-line @typescript-eslint/no-redeclare
-export const MergeDeduplicatedBodyType = {
-  customer: 'customer',
-  address: 'address',
-} as const;
-
-export type MergeDeduplicatedBody = {
-  /** Type of records to merge */
-  type: MergeDeduplicatedBodyType;
-  /** IDs to merge */
-  ids: string[];
-  /** ID of canonical record to keep */
-  canonical_id: string;
-};
-
-export type MergeDeduplicated200 = {
-  /** Whether merge was successful */
-  success?: boolean;
-  /** Number of records merged */
-  merged_count?: number;
-  /** ID of canonical record */
-  canonical_id?: string;
-  request_id?: string;
-};
-
-/**
- * Payment method
- */
-export type EvaluateOrderBodyPaymentMethod = typeof EvaluateOrderBodyPaymentMethod[keyof typeof EvaluateOrderBodyPaymentMethod];
-
-
-// eslint-disable-next-line @typescript-eslint/no-redeclare
-export const EvaluateOrderBodyPaymentMethod = {
-  card: 'card',
-  cod: 'cod',
-  bank_transfer: 'bank_transfer',
-} as const;
-
-export type EvaluateOrderBody = {
-  /** Unique order identifier */
-  order_id: string;
-  customer: Customer;
-  shipping_address: Address;
-  /** Order total amount */
-  total_amount: number;
-  /**
-   * Currency code (e.g., USD, EUR)
-   * @pattern ^[A-Z]{3}$
-   */
-  currency: string;
-  /** Payment method */
-  payment_method?: EvaluateOrderBodyPaymentMethod;
-};
-
-/**
- * Recommended action
- */
-export type EvaluateOrder200Action = typeof EvaluateOrder200Action[keyof typeof EvaluateOrder200Action];
-
-
-// eslint-disable-next-line @typescript-eslint/no-redeclare
-export const EvaluateOrder200Action = {
-  approve: 'approve',
-  hold: 'hold',
-  block: 'block',
-} as const;
-
-export type EvaluateOrder200Validations = {
-  email?: ValidationResult;
-  phone?: ValidationResult;
-  address?: AddressValidationResult;
-};
-
-export type EvaluateOrder200 = {
-  /** Order ID */
-  order_id?: string;
-  /**
-   * Risk score (0-100)
-   * @minimum 0
-   * @maximum 100
-   */
-  risk_score?: number;
-  /** Recommended action */
-  action?: EvaluateOrder200Action;
-  /** Order tags */
-  tags?: string[];
-  /** List of reason codes */
-  reason_codes?: string[];
-  customer_dedupe?: DedupeResult;
-  address_dedupe?: DedupeResult;
-  validations?: EvaluateOrder200Validations;
+export type RegisterCustomRules201 = {
+  registered_rules?: RegisterCustomRules201RegisteredRulesItem[];
   request_id?: string;
 };
 
@@ -925,6 +826,17 @@ export type EraseData202 = {
   request_id?: string;
 };
 
+export type CreateCheckoutSession200 = {
+  session_url?: string;
+  session_id?: string;
+  request_id?: string;
+};
+
+export type CreateCustomerPortalSession200 = {
+  portal_url?: string;
+  request_id?: string;
+};
+
 export type DeleteLog200 = {
   /** Success message */
   message?: string;
@@ -932,34 +844,24 @@ export type DeleteLog200 = {
   request_id?: string;
 };
 
-export type GetRules200 = {
-  rules?: Rule[];
-  request_id?: string;
+export type NormalizeAddressBodyAddress = {
+  line1: string;
+  line2?: string;
+  city: string;
+  state?: string;
+  postal_code: string;
+  /**
+   * @minLength 2
+   * @maxLength 2
+   */
+  country: string;
 };
 
-export type GetReasonCodeCatalog200 = {
-  reason_codes?: ReasonCode[];
-  request_id?: string;
+export type NormalizeAddressBody = {
+  address: NormalizeAddressBodyAddress;
 };
 
-export type GetErrorCodeCatalog200 = {
-  error_codes?: ErrorCode[];
-  request_id?: string;
-};
-
-export type RegisterCustomRulesBody = {
-  rules?: CustomRule[];
-};
-
-export type RegisterCustomRules200 = {
-  /** Success message */
-  message?: string;
-  /** List of registered rule IDs */
-  registered_rules?: string[];
-  request_id?: string;
-};
-
-export type TestRulesBodyAddress = {
+export type NormalizeAddress200Normalized = {
   line1?: string;
   line2?: string;
   city?: string;
@@ -968,155 +870,47 @@ export type TestRulesBodyAddress = {
   country?: string;
 };
 
-export type TestRulesBody = {
-  email?: string;
-  phone?: string;
-  address?: TestRulesBodyAddress;
-  name?: string;
-};
-
-export type TestRules200ResultsEmail = {
-  valid?: boolean;
-  reason_codes?: string[];
-  normalized?: string;
-  disposable?: boolean;
-};
-
-export type TestRules200ResultsPhone = {
-  valid?: boolean;
-  reason_codes?: string[];
-  e164?: string;
-  country?: string;
-};
-
-export type TestRules200ResultsAddressNormalized = { [key: string]: unknown };
-
-export type TestRules200ResultsAddress = {
-  valid?: boolean;
-  reason_codes?: string[];
-  normalized?: TestRules200ResultsAddressNormalized;
-  po_box?: boolean;
-};
-
-export type TestRules200ResultsName = {
-  valid?: boolean;
-  reason_codes?: string[];
-  normalized?: string;
-};
-
-export type TestRules200Results = {
-  email?: TestRules200ResultsEmail;
-  phone?: TestRules200ResultsPhone;
-  address?: TestRules200ResultsAddress;
-  name?: TestRules200ResultsName;
-};
-
-export type TestRules200 = {
-  results?: TestRules200Results;
+export type NormalizeAddress200 = {
+  normalized?: NormalizeAddress200Normalized;
   request_id?: string;
 };
 
-export type ListWebhooks200 = {
-  data?: Webhook[];
+export type NormalizeAddress400Error = {
+  /** Error code */
+  code?: string;
+  /** Error message */
+  message?: string;
+};
+
+export type NormalizeAddress400 = {
+  error?: NormalizeAddress400Error;
+  /** Request identifier */
   request_id?: string;
 };
 
-export type CreateWebhookBodyEventsItem = typeof CreateWebhookBodyEventsItem[keyof typeof CreateWebhookBodyEventsItem];
-
-
-// eslint-disable-next-line @typescript-eslint/no-redeclare
-export const CreateWebhookBodyEventsItem = {
-  validation_result: 'validation_result',
-  order_evaluated: 'order_evaluated',
-  dedupe_completed: 'dedupe_completed',
-  job_completed: 'job_completed',
-} as const;
-
-export type CreateWebhookBody = {
-  /** The webhook URL to send events to */
-  url: string;
-  /** Events to subscribe to */
-  events: CreateWebhookBodyEventsItem[];
+export type NormalizeAddress401Error = {
+  /** Error code */
+  code?: string;
+  /** Error message */
+  message?: string;
 };
 
-export type CreateWebhook201 = {
-  /** Webhook ID */
-  id?: string;
-  /** Webhook URL */
-  url?: string;
-  /** Subscribed events */
-  events?: string[];
-  /** Webhook secret for signature verification */
-  secret?: string;
-  /** Webhook status */
-  status?: string;
-  /** Creation timestamp */
-  created_at?: string;
+export type NormalizeAddress401 = {
+  error?: NormalizeAddress401Error;
+  /** Request identifier */
   request_id?: string;
 };
 
-export type DeleteWebhook200 = {
-  /** Webhook ID */
-  id?: string;
-  /** Webhook status (deleted) */
-  status?: string;
-  request_id?: string;
+export type NormalizeAddress429Error = {
+  /** Error code */
+  code?: string;
+  /** Error message */
+  message?: string;
 };
 
-/**
- * Type of sample payload to send
- */
-export type TestWebhookBodyPayloadType = typeof TestWebhookBodyPayloadType[keyof typeof TestWebhookBodyPayloadType];
-
-
-// eslint-disable-next-line @typescript-eslint/no-redeclare
-export const TestWebhookBodyPayloadType = {
-  validation: 'validation',
-  order: 'order',
-  custom: 'custom',
-} as const;
-
-/**
- * Custom payload if payload_type is "custom"
- */
-export type TestWebhookBodyCustomPayload = { [key: string]: unknown };
-
-export type TestWebhookBody = {
-  /** The webhook URL to send the payload to */
-  url: string;
-  /** Type of sample payload to send */
-  payload_type: TestWebhookBodyPayloadType;
-  /** Custom payload if payload_type is "custom" */
-  custom_payload?: TestWebhookBodyCustomPayload;
-};
-
-/**
- * Payload sent
- */
-export type TestWebhook200Payload = { [key: string]: unknown };
-
-/**
- * Response headers
- */
-export type TestWebhook200ResponseHeaders = { [key: string]: unknown };
-
-export type TestWebhook200Response = {
-  /** HTTP status code */
-  status?: number;
-  /** HTTP status text */
-  status_text?: string;
-  /** Response headers */
-  headers?: TestWebhook200ResponseHeaders;
-  /** Response body */
-  body?: string;
-};
-
-export type TestWebhook200 = {
-  /** URL sent to */
-  sent_to?: string;
-  /** Payload sent */
-  payload?: TestWebhook200Payload;
-  response?: TestWebhook200Response;
+export type NormalizeAddress429 = {
+  error?: NormalizeAddress429Error;
+  /** Request identifier */
   request_id?: string;
 };
 
@@ -1169,6 +963,32 @@ export type BatchValidate202 = {
   request_id?: string;
 };
 
+export type BatchValidate400Error = {
+  /** Error code */
+  code?: string;
+  /** Error message */
+  message?: string;
+};
+
+export type BatchValidate400 = {
+  error?: BatchValidate400Error;
+  /** Request identifier */
+  request_id?: string;
+};
+
+export type BatchValidate401Error = {
+  /** Error code */
+  code?: string;
+  /** Error message */
+  message?: string;
+};
+
+export type BatchValidate401 = {
+  error?: BatchValidate401Error;
+  /** Request identifier */
+  request_id?: string;
+};
+
 /**
  * The type of data to deduplicate
  */
@@ -1212,6 +1032,782 @@ export type BatchDedupe202 = {
   job_id?: string;
   /** Job status */
   status?: BatchDedupe202Status;
+  /** Request identifier */
+  request_id?: string;
+};
+
+export type BatchDedupe400Error = {
+  /** Error code */
+  code?: string;
+  /** Error message */
+  message?: string;
+};
+
+export type BatchDedupe400 = {
+  error?: BatchDedupe400Error;
+  /** Request identifier */
+  request_id?: string;
+};
+
+export type BatchDedupe401Error = {
+  /** Error code */
+  code?: string;
+  /** Error message */
+  message?: string;
+};
+
+export type BatchDedupe401 = {
+  error?: BatchDedupe401Error;
+  /** Request identifier */
+  request_id?: string;
+};
+
+export type DedupeCustomerBody = {
+  /** Customer email */
+  email: string;
+  /** Customer phone */
+  phone?: string;
+  /** Customer first name */
+  first_name: string;
+  /** Customer last name */
+  last_name: string;
+};
+
+/**
+ * Type of match
+ */
+export type DedupeCustomer200MatchesItemMatchType = typeof DedupeCustomer200MatchesItemMatchType[keyof typeof DedupeCustomer200MatchesItemMatchType];
+
+
+// eslint-disable-next-line @typescript-eslint/no-redeclare
+export const DedupeCustomer200MatchesItemMatchType = {
+  exact_email: 'exact_email',
+  exact_phone: 'exact_phone',
+  fuzzy_name: 'fuzzy_name',
+} as const;
+
+export type DedupeCustomer200MatchesItemData = {
+  /** Customer email */
+  email?: string;
+  /** Customer phone */
+  phone?: string;
+  /** Customer first name */
+  first_name?: string;
+  /** Customer last name */
+  last_name?: string;
+};
+
+export type DedupeCustomer200MatchesItem = {
+  /** Customer ID */
+  id?: string;
+  /** Similarity score (0-1) */
+  similarity_score?: number;
+  /** Type of match */
+  match_type?: DedupeCustomer200MatchesItemMatchType;
+  data?: DedupeCustomer200MatchesItemData;
+};
+
+/**
+ * Suggested action
+ */
+export type DedupeCustomer200SuggestedAction = typeof DedupeCustomer200SuggestedAction[keyof typeof DedupeCustomer200SuggestedAction];
+
+
+// eslint-disable-next-line @typescript-eslint/no-redeclare
+export const DedupeCustomer200SuggestedAction = {
+  create_new: 'create_new',
+  merge_with: 'merge_with',
+  review: 'review',
+} as const;
+
+export type DedupeCustomer200 = {
+  matches?: DedupeCustomer200MatchesItem[];
+  /** Suggested action */
+  suggested_action?: DedupeCustomer200SuggestedAction;
+  /**
+   * Suggested canonical ID
+   * @nullable
+   */
+  canonical_id?: string | null;
+  request_id?: string;
+};
+
+export type DedupeCustomer400Error = {
+  /** Error code */
+  code?: string;
+  /** Error message */
+  message?: string;
+};
+
+export type DedupeCustomer400 = {
+  error?: DedupeCustomer400Error;
+  /** Request identifier */
+  request_id?: string;
+};
+
+export type DedupeAddressBody = {
+  /** Street address line 1 */
+  line1: string;
+  /** Street address line 2 */
+  line2?: string;
+  /** City */
+  city: string;
+  /** State or province */
+  state?: string;
+  /** Postal code */
+  postal_code: string;
+  /**
+   * Two-letter country code
+   * @minLength 2
+   * @maxLength 2
+   */
+  country: string;
+};
+
+/**
+ * Type of match
+ */
+export type DedupeAddress200MatchesItemMatchType = typeof DedupeAddress200MatchesItemMatchType[keyof typeof DedupeAddress200MatchesItemMatchType];
+
+
+// eslint-disable-next-line @typescript-eslint/no-redeclare
+export const DedupeAddress200MatchesItemMatchType = {
+  exact_address: 'exact_address',
+  exact_postal: 'exact_postal',
+  fuzzy_address: 'fuzzy_address',
+} as const;
+
+export type DedupeAddress200MatchesItemData = {
+  /** Street address line 1 */
+  line1?: string;
+  /** Street address line 2 */
+  line2?: string;
+  /** City */
+  city?: string;
+  /** State or province */
+  state?: string;
+  /** Postal code */
+  postal_code?: string;
+  /** Two-letter country code */
+  country?: string;
+  /**
+   * Latitude
+   * @nullable
+   */
+  lat?: number | null;
+  /**
+   * Longitude
+   * @nullable
+   */
+  lng?: number | null;
+};
+
+export type DedupeAddress200MatchesItem = {
+  /** Address ID */
+  id?: string;
+  /** Similarity score (0-1) */
+  similarity_score?: number;
+  /** Type of match */
+  match_type?: DedupeAddress200MatchesItemMatchType;
+  data?: DedupeAddress200MatchesItemData;
+};
+
+/**
+ * Suggested action
+ */
+export type DedupeAddress200SuggestedAction = typeof DedupeAddress200SuggestedAction[keyof typeof DedupeAddress200SuggestedAction];
+
+
+// eslint-disable-next-line @typescript-eslint/no-redeclare
+export const DedupeAddress200SuggestedAction = {
+  create_new: 'create_new',
+  merge_with: 'merge_with',
+  review: 'review',
+} as const;
+
+export type DedupeAddress200 = {
+  matches?: DedupeAddress200MatchesItem[];
+  /** Suggested action */
+  suggested_action?: DedupeAddress200SuggestedAction;
+  /**
+   * Suggested canonical ID
+   * @nullable
+   */
+  canonical_id?: string | null;
+  request_id?: string;
+};
+
+export type DedupeAddress400Error = {
+  /** Error code */
+  code?: string;
+  /** Error message */
+  message?: string;
+};
+
+export type DedupeAddress400 = {
+  error?: DedupeAddress400Error;
+  /** Request identifier */
+  request_id?: string;
+};
+
+/**
+ * Type of records to merge
+ */
+export type MergeDeduplicatedBodyType = typeof MergeDeduplicatedBodyType[keyof typeof MergeDeduplicatedBodyType];
+
+
+// eslint-disable-next-line @typescript-eslint/no-redeclare
+export const MergeDeduplicatedBodyType = {
+  customer: 'customer',
+  address: 'address',
+} as const;
+
+export type MergeDeduplicatedBody = {
+  /** Type of records to merge */
+  type: MergeDeduplicatedBodyType;
+  /** IDs to merge */
+  ids: string[];
+  /** ID of canonical record to keep */
+  canonical_id: string;
+};
+
+export type MergeDeduplicated200 = {
+  /** Whether merge was successful */
+  success?: boolean;
+  /** Number of records merged */
+  merged_count?: number;
+  /** ID of canonical record */
+  canonical_id?: string;
+  request_id?: string;
+};
+
+export type MergeDeduplicated400Error = {
+  /** Error code */
+  code?: string;
+  /** Error message */
+  message?: string;
+};
+
+export type MergeDeduplicated400 = {
+  error?: MergeDeduplicated400Error;
+  /** Request identifier */
+  request_id?: string;
+};
+
+/**
+ * Current job status
+ */
+export type GetJobStatusById200Status = typeof GetJobStatusById200Status[keyof typeof GetJobStatusById200Status];
+
+
+// eslint-disable-next-line @typescript-eslint/no-redeclare
+export const GetJobStatusById200Status = {
+  pending: 'pending',
+  running: 'running',
+  completed: 'completed',
+  failed: 'failed',
+} as const;
+
+/**
+ * Job result data
+ * @nullable
+ */
+export type GetJobStatusById200Result = { [key: string]: unknown } | null;
+
+export type GetJobStatusById200 = {
+  /** Job ID */
+  id?: string;
+  /** Current job status */
+  status?: GetJobStatusById200Status;
+  /**
+   * Job completion percentage
+   * @minimum 0
+   * @maximum 100
+   */
+  progress?: number;
+  /**
+   * Job result data
+   * @nullable
+   */
+  result?: GetJobStatusById200Result;
+  /**
+   * Error message if job failed
+   * @nullable
+   */
+  error?: string | null;
+  /** Job creation timestamp */
+  created_at?: string;
+  /** Last update timestamp */
+  updated_at?: string;
+  request_id?: string;
+};
+
+export type GetJobStatusById404Error = {
+  /** Error code */
+  code?: string;
+  /** Error message */
+  message?: string;
+};
+
+export type GetJobStatusById404 = {
+  error?: GetJobStatusById404Error;
+  /** Request identifier */
+  request_id?: string;
+};
+
+export type EvaluateOrderBodyCustomer = {
+  /** Customer email */
+  email?: string;
+  /** Customer phone */
+  phone?: string;
+  /** Customer first name */
+  first_name?: string;
+  /** Customer last name */
+  last_name?: string;
+};
+
+export type EvaluateOrderBodyShippingAddress = {
+  /** Street address line 1 */
+  line1?: string;
+  /** Street address line 2 */
+  line2?: string;
+  /** City */
+  city?: string;
+  /** State or province */
+  state?: string;
+  /** Postal code */
+  postal_code?: string;
+  /** Two-letter country code */
+  country?: string;
+  /**
+   * Latitude
+   * @nullable
+   */
+  lat?: number | null;
+  /**
+   * Longitude
+   * @nullable
+   */
+  lng?: number | null;
+};
+
+/**
+ * Payment method
+ */
+export type EvaluateOrderBodyPaymentMethod = typeof EvaluateOrderBodyPaymentMethod[keyof typeof EvaluateOrderBodyPaymentMethod];
+
+
+// eslint-disable-next-line @typescript-eslint/no-redeclare
+export const EvaluateOrderBodyPaymentMethod = {
+  card: 'card',
+  cod: 'cod',
+  bank_transfer: 'bank_transfer',
+} as const;
+
+export type EvaluateOrderBody = {
+  /** Unique order identifier */
+  order_id: string;
+  customer: EvaluateOrderBodyCustomer;
+  shipping_address: EvaluateOrderBodyShippingAddress;
+  /** Order total amount */
+  total_amount: number;
+  /**
+   * Currency code (e.g., USD, EUR)
+   * @pattern ^[A-Z]{3}$
+   */
+  currency: string;
+  /** Payment method */
+  payment_method?: EvaluateOrderBodyPaymentMethod;
+};
+
+/**
+ * Recommended action
+ */
+export type EvaluateOrder200Action = typeof EvaluateOrder200Action[keyof typeof EvaluateOrder200Action];
+
+
+// eslint-disable-next-line @typescript-eslint/no-redeclare
+export const EvaluateOrder200Action = {
+  approve: 'approve',
+  hold: 'hold',
+  block: 'block',
+} as const;
+
+export type EvaluateOrder200CustomerDedupeMatchesItemData = { [key: string]: unknown };
+
+export type EvaluateOrder200CustomerDedupeMatchesItem = {
+  id?: string;
+  similarity_score?: number;
+  match_type?: string;
+  data?: EvaluateOrder200CustomerDedupeMatchesItemData;
+};
+
+export type EvaluateOrder200CustomerDedupeSuggestedAction = typeof EvaluateOrder200CustomerDedupeSuggestedAction[keyof typeof EvaluateOrder200CustomerDedupeSuggestedAction];
+
+
+// eslint-disable-next-line @typescript-eslint/no-redeclare
+export const EvaluateOrder200CustomerDedupeSuggestedAction = {
+  create_new: 'create_new',
+  merge_with: 'merge_with',
+  review: 'review',
+} as const;
+
+export type EvaluateOrder200CustomerDedupe = {
+  matches?: EvaluateOrder200CustomerDedupeMatchesItem[];
+  suggested_action?: EvaluateOrder200CustomerDedupeSuggestedAction;
+  /** @nullable */
+  canonical_id?: string | null;
+};
+
+export type EvaluateOrder200AddressDedupeMatchesItemData = { [key: string]: unknown };
+
+export type EvaluateOrder200AddressDedupeMatchesItem = {
+  id?: string;
+  similarity_score?: number;
+  match_type?: string;
+  data?: EvaluateOrder200AddressDedupeMatchesItemData;
+};
+
+export type EvaluateOrder200AddressDedupeSuggestedAction = typeof EvaluateOrder200AddressDedupeSuggestedAction[keyof typeof EvaluateOrder200AddressDedupeSuggestedAction];
+
+
+// eslint-disable-next-line @typescript-eslint/no-redeclare
+export const EvaluateOrder200AddressDedupeSuggestedAction = {
+  create_new: 'create_new',
+  merge_with: 'merge_with',
+  review: 'review',
+} as const;
+
+export type EvaluateOrder200AddressDedupe = {
+  matches?: EvaluateOrder200AddressDedupeMatchesItem[];
+  suggested_action?: EvaluateOrder200AddressDedupeSuggestedAction;
+  /** @nullable */
+  canonical_id?: string | null;
+};
+
+export type EvaluateOrder200ValidationsEmail = {
+  /** Whether the validation passed */
+  valid?: boolean;
+  /** List of reason codes */
+  reason_codes?: string[];
+  /** Whether the result is disposable (for email) */
+  disposable?: boolean;
+};
+
+export type EvaluateOrder200ValidationsPhone = {
+  /** Whether the validation passed */
+  valid?: boolean;
+  /** List of reason codes */
+  reason_codes?: string[];
+  /** Whether the result is disposable (for email) */
+  disposable?: boolean;
+};
+
+export type EvaluateOrder200ValidationsAddress = {
+  /** Whether the address is valid */
+  valid?: boolean;
+  /** List of reason codes */
+  reason_codes?: string[];
+  /** Whether the address is a P.O. Box */
+  po_box?: boolean;
+  /** Whether postal code matches city */
+  postal_city_match?: boolean;
+  /** Whether the address is within bounds */
+  in_bounds?: boolean;
+};
+
+export type EvaluateOrder200Validations = {
+  email?: EvaluateOrder200ValidationsEmail;
+  phone?: EvaluateOrder200ValidationsPhone;
+  address?: EvaluateOrder200ValidationsAddress;
+};
+
+export type EvaluateOrder200 = {
+  /** Order ID */
+  order_id?: string;
+  /**
+   * Risk score (0-100)
+   * @minimum 0
+   * @maximum 100
+   */
+  risk_score?: number;
+  /** Recommended action */
+  action?: EvaluateOrder200Action;
+  /** Order tags */
+  tags?: string[];
+  /** List of reason codes */
+  reason_codes?: string[];
+  customer_dedupe?: EvaluateOrder200CustomerDedupe;
+  address_dedupe?: EvaluateOrder200AddressDedupe;
+  validations?: EvaluateOrder200Validations;
+  request_id?: string;
+};
+
+export type EvaluateOrder400Error = {
+  /** Error code */
+  code?: string;
+  /** Error message */
+  message?: string;
+};
+
+export type EvaluateOrder400 = {
+  error?: EvaluateOrder400Error;
+  /** Request identifier */
+  request_id?: string;
+};
+
+export type VerifyPhoneOtpBody = {
+  /** Twilio Verify SID from validation response */
+  verification_sid: string;
+  /** OTP code entered by user */
+  code: string;
+};
+
+export type VerifyPhoneOtp200 = {
+  /** Whether OTP is valid */
+  valid?: boolean;
+  /** List of reason codes */
+  reason_codes?: string[];
+  request_id?: string;
+};
+
+export type VerifyPhoneOtp400Error = {
+  /** Error code */
+  code?: string;
+  /** Error message */
+  message?: string;
+};
+
+export type VerifyPhoneOtp400 = {
+  error?: VerifyPhoneOtp400Error;
+  /** Request identifier */
+  request_id?: string;
+};
+
+export type ValidateEmailBody = {
+  /** The email address to validate */
+  email: string;
+};
+
+export type ValidateEmail200 = {
+  /** Whether the email is valid */
+  valid?: boolean;
+  /** Normalized email address */
+  normalized?: string;
+  /** Whether the email is from a disposable service */
+  disposable?: boolean;
+  /** Whether MX records were found */
+  mx_found?: boolean;
+  /** List of validation reason codes */
+  reason_codes?: string[];
+  request_id?: string;
+  /** Cache TTL in seconds */
+  ttl_seconds?: number;
+};
+
+export type ValidateEmail400Error = {
+  /** Error code */
+  code?: string;
+  /** Error message */
+  message?: string;
+};
+
+export type ValidateEmail400 = {
+  error?: ValidateEmail400Error;
+  /** Request identifier */
+  request_id?: string;
+};
+
+export type ValidatePhoneBody = {
+  /** The phone number to validate */
+  phone: string;
+  /** Optional two-letter country code hint */
+  country?: string;
+  /** Request OTP for verification */
+  request_otp?: boolean;
+};
+
+export type ValidatePhone200 = {
+  /** Whether the phone number is valid */
+  valid?: boolean;
+  /** Phone number in E.164 format */
+  e164?: string;
+  /**
+   * Country code
+   * @nullable
+   */
+  country?: string | null;
+  /** List of validation reason codes */
+  reason_codes?: string[];
+  request_id?: string;
+  /** Cache TTL in seconds */
+  ttl_seconds?: number;
+  /**
+   * Twilio Verify SID for OTP verification
+   * @nullable
+   */
+  verification_sid?: string | null;
+};
+
+export type ValidatePhone400Error = {
+  /** Error code */
+  code?: string;
+  /** Error message */
+  message?: string;
+};
+
+export type ValidatePhone400 = {
+  error?: ValidatePhone400Error;
+  /** Request identifier */
+  request_id?: string;
+};
+
+export type ValidateAddressBodyAddress = {
+  /** Street address line 1 */
+  line1: string;
+  /** Street address line 2 */
+  line2?: string;
+  /** City */
+  city: string;
+  /** State or province */
+  state?: string;
+  /** Postal code */
+  postal_code: string;
+  /**
+   * Two-letter country code
+   * @minLength 2
+   * @maxLength 2
+   */
+  country: string;
+};
+
+export type ValidateAddressBody = {
+  address: ValidateAddressBodyAddress;
+};
+
+export type ValidateAddress200Normalized = {
+  /** Street address line 1 */
+  line1?: string;
+  /** Street address line 2 */
+  line2?: string;
+  /** City */
+  city?: string;
+  /** State or province */
+  state?: string;
+  /** Postal code */
+  postal_code?: string;
+  /** Two-letter country code */
+  country?: string;
+  /**
+   * Latitude
+   * @nullable
+   */
+  lat?: number | null;
+  /**
+   * Longitude
+   * @nullable
+   */
+  lng?: number | null;
+};
+
+/**
+ * @nullable
+ */
+export type ValidateAddress200Geo = {
+  /** Latitude */
+  lat?: number;
+  /** Longitude */
+  lng?: number;
+  /** Geocoding confidence score */
+  confidence?: number;
+} | null;
+
+export type ValidateAddress200 = {
+  /** Whether the address is valid */
+  valid?: boolean;
+  normalized?: ValidateAddress200Normalized;
+  /** @nullable */
+  geo?: ValidateAddress200Geo;
+  /** Whether the address is a P.O. Box */
+  po_box?: boolean;
+  /** Whether postal code matches city */
+  postal_city_match?: boolean;
+  /** List of validation reason codes */
+  reason_codes?: string[];
+  request_id?: string;
+  /** Cache TTL in seconds */
+  ttl_seconds?: number;
+};
+
+export type ValidateAddress400Error = {
+  /** Error code */
+  code?: string;
+  /** Error message */
+  message?: string;
+};
+
+export type ValidateAddress400 = {
+  error?: ValidateAddress400Error;
+  /** Request identifier */
+  request_id?: string;
+};
+
+export type ValidateTaxIdBody = {
+  /** Type of tax ID (e.g., "vat", "euvat", "br_cnpj") */
+  type: string;
+  /** The tax ID number */
+  value: string;
+  /** Optional two-letter country code */
+  country?: string;
+};
+
+export type ValidateTaxId200 = {
+  /** Whether the tax ID is valid */
+  valid?: boolean;
+  /** Normalized tax ID */
+  normalized?: string;
+  /** List of validation reason codes */
+  reason_codes?: string[];
+  request_id?: string;
+};
+
+export type ValidateTaxId400Error = {
+  /** Error code */
+  code?: string;
+  /** Error message */
+  message?: string;
+};
+
+export type ValidateTaxId400 = {
+  error?: ValidateTaxId400Error;
+  /** Request identifier */
+  request_id?: string;
+};
+
+export type ValidateNameBody = {
+  /** The name to validate and normalize */
+  name: string;
+};
+
+export type ValidateName200 = {
+  /** Whether the name is valid */
+  valid?: boolean;
+  /** Normalized name */
+  normalized?: string;
+  /** List of validation reason codes */
+  reason_codes?: string[];
+  request_id?: string;
+};
+
+export type ValidateName400Error = {
+  /** Error code */
+  code?: string;
+  /** Error message */
+  message?: string;
+};
+
+export type ValidateName400 = {
+  error?: ValidateName400Error;
   /** Request identifier */
   request_id?: string;
 };
@@ -1267,6 +1863,32 @@ export type GetJobStatus200 = {
   created_at?: string;
   /** Last update timestamp */
   updated_at?: string;
+  /** Request identifier */
+  request_id?: string;
+};
+
+export type GetJobStatus401Error = {
+  /** Error code */
+  code?: string;
+  /** Error message */
+  message?: string;
+};
+
+export type GetJobStatus401 = {
+  error?: GetJobStatus401Error;
+  /** Request identifier */
+  request_id?: string;
+};
+
+export type GetJobStatus404Error = {
+  /** Error code */
+  code?: string;
+  /** Error message */
+  message?: string;
+};
+
+export type GetJobStatus404 = {
+  error?: GetJobStatus404Error;
   /** Request identifier */
   request_id?: string;
 };
@@ -1347,145 +1969,114 @@ export const revokeApiKey = <TData = AxiosResponse<RevokeApiKey200>>(
   }
 
 /**
- * Performs basic address normalization without geocoding or external lookups.
- * @summary Normalize Address (Cheap)
+ * Retrieves all webhooks for the authenticated project
+ * @summary List webhooks
  */
-export const normalizeAddress = <TData = AxiosResponse<NormalizeAddress200>>(
-    normalizeAddressBody: NormalizeAddressBody, options?: AxiosRequestConfig
+export const listWebhooks = <TData = AxiosResponse<ListWebhooks200>>(
+     options?: AxiosRequestConfig
  ): Promise<TData> => {
-    return axios.post(
-      `/v1/normalize/address`,
-      normalizeAddressBody,options
+    return axios.get(
+      `/v1/webhooks`,options
     );
   }
 
 /**
- * Performs comprehensive email validation including format, MX records, and disposable detection
- * @summary Validate email address
+ * Creates a new webhook subscription for the authenticated project
+ * @summary Create webhook
  */
-export const validateEmail = <TData = AxiosResponse<ValidateEmail200>>(
-    validateEmailBody: ValidateEmailBody, options?: AxiosRequestConfig
+export const createWebhook = <TData = AxiosResponse<CreateWebhook201>>(
+    createWebhookBody: CreateWebhookBody, options?: AxiosRequestConfig
  ): Promise<TData> => {
     return axios.post(
-      `/validate/email`,
-      validateEmailBody,options
+      `/v1/webhooks`,
+      createWebhookBody,options
     );
   }
 
 /**
- * Validates a phone number and returns it in E.164 format
- * @summary Validate phone number
+ * Deletes a webhook subscription
+ * @summary Delete webhook
  */
-export const validatePhone = <TData = AxiosResponse<ValidatePhone200>>(
-    validatePhoneBody: ValidatePhoneBody, options?: AxiosRequestConfig
+export const deleteWebhook = <TData = AxiosResponse<DeleteWebhook200>>(
+    id: string, options?: AxiosRequestConfig
  ): Promise<TData> => {
-    return axios.post(
-      `/v1/validate/phone`,
-      validatePhoneBody,options
+    return axios.delete(
+      `/v1/webhooks/${id}`,options
     );
   }
 
 /**
- * Validates a physical address and normalizes it
- * @summary Validate address
+ * Sends a sample payload to the provided webhook URL and returns the response. Useful for testing webhook configurations.
+ * @summary Test Webhook
  */
-export const validateAddress = <TData = AxiosResponse<ValidateAddress200>>(
-    validateAddressBody: ValidateAddressBody, options?: AxiosRequestConfig
+export const testWebhook = <TData = AxiosResponse<TestWebhook200>>(
+    testWebhookBody: TestWebhookBody, options?: AxiosRequestConfig
  ): Promise<TData> => {
     return axios.post(
-      `/v1/validate/address`,
-      validateAddressBody,options
+      `/v1/webhooks/test`,
+      testWebhookBody,options
     );
   }
 
 /**
- * Validates a tax identification number
- * @summary Validate tax ID
+ * Retrieves a list of all available validation rules and their configurations
+ * @summary Get available rules
  */
-export const validateTaxId = <TData = AxiosResponse<ValidateTaxId200>>(
-    validateTaxIdBody: ValidateTaxIdBody, options?: AxiosRequestConfig
+export const getAvailableRules = <TData = AxiosResponse<GetAvailableRules200>>(
+     options?: AxiosRequestConfig
  ): Promise<TData> => {
-    return axios.post(
-      `/v1/validate/tax-id`,
-      validateTaxIdBody,options
+    return axios.get(
+      `/v1/rules`,options
     );
   }
 
 /**
- * Validates and normalizes a name string
- * @summary Validate name
+ * Retrieves a catalog of all possible error codes and their descriptions
+ * @summary Get error code catalog
  */
-export const validateName = <TData = AxiosResponse<ValidateName200>>(
-    validateNameBody: ValidateNameBody, options?: AxiosRequestConfig
+export const getErrorCodeCatalog = <TData = AxiosResponse<GetErrorCodeCatalog200>>(
+     options?: AxiosRequestConfig
  ): Promise<TData> => {
-    return axios.post(
-      `/v1/validate/name`,
-      validateNameBody,options
+    return axios.get(
+      `/v1/rules/error-codes`,options
     );
   }
 
 /**
- * Verifies OTP sent to phone number
- * @summary Verify phone OTP
+ * Retrieves a catalog of all possible reason codes and their descriptions
+ * @summary Get reason code catalog
  */
-export const verifyPhoneOtp = <TData = AxiosResponse<VerifyPhoneOtp200>>(
-    verifyPhoneOtpBody: VerifyPhoneOtpBody, options?: AxiosRequestConfig
+export const getReasonCodeCatalog = <TData = AxiosResponse<GetReasonCodeCatalog200>>(
+     options?: AxiosRequestConfig
  ): Promise<TData> => {
-    return axios.post(
-      `/v1/verify/phone`,
-      verifyPhoneOtpBody,options
+    return axios.get(
+      `/v1/rules/catalog`,options
     );
   }
 
 /**
- * Searches for existing customers using deterministic and fuzzy matching
- * @summary Deduplicate customer
+ * Tests rules against a sample payload and returns triggered rules
+ * @summary Test rules against payload
  */
-export const dedupeCustomer = <TData = AxiosResponse<DedupeCustomer200>>(
-    dedupeCustomerBody: DedupeCustomerBody, options?: AxiosRequestConfig
+export const testRulesAgainstPayload = <TData = AxiosResponse<TestRulesAgainstPayload200>>(
+    testRulesAgainstPayloadBody: TestRulesAgainstPayloadBody, options?: AxiosRequestConfig
  ): Promise<TData> => {
     return axios.post(
-      `/v1/dedupe/customer`,
-      dedupeCustomerBody,options
+      `/v1/rules/test`,
+      testRulesAgainstPayloadBody,options
     );
   }
 
 /**
- * Searches for existing addresses using deterministic and fuzzy matching
- * @summary Deduplicate address
+ * Registers new custom validation rules for the project
+ * @summary Register custom rules
  */
-export const dedupeAddress = <TData = AxiosResponse<DedupeAddress200>>(
-    dedupeAddressBody: DedupeAddressBody, options?: AxiosRequestConfig
+export const registerCustomRules = <TData = AxiosResponse<RegisterCustomRules201>>(
+    registerCustomRulesBody: RegisterCustomRulesBody, options?: AxiosRequestConfig
  ): Promise<TData> => {
     return axios.post(
-      `/v1/dedupe/address`,
-      dedupeAddressBody,options
-    );
-  }
-
-/**
- * Merges multiple customer or address records into a canonical one
- * @summary Merge deduplicated records
- */
-export const mergeDeduplicated = <TData = AxiosResponse<MergeDeduplicated200>>(
-    mergeDeduplicatedBody: MergeDeduplicatedBody, options?: AxiosRequestConfig
- ): Promise<TData> => {
-    return axios.post(
-      `/v1/dedupe/merge`,
-      mergeDeduplicatedBody,options
-    );
-  }
-
-/**
- * Evaluates an order for deduplication, validation, and applies business rules
- * @summary Evaluate order for risk and rules
- */
-export const evaluateOrder = <TData = AxiosResponse<EvaluateOrder200>>(
-    evaluateOrderBody: EvaluateOrderBody, options?: AxiosRequestConfig
- ): Promise<TData> => {
-    return axios.post(
-      `/v1/orders/evaluate`,
-      evaluateOrderBody,options
+      `/v1/rules/register`,
+      registerCustomRulesBody,options
     );
   }
 
@@ -1554,6 +2145,30 @@ export const eraseData = <TData = AxiosResponse<EraseData202>>(
   }
 
 /**
+ * Creates a Stripe Checkout session with base plan and usage-based line items
+ * @summary Create Stripe Checkout session
+ */
+export const createCheckoutSession = <TData = AxiosResponse<CreateCheckoutSession200>>(
+     options?: AxiosRequestConfig
+ ): Promise<TData> => {
+    return axios.post(
+      `/v1/billing/checkout`,undefined,options
+    );
+  }
+
+/**
+ * Creates a Stripe Customer Portal session for managing billing
+ * @summary Create Stripe Customer Portal session
+ */
+export const createCustomerPortalSession = <TData = AxiosResponse<CreateCustomerPortalSession200>>(
+     options?: AxiosRequestConfig
+ ): Promise<TData> => {
+    return axios.post(
+      `/v1/billing/portal`,undefined,options
+    );
+  }
+
+/**
  * Deletes a specific log entry
  * @summary Delete log entry
  */
@@ -1566,114 +2181,15 @@ export const deleteLog = <TData = AxiosResponse<DeleteLog200>>(
   }
 
 /**
- * Returns a list of all available validation and risk assessment rules
- * @summary Get available rules
+ * Performs basic address normalization without geocoding or external lookups.
+ * @summary Normalize Address (Cheap)
  */
-export const getRules = <TData = AxiosResponse<GetRules200>>(
-     options?: AxiosRequestConfig
- ): Promise<TData> => {
-    return axios.get(
-      `/v1/rules`,options
-    );
-  }
-
-/**
- * Returns a comprehensive list of all possible reason codes
- * @summary Get reason code catalog
- */
-export const getReasonCodeCatalog = <TData = AxiosResponse<GetReasonCodeCatalog200>>(
-     options?: AxiosRequestConfig
- ): Promise<TData> => {
-    return axios.get(
-      `/v1/rules/catalog`,options
-    );
-  }
-
-/**
- * Returns a comprehensive list of all possible error codes
- * @summary Get error code catalog
- */
-export const getErrorCodeCatalog = <TData = AxiosResponse<GetErrorCodeCatalog200>>(
-     options?: AxiosRequestConfig
- ): Promise<TData> => {
-    return axios.get(
-      `/v1/rules/error-codes`,options
-    );
-  }
-
-/**
- * Registers custom business rules for the project
- * @summary Register custom rules
- */
-export const registerCustomRules = <TData = AxiosResponse<RegisterCustomRules200>>(
-    registerCustomRulesBody: RegisterCustomRulesBody, options?: AxiosRequestConfig
+export const normalizeAddress = <TData = AxiosResponse<NormalizeAddress200>>(
+    normalizeAddressBody: NormalizeAddressBody, options?: AxiosRequestConfig
  ): Promise<TData> => {
     return axios.post(
-      `/v1/rules/register`,
-      registerCustomRulesBody,options
-    );
-  }
-
-/**
- * Performs a dry-run evaluation of a payload against all enabled validation rules.
- * @summary Test Rules Against Payload
- */
-export const testRules = <TData = AxiosResponse<TestRules200>>(
-    testRulesBody: TestRulesBody, options?: AxiosRequestConfig
- ): Promise<TData> => {
-    return axios.post(
-      `/v1/rules/test`,
-      testRulesBody,options
-    );
-  }
-
-/**
- * Retrieves webhooks for the authenticated project
- * @summary List webhooks
- */
-export const listWebhooks = <TData = AxiosResponse<ListWebhooks200>>(
-     options?: AxiosRequestConfig
- ): Promise<TData> => {
-    return axios.get(
-      `/v1/webhooks`,options
-    );
-  }
-
-/**
- * Creates a new webhook subscription for the authenticated project
- * @summary Create webhook
- */
-export const createWebhook = <TData = AxiosResponse<CreateWebhook201>>(
-    createWebhookBody: CreateWebhookBody, options?: AxiosRequestConfig
- ): Promise<TData> => {
-    return axios.post(
-      `/v1/webhooks`,
-      createWebhookBody,options
-    );
-  }
-
-/**
- * Deletes a webhook subscription
- * @summary Delete webhook
- */
-export const deleteWebhook = <TData = AxiosResponse<DeleteWebhook200>>(
-    id: string, options?: AxiosRequestConfig
- ): Promise<TData> => {
-    return axios.delete(
-      `/v1/webhooks/${id}`,options
-    );
-  }
-
-/**
- * Sends a sample payload to the provided webhook URL
- * @summary Test webhook
- */
-export const testWebhook = <TData = AxiosResponse<TestWebhook200>>(
-    testWebhookBody: TestWebhookBody, options?: AxiosRequestConfig
- ): Promise<TData> => {
-    return axios.post(
-      `/v1/webhooks/test`,
-      testWebhookBody,options
+      `/v1/normalize/address`,
+      normalizeAddressBody,options
     );
   }
 
@@ -1704,6 +2220,148 @@ export const batchDedupe = <TData = AxiosResponse<BatchDedupe202>>(
   }
 
 /**
+ * Searches for existing customers using deterministic and fuzzy matching
+ * @summary Deduplicate customer
+ */
+export const dedupeCustomer = <TData = AxiosResponse<DedupeCustomer200>>(
+    dedupeCustomerBody: DedupeCustomerBody, options?: AxiosRequestConfig
+ ): Promise<TData> => {
+    return axios.post(
+      `/v1/dedupe/customer`,
+      dedupeCustomerBody,options
+    );
+  }
+
+/**
+ * Searches for existing addresses using deterministic and fuzzy matching
+ * @summary Deduplicate address
+ */
+export const dedupeAddress = <TData = AxiosResponse<DedupeAddress200>>(
+    dedupeAddressBody: DedupeAddressBody, options?: AxiosRequestConfig
+ ): Promise<TData> => {
+    return axios.post(
+      `/v1/dedupe/address`,
+      dedupeAddressBody,options
+    );
+  }
+
+/**
+ * Merges multiple customer or address records into a canonical one
+ * @summary Merge deduplicated records
+ */
+export const mergeDeduplicated = <TData = AxiosResponse<MergeDeduplicated200>>(
+    mergeDeduplicatedBody: MergeDeduplicatedBody, options?: AxiosRequestConfig
+ ): Promise<TData> => {
+    return axios.post(
+      `/v1/dedupe/merge`,
+      mergeDeduplicatedBody,options
+    );
+  }
+
+/**
+ * Retrieves the status and results of an asynchronous job.
+ * @summary Get job status
+ */
+export const getJobStatusById = <TData = AxiosResponse<GetJobStatusById200>>(
+     options?: AxiosRequestConfig
+ ): Promise<TData> => {
+    return axios.get(
+      `/v1/jobs/:id`,options
+    );
+  }
+
+/**
+ * Evaluates an order for deduplication, validation, and applies business rules
+ * @summary Evaluate order for risk and rules
+ */
+export const evaluateOrder = <TData = AxiosResponse<EvaluateOrder200>>(
+    evaluateOrderBody: EvaluateOrderBody, options?: AxiosRequestConfig
+ ): Promise<TData> => {
+    return axios.post(
+      `/v1/orders/evaluate`,
+      evaluateOrderBody,options
+    );
+  }
+
+/**
+ * Verifies OTP sent to phone number
+ * @summary Verify phone OTP
+ */
+export const verifyPhoneOtp = <TData = AxiosResponse<VerifyPhoneOtp200>>(
+    verifyPhoneOtpBody: VerifyPhoneOtpBody, options?: AxiosRequestConfig
+ ): Promise<TData> => {
+    return axios.post(
+      `/v1/verify/phone`,
+      verifyPhoneOtpBody,options
+    );
+  }
+
+/**
+ * Performs comprehensive email validation including format, MX records, and disposable detection
+ * @summary Validate email address
+ */
+export const validateEmail = <TData = AxiosResponse<ValidateEmail200>>(
+    validateEmailBody: ValidateEmailBody, options?: AxiosRequestConfig
+ ): Promise<TData> => {
+    return axios.post(
+      `/v1/validate/email`,
+      validateEmailBody,options
+    );
+  }
+
+/**
+ * Validates a phone number and returns it in E.164 format
+ * @summary Validate phone number
+ */
+export const validatePhone = <TData = AxiosResponse<ValidatePhone200>>(
+    validatePhoneBody: ValidatePhoneBody, options?: AxiosRequestConfig
+ ): Promise<TData> => {
+    return axios.post(
+      `/v1/validate/phone`,
+      validatePhoneBody,options
+    );
+  }
+
+/**
+ * Validates a physical address and normalizes it
+ * @summary Validate address
+ */
+export const validateAddress = <TData = AxiosResponse<ValidateAddress200>>(
+    validateAddressBody: ValidateAddressBody, options?: AxiosRequestConfig
+ ): Promise<TData> => {
+    return axios.post(
+      `/v1/validate/address`,
+      validateAddressBody,options
+    );
+  }
+
+/**
+ * Validates a tax identification number
+ * @summary Validate tax ID
+ */
+export const validateTaxId = <TData = AxiosResponse<ValidateTaxId200>>(
+    validateTaxIdBody: ValidateTaxIdBody, options?: AxiosRequestConfig
+ ): Promise<TData> => {
+    return axios.post(
+      `/v1/validate/tax-id`,
+      validateTaxIdBody,options
+    );
+  }
+
+/**
+ * Validates and normalizes a name string
+ * @summary Validate name
+ */
+export const validateName = <TData = AxiosResponse<ValidateName200>>(
+    validateNameBody: ValidateNameBody, options?: AxiosRequestConfig
+ ): Promise<TData> => {
+    return axios.post(
+      `/v1/validate/name`,
+      validateNameBody,options
+    );
+  }
+
+/**
  * Retrieves the status and results of an asynchronous job
  * @summary Get job status
  */
@@ -1721,32 +2379,35 @@ export type LogoutUserResult = AxiosResponse<LogoutUser200>
 export type ListApiKeysResult = AxiosResponse<ListApiKeys200>
 export type CreateApiKeyResult = AxiosResponse<CreateApiKey201>
 export type RevokeApiKeyResult = AxiosResponse<RevokeApiKey200>
-export type NormalizeAddressResult = AxiosResponse<NormalizeAddress200>
-export type ValidateEmailResult = AxiosResponse<ValidateEmail200>
-export type ValidatePhoneResult = AxiosResponse<ValidatePhone200>
-export type ValidateAddressResult = AxiosResponse<ValidateAddress200>
-export type ValidateTaxIdResult = AxiosResponse<ValidateTaxId200>
-export type ValidateNameResult = AxiosResponse<ValidateName200>
-export type VerifyPhoneOtpResult = AxiosResponse<VerifyPhoneOtp200>
-export type DedupeCustomerResult = AxiosResponse<DedupeCustomer200>
-export type DedupeAddressResult = AxiosResponse<DedupeAddress200>
-export type MergeDeduplicatedResult = AxiosResponse<MergeDeduplicated200>
-export type EvaluateOrderResult = AxiosResponse<EvaluateOrder200>
+export type ListWebhooksResult = AxiosResponse<ListWebhooks200>
+export type CreateWebhookResult = AxiosResponse<CreateWebhook201>
+export type DeleteWebhookResult = AxiosResponse<DeleteWebhook200>
+export type TestWebhookResult = AxiosResponse<TestWebhook200>
+export type GetAvailableRulesResult = AxiosResponse<GetAvailableRules200>
+export type GetErrorCodeCatalogResult = AxiosResponse<GetErrorCodeCatalog200>
+export type GetReasonCodeCatalogResult = AxiosResponse<GetReasonCodeCatalog200>
+export type TestRulesAgainstPayloadResult = AxiosResponse<TestRulesAgainstPayload200>
+export type RegisterCustomRulesResult = AxiosResponse<RegisterCustomRules201>
 export type GetLogsResult = AxiosResponse<GetLogs200>
 export type GetUsageResult = AxiosResponse<GetUsage200>
 export type GetSettingsResult = AxiosResponse<GetSettings200>
 export type UpdateSettingsResult = AxiosResponse<UpdateSettings200>
 export type EraseDataResult = AxiosResponse<EraseData202>
+export type CreateCheckoutSessionResult = AxiosResponse<CreateCheckoutSession200>
+export type CreateCustomerPortalSessionResult = AxiosResponse<CreateCustomerPortalSession200>
 export type DeleteLogResult = AxiosResponse<DeleteLog200>
-export type GetRulesResult = AxiosResponse<GetRules200>
-export type GetReasonCodeCatalogResult = AxiosResponse<GetReasonCodeCatalog200>
-export type GetErrorCodeCatalogResult = AxiosResponse<GetErrorCodeCatalog200>
-export type RegisterCustomRulesResult = AxiosResponse<RegisterCustomRules200>
-export type TestRulesResult = AxiosResponse<TestRules200>
-export type ListWebhooksResult = AxiosResponse<ListWebhooks200>
-export type CreateWebhookResult = AxiosResponse<CreateWebhook201>
-export type DeleteWebhookResult = AxiosResponse<DeleteWebhook200>
-export type TestWebhookResult = AxiosResponse<TestWebhook200>
+export type NormalizeAddressResult = AxiosResponse<NormalizeAddress200>
 export type BatchValidateResult = AxiosResponse<BatchValidate202>
 export type BatchDedupeResult = AxiosResponse<BatchDedupe202>
+export type DedupeCustomerResult = AxiosResponse<DedupeCustomer200>
+export type DedupeAddressResult = AxiosResponse<DedupeAddress200>
+export type MergeDeduplicatedResult = AxiosResponse<MergeDeduplicated200>
+export type GetJobStatusByIdResult = AxiosResponse<GetJobStatusById200>
+export type EvaluateOrderResult = AxiosResponse<EvaluateOrder200>
+export type VerifyPhoneOtpResult = AxiosResponse<VerifyPhoneOtp200>
+export type ValidateEmailResult = AxiosResponse<ValidateEmail200>
+export type ValidatePhoneResult = AxiosResponse<ValidatePhone200>
+export type ValidateAddressResult = AxiosResponse<ValidateAddress200>
+export type ValidateTaxIdResult = AxiosResponse<ValidateTaxId200>
+export type ValidateNameResult = AxiosResponse<ValidateName200>
 export type GetJobStatusResult = AxiosResponse<GetJobStatus200>

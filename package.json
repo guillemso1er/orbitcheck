@@ -9,10 +9,7 @@
     "k6": "k6 run -e KEY=ok_test_a450e23f007460bc2a01e5ec715a12a76952 --vus 1 --iterations 1 tests/k6/main.js",
     "k6:fulljourney": "k6 run  tests/k6/fulljourney.js",
     "k6:all": "k6 run -e KEY=ok_test_a450e23f007460bc2a01e5ec715a12a76952  tests/k6/main.js",
-    "generate:routes": "pnpm --filter @orbicheck/contracts run generate:routes",
-    "generate:types": "pnpm --filter @orbicheck/contracts run generate:types",
-    "generate:client": "pnpm --filter @orbicheck/contracts run generate:client",
-    "generate": "pnpm generate:routes && pnpm generate:types && pnpm generate:client"
+    "generate": "pnpm --filter @orbicheck/contracts run generate"
   },
   "devDependencies": {
     "@types/adm-zip": "^0.5.7",

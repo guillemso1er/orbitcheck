@@ -83,6 +83,11 @@ jest.mock('../environment.js', () => ({
     OIDC_CLIENT_SECRET: '',
     OIDC_PROVIDER_URL: '',
     OIDC_REDIRECT_URI: '',
+    STRIPE_SECRET_KEY: 'sk_test_mock',
+    STRIPE_BASE_PLAN_PRICE_ID: 'price_base_mock',
+    STRIPE_USAGE_PRICE_ID: 'price_usage_mock',
+    STRIPE_STORE_ADDON_PRICE_ID: 'price_addon_mock',
+    FRONTEND_URL: 'http://localhost:3000',
   }
 }));
 
@@ -101,6 +106,24 @@ jest.mock('@fastify/swagger', () => jest.fn().mockImplementation(() => Promise.r
 jest.mock('@fastify/swagger-ui', () => jest.fn().mockImplementation(() => Promise.resolve()));
 
 jest.mock('twilio', () => jest.fn(() => mockTwilioInstance));
+
+jest.mock('stripe', () => jest.fn(() => ({
+  checkout: {
+    sessions: {
+      create: jest.fn().mockResolvedValue({
+        url: 'https://checkout.stripe.com/pay/test_session_id',
+        id: 'cs_test_123',
+      }),
+    },
+  },
+  billingPortal: {
+    sessions: {
+      create: jest.fn().mockResolvedValue({
+        url: 'https://billing.stripe.com/p/session/test_session_id',
+      }),
+    },
+  },
+})));
 
 jest.mock('node-fetch', () => jest.fn());
 
@@ -345,6 +368,8 @@ export const createApp = async (): Promise<FastifyInstance> => {
   registerSettingsRoutes(app, mockPool as any);
   registerValidationRoutes(app, mockPool as any, mockRedisInstance as any);
   registerWebhookRoutes(app, mockPool as any);
+  const { registerBillingRoutes } = await import('../routes/billing.js');
+  registerBillingRoutes(app, mockPool as any);
 
   // Add security headers hook like in server.ts
   app.addHook('onSend', async (request, reply, payload) => {

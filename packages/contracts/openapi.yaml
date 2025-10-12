@@ -6,26 +6,27 @@ info:
   contact:
     name: OrbiCheck Team
     email: support@orbicheck.com
-
 servers:
   - url: https://api.orbicheck.com/v1
     description: Production server
   - url: https://dev-api.orbicheck.com/v1
     description: Development server
-
 security:
   - BearerAuth: []
-
 tags:
   - name: UI Endpoints
-    description: Endpoints used exclusively by the web application UI, such as user authentication.
+    description: >-
+      Endpoints used exclusively by the web application UI, such as user
+      authentication.
   - name: Management API
     description: Endpoints for managing your account, data, API keys, and configurations.
   - name: Runtime API
-    description: Core operational endpoints for data validation, deduplication, and order processing.
-
+    description: >-
+      Core operational endpoints for data validation, deduplication, and order
+      processing.
+  - name: Internal
+    description: Internal endpoints for system administration and maintenance.
 paths:
-  # Authentication
   /auth/register:
     post:
       tags:
@@ -87,7 +88,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-
   /auth/login:
     post:
       tags:
@@ -142,7 +142,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-
   /auth/logout:
     post:
       tags:
@@ -162,8 +161,6 @@ paths:
                   message:
                     type: string
                     description: Success message
-
-  # API Keys
   /v1/api-keys:
     get:
       tags:
@@ -239,7 +236,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-
   /v1/api-keys/{id}:
     delete:
       tags:
@@ -282,70 +278,48 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-
-  # Validation
-  # Normalization
-  /v1/normalize/address:
-    post:
+  /v1/webhooks:
+    get:
       tags:
-        - Runtime API
-      summary: Normalize Address (Cheap)
-      description: Performs basic address normalization without geocoding or external lookups.
-      operationId: normalizeAddress
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - address
-              properties:
-                address:
-                  type: object
-                  required:
-                    - line1
-                    - city
-                    - postal_code
-                    - country
-                  properties:
-                    line1:
-                      type: string
-                    line2:
-                      type: string
-                    city:
-                      type: string
-                    state:
-                      type: string
-                    postal_code:
-                      type: string
-                    country:
-                      type: string
-                      minLength: 2
-                      maxLength: 2
+        - Management API
+      summary: List webhooks
+      description: Retrieves all webhooks for the authenticated project
+      operationId: listWebhooks
       responses:
         '200':
-          description: Successful normalization response
+          description: List of webhooks
           content:
             application/json:
               schema:
                 type: object
                 properties:
-                  normalized:
-                    type: object
-                    properties:
-                      line1:
-                        type: string
-                      line2:
-                        type: string
-                      city:
-                        type: string
-                      state:
-                        type: string
-                      postal_code:
-                        type: string
-                      country:
-                        type: string
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        url:
+                          type: string
+                          format: uri
+                        events:
+                          type: array
+                          items:
+                            type: string
+                        status:
+                          type: string
+                          enum:
+                            - active
+                            - inactive
+                            - deleted
+                        created_at:
+                          type: string
+                          format: date-time
+                        last_fired_at:
+                          type: string
+                          format: date-time
+                          nullable: true
                   request_id:
                     type: string
         '401':
@@ -354,25 +328,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-        '429':
-          description: Rate limit exceeded
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '400':
-          description: Validation error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-  /validate/email:
     post:
       tags:
-        - Runtime API
-      summary: Validate email address
-      description: Performs comprehensive email validation including format, MX records, and disposable detection
-      operationId: validateEmail
+        - Management API
+      summary: Create webhook
+      description: Creates a new webhook subscription for the authenticated project
+      operationId: createWebhook
       requestBody:
         required: true
         content:
@@ -380,547 +341,99 @@ paths:
             schema:
               type: object
               required:
-                - email
+                - url
+                - events
               properties:
-                email:
+                url:
                   type: string
-                  description: The email address to validate
-      responses:
-        '200':
-          description: Email validation result
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  valid:
-                    type: boolean
-                    description: Whether the email is valid
-                  normalized:
-                    type: string
-                    description: Normalized email address
-                  disposable:
-                    type: boolean
-                    description: Whether the email is from a disposable service
-                  mx_found:
-                    type: boolean
-                    description: Whether MX records were found
-                  reason_codes:
-                    type: array
-                    items:
-                      type: string
-                    description: List of validation reason codes
-                  request_id:
-                    type: string
-                  ttl_seconds:
-                    type: integer
-                    description: Cache TTL in seconds
-        '400':
-          description: Validation error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-
-  /v1/validate/phone:
-    post:
-      tags:
-        - Runtime API
-      summary: Validate phone number
-      description: Validates a phone number and returns it in E.164 format
-      operationId: validatePhone
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - phone
-              properties:
-                phone:
-                  type: string
-                  description: The phone number to validate
-                country:
-                  type: string
-                  description: Optional two-letter country code hint
-                request_otp:
-                  type: boolean
-                  default: false
-                  description: Request OTP for verification
-      responses:
-        '200':
-          description: Phone validation result
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  valid:
-                    type: boolean
-                    description: Whether the phone number is valid
-                  e164:
-                    type: string
-                    description: Phone number in E.164 format
-                  country:
-                    type: string
-                    nullable: true
-                    description: Country code
-                  reason_codes:
-                    type: array
-                    items:
-                      type: string
-                    description: List of validation reason codes
-                  request_id:
-                    type: string
-                  ttl_seconds:
-                    type: integer
-                    description: Cache TTL in seconds
-                  verification_sid:
-                    type: string
-                    nullable: true
-                    description: Twilio Verify SID for OTP verification
-        '400':
-          description: Validation error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-
-  /v1/validate/address:
-    post:
-      tags:
-        - Runtime API
-      summary: Validate address
-      description: Validates a physical address and normalizes it
-      operationId: validateAddress
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - address
-              properties:
-                address:
-                  type: object
-                  required:
-                    - line1
-                    - city
-                    - postal_code
-                    - country
-                  properties:
-                    line1:
-                      type: string
-                      description: Street address line 1
-                    line2:
-                      type: string
-                      description: Street address line 2
-                    city:
-                      type: string
-                      description: City
-                    state:
-                      type: string
-                      description: State or province
-                    postal_code:
-                      type: string
-                      description: Postal code
-                    country:
-                      type: string
-                      minLength: 2
-                      maxLength: 2
-                      description: Two-letter country code
-      responses:
-        '200':
-          description: Address validation result
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  valid:
-                    type: boolean
-                    description: Whether the address is valid
-                  normalized:
-                    $ref: '#/components/schemas/Address'
-                  geo:
-                    type: object
-                    nullable: true
-                    properties:
-                      lat:
-                        type: number
-                        description: Latitude
-                      lng:
-                        type: number
-                        description: Longitude
-                      confidence:
-                        type: number
-                        description: Geocoding confidence score
-                  po_box:
-                    type: boolean
-                    description: Whether the address is a P.O. Box
-                  postal_city_match:
-                    type: boolean
-                    description: Whether postal code matches city
-                  reason_codes:
-                    type: array
-                    items:
-                      type: string
-                    description: List of validation reason codes
-                  request_id:
-                    type: string
-                  ttl_seconds:
-                    type: integer
-                    description: Cache TTL in seconds
-        '400':
-          description: Validation error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-
-  /v1/validate/tax-id:
-    post:
-      tags:
-        - Runtime API
-      summary: Validate tax ID
-      description: Validates a tax identification number
-      operationId: validateTaxId
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - type
-                - value
-              properties:
-                type:
-                  type: string
-                  description: Type of tax ID (e.g., "vat", "euvat", "br_cnpj")
-                value:
-                  type: string
-                  description: The tax ID number
-                country:
-                  type: string
-                  description: Optional two-letter country code
-      responses:
-        '200':
-          description: Tax ID validation result
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  valid:
-                    type: boolean
-                    description: Whether the tax ID is valid
-                  normalized:
-                    type: string
-                    description: Normalized tax ID
-                  reason_codes:
-                    type: array
-                    items:
-                      type: string
-                    description: List of validation reason codes
-                  request_id:
-                    type: string
-        '400':
-          description: Validation error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-  
-  /v1/validate/name:
-    post:
-      tags:
-        - Runtime API
-      summary: Validate name
-      description: Validates and normalizes a name string
-      operationId: validateName
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - name
-              properties:
-                name:
-                  type: string
-                  description: The name to validate and normalize
-      responses:
-        '200':
-          description: Name validation result
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  valid:
-                    type: boolean
-                    description: Whether the name is valid
-                  normalized:
-                    type: string
-                    description: Normalized name
-                  reason_codes:
-                    type: array
-                    items:
-                      type: string
-                    description: List of validation reason codes
-                  request_id:
-                    type: string
-        '400':
-          description: Validation error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-
-  /v1/verify/phone:
-    post:
-      tags:
-        - Runtime API
-      summary: Verify phone OTP
-      description: Verifies OTP sent to phone number
-      operationId: verifyPhoneOtp
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - verification_sid
-                - code
-              properties:
-                verification_sid:
-                  type: string
-                  description: Twilio Verify SID from validation response
-                code:
-                  type: string
-                  description: OTP code entered by user
-      responses:
-        '200':
-          description: OTP verification result
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  valid:
-                    type: boolean
-                    description: Whether OTP is valid
-                  reason_codes:
-                    type: array
-                    items:
-                      type: string
-                    description: List of reason codes
-                  request_id:
-                    type: string
-        '400':
-          description: Invalid OTP
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-
-  # Deduplication
-  /v1/dedupe/customer:
-    post:
-      tags:
-        - Runtime API
-      summary: Deduplicate customer
-      description: Searches for existing customers using deterministic and fuzzy matching
-      operationId: dedupeCustomer
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - email
-                - first_name
-                - last_name
-              properties:
-                email:
-                  type: string
-                  description: Customer email
-                phone:
-                  type: string
-                  description: Customer phone
-                first_name:
-                  type: string
-                  description: Customer first name
-                last_name:
-                  type: string
-                  description: Customer last name
-      responses:
-        '200':
-          description: Deduplication results
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  matches:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/CustomerMatch'
-                  suggested_action:
-                    type: string
-                    enum: [create_new, merge_with, review]
-                    description: Suggested action
-                  canonical_id:
-                    type: string
-                    nullable: true
-                    description: Suggested canonical ID
-                  request_id:
-                    type: string
-        '400':
-          description: Validation error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-
-  /v1/dedupe/address:
-    post:
-      tags:
-        - Runtime API
-      summary: Deduplicate address
-      description: Searches for existing addresses using deterministic and fuzzy matching
-      operationId: dedupeAddress
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - line1
-                - city
-                - postal_code
-                - country
-              properties:
-                line1:
-                  type: string
-                  description: Street address line 1
-                line2:
-                  type: string
-                  description: Street address line 2
-                city:
-                  type: string
-                  description: City
-                state:
-                  type: string
-                  description: State or province
-                postal_code:
-                  type: string
-                  description: Postal code
-                country:
-                  type: string
-                  minLength: 2
-                  maxLength: 2
-                  description: Two-letter country code
-      responses:
-        '200':
-          description: Deduplication results
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  matches:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/AddressMatch'
-                  suggested_action:
-                    type: string
-                    enum: [create_new, merge_with, review]
-                    description: Suggested action
-                  canonical_id:
-                    type: string
-                    nullable: true
-                    description: Suggested canonical ID
-                  request_id:
-                    type: string
-        '400':
-          description: Validation error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-
-  /v1/dedupe/merge:
-    post:
-      tags:
-        - Runtime API
-      summary: Merge deduplicated records
-      description: Merges multiple customer or address records into a canonical one
-      operationId: mergeDeduplicated
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - type
-                - ids
-                - canonical_id
-              properties:
-                type:
-                  type: string
-                  enum: [customer, address]
-                  description: Type of records to merge
-                ids:
+                  format: uri
+                  description: The webhook URL to send events to
+                events:
                   type: array
                   items:
                     type: string
-                  description: IDs to merge
-                canonical_id:
-                  type: string
-                  description: ID of canonical record to keep
+                  description: Events to subscribe to
       responses:
-        '200':
-          description: Merge result
+        '201':
+          description: Webhook created successfully
           content:
             application/json:
               schema:
                 type: object
                 properties:
-                  success:
-                    type: boolean
-                    description: Whether merge was successful
-                  merged_count:
-                    type: integer
-                    description: Number of records merged
-                  canonical_id:
+                  id:
                     type: string
-                    description: ID of canonical record
+                  url:
+                    type: string
+                    format: uri
+                  events:
+                    type: array
+                    items:
+                      type: string
+                  secret:
+                    type: string
+                  status:
+                    type: string
+                  created_at:
+                    type: string
+                    format: date-time
                   request_id:
                     type: string
-        '400':
-          description: Validation error
+        '401':
+          description: Unauthorized
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-
-  # Order Evaluation
-  /v1/orders/evaluate:
+  /v1/webhooks/{id}:
+    delete:
+      tags:
+        - Management API
+      summary: Delete webhook
+      description: Deletes a webhook subscription
+      operationId: deleteWebhook
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID of the webhook to delete
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Webhook deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  status:
+                    type: string
+                  request_id:
+                    type: string
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Webhook not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /v1/webhooks/test:
     post:
       tags:
-        - Runtime API
-      summary: Evaluate order for risk and rules
-      description: Evaluates an order for deduplication, validation, and applies business rules
-      operationId: evaluateOrder
+        - Management API
+      summary: Test Webhook
+      description: >-
+        Sends a sample payload to the provided webhook URL and returns the
+        response. Useful for testing webhook configurations.
+      operationId: testWebhook
       requestBody:
         required: true
         content:
@@ -928,83 +441,361 @@ paths:
             schema:
               type: object
               required:
-                - order_id
-                - customer
-                - shipping_address
-                - total_amount
-                - currency
+                - url
+                - payload_type
               properties:
-                order_id:
+                url:
                   type: string
-                  description: Unique order identifier
-                customer:
-                  $ref: '#/components/schemas/Customer'
-                shipping_address:
-                  $ref: '#/components/schemas/Address'
-                total_amount:
-                  type: number
-                  description: Order total amount
-                currency:
+                  description: The webhook URL to send the payload to
+                  format: uri
+                payload_type:
                   type: string
-                  pattern: '^[A-Z]{3}$'
-                  description: Currency code (e.g., USD, EUR)
-                payment_method:
-                  type: string
-                  enum: [card, cod, bank_transfer]
-                  description: Payment method
+                  enum:
+                    - validation
+                    - order
+                    - custom
+                  description: Type of sample payload to send
+                  default: validation
+                custom_payload:
+                  type: object
+                  description: Custom payload if payload_type is "custom"
+                  additionalProperties: true
       responses:
         '200':
-          description: Order evaluation results
+          description: Webhook test result
           content:
             application/json:
               schema:
                 type: object
                 properties:
-                  order_id:
+                  sent_to:
                     type: string
-                    description: Order ID
-                  risk_score:
-                    type: number
-                    minimum: 0
-                    maximum: 100
-                    description: Risk score (0-100)
-                  action:
-                    type: string
-                    enum: [approve, hold, block]
-                    description: Recommended action
-                  tags:
-                    type: array
-                    items:
-                      type: string
-                    description: Order tags
-                  reason_codes:
-                    type: array
-                    items:
-                      type: string
-                    description: List of reason codes
-                  customer_dedupe:
-                    $ref: '#/components/schemas/DedupeResult'
-                  address_dedupe:
-                    $ref: '#/components/schemas/DedupeResult'
-                  validations:
+                  payload:
+                    type: object
+                    additionalProperties: true
+                  response:
                     type: object
                     properties:
-                      email:
-                        $ref: '#/components/schemas/ValidationResult'
-                      phone:
-                        $ref: '#/components/schemas/ValidationResult'
-                      address:
-                        $ref: '#/components/schemas/AddressValidationResult'
+                      status:
+                        type: integer
+                      status_text:
+                        type: string
+                      headers:
+                        type: object
+                      body:
+                        type: string
                   request_id:
                     type: string
         '400':
-          description: Validation error
+          description: Invalid URL or payload
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-
-  # Data Retrieval
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Failed to send request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /v1/rules:
+    get:
+      tags:
+        - Management API
+      summary: Get available rules
+      description: >-
+        Retrieves a list of all available validation rules and their
+        configurations
+      operationId: getAvailableRules
+      responses:
+        '200':
+          description: List of available rules
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  rules:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          description: Rule identifier
+                        name:
+                          type: string
+                          description: Human-readable rule name
+                        description:
+                          type: string
+                          description: Rule description
+                        category:
+                          type: string
+                          description: Rule category
+                        severity:
+                          type: string
+                          enum:
+                            - low
+                            - medium
+                            - high
+                            - critical
+                          description: Rule severity level
+                        enabled:
+                          type: boolean
+                          description: Whether the rule is enabled
+                        config:
+                          type: object
+                          description: Rule configuration options
+                          additionalProperties: true
+                  request_id:
+                    type: string
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /v1/rules/error-codes:
+    get:
+      tags:
+        - Management API
+      summary: Get error code catalog
+      description: Retrieves a catalog of all possible error codes and their descriptions
+      operationId: getErrorCodeCatalog
+      responses:
+        '200':
+          description: Error code catalog
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error_codes:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        code:
+                          type: string
+                          description: Error code
+                        description:
+                          type: string
+                          description: Error description
+                        category:
+                          type: string
+                          description: Error category
+                  request_id:
+                    type: string
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /v1/rules/catalog:
+    get:
+      tags:
+        - Management API
+      summary: Get reason code catalog
+      description: Retrieves a catalog of all possible reason codes and their descriptions
+      operationId: getReasonCodeCatalog
+      responses:
+        '200':
+          description: Reason code catalog
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  reason_codes:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        code:
+                          type: string
+                          description: Reason code
+                        description:
+                          type: string
+                          description: Reason description
+                        category:
+                          type: string
+                          description: Reason category
+                        severity:
+                          type: string
+                          enum:
+                            - info
+                            - warning
+                            - error
+                          description: Reason severity
+                  request_id:
+                    type: string
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /v1/rules/test:
+    post:
+      tags:
+        - Management API
+      summary: Test rules against payload
+      description: Tests rules against a sample payload and returns triggered rules
+      operationId: testRulesAgainstPayload
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - payload
+              properties:
+                payload:
+                  type: object
+                  description: Sample payload to test rules against
+                  additionalProperties: true
+                rule_ids:
+                  type: array
+                  items:
+                    type: string
+                  description: Optional list of specific rule IDs to test
+      responses:
+        '200':
+          description: Rule test results
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  triggered_rules:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        rule_id:
+                          type: string
+                          description: ID of triggered rule
+                        rule_name:
+                          type: string
+                          description: Name of triggered rule
+                        severity:
+                          type: string
+                          enum:
+                            - low
+                            - medium
+                            - high
+                            - critical
+                          description: Rule severity
+                        reason_codes:
+                          type: array
+                          items:
+                            type: string
+                          description: Reason codes generated
+                  request_id:
+                    type: string
+        '400':
+          description: Invalid payload
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /v1/rules/register:
+    post:
+      tags:
+        - Management API
+      summary: Register custom rules
+      description: Registers new custom validation rules for the project
+      operationId: registerCustomRules
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - rules
+              properties:
+                rules:
+                  type: array
+                  items:
+                    type: object
+                    required:
+                      - name
+                      - logic
+                    properties:
+                      name:
+                        type: string
+                        description: Custom rule name
+                      description:
+                        type: string
+                        description: Rule description
+                      logic:
+                        type: string
+                        description: Rule logic expression
+                      severity:
+                        type: string
+                        enum:
+                          - low
+                          - medium
+                          - high
+                          - critical
+                        default: medium
+                        description: Rule severity
+                      enabled:
+                        type: boolean
+                        default: true
+                        description: Whether the rule is enabled
+                  description: Array of custom rules to register
+      responses:
+        '201':
+          description: Custom rules registered successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  registered_rules:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          description: Registered rule ID
+                        name:
+                          type: string
+                          description: Rule name
+                        status:
+                          type: string
+                          description: Registration status
+                  request_id:
+                    type: string
+        '400':
+          description: Invalid rule definitions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
   /v1/data/logs:
     get:
       tags:
@@ -1070,7 +861,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-
   /v1/data/usage:
     get:
       tags:
@@ -1088,7 +878,7 @@ paths:
                 properties:
                   period:
                     type: string
-                    example: 'month'
+                    example: month
                     description: Time period
                   totals:
                     type: object
@@ -1136,13 +926,14 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-
   /v1/settings:
     get:
       tags:
         - Management API
       summary: Get tenant settings
-      description: Retrieves tenant settings including country defaults, formatting, and risk thresholds
+      description: >-
+        Retrieves tenant settings including country defaults, formatting, and
+        risk thresholds
       operationId: getSettings
       responses:
         '200':
@@ -1174,7 +965,9 @@ paths:
       tags:
         - Management API
       summary: Update tenant settings
-      description: Updates tenant settings including country defaults, formatting, and risk thresholds
+      description: >-
+        Updates tenant settings including country defaults, formatting, and risk
+        thresholds
       operationId: updateSettings
       requestBody:
         required: true
@@ -1218,7 +1011,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-
   /v1/data/erase:
     post:
       tags:
@@ -1267,7 +1059,80 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-
+  /v1/billing/checkout:
+    post:
+      tags:
+        - Management API
+      summary: Create Stripe Checkout session
+      description: >-
+        Creates a Stripe Checkout session with base plan and usage-based line
+        items
+      operationId: createCheckoutSession
+      responses:
+        '200':
+          description: Checkout session created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  session_url:
+                    type: string
+                    format: uri
+                  session_id:
+                    type: string
+                  request_id:
+                    type: string
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /v1/billing/portal:
+    post:
+      tags:
+        - Management API
+      summary: Create Stripe Customer Portal session
+      description: Creates a Stripe Customer Portal session for managing billing
+      operationId: createCustomerPortalSession
+      responses:
+        '200':
+          description: Portal session created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  portal_url:
+                    type: string
+                    format: uri
+                  request_id:
+                    type: string
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: No billing account found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
   /v1/logs/{id}:
     delete:
       tags:
@@ -1308,155 +1173,31 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-
-  # Rules
-  /v1/rules:
-    get:
-      tags:
-        - Management API
-      summary: Get available rules
-      description: Returns a list of all available validation and risk assessment rules
-      operationId: getRules
-      responses:
-        '200':
-          description: List of rules
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  rules:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/Rule'
-                  request_id:
-                    type: string
-        '401':
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-
-  /v1/rules/catalog:
-    get:
-      tags:
-        - Management API
-      summary: Get reason code catalog
-      description: Returns a comprehensive list of all possible reason codes
-      operationId: getReasonCodeCatalog
-      responses:
-        '200':
-          description: List of reason codes
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  reason_codes:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/ReasonCode'
-                  request_id:
-                    type: string
-        '401':
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-
-  /v1/rules/error-codes:
-    get:
-      tags:
-        - Management API
-      summary: Get error code catalog
-      description: Returns a comprehensive list of all possible error codes
-      operationId: getErrorCodeCatalog
-      responses:
-        '200':
-          description: List of error codes
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error_codes:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/ErrorCode'
-                  request_id:
-                    type: string
-        '401':
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-
-  /v1/rules/register:
+  /v1/normalize/address:
     post:
       tags:
-        - Management API
-      summary: Register custom rules
-      description: Registers custom business rules for the project
-      operationId: registerCustomRules
+        - Runtime API
+      summary: Normalize Address (Cheap)
+      description: >-
+        Performs basic address normalization without geocoding or external
+        lookups.
+      operationId: normalizeAddress
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
+              required:
+                - address
               properties:
-                rules:
-                  type: array
-                  items:
-                    $ref: '#/components/schemas/CustomRule'
-      responses:
-        '200':
-          description: Rules registered successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  message:
-                    type: string
-                    description: Success message
-                  registered_rules:
-                    type: array
-                    items:
-                      type: string
-                    description: List of registered rule IDs
-                  request_id:
-                    type: string
-        '401':
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-  
-  /v1/rules/test:
-    post:
-      tags:
-        - Management API
-      summary: Test Rules Against Payload
-      description: Performs a dry-run evaluation of a payload against all enabled validation rules.
-      operationId: testRules
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                email:
-                  type: string
-                phone:
-                  type: string
                 address:
                   type: object
+                  required:
+                    - line1
+                    - city
+                    - postal_code
+                    - country
                   properties:
                     line1:
                       type: string
@@ -1470,293 +1211,98 @@ paths:
                       type: string
                     country:
                       type: string
-                name:
-                  type: string
-      responses:
-        "200":
-          description: Rules test results
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  results:
-                    type: object
-                    properties:
-                      email:
-                        type: object
-                        properties:
-                          valid:
-                            type: boolean
-                          reason_codes:
-                            type: array
-                            items:
-                              type: string
-                          normalized:
-                            type: string
-                          disposable:
-                            type: boolean
-                      phone:
-                        type: object
-                        properties:
-                          valid:
-                            type: boolean
-                          reason_codes:
-                            type: array
-                            items:
-                              type: string
-                          e164:
-                            type: string
-                          country:
-                            type: string
-                      address:
-                        type: object
-                        properties:
-                          valid:
-                            type: boolean
-                          reason_codes:
-                            type: array
-                            items:
-                              type: string
-                          normalized:
-                            type: object
-                          po_box:
-                            type: boolean
-                      name:
-                        type: object
-                        properties:
-                          valid:
-                            type: boolean
-                          reason_codes:
-                            type: array
-                            items:
-                              type: string
-                          normalized:
-                            type: string
-                  request_id:
-                    type: string
-
-  # Webhooks
-  /v1/webhooks:
-    get:
-      tags:
-        - Management API
-      summary: List webhooks
-      description: Retrieves webhooks for the authenticated project
-      operationId: listWebhooks
+                      minLength: 2
+                      maxLength: 2
       responses:
         '200':
-          description: List of webhooks
+          description: Successful normalization response
           content:
             application/json:
               schema:
                 type: object
                 properties:
-                  data:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/Webhook'
-                  request_id:
-                    type: string
-        '401':
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-    post:
-      tags:
-        - Management API
-      summary: Create webhook
-      description: Creates a new webhook subscription for the authenticated project
-      operationId: createWebhook
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - url
-                - events
-              properties:
-                url:
-                  type: string
-                  format: uri
-                  description: The webhook URL to send events to
-                events:
-                  type: array
-                  items:
-                    type: string
-                    enum: [validation_result, order_evaluated, dedupe_completed, job_completed]
-                  description: Events to subscribe to
-      responses:
-        '201':
-          description: Webhook created successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  id:
-                    type: string
-                    description: Webhook ID
-                  url:
-                    type: string
-                    description: Webhook URL
-                  events:
-                    type: array
-                    items:
-                      type: string
-                    description: Subscribed events
-                  secret:
-                    type: string
-                    description: Webhook secret for signature verification
-                  status:
-                    type: string
-                    description: Webhook status
-                  created_at:
-                    type: string
-                    format: date-time
-                    description: Creation timestamp
+                  normalized:
+                    type: object
+                    properties:
+                      line1:
+                        type: string
+                      line2:
+                        type: string
+                      city:
+                        type: string
+                      state:
+                        type: string
+                      postal_code:
+                        type: string
+                      country:
+                        type: string
                   request_id:
                     type: string
         '400':
-          description: Invalid input data
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '401':
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-
-  /v1/webhooks/{id}:
-    delete:
-      tags:
-        - Management API
-      summary: Delete webhook
-      description: Deletes a webhook subscription
-      operationId: deleteWebhook
-      parameters:
-        - name: id
-          in: path
-          required: true
-          description: ID of the webhook to delete
-          schema:
-            type: string
-      responses:
-        '200':
-          description: Webhook deleted successfully
+          description: Validation error
           content:
             application/json:
               schema:
                 type: object
                 properties:
-                  id:
-                    type: string
-                    description: Webhook ID
-                  status:
-                    type: string
-                    description: Webhook status (deleted)
-                  request_id:
-                    type: string
-        '401':
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '404':
-          description: Webhook not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-
-  /v1/webhooks/test:
-    post:
-      tags:
-        - Management API
-      summary: Test webhook
-      description: Sends a sample payload to the provided webhook URL
-      operationId: testWebhook
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - url
-                - payload_type
-              properties:
-                url:
-                  type: string
-                  format: uri
-                  description: The webhook URL to send the payload to
-                payload_type:
-                  type: string
-                  enum: [validation, order, custom]
-                  description: Type of sample payload to send
-                custom_payload:
-                  type: object
-                  description: Custom payload if payload_type is "custom"
-      responses:
-        '200':
-          description: Webhook test result
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  sent_to:
-                    type: string
-                    description: URL sent to
-                  payload:
-                    type: object
-                    additionalProperties: true
-                    description: Payload sent
-                  response:
+                  error:
                     type: object
                     properties:
-                      status:
-                        type: integer
-                        description: HTTP status code
-                      status_text:
+                      code:
                         type: string
-                        description: HTTP status text
-                      headers:
-                        type: object
-                        description: Response headers
-                      body:
+                        description: Error code
+                      message:
                         type: string
-                        description: Response body
+                        description: Error message
                   request_id:
                     type: string
-        '400':
-          description: Invalid URL or payload
+                    description: Request identifier
+        '401':
+          description: Unauthorized
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
-        '500':
-          description: Failed to send request
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                        description: Error code
+                      message:
+                        type: string
+                        description: Error message
+                  request_id:
+                    type: string
+                    description: Request identifier
+        '429':
+          description: Rate limit exceeded
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
-
-  # Batch Operations
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                        description: Error code
+                      message:
+                        type: string
+                        description: Error message
+                  request_id:
+                    type: string
+                    description: Request identifier
   /v1/batch/validate:
     post:
       tags:
         - Runtime API
       summary: Batch validate data
-      description: Performs batch validation of emails, phones, addresses, or tax IDs asynchronously
+      description: >-
+        Performs batch validation of emails, phones, addresses, or tax IDs
+        asynchronously
       operationId: batchValidate
       requestBody:
         required: true
@@ -1770,7 +1316,11 @@ paths:
               properties:
                 type:
                   type: string
-                  enum: [email, phone, address, tax-id]
+                  enum:
+                    - email
+                    - phone
+                    - address
+                    - tax-id
                   description: The type of data to validate
                 data:
                   type: array
@@ -1792,7 +1342,8 @@ paths:
                     description: Unique job identifier
                   status:
                     type: string
-                    enum: [pending]
+                    enum:
+                      - pending
                     description: Job status
                   request_id:
                     type: string
@@ -1802,14 +1353,39 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                        description: Error code
+                      message:
+                        type: string
+                        description: Error message
+                  request_id:
+                    type: string
+                    description: Request identifier
         '401':
           description: Unauthorized
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
-
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                        description: Error code
+                      message:
+                        type: string
+                        description: Error message
+                  request_id:
+                    type: string
+                    description: Request identifier
   /v1/batch/dedupe:
     post:
       tags:
@@ -1829,7 +1405,9 @@ paths:
               properties:
                 type:
                   type: string
-                  enum: [customers, addresses]
+                  enum:
+                    - customers
+                    - addresses
                   description: The type of data to deduplicate
                 data:
                   type: array
@@ -1851,7 +1429,8 @@ paths:
                     description: Unique job identifier
                   status:
                     type: string
-                    enum: [pending]
+                    enum:
+                      - pending
                     description: Job status
                   request_id:
                     type: string
@@ -1861,14 +1440,1116 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                        description: Error code
+                      message:
+                        type: string
+                        description: Error message
+                  request_id:
+                    type: string
+                    description: Request identifier
         '401':
           description: Unauthorized
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
-
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                        description: Error code
+                      message:
+                        type: string
+                        description: Error message
+                  request_id:
+                    type: string
+                    description: Request identifier
+  /v1/dedupe/customer:
+    post:
+      tags:
+        - Runtime API
+      summary: Deduplicate customer
+      description: Searches for existing customers using deterministic and fuzzy matching
+      operationId: dedupeCustomer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - first_name
+                - last_name
+              properties:
+                email:
+                  type: string
+                  description: Customer email
+                phone:
+                  type: string
+                  description: Customer phone
+                first_name:
+                  type: string
+                  description: Customer first name
+                last_name:
+                  type: string
+                  description: Customer last name
+      responses:
+        '200':
+          description: Deduplication results
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  matches:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          description: Customer ID
+                        similarity_score:
+                          type: number
+                          description: Similarity score (0-1)
+                        match_type:
+                          type: string
+                          enum:
+                            - exact_email
+                            - exact_phone
+                            - fuzzy_name
+                          description: Type of match
+                        data:
+                          type: object
+                          properties:
+                            email:
+                              type: string
+                              description: Customer email
+                            phone:
+                              type: string
+                              description: Customer phone
+                            first_name:
+                              type: string
+                              description: Customer first name
+                            last_name:
+                              type: string
+                              description: Customer last name
+                  suggested_action:
+                    type: string
+                    enum:
+                      - create_new
+                      - merge_with
+                      - review
+                    description: Suggested action
+                  canonical_id:
+                    type: string
+                    nullable: true
+                    description: Suggested canonical ID
+                  request_id:
+                    type: string
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                        description: Error code
+                      message:
+                        type: string
+                        description: Error message
+                  request_id:
+                    type: string
+                    description: Request identifier
+  /v1/dedupe/address:
+    post:
+      tags:
+        - Runtime API
+      summary: Deduplicate address
+      description: Searches for existing addresses using deterministic and fuzzy matching
+      operationId: dedupeAddress
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - line1
+                - city
+                - postal_code
+                - country
+              properties:
+                line1:
+                  type: string
+                  description: Street address line 1
+                line2:
+                  type: string
+                  description: Street address line 2
+                city:
+                  type: string
+                  description: City
+                state:
+                  type: string
+                  description: State or province
+                postal_code:
+                  type: string
+                  description: Postal code
+                country:
+                  type: string
+                  minLength: 2
+                  maxLength: 2
+                  description: Two-letter country code
+      responses:
+        '200':
+          description: Deduplication results
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  matches:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          description: Address ID
+                        similarity_score:
+                          type: number
+                          description: Similarity score (0-1)
+                        match_type:
+                          type: string
+                          enum:
+                            - exact_address
+                            - exact_postal
+                            - fuzzy_address
+                          description: Type of match
+                        data:
+                          type: object
+                          properties:
+                            line1:
+                              type: string
+                              description: Street address line 1
+                            line2:
+                              type: string
+                              description: Street address line 2
+                            city:
+                              type: string
+                              description: City
+                            state:
+                              type: string
+                              description: State or province
+                            postal_code:
+                              type: string
+                              description: Postal code
+                            country:
+                              type: string
+                              description: Two-letter country code
+                            lat:
+                              type: number
+                              nullable: true
+                              description: Latitude
+                            lng:
+                              type: number
+                              nullable: true
+                              description: Longitude
+                  suggested_action:
+                    type: string
+                    enum:
+                      - create_new
+                      - merge_with
+                      - review
+                    description: Suggested action
+                  canonical_id:
+                    type: string
+                    nullable: true
+                    description: Suggested canonical ID
+                  request_id:
+                    type: string
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                        description: Error code
+                      message:
+                        type: string
+                        description: Error message
+                  request_id:
+                    type: string
+                    description: Request identifier
+  /v1/dedupe/merge:
+    post:
+      tags:
+        - Runtime API
+      summary: Merge deduplicated records
+      description: Merges multiple customer or address records into a canonical one
+      operationId: mergeDeduplicated
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - type
+                - ids
+                - canonical_id
+              properties:
+                type:
+                  type: string
+                  enum:
+                    - customer
+                    - address
+                  description: Type of records to merge
+                ids:
+                  type: array
+                  items:
+                    type: string
+                  description: IDs to merge
+                canonical_id:
+                  type: string
+                  description: ID of canonical record to keep
+      responses:
+        '200':
+          description: Merge result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    description: Whether merge was successful
+                  merged_count:
+                    type: integer
+                    description: Number of records merged
+                  canonical_id:
+                    type: string
+                    description: ID of canonical record
+                  request_id:
+                    type: string
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                        description: Error code
+                      message:
+                        type: string
+                        description: Error message
+                  request_id:
+                    type: string
+                    description: Request identifier
+  /v1/jobs/:id:
+    get:
+      tags:
+        - Runtime API
+      summary: Get job status
+      description: Retrieves the status and results of an asynchronous job.
+      operationId: getJobStatusById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Job ID
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Job status information
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    description: Job ID
+                  status:
+                    type: string
+                    enum:
+                      - pending
+                      - running
+                      - completed
+                      - failed
+                    description: Current job status
+                  progress:
+                    type: number
+                    minimum: 0
+                    maximum: 100
+                    description: Job completion percentage
+                  result:
+                    type: object
+                    nullable: true
+                    description: Job result data
+                    additionalProperties: true
+                  error:
+                    type: string
+                    nullable: true
+                    description: Error message if job failed
+                  created_at:
+                    type: string
+                    format: date-time
+                    description: Job creation timestamp
+                  updated_at:
+                    type: string
+                    format: date-time
+                    description: Last update timestamp
+                  request_id:
+                    type: string
+        '404':
+          description: Job not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                        description: Error code
+                      message:
+                        type: string
+                        description: Error message
+                  request_id:
+                    type: string
+                    description: Request identifier
+  /v1/orders/evaluate:
+    post:
+      tags:
+        - Runtime API
+      summary: Evaluate order for risk and rules
+      description: >-
+        Evaluates an order for deduplication, validation, and applies business
+        rules
+      operationId: evaluateOrder
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - order_id
+                - customer
+                - shipping_address
+                - total_amount
+                - currency
+              properties:
+                order_id:
+                  type: string
+                  description: Unique order identifier
+                customer:
+                  type: object
+                  properties:
+                    email:
+                      type: string
+                      description: Customer email
+                    phone:
+                      type: string
+                      description: Customer phone
+                    first_name:
+                      type: string
+                      description: Customer first name
+                    last_name:
+                      type: string
+                      description: Customer last name
+                shipping_address:
+                  type: object
+                  properties:
+                    line1:
+                      type: string
+                      description: Street address line 1
+                    line2:
+                      type: string
+                      description: Street address line 2
+                    city:
+                      type: string
+                      description: City
+                    state:
+                      type: string
+                      description: State or province
+                    postal_code:
+                      type: string
+                      description: Postal code
+                    country:
+                      type: string
+                      description: Two-letter country code
+                    lat:
+                      type: number
+                      nullable: true
+                      description: Latitude
+                    lng:
+                      type: number
+                      nullable: true
+                      description: Longitude
+                total_amount:
+                  type: number
+                  description: Order total amount
+                currency:
+                  type: string
+                  pattern: ^[A-Z]{3}$
+                  description: Currency code (e.g., USD, EUR)
+                payment_method:
+                  type: string
+                  enum:
+                    - card
+                    - cod
+                    - bank_transfer
+                  description: Payment method
+      responses:
+        '200':
+          description: Order evaluation results
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  order_id:
+                    type: string
+                    description: Order ID
+                  risk_score:
+                    type: number
+                    minimum: 0
+                    maximum: 100
+                    description: Risk score (0-100)
+                  action:
+                    type: string
+                    enum:
+                      - approve
+                      - hold
+                      - block
+                    description: Recommended action
+                  tags:
+                    type: array
+                    items:
+                      type: string
+                    description: Order tags
+                  reason_codes:
+                    type: array
+                    items:
+                      type: string
+                    description: List of reason codes
+                  customer_dedupe:
+                    type: object
+                    properties:
+                      matches:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            id:
+                              type: string
+                            similarity_score:
+                              type: number
+                            match_type:
+                              type: string
+                            data:
+                              type: object
+                      suggested_action:
+                        type: string
+                        enum:
+                          - create_new
+                          - merge_with
+                          - review
+                      canonical_id:
+                        type: string
+                        nullable: true
+                  address_dedupe:
+                    type: object
+                    properties:
+                      matches:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            id:
+                              type: string
+                            similarity_score:
+                              type: number
+                            match_type:
+                              type: string
+                            data:
+                              type: object
+                      suggested_action:
+                        type: string
+                        enum:
+                          - create_new
+                          - merge_with
+                          - review
+                      canonical_id:
+                        type: string
+                        nullable: true
+                  validations:
+                    type: object
+                    properties:
+                      email:
+                        type: object
+                        properties:
+                          valid:
+                            type: boolean
+                            description: Whether the validation passed
+                          reason_codes:
+                            type: array
+                            items:
+                              type: string
+                            description: List of reason codes
+                          disposable:
+                            type: boolean
+                            description: Whether the result is disposable (for email)
+                      phone:
+                        type: object
+                        properties:
+                          valid:
+                            type: boolean
+                            description: Whether the validation passed
+                          reason_codes:
+                            type: array
+                            items:
+                              type: string
+                            description: List of reason codes
+                          disposable:
+                            type: boolean
+                            description: Whether the result is disposable (for email)
+                      address:
+                        type: object
+                        properties:
+                          valid:
+                            type: boolean
+                            description: Whether the address is valid
+                          reason_codes:
+                            type: array
+                            items:
+                              type: string
+                            description: List of reason codes
+                          po_box:
+                            type: boolean
+                            description: Whether the address is a P.O. Box
+                          postal_city_match:
+                            type: boolean
+                            description: Whether postal code matches city
+                          in_bounds:
+                            type: boolean
+                            description: Whether the address is within bounds
+                  request_id:
+                    type: string
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                        description: Error code
+                      message:
+                        type: string
+                        description: Error message
+                  request_id:
+                    type: string
+                    description: Request identifier
+  /v1/verify/phone:
+    post:
+      tags:
+        - Runtime API
+      summary: Verify phone OTP
+      description: Verifies OTP sent to phone number
+      operationId: verifyPhoneOtp
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - verification_sid
+                - code
+              properties:
+                verification_sid:
+                  type: string
+                  description: Twilio Verify SID from validation response
+                code:
+                  type: string
+                  description: OTP code entered by user
+      responses:
+        '200':
+          description: OTP verification result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  valid:
+                    type: boolean
+                    description: Whether OTP is valid
+                  reason_codes:
+                    type: array
+                    items:
+                      type: string
+                    description: List of reason codes
+                  request_id:
+                    type: string
+        '400':
+          description: Invalid OTP
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                        description: Error code
+                      message:
+                        type: string
+                        description: Error message
+                  request_id:
+                    type: string
+                    description: Request identifier
+  /v1/validate/email:
+    post:
+      tags:
+        - Runtime API
+      summary: Validate email address
+      description: >-
+        Performs comprehensive email validation including format, MX records,
+        and disposable detection
+      operationId: validateEmail
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+              properties:
+                email:
+                  type: string
+                  description: The email address to validate
+      responses:
+        '200':
+          description: Email validation result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  valid:
+                    type: boolean
+                    description: Whether the email is valid
+                  normalized:
+                    type: string
+                    description: Normalized email address
+                  disposable:
+                    type: boolean
+                    description: Whether the email is from a disposable service
+                  mx_found:
+                    type: boolean
+                    description: Whether MX records were found
+                  reason_codes:
+                    type: array
+                    items:
+                      type: string
+                    description: List of validation reason codes
+                  request_id:
+                    type: string
+                  ttl_seconds:
+                    type: integer
+                    description: Cache TTL in seconds
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                        description: Error code
+                      message:
+                        type: string
+                        description: Error message
+                  request_id:
+                    type: string
+                    description: Request identifier
+  /v1/validate/phone:
+    post:
+      tags:
+        - Runtime API
+      summary: Validate phone number
+      description: Validates a phone number and returns it in E.164 format
+      operationId: validatePhone
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - phone
+              properties:
+                phone:
+                  type: string
+                  description: The phone number to validate
+                country:
+                  type: string
+                  description: Optional two-letter country code hint
+                request_otp:
+                  type: boolean
+                  default: false
+                  description: Request OTP for verification
+      responses:
+        '200':
+          description: Phone validation result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  valid:
+                    type: boolean
+                    description: Whether the phone number is valid
+                  e164:
+                    type: string
+                    description: Phone number in E.164 format
+                  country:
+                    type: string
+                    nullable: true
+                    description: Country code
+                  reason_codes:
+                    type: array
+                    items:
+                      type: string
+                    description: List of validation reason codes
+                  request_id:
+                    type: string
+                  ttl_seconds:
+                    type: integer
+                    description: Cache TTL in seconds
+                  verification_sid:
+                    type: string
+                    nullable: true
+                    description: Twilio Verify SID for OTP verification
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                        description: Error code
+                      message:
+                        type: string
+                        description: Error message
+                  request_id:
+                    type: string
+                    description: Request identifier
+  /v1/validate/address:
+    post:
+      tags:
+        - Runtime API
+      summary: Validate address
+      description: Validates a physical address and normalizes it
+      operationId: validateAddress
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - address
+              properties:
+                address:
+                  type: object
+                  required:
+                    - line1
+                    - city
+                    - postal_code
+                    - country
+                  properties:
+                    line1:
+                      type: string
+                      description: Street address line 1
+                    line2:
+                      type: string
+                      description: Street address line 2
+                    city:
+                      type: string
+                      description: City
+                    state:
+                      type: string
+                      description: State or province
+                    postal_code:
+                      type: string
+                      description: Postal code
+                    country:
+                      type: string
+                      minLength: 2
+                      maxLength: 2
+                      description: Two-letter country code
+      responses:
+        '200':
+          description: Address validation result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  valid:
+                    type: boolean
+                    description: Whether the address is valid
+                  normalized:
+                    type: object
+                    properties:
+                      line1:
+                        type: string
+                        description: Street address line 1
+                      line2:
+                        type: string
+                        description: Street address line 2
+                      city:
+                        type: string
+                        description: City
+                      state:
+                        type: string
+                        description: State or province
+                      postal_code:
+                        type: string
+                        description: Postal code
+                      country:
+                        type: string
+                        description: Two-letter country code
+                      lat:
+                        type: number
+                        nullable: true
+                        description: Latitude
+                      lng:
+                        type: number
+                        nullable: true
+                        description: Longitude
+                  geo:
+                    type: object
+                    nullable: true
+                    properties:
+                      lat:
+                        type: number
+                        description: Latitude
+                      lng:
+                        type: number
+                        description: Longitude
+                      confidence:
+                        type: number
+                        description: Geocoding confidence score
+                  po_box:
+                    type: boolean
+                    description: Whether the address is a P.O. Box
+                  postal_city_match:
+                    type: boolean
+                    description: Whether postal code matches city
+                  reason_codes:
+                    type: array
+                    items:
+                      type: string
+                    description: List of validation reason codes
+                  request_id:
+                    type: string
+                  ttl_seconds:
+                    type: integer
+                    description: Cache TTL in seconds
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                        description: Error code
+                      message:
+                        type: string
+                        description: Error message
+                  request_id:
+                    type: string
+                    description: Request identifier
+  /v1/validate/tax-id:
+    post:
+      tags:
+        - Runtime API
+      summary: Validate tax ID
+      description: Validates a tax identification number
+      operationId: validateTaxId
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - type
+                - value
+              properties:
+                type:
+                  type: string
+                  description: Type of tax ID (e.g., "vat", "euvat", "br_cnpj")
+                value:
+                  type: string
+                  description: The tax ID number
+                country:
+                  type: string
+                  description: Optional two-letter country code
+      responses:
+        '200':
+          description: Tax ID validation result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  valid:
+                    type: boolean
+                    description: Whether the tax ID is valid
+                  normalized:
+                    type: string
+                    description: Normalized tax ID
+                  reason_codes:
+                    type: array
+                    items:
+                      type: string
+                    description: List of validation reason codes
+                  request_id:
+                    type: string
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                        description: Error code
+                      message:
+                        type: string
+                        description: Error message
+                  request_id:
+                    type: string
+                    description: Request identifier
+  /v1/validate/name:
+    post:
+      tags:
+        - Runtime API
+      summary: Validate name
+      description: Validates and normalizes a name string
+      operationId: validateName
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+              properties:
+                name:
+                  type: string
+                  description: The name to validate and normalize
+      responses:
+        '200':
+          description: Name validation result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  valid:
+                    type: boolean
+                    description: Whether the name is valid
+                  normalized:
+                    type: string
+                    description: Normalized name
+                  reason_codes:
+                    type: array
+                    items:
+                      type: string
+                    description: List of validation reason codes
+                  request_id:
+                    type: string
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                        description: Error code
+                      message:
+                        type: string
+                        description: Error message
+                  request_id:
+                    type: string
+                    description: Request identifier
   /v1/jobs/{id}:
     get:
       tags:
@@ -1896,7 +2577,11 @@ paths:
                     description: Unique job identifier
                   status:
                     type: string
-                    enum: [pending, processing, completed, failed]
+                    enum:
+                      - pending
+                      - processing
+                      - completed
+                      - failed
                     description: Current job status
                   progress:
                     type: object
@@ -1931,19 +2616,44 @@ paths:
                   request_id:
                     type: string
                     description: Request identifier
-        '404':
-          description: Job not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
         '401':
           description: Unauthorized
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
-
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                        description: Error code
+                      message:
+                        type: string
+                        description: Error message
+                  request_id:
+                    type: string
+                    description: Request identifier
+        '404':
+          description: Job not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                        description: Error code
+                      message:
+                        type: string
+                        description: Error message
+                  request_id:
+                    type: string
+                    description: Request identifier
 components:
   securitySchemes:
     BearerAuth:
@@ -1951,7 +2661,6 @@ components:
       scheme: bearer
       bearerFormat: JWT
       description: JWT token obtained from login
-
   schemas:
     Error:
       type: object
@@ -1968,7 +2677,6 @@ components:
         request_id:
           type: string
           description: Request identifier
-
     ApiKey:
       type: object
       properties:
@@ -1980,7 +2688,9 @@ components:
           description: API key prefix (first 6 characters)
         status:
           type: string
-          enum: [active, revoked]
+          enum:
+            - active
+            - revoked
           description: API key status
         created_at:
           type: string
@@ -1991,7 +2701,6 @@ components:
           format: date-time
           nullable: true
           description: Last used timestamp
-
     Webhook:
       type: object
       properties:
@@ -2009,7 +2718,10 @@ components:
           description: Events this webhook is subscribed to
         status:
           type: string
-          enum: [active, inactive, deleted]
+          enum:
+            - active
+            - inactive
+            - deleted
           description: Webhook status
         created_at:
           type: string
@@ -2020,7 +2732,6 @@ components:
           format: date-time
           nullable: true
           description: Last time webhook was fired
-
     Address:
       type: object
       properties:
@@ -2050,7 +2761,6 @@ components:
           type: number
           nullable: true
           description: Longitude
-
     Customer:
       type: object
       properties:
@@ -2066,7 +2776,6 @@ components:
         last_name:
           type: string
           description: Customer last name
-
     CustomerMatch:
       type: object
       properties:
@@ -2078,11 +2787,13 @@ components:
           description: Similarity score (0-1)
         match_type:
           type: string
-          enum: [exact_email, exact_phone, fuzzy_name]
+          enum:
+            - exact_email
+            - exact_phone
+            - fuzzy_name
           description: Type of match
         data:
           $ref: '#/components/schemas/Customer'
-
     AddressMatch:
       type: object
       properties:
@@ -2094,11 +2805,13 @@ components:
           description: Similarity score (0-1)
         match_type:
           type: string
-          enum: [exact_address, exact_postal, fuzzy_address]
+          enum:
+            - exact_address
+            - exact_postal
+            - fuzzy_address
           description: Type of match
         data:
           $ref: '#/components/schemas/Address'
-
     DedupeResult:
       type: object
       properties:
@@ -2117,11 +2830,13 @@ components:
                 type: object
         suggested_action:
           type: string
-          enum: [create_new, merge_with, review]
+          enum:
+            - create_new
+            - merge_with
+            - review
         canonical_id:
           type: string
           nullable: true
-
     ValidationResult:
       type: object
       properties:
@@ -2136,7 +2851,6 @@ components:
         disposable:
           type: boolean
           description: Whether the result is disposable (for email)
-
     AddressValidationResult:
       type: object
       properties:
@@ -2157,7 +2871,6 @@ components:
         in_bounds:
           type: boolean
           description: Whether the address is within bounds
-
     LogEntry:
       type: object
       properties:
@@ -2185,7 +2898,6 @@ components:
           type: string
           format: date-time
           description: Creation timestamp
-
     Rule:
       type: object
       properties:
@@ -2204,7 +2916,6 @@ components:
         enabled:
           type: boolean
           description: Whether the rule is enabled
-
     ReasonCode:
       type: object
       properties:
@@ -2219,9 +2930,11 @@ components:
           description: Category of the reason code
         severity:
           type: string
-          enum: [low, medium, high]
+          enum:
+            - low
+            - medium
+            - high
           description: Severity level
-
     ErrorCode:
       type: object
       properties:
@@ -2236,9 +2949,11 @@ components:
           description: Category of the error code
         severity:
           type: string
-          enum: [low, medium, high]
+          enum:
+            - low
+            - medium
+            - high
           description: Severity level
-
     CustomRule:
       type: object
       properties:
@@ -2256,7 +2971,10 @@ components:
           description: Reason code to trigger
         severity:
           type: string
-          enum: [low, medium, high]
+          enum:
+            - low
+            - medium
+            - high
           description: Severity level
         enabled:
           type: boolean
