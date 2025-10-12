@@ -230,11 +230,11 @@ console.log(`📁 Updated: ${routesPath}`);
 // --- Execute generate:types equivalent ---
 console.log('Generating types...');
 execSync('npx openapi-typescript dist/openapi.yaml -o src/openapi-types.ts', { stdio: 'inherit' });
-execSync('pnpm build', { stdio: 'inherit' });
+execSync('tsc -p tsconfig.json', { stdio: 'inherit' });
 
 // --- Execute generate:client equivalent ---
 console.log('Generating client...');
 execSync('npx orval', { stdio: 'inherit' });
-execSync('pnpm build', { stdio: 'inherit' });
+execSync('tsc -p tsconfig.json', { stdio: 'inherit' });
 
 console.log('All generations completed successfully!');
