@@ -15,51 +15,64 @@ const HEADERS = {
     'Content-Type': 'application/json'
 };
 
+export function testRegister(check) {
+    const email = `testuser${Math.random()}@example.com`;
+    const payload = JSON.stringify({
+        email: email,
+        password: 'password123'
+    });
+    const res = http.post(`${BASE_URL}/auth/register`, payload, { headers: HEADERS });
+
+    let body = null;
+    if (res.status === 201) {
+        try {
+            body = JSON.parse(res.body);
+        } catch (e) {
+            // ignore parse errors
+        }
+    }
+
+    check(res, {
+        '[Register] status 200': (r) => r.status === 200,
+        '[Register] has token': (r) => body && body.token && body.user
+    });
+
+    return { res, body, email };
+}
+
+export function testLogin(email, check) {
+    const loginEmail = email || 'test@example.com';
+    const payload = JSON.stringify({
+        email: loginEmail,
+        password: 'password123'
+    });
+    const res = http.post(`${BASE_URL}/auth/login`, payload, { headers: HEADERS });
+
+    let body = null;
+    if (res.status === 200) {
+        try {
+            body = JSON.parse(res.body);
+        } catch (e) {
+            // ignore parse errors
+        }
+    }
+
+    check(res, {
+        '[Login] status 200': (r) => r.status === 200,
+        '[Login] has token': (r) => body && body.token && body.user
+    });
+
+    return { res, body };
+}
+
 export default function (check) {
     check = check || k6check;
 
     // Scenario 1: Register a new user
-    const registerPayload = JSON.stringify({
-        email: `testuser${Math.random()}@example.com`,
-        password: 'password123'
-    });
-    const resRegister = http.post(`${BASE_URL}/auth/register`, registerPayload, { headers: HEADERS });
-
-    let registerBody = null;
-    if (resRegister.status === 201) {
-        try {
-            registerBody = JSON.parse(resRegister.body);
-        } catch (e) {
-            // ignore parse errors
-        }
-    }
-
-    check(resRegister, {
-        '[Register] status 200': (r) => r.status === 200,
-        '[Register] has token': (r) => registerBody && registerBody.token && registerBody.user
-    });
+    const { email } = testRegister(check);
 
     // Scenario 2: Login with the registered user or fallback
-    const loginEmail = registerBody ? registerBody.user.email : 'test@example.com';
-    const loginPayload = JSON.stringify({
-        email: loginEmail,
-        password: 'password123'
-    });
-    const resLogin = http.post(`${BASE_URL}/auth/login`, loginPayload, { headers: HEADERS });
-
-    let loginBody = null;
-    if (resLogin.status === 200) {
-        try {
-            loginBody = JSON.parse(resLogin.body);
-        } catch (e) {
-            // ignore parse errors
-        }
-    }
-
-    check(resLogin, {
-        '[Login] status 200': (r) => r.status === 200,
-        '[Login] has token': (r) => loginBody && loginBody.token && loginBody.user
-    });
+    testLogin(email, check);
 
     sleep(0.1);
 }

@@ -14,12 +14,7 @@ export const options = {
 const KEY = (__ENV.KEY || '').trim();
 const BASE_URL = 'http://localhost:8081/v1';
 
-export default function (check) {
-    // If check is not provided (when running this file directly),
-    // use the original k6check as a fallback.
-    check = check || k6check;
-
-    // Scenario 1: Test GET rules
+export function testGetRulesFirst(check) {
     const res = http.get(`${BASE_URL}/rules`, { headers: getHeaders() });
     check(res, {
         '[Rules] status 200 (first req)': (r) => r.status === 200,
@@ -36,17 +31,20 @@ export default function (check) {
             return body.request_id && typeof body.request_id === 'string';
         }
     });
+}
 
+export function testGetRulesSecond(check) {
     // Second request for cache HIT.
-    const res2 = http.get(`${BASE_URL}/rules`, { headers: getHeaders() });
-    check(res2, {
+    const res = http.get(`${BASE_URL}/rules`, { headers: getHeaders() });
+    check(res, {
         '[Rules] status 200 HIT': (r) => r.status === 200,
         '[Rules] cache HIT': (r) => (r.headers['Cache-Status'] || '').toLowerCase().includes('hit')
     });
+}
 
-    // Scenario 2: Test GET rules/catalog
-    const res3 = http.get(`${BASE_URL}/rules/catalog`, { headers: getHeaders() });
-    check(res3, {
+export function testGetRulesCatalog(check) {
+    const res = http.get(`${BASE_URL}/rules/catalog`, { headers: getHeaders() });
+    check(res, {
         '[Rules Catalog] status 200': (r) => r.status === 200,
         '[Rules Catalog] reason_codes array': (r) => {
             const body = JSON.parse(r.body);
@@ -57,9 +55,10 @@ export default function (check) {
             return body.request_id && typeof body.request_id === 'string';
         }
     });
+}
 
-    // Scenario 3: Test POST rules/register
-    const registerPayload = JSON.stringify({
+export function testRegisterRules(check) {
+    const payload = JSON.stringify({
         rules: [{
             id: 'test_rule',
             name: 'Test Rule',
@@ -69,14 +68,25 @@ export default function (check) {
             enabled: true
         }]
     });
-    const res4 = http.post(`${BASE_URL}/rules/register`, registerPayload, { headers: getHeaders() });
-    check(res4, {
+    const res = http.post(`${BASE_URL}/rules/register`, payload, { headers: getHeaders() });
+    check(res, {
         '[Register Rules] status 200': (r) => r.status === 200,
         '[Register Rules] has message': (r) => {
             const body = JSON.parse(r.body);
             return body.message;
         }
     });
+}
+
+export default function (check) {
+    // If check is not provided (when running this file directly),
+    // use the original k6check as a fallback.
+    check = check || k6check;
+
+    testGetRulesFirst(check);
+    testGetRulesSecond(check);
+    testGetRulesCatalog(check);
+    testRegisterRules(check);
 
     sleep(0.1);
 }

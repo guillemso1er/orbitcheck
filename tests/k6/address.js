@@ -14,12 +14,8 @@ export const options = {
 
 const BASE_URL = 'http://localhost:8081/v1'; // This should point to your Nginx proxy
 
-export default function (check) {
-    // 3. If check is not provided (when running this file directly),
-    //    use the original k6check as a fallback.
-    check = check || k6check;
-    // Scenario 1: Test an address with a known postal/city mismatch
-    const addressWithMismatchPayload = JSON.stringify({
+export function testAddressMismatchFirst(check) {
+    const payload = JSON.stringify({
         address: {
             line1: "1600 Amphitheatre Pkwy",
             city: "Mountain View",
@@ -30,22 +26,34 @@ export default function (check) {
     });
 
     // First request. We check its content. With the Nginx fix, this may be a MISS or HIT.
-    let res = http.post(`${BASE_URL}/validate/address`, addressWithMismatchPayload, { headers: getHeaders('POST', '/v1/validate/address', addressWithMismatchPayload) });
+    let res = http.post(`${BASE_URL}/validate/address`, payload, { headers: getHeaders('POST', '/v1/validate/address', payload) });
     check(res, {
         '[Mismatch] status 200 (first req)': (r) => r.status === 200,
         '[Mismatch] valid is false (first req)': (r) => JSON.parse(r.body).valid === false,
     });
+}
+
+export function testAddressMismatchSecond(check) {
+    const payload = JSON.stringify({
+        address: {
+            line1: "1600 Amphitheatre Pkwy",
+            city: "Mountain View",
+            postal_code: "90210",
+            state: "CA",
+            country: "US"
+        }
+    });
 
     // Second request for the same address. THIS MUST be a HIT.
-    res = http.post(`${BASE_URL}/validate/address`, addressWithMismatchPayload, { headers: getHeaders('POST', '/v1/validate/address', addressWithMismatchPayload) });
+    const res = http.post(`${BASE_URL}/validate/address`, payload, { headers: getHeaders('POST', '/v1/validate/address', payload) });
     check(res, {
         '[Mismatch] status 200 HIT': (r) => r.status === 200,
         '[Mismatch] cache HIT': (r) => (r.headers['Cache-Status'] || '').toLowerCase().includes('hit'),
     });
+}
 
-
-    // Scenario 2: Test a P.O. Box address
-    const poBoxPayload = JSON.stringify({
+export function testPoBoxFirst(check) {
+    const payload = JSON.stringify({
         address: {
             line1: "P.O. Box 123",
             city: "Mountain View",
@@ -56,22 +64,34 @@ export default function (check) {
     });
 
     // First request.
-    res = http.post(`${BASE_URL}/validate/address`, poBoxPayload, { headers: getHeaders() });
+    let res = http.post(`${BASE_URL}/validate/address`, payload, { headers: getHeaders() });
     check(res, {
         '[PO Box] status 200 (first req)': (r) => r.status === 200,
         '[PO Box] po_box is false (first req)': (r) => JSON.parse(r.body).po_box === false,
     });
+}
+
+export function testPoBoxSecond(check) {
+    const payload = JSON.stringify({
+        address: {
+            line1: "P.O. Box 123",
+            city: "Mountain View",
+            postal_code: "94043",
+            state: "CA",
+            country: "US"
+        }
+    });
 
     // Second request, check for HIT.
-    res = http.post(`${BASE_URL}/validate/address`, poBoxPayload, { headers: getHeaders('POST', '/v1/validate/address', poBoxPayload) });
+    const res = http.post(`${BASE_URL}/validate/address`, payload, { headers: getHeaders('POST', '/v1/validate/address', payload) });
     check(res, {
         '[PO Box] status 200 HIT': (r) => r.status === 200,
         '[PO Box] cache HIT': (r) => (r.headers['Cache-Status'] || '').toLowerCase().includes('hit'),
     });
+}
 
-
-    // Scenario 3: Test an address with a deliberately invalid city
-    const invalidCityPayload = JSON.stringify({
+export function testInvalidCityFirst(check) {
+    const payload = JSON.stringify({
         address: {
             line1: "1 Main St",
             city: "InvalidCity",
@@ -82,18 +102,47 @@ export default function (check) {
     });
 
     // First request.
-    res = http.post(`${BASE_URL}/validate/address`, invalidCityPayload, { headers: getHeaders('POST', '/v1/validate/address', invalidCityPayload) });
+    let res = http.post(`${BASE_URL}/validate/address`, payload, { headers: getHeaders('POST', '/v1/validate/address', payload) });
     check(res, {
         '[Invalid City] status 200 (first req)': (r) => r.status === 200,
         '[Invalid City] valid is false (first req)': (r) => JSON.parse(r.body).valid === false,
     });
+}
+
+export function testInvalidCitySecond(check) {
+    const payload = JSON.stringify({
+        address: {
+            line1: "1 Main St",
+            city: "InvalidCity",
+            postal_code: "90210",
+            state: "CA",
+            country: "US"
+        }
+    });
 
     // Second request, check for HIT.
-    res = http.post(`${BASE_URL}/validate/address`, invalidCityPayload, { headers: getHeaders('POST', '/v1/validate/address', invalidCityPayload) });
+    const res = http.post(`${BASE_URL}/validate/address`, payload, { headers: getHeaders('POST', '/v1/validate/address', payload) });
     check(res, {
         '[Invalid City] status 200 HIT': (r) => r.status === 200,
         '[Invalid City] cache HIT': (r) => (r.headers['Cache-Status'] || '').toLowerCase().includes('hit'),
     });
+}
+
+export default function (check) {
+    // 3. If check is not provided (when running this file directly),
+    //    use the original k6check as a fallback.
+    check = check || k6check;
+    // Scenario 1: Test an address with a known postal/city mismatch
+    testAddressMismatchFirst(check);
+    testAddressMismatchSecond(check);
+
+    // Scenario 2: Test a P.O. Box address
+    testPoBoxFirst(check);
+    testPoBoxSecond(check);
+
+    // Scenario 3: Test an address with a deliberately invalid city
+    testInvalidCityFirst(check);
+    testInvalidCitySecond(check);
 
     sleep(0.1);
 }

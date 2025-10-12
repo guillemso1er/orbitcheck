@@ -13,20 +13,15 @@ export const options = {
 
 const BASE_URL = 'http://localhost:8081/v1';
 
-export default function (check) {
-    // If check is not provided (when running this file directly),
-    // use the original k6check as a fallback.
-    check = check || k6check;
-
-    // Scenario 1: Test dedupe with no matches (new customer)
+export function testNoMatchFirst(check) {
     const timestamp = Date.now();
-    const noMatchPayload = JSON.stringify({
+    const payload = JSON.stringify({
         email: `newuser${timestamp}@example.com`,
         first_name: 'John',
         last_name: 'Doe',
         phone: '+1234567890'
     });
-    let res = http.post(`${BASE_URL}/dedupe/customer`, noMatchPayload, { headers: getHeaders() });
+    let res = http.post(`${BASE_URL}/dedupe/customer`, payload, { headers: getHeaders() });
     check(res, {
         '[No Match] status 200 (first req)': (r) => r.status === 200,
         '[No Match] matches empty (first req)': (r) => {
@@ -48,21 +43,32 @@ export default function (check) {
             }
         }
     });
+}
 
+export function testNoMatchSecond(check) {
+    const timestamp = Date.now();
+    const payload = JSON.stringify({
+        email: `newuser${timestamp}@example.com`,
+        first_name: 'John',
+        last_name: 'Doe',
+        phone: '+1234567890'
+    });
     // Second request for the same data. THIS MUST be a HIT.
-    res = http.post(`${BASE_URL}/dedupe/customer`, noMatchPayload, { headers: getHeaders() });
+    const res = http.post(`${BASE_URL}/dedupe/customer`, payload, { headers: getHeaders() });
     check(res, {
         '[No Match] status 200 HIT': (r) => r.status === 200,
         '[No Match] cache HIT': (r) => (r.headers['Cache-Status'] || '').toLowerCase().includes('hit')
     });
+}
 
-    // Scenario 2: Test dedupe with potential fuzzy match
-    const fuzzyPayload = JSON.stringify({
+export function testFuzzyMatchFirst(check) {
+    const timestamp = Date.now();
+    const payload = JSON.stringify({
         email: `fuzzy${timestamp}@example.com`,
         first_name: 'Jane',
         last_name: 'Smith'
     });
-    res = http.post(`${BASE_URL}/dedupe/customer`, fuzzyPayload, { headers: getHeaders() });
+    let res = http.post(`${BASE_URL}/dedupe/customer`, payload, { headers: getHeaders() });
     check(res, {
         '[Fuzzy] status 200 (first req)': (r) => r.status === 200,
         '[Fuzzy] response structure (first req)': (r) => {
@@ -75,21 +81,31 @@ export default function (check) {
             }
         }
     });
+}
 
+export function testFuzzyMatchSecond(check) {
+    const timestamp = Date.now();
+    const payload = JSON.stringify({
+        email: `fuzzy${timestamp}@example.com`,
+        first_name: 'Jane',
+        last_name: 'Smith'
+    });
     // Second request, check for HIT.
-    res = http.post(`${BASE_URL}/dedupe/customer`, fuzzyPayload, { headers: getHeaders() });
+    const res = http.post(`${BASE_URL}/dedupe/customer`, payload, { headers: getHeaders() });
     check(res, {
         '[Fuzzy] status 200 HIT': (r) => r.status === 200,
         '[Fuzzy] cache HIT': (r) => (r.headers['Cache-Status'] || '').toLowerCase().includes('hit')
     });
+}
 
-    // Scenario 3: Test dedupe with exact email match
-    const exactPayload = JSON.stringify({
+export function testExactMatchFirst(check) {
+    const timestamp = Date.now();
+    const payload = JSON.stringify({
         email: `existing${timestamp}@example.com`,
         first_name: 'Existing',
         last_name: 'User'
     });
-    res = http.post(`${BASE_URL}/dedupe/customer`, exactPayload, { headers: getHeaders() });
+    let res = http.post(`${BASE_URL}/dedupe/customer`, payload, { headers: getHeaders() });
     check(res, {
         '[Exact] status 200 (first req)': (r) => r.status === 200,
         '[Exact] matches empty (first req)': (r) => {
@@ -111,22 +127,31 @@ export default function (check) {
             }
         }
     });
+}
 
+export function testExactMatchSecond(check) {
+    const timestamp = Date.now();
+    const payload = JSON.stringify({
+        email: `existing${timestamp}@example.com`,
+        first_name: 'Existing',
+        last_name: 'User'
+    });
     // Second request, check for HIT.
-    res = http.post(`${BASE_URL}/dedupe/customer`, exactPayload, { headers: getHeaders() });
+    const res = http.post(`${BASE_URL}/dedupe/customer`, payload, { headers: getHeaders() });
     check(res, {
         '[Exact] status 200 HIT': (r) => r.status === 200,
         '[Exact] cache HIT': (r) => (r.headers['Cache-Status'] || '').toLowerCase().includes('hit')
     });
+}
 
-    // Scenario 4: Test dedupe address
-    const addressPayload = JSON.stringify({
+export function testDedupeAddress(check) {
+    const payload = JSON.stringify({
         line1: '123 Main St',
         city: 'Anytown',
         postal_code: '12345',
         country: 'US'
     });
-    res = http.post(`${BASE_URL}/dedupe/address`, addressPayload, { headers: getHeaders() });
+    const res = http.post(`${BASE_URL}/dedupe/address`, payload, { headers: getHeaders() });
     check(res, {
         '[Address Dedupe] status 200': (r) => r.status === 200,
         '[Address Dedupe] has matches and action': (r) => {
@@ -139,18 +164,42 @@ export default function (check) {
             }
         }
     });
+}
 
-    // Scenario 5: Test dedupe merge (assuming some IDs exist, but since it's new, might fail or be empty)
-    const mergePayload = JSON.stringify({
+export function testMerge(check) {
+    const payload = JSON.stringify({
         type: 'customer',
         ids: ['00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000002'],
         canonical_id: '00000000-0000-0000-0000-000000000001'
     });
-    res = http.post(`${BASE_URL}/dedupe/merge`, mergePayload, { headers: getHeaders() });
+    const res = http.post(`${BASE_URL}/dedupe/merge`, payload, { headers: getHeaders() });
     check(res, {
         '[Merge] status is 200 or expected error': (r) => r.status === 200 || r.status === 400
     });
+}
+
+export default function (check) {
+    // If check is not provided (when running this file directly),
+    // use the original k6check as a fallback.
+    check = check || k6check;
+
+    // Scenario 1: Test dedupe with no matches (new customer)
+    testNoMatchFirst(check);
+    testNoMatchSecond(check);
+
+    // Scenario 2: Test dedupe with potential fuzzy match
+    testFuzzyMatchFirst(check);
+    testFuzzyMatchSecond(check);
+
+    // Scenario 3: Test dedupe with exact email match
+    testExactMatchFirst(check);
+    testExactMatchSecond(check);
+
+    // Scenario 4: Test dedupe address
+    testDedupeAddress(check);
+
+    // Scenario 5: Test dedupe merge (assuming some IDs exist, but since it's new, might fail or be empty)
+    testMerge(check);
 
     sleep(0.1);
 }
-    sleep(0.1);

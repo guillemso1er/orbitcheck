@@ -15,12 +15,7 @@ const KEY = (__ENV.KEY || '').trim();
 const BASE_URL = 'http://localhost:8081/v1';
 const DATA_BASE_URL = 'http://localhost:8081/v1/data';
 
-export default function (check) {
-    // If check is not provided (when running this file directly),
-    // use the original k6check as a fallback.
-    check = check || k6check;
-
-    // Scenario 1: Test GET logs
+export function testGetLogsFirst(check) {
     const res = http.get(`${DATA_BASE_URL}/logs?limit=10`, { headers: getHeaders() });
     check(res, {
         '[Logs] status 200 (first req)': (r) => r.status === 200,
@@ -33,12 +28,22 @@ export default function (check) {
             return body.next_cursor !== undefined; // can be null or string
         }
     });
+}
 
-    // Second request (no cache implemented, so just check status)
-    const res2 = http.get(`${DATA_BASE_URL}/logs?limit=10`, { headers: getHeaders() });
-    check(res2, {
+export function testGetLogsSecond(check) {
+    const res = http.get(`${DATA_BASE_URL}/logs?limit=10`, { headers: getHeaders() });
+    check(res, {
         '[Logs] status 200 (second req)': (r) => r.status === 200
     });
+}
+
+export default function (check) {
+    // If check is not provided (when running this file directly),
+    // use the original k6check as a fallback.
+    check = check || k6check;
+
+    testGetLogsFirst(check);
+    testGetLogsSecond(check);
 
     sleep(0.1);
 }

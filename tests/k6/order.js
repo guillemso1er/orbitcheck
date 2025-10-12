@@ -14,19 +14,11 @@ export const options = {
 const KEY = (__ENV.KEY || '').trim();
 const BASE_URL = 'http://localhost:8081/v1';
 
-export default function (check) {
-    check = check || k6check;
-
-    // Build unique IDs and headers once per iteration.
-    // This ensures they are stable for both requests within the same scenario.
+export function testLowRiskOrderFirst(check) {
     const suffix = Math.random().toString(36).substring(2, 8);
-    const lowId = `low-${suffix}`;
-    const highId = `high-${suffix}`;
-    const mediumId = `medium-${suffix}`;
-
-    // Scenario 1: Test low-risk order (should approve)
-    const lowRiskPayload = JSON.stringify({
-        order_id: lowId,
+    const orderId = `low-${suffix}`;
+    const payload = JSON.stringify({
+        order_id: orderId,
         customer: {
             email: 'customer@gmail.com',
             phone: '+16502530000',
@@ -44,7 +36,7 @@ export default function (check) {
         currency: 'USD',
         payment_method: 'card'
     });
-    let res = http.post(`${BASE_URL}/orders`, lowRiskPayload, { headers: getHeaders() });
+    let res = http.post(`${BASE_URL}/orders`, payload, { headers: getHeaders() });
     check(res, {
         '[Low Risk] status 200 (first req)': (r) => r.status === 200,
         '[Low Risk] action is approve (first req)': (r) => {
@@ -59,18 +51,44 @@ export default function (check) {
             return body.risk_score < 40;
         }
     });
+}
 
+export function testLowRiskOrderSecond(check) {
+    const suffix = Math.random().toString(36).substring(2, 8);
+    const orderId = `low-${suffix}`;
+    const payload = JSON.stringify({
+        order_id: orderId,
+        customer: {
+            email: 'customer@gmail.com',
+            phone: '+16502530000',
+            first_name: 'John',
+            last_name: 'Doe'
+        },
+        shipping_address: {
+            line1: '1600 Amphitheatre Pkwy',
+            city: 'Mountain View',
+            postal_code: '94043',
+            state: 'CA',
+            country: 'US'
+        },
+        total_amount: 100,
+        currency: 'USD',
+        payment_method: 'card'
+    });
     // Second request for the same order. THIS MUST be a HIT.
     // Must reuse the same payload and headers.
-    res = http.post(`${BASE_URL}/orders`, lowRiskPayload, { headers: getHeaders() });
+    const res = http.post(`${BASE_URL}/orders`, payload, { headers: getHeaders() });
     check(res, {
         '[Low Risk] status 200 HIT': (r) => r.status === 200,
         '[Low Risk] cache HIT': (r) => (r.headers['Cache-Status'] || '').toLowerCase().includes('hit')
     });
+}
 
-    // Scenario 2: Test high-risk order (PO box, high value, COD)
-    const highRiskPayload = JSON.stringify({
-        order_id: highId,
+export function testHighRiskOrderFirst(check) {
+    const suffix = Math.random().toString(36).substring(2, 8);
+    const orderId = `high-${suffix}`;
+    const payload = JSON.stringify({
+        order_id: orderId,
         customer: {
             email: 'risky@example.com',
             phone: '+16502530000',
@@ -88,7 +106,7 @@ export default function (check) {
         currency: 'USD',
         payment_method: 'cod'
     });
-    res = http.post(`${BASE_URL}/orders`, highRiskPayload, { headers: getHeaders() });
+    let res = http.post(`${BASE_URL}/orders`, payload, { headers: getHeaders() });
     check(res, {
         '[High Risk] status 200 (first req)': (r) => r.status === 200,
         '[High Risk] action is hold (first req)': (r) => {
@@ -101,18 +119,44 @@ export default function (check) {
             return Array.isArray(body.tags) && body.tags.includes('po_box_detected') && body.tags.includes('high_value_order');
         }
     });
+}
 
+export function testHighRiskOrderSecond(check) {
+    const suffix = Math.random().toString(36).substring(2, 8);
+    const orderId = `high-${suffix}`;
+    const payload = JSON.stringify({
+        order_id: orderId,
+        customer: {
+            email: 'risky@example.com',
+            phone: '+16502530000',
+            first_name: 'Risky',
+            last_name: 'User'
+        },
+        shipping_address: {
+            line1: 'P.O. Box 123',
+            city: 'Mountain View',
+            postal_code: '94043',
+            state: 'CA',
+            country: 'US'
+        },
+        total_amount: 1500,
+        currency: 'USD',
+        payment_method: 'cod'
+    });
     // Second request, check for HIT.
     // Must reuse the same payload and headers.
-    res = http.post(`${BASE_URL}/orders`, highRiskPayload, { headers: getHeaders() });
+    const res = http.post(`${BASE_URL}/orders`, payload, { headers: getHeaders() });
     check(res, {
         '[High Risk] status 200 HIT': (r) => r.status === 200,
         '[High Risk] cache HIT': (r) => (r.headers['Cache-Status'] || '').toLowerCase().includes('hit')
     });
+}
 
-    // Scenario 3: Test medium-risk order (hold)
-    const mediumRiskPayload = JSON.stringify({
-        order_id: mediumId,
+export function testMediumRiskOrderFirst(check) {
+    const suffix = Math.random().toString(36).substring(2, 8);
+    const orderId = `medium-${suffix}`;
+    const payload = JSON.stringify({
+        order_id: orderId,
         customer: {
             email: 'bad@',
             phone: 'invalid-phone'
@@ -128,7 +172,7 @@ export default function (check) {
         currency: 'USD',
         payment_method: 'card'
     });
-    res = http.post(`${BASE_URL}/orders`, mediumRiskPayload, { headers: getHeaders() });
+    let res = http.post(`${BASE_URL}/orders`, payload, { headers: getHeaders() });
     check(res, {
         '[Medium Risk] status 200 (first req)': (r) => r.status === 200,
         '[Medium Risk] action is hold (first req)': (r) => {
@@ -136,14 +180,46 @@ export default function (check) {
             return JSON.parse(r.body).action === 'hold';
         }
     });
+}
 
+export function testMediumRiskOrderSecond(check) {
+    const suffix = Math.random().toString(36).substring(2, 8);
+    const orderId = `medium-${suffix}`;
+    const payload = JSON.stringify({
+        order_id: orderId,
+        customer: {
+            email: 'bad@',
+            phone: 'invalid-phone'
+        },
+        shipping_address: {
+            line1: '1600 Amphitheatre Pkwy',
+            city: 'Mountain View',
+            postal_code: '94043',
+            state: 'CA',
+            country: 'US'
+        },
+        total_amount: 200,
+        currency: 'USD',
+        payment_method: 'card'
+    });
     // Second request, check for HIT.
     // Must reuse the same payload and headers.
-    res = http.post(`${BASE_URL}/orders`, mediumRiskPayload, { headers: getHeaders() });
+    const res = http.post(`${BASE_URL}/orders`, payload, { headers: getHeaders() });
     check(res, {
         '[Medium Risk] status 200 HIT': (r) => r.status === 200,
         '[Medium Risk] cache HIT': (r) => (r.headers['Cache-Status'] || '').toLowerCase().includes('hit')
     });
+}
+
+export default function (check) {
+    check = check || k6check;
+
+    testLowRiskOrderFirst(check);
+    testLowRiskOrderSecond(check);
+    testHighRiskOrderFirst(check);
+    testHighRiskOrderSecond(check);
+    testMediumRiskOrderFirst(check);
+    testMediumRiskOrderSecond(check);
 
     sleep(0.1);
 }

@@ -15,12 +15,7 @@ const KEY = (__ENV.KEY || '').trim();
 const BASE_URL = 'http://localhost:8081/v1';
 const DATA_BASE_URL = 'http://localhost:8081/v1/data';
 
-export default function (check) {
-    // If check is not provided (when running this file directly),
-    // use the original k6check as a fallback.
-    check = check || k6check;
-
-    // Scenario 1: Test GET usage
+export function testGetUsageFirst(check) {
     const res = http.get(`${DATA_BASE_URL}/usage`, { headers: getHeaders() });
     check(res, {
         '[Usage] status 200 (first req)': (r) => r.status === 200,
@@ -34,13 +29,23 @@ export default function (check) {
         },
         '[Usage] period month (first req)': (r) => JSON.parse(r.body).period === 'month'
     });
+}
 
-    // Second request for cache HIT.
-    const res2 = http.get(`${DATA_BASE_URL}/usage`, { headers: getHeaders() });
-    check(res2, {
+export function testGetUsageSecond(check) {
+    const res = http.get(`${DATA_BASE_URL}/usage`, { headers: getHeaders() });
+    check(res, {
         '[Usage] status 200 HIT': (r) => r.status === 200,
         '[Usage] cache HIT': (r) => (r.headers['Cache-Status'] || '').toLowerCase().includes('hit')
     });
+}
+
+export default function (check) {
+    // If check is not provided (when running this file directly),
+    // use the original k6check as a fallback.
+    check = check || k6check;
+
+    testGetUsageFirst(check);
+    testGetUsageSecond(check);
 
     sleep(0.1);
 }
