@@ -8,10 +8,18 @@ import { ERROR_CODES, HTTP_STATUS } from "../constants.js";
 import { environment } from "../environment.js";
 import { generateRequestId, rateLimitResponse, sendError, unauthorizedResponse } from "./utils.js";
 
-// Stripe configuration
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-    apiVersion: '2025-09-30.clover',
-});
+// Stripe configuration - lazy initialization
+let stripe: Stripe | null = null;
+
+function getStripe(): Stripe {
+    if (!stripe) {
+        console.log('Initializing Stripe with key:', process.env.STRIPE_SECRET_KEY);
+        stripe = new Stripe(process.env.STRIPE_SECRET_KEY || 'sk_test_dummy', {
+            apiVersion: '2025-09-30.clover',
+        });
+    }
+    return stripe;
+}
 
 export function registerBillingRoutes(app: FastifyInstance, pool: Pool): void {
     app.post(MGMT_V1_ROUTES.BILLING.CREATE_STRIPE_CHECKOUT_SESSION, {

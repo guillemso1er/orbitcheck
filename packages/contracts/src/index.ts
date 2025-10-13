@@ -19,7 +19,10 @@ export { API_V1_ROUTES, DASHBOARD_ROUTES, MGMT_V1_ROUTES } from '../dist/routes.
 
 // Export the OpenAPI schema as a string
 import { readFileSync } from 'fs';
-import { resolve } from 'path';
+import { resolve, dirname } from 'path';
+import { fileURLToPath } from 'url';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
 export const openapiYaml = readFileSync(resolve(__dirname, '../dist/openapi.yaml'), 'utf8');
 

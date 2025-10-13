@@ -1,3 +1,5 @@
+import { config } from 'dotenv';
+config({ path: '../../.env' });
 import { once } from 'node:events';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';

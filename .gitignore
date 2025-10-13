@@ -87,3 +87,5 @@ packages/contracts/node_modules
 packages/contracts/dist
 .pnpm-store
 .pnpm-store/
+infra/compose/tmp
+infra/compose/tmp/infisical-credentials.json

@@ -87,7 +87,7 @@ services:
       LOG_LEVEL: info
       VIES_DOWN: "true"
       JWT_SECRET: dev-jwt-secret-key
-      INFISICAL_SITE_URL: http://infisical:8080
+      INFISICAL_SITE_URL: http://infisical-backend:8080
       INFISICAL_ENVIRONMENT: dev
       INFISICAL_PROJECT_ID: local-project
       INFISICAL_SERVICE_TOKEN: local-dev-token
@@ -98,10 +98,14 @@ services:
         condition: service_healthy
       minio:
         condition: service_healthy
-      infisical:
-        condition: service_started
+      infisical-backend:
+        condition: service_healthy
+      infisical-setup:
+        condition: service_completed_successfully
     ports:
       - "8080:8080"
+    volumes:
+     - infisical_credentials:/tmp
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
       interval: 30s

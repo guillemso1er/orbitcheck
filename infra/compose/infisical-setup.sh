@@ -6,7 +6,7 @@ set -e
 echo "Installing required packages..."
 apk add --no-cache jq curl
 
-BASE="http://infisical-backend:8080"
+BASE="${INFISICAL_SITE_URL:-http://localhost:8085}"
 
 echo "Waiting for Infisical to be ready..."
 while ! curl -s "$BASE/" > /dev/null; do
@@ -14,119 +14,238 @@ while ! curl -s "$BASE/" > /dev/null; do
   sleep 5
 done
 
-echo "Bootstrapping Infisical instance..."
-curl -s -X POST "$BASE/api/v1/admin/bootstrap" \
--H "Content-Type: application/json" \
--d '{"email":"admin@orbicheck.local","password":"AdminPass123!","organization":"orbicheck"}' \
-| tee bootstrap.json
+# Check if already bootstrapped
+echo "Checking if Infisical is already bootstrapped..."
+BOOTSTRAP_CHECK=$(curl -s "$BASE/api/v1/admin/bootstrap" || echo '{}')
 
-# Check if bootstrap was successful
-if ! jq -e '.identity' bootstrap.json > /dev/null 2>&1; then
-  echo "Bootstrap failed! Response:"
-  cat bootstrap.json
-  exit 1
+if echo "$BOOTSTRAP_CHECK" | jq -e '.initialized == true' > /dev/null 2>&1; then
+  echo "Infisical already bootstrapped. Logging in..."
+  
+  # Login with existing admin credentials
+  LOGIN_RESPONSE=$(curl -s -X POST "$BASE/api/v1/auth/login1" \
+    -H "Content-Type: application/json" \
+    -d '{"email":"admin@orbicheck.local","clientPublicKey":""}')
+  
+  SERVER_PUB_KEY=$(echo "$LOGIN_RESPONSE" | jq -r '.serverPublicKey')
+  SALT=$(echo "$LOGIN_RESPONSE" | jq -r '.salt')
+  
+  # For simplicity, we'll use a second login endpoint if available
+  # Otherwise, you'd need to implement SRP here
+  LOGIN_RESPONSE=$(curl -s -X POST "$BASE/api/v1/auth/login2" \
+    -H "Content-Type: application/json" \
+    -d '{"email":"admin@orbicheck.local","password":"AdminPass123!"}' 2>/dev/null || echo '{}')
+  
+  if echo "$LOGIN_RESPONSE" | jq -e '.token' > /dev/null 2>&1; then
+    ADMIN_TOKEN=$(echo "$LOGIN_RESPONSE" | jq -r '.token')
+  else
+    # Alternative: try to use the bootstrap endpoint with a different approach
+    echo "Standard login failed, trying alternative method..."
+    # Create a new admin token via bootstrap if possible
+    BOOTSTRAP_RESPONSE=$(curl -s -X POST "$BASE/api/v1/admin/bootstrap" \
+      -H "Content-Type: application/json" \
+      -d '{"email":"admin@orbicheck.local","password":"AdminPass123!","organization":"orbicheck"}' 2>/dev/null || echo '{}')
+    
+    if echo "$BOOTSTRAP_RESPONSE" | jq -e '.identity.credentials.token' > /dev/null 2>&1; then
+      ADMIN_TOKEN=$(echo "$BOOTSTRAP_RESPONSE" | jq -r '.identity.credentials.token')
+      ORG_ID=$(echo "$BOOTSTRAP_RESPONSE" | jq -r '.organization.id')
+    else
+      echo "Unable to authenticate. Please check admin credentials."
+      exit 1
+    fi
+  fi
+  
+  # Get organization ID if not already set
+  if [ -z "$ORG_ID" ]; then
+    ORG_RESPONSE=$(curl -s -H "Authorization: Bearer $ADMIN_TOKEN" "$BASE/api/v1/organizations")
+    ORG_ID=$(echo "$ORG_RESPONSE" | jq -r '.organizations[] | select(.name=="orbicheck") | .id' | head -n1)
+  fi
+else
+  echo "Bootstrapping Infisical instance..."
+  BOOTSTRAP_RESPONSE=$(curl -s -X POST "$BASE/api/v1/admin/bootstrap" \
+    -H "Content-Type: application/json" \
+    -d '{"email":"admin@orbicheck.local","password":"AdminPass123!","organization":"orbicheck"}')
+  
+  echo "$BOOTSTRAP_RESPONSE" > bootstrap.json
+  
+  if ! echo "$BOOTSTRAP_RESPONSE" | jq -e '.identity' > /dev/null 2>&1; then
+    echo "Bootstrap failed! Response:"
+    echo "$BOOTSTRAP_RESPONSE"
+    exit 1
+  fi
+  
+  ADMIN_TOKEN=$(echo "$BOOTSTRAP_RESPONSE" | jq -r '.identity.credentials.token')
+  ORG_ID=$(echo "$BOOTSTRAP_RESPONSE" | jq -r '.organization.id')
+  echo "Bootstrap successful."
 fi
 
-ADMIN_TOKEN=$(jq -r '.identity.credentials.token' bootstrap.json)
-ORG_ID=$(jq -r '.organization.id' bootstrap.json)
+echo "Admin token acquired: ${ADMIN_TOKEN:0:20}..."
 
-echo "Bootstrap successful. Admin token: ${ADMIN_TOKEN:0:20}..."
+# Check if project already exists
+echo "Checking for existing project..."
+PROJECTS_RESPONSE=$(curl -s -H "Authorization: Bearer $ADMIN_TOKEN" "$BASE/api/v1/projects")
+PROJECT_ID=$(echo "$PROJECTS_RESPONSE" | jq -r '.projects[] | select(.name=="orbicheck-api") | .id' | head -n1)
 
-echo "Creating project..."
-curl -s -X POST "$BASE/api/v1/projects" \
-  -H "Authorization: Bearer $ADMIN_TOKEN" -H "Content-Type: application/json" \
-  -d '{"projectName":"orbicheck-api","projectDescription":"OrbiCheck API service","shouldCreateDefaultEnvs":true}' \
-| tee project.json
-
-# (optional) validate the role slug exists; if not, use "developer"
-# curl -s -H "Authorization: Bearer $ADMIN_TOKEN" "$BASE/api/v1/projects/$PROJECT_ID/roles" | jq -r '.roles[].slug'
-
-
-# Check if project creation was successful
-if ! jq -e '.project' project.json > /dev/null 2>&1; then
-  echo "Project creation failed! Response:"
-  cat project.json
-  exit 1
+if [ -z "$PROJECT_ID" ]; then
+  echo "Creating project..."
+  PROJECT_RESPONSE=$(curl -s -X POST "$BASE/api/v1/projects" \
+    -H "Authorization: Bearer $ADMIN_TOKEN" -H "Content-Type: application/json" \
+    -d '{"projectName":"orbicheck-api","projectDescription":"OrbiCheck API service","shouldCreateDefaultEnvs":true}')
+  
+  if ! echo "$PROJECT_RESPONSE" | jq -e '.project' > /dev/null 2>&1; then
+    echo "Project creation failed! Response:"
+    echo "$PROJECT_RESPONSE"
+    exit 1
+  fi
+  
+  PROJECT_ID=$(echo "$PROJECT_RESPONSE" | jq -r '.project.id')
+  echo "Project created successfully. Project ID: $PROJECT_ID"
+else
+  echo "Project already exists. Project ID: $PROJECT_ID"
 fi
 
-PROJECT_ID=$(jq -r '.project.id' project.json)
+# Check if machine identity already exists
+echo "Checking for existing machine identity..."
+IDENTITIES_RESPONSE=$(curl -s -H "Authorization: Bearer $ADMIN_TOKEN" "$BASE/api/v1/identities?organizationId=$ORG_ID")
+IDENTITY_ID=$(echo "$IDENTITIES_RESPONSE" | jq -r '.identities[] | select(.name=="orbicheck-api") | .id' | head -n1)
 
-echo "Project created successfully. Project ID: $PROJECT_ID"
-
-echo "Creating machine identity..."
-curl -s -X POST "$BASE/api/v1/identities" \
--H "Authorization: Bearer $ADMIN_TOKEN" -H "Content-Type: application/json" \
--d "{\"name\":\"orbicheck-api\",\"organizationId\":\"$ORG_ID\",\"role\":\"no-access\"}" \
-| tee id.json
-
-# Check if identity creation was successful
-if ! jq -e '.identity' id.json > /dev/null 2>&1; then
-  echo "Identity creation failed! Response:"
-  cat id.json
-  exit 1
+if [ -z "$IDENTITY_ID" ]; then
+  echo "Creating machine identity..."
+  IDENTITY_RESPONSE=$(curl -s -X POST "$BASE/api/v1/identities" \
+    -H "Authorization: Bearer $ADMIN_TOKEN" -H "Content-Type: application/json" \
+    -d "{\"name\":\"orbicheck-api\",\"organizationId\":\"$ORG_ID\",\"role\":\"no-access\"}")
+  
+  if ! echo "$IDENTITY_RESPONSE" | jq -e '.identity' > /dev/null 2>&1; then
+    echo "Identity creation failed! Response:"
+    echo "$IDENTITY_RESPONSE"
+    exit 1
+  fi
+  
+  IDENTITY_ID=$(echo "$IDENTITY_RESPONSE" | jq -r '.identity.id')
+  echo "Identity created successfully. Identity ID: $IDENTITY_ID"
+else
+  echo "Machine identity already exists. Identity ID: $IDENTITY_ID"
 fi
 
-IDENTITY_ID=$(jq -r '.identity.id' id.json)
-
-echo "Identity created successfully. Identity ID: $IDENTITY_ID"
-
+# Fetch project roles
 echo "Fetching project roles..."
 ROLES_JSON=$(curl -sf -H "Authorization: Bearer $ADMIN_TOKEN" "$BASE/api/v1/projects/$PROJECT_ID/roles") || {
-  echo "Failed to fetch roles"; echo "Response:"; echo "$ROLES_JSON"; exit 1; }
+  echo "Failed to fetch roles"; exit 1; }
 
-# Prefer a slug that ends with 'developer' or '-developer'; otherwise first slug
 ROLE_SLUG=$(echo "$ROLES_JSON" | jq -r '.roles[] | select(.slug | test("(^|-)developer$")) | .slug' | head -n1)
 if [ -z "$ROLE_SLUG" ]; then
   ROLE_SLUG=$(echo "$ROLES_JSON" | jq -r '.roles[0].slug // empty')
 fi
 
 if [ -z "$ROLE_SLUG" ]; then
-  echo "No role slugs found in roles response:"; echo "$ROLES_JSON"; exit 1
+  echo "No role slugs found in roles response"
+  exit 1
 fi
 
-echo "Adding identity to project with role: $ROLE_SLUG"
-curl -s -X POST "$BASE/api/v1/projects/$PROJECT_ID/identity-memberships/$IDENTITY_ID" \
-  -H "Authorization: Bearer $ADMIN_TOKEN" -H "Content-Type: application/json" \
-  -d "{\"roles\":[{\"role\":\"$ROLE_SLUG\",\"isTemporary\":false}]}" | jq .
+# Check if identity is already a member of the project
+echo "Checking if identity is already a project member..."
+MEMBERSHIPS_RESPONSE=$(curl -s -H "Authorization: Bearer $ADMIN_TOKEN" "$BASE/api/v1/projects/$PROJECT_ID/identity-memberships")
+IS_MEMBER=$(echo "$MEMBERSHIPS_RESPONSE" | jq -r ".identityMemberships[] | select(.identity.id==\"$IDENTITY_ID\") | .id" | head -n1)
 
-echo "Attaching Universal Auth to identity..."
-curl -s -X POST "$BASE/api/v1/auth/universal-auth/identities/$IDENTITY_ID" \
-  -H "Authorization: Bearer $ADMIN_TOKEN" -H "Content-Type: application/json" \
-  -d '{}' | jq .  # minimal body is fine
+if [ -z "$IS_MEMBER" ]; then
+  echo "Adding identity to project with role: $ROLE_SLUG"
+  curl -s -X POST "$BASE/api/v1/projects/$PROJECT_ID/identity-memberships/$IDENTITY_ID" \
+    -H "Authorization: Bearer $ADMIN_TOKEN" -H "Content-Type: application/json" \
+    -d "{\"roles\":[{\"role\":\"$ROLE_SLUG\",\"isTemporary\":false}]}" | jq .
+else
+  echo "Identity is already a member of the project"
+fi
 
-echo "Issuing Universal Auth client secret..."
-curl -s -X POST "$BASE/api/v1/auth/universal-auth/identities/$IDENTITY_ID/client-secrets" \
-  -H "Authorization: Bearer $ADMIN_TOKEN" -H "Content-Type: application/json" \
-  -d '{"description":"orbicheck-api bootstrap","numUsesLimit":0,"ttl":0}' | tee ua.json
+# Check if Universal Auth is already attached
+echo "Checking if Universal Auth is already attached..."
+UA_CHECK=$(curl -s "$BASE/api/v1/auth/universal-auth/identities/$IDENTITY_ID" \
+  -H "Authorization: Bearer $ADMIN_TOKEN")
 
-echo "Retrieving Universal Auth client ID..."
-curl -s -X GET "$BASE/api/v1/auth/universal-auth/identities/$IDENTITY_ID" \
-  -H "Authorization: Bearer $ADMIN_TOKEN" | tee ua_identity.json
+if echo "$UA_CHECK" | jq -e '.identityUniversalAuth.clientId' > /dev/null 2>&1; then
+  echo "Universal Auth already attached"
+  CLIENT_ID=$(echo "$UA_CHECK" | jq -r '.identityUniversalAuth.clientId')
+  
+  # Check if we have existing client secrets
+  SECRETS_RESPONSE=$(curl -s "$BASE/api/v1/auth/universal-auth/identities/$IDENTITY_ID/client-secrets" \
+    -H "Authorization: Bearer $ADMIN_TOKEN")
+  
+  EXISTING_SECRET=$(echo "$SECRETS_RESPONSE" | jq -r '.clientSecretData[] | select(.description=="orbicheck-api bootstrap") | .id' | head -n1)
+  
+  if [ -z "$EXISTING_SECRET" ]; then
+    echo "Creating new Universal Auth client secret..."
+    SECRET_RESPONSE=$(curl -s -X POST "$BASE/api/v1/auth/universal-auth/identities/$IDENTITY_ID/client-secrets" \
+      -H "Authorization: Bearer $ADMIN_TOKEN" -H "Content-Type: application/json" \
+      -d '{"description":"orbicheck-api bootstrap","numUsesLimit":0,"ttl":0}')
+    CLIENT_SECRET=$(echo "$SECRET_RESPONSE" | jq -r '.clientSecret')
+  else
+    echo "Client secret already exists. Please retrieve it manually if needed."
+    CLIENT_SECRET="<existing-secret-not-retrievable>"
+  fi
+else
+  echo "Attaching Universal Auth to identity..."
+  curl -s -X POST "$BASE/api/v1/auth/universal-auth/identities/$IDENTITY_ID" \
+    -H "Authorization: Bearer $ADMIN_TOKEN" -H "Content-Type: application/json" \
+    -d '{}' | jq .
+  
+  echo "Issuing Universal Auth client secret..."
+  SECRET_RESPONSE=$(curl -s -X POST "$BASE/api/v1/auth/universal-auth/identities/$IDENTITY_ID/client-secrets" \
+    -H "Authorization: Bearer $ADMIN_TOKEN" -H "Content-Type: application/json" \
+    -d '{"description":"orbicheck-api bootstrap","numUsesLimit":0,"ttl":0}')
+  CLIENT_SECRET=$(echo "$SECRET_RESPONSE" | jq -r '.clientSecret')
+  
+  echo "Retrieving Universal Auth client ID..."
+  UA_IDENTITY=$(curl -s "$BASE/api/v1/auth/universal-auth/identities/$IDENTITY_ID" \
+    -H "Authorization: Bearer $ADMIN_TOKEN")
+  CLIENT_ID=$(echo "$UA_IDENTITY" | jq -r '.identityUniversalAuth.clientId')
+fi
 
-CLIENT_SECRET=$(jq -r '.clientSecret' ua.json)
-CLIENT_ID=$(jq -r '.identityUniversalAuth.clientId' ua_identity.json)
+echo "Universal Auth ready. Client ID: ${CLIENT_ID:0:20}..."
 
-echo "Universal Auth credentials created successfully. Client ID: ${CLIENT_ID:0:20}..."
+# Function to create or update a secret
+upsert_secret() {
+  local secret_name=$1
+  local secret_value=$2
+  
+  echo "Checking secret: $secret_name..."
+  
+  # Check if secret exists
+  SECRET_CHECK=$(curl -s "$BASE/api/v4/secrets/$secret_name" \
+    -H "Authorization: Bearer $ADMIN_TOKEN" \
+    -G --data-urlencode "projectId=$PROJECT_ID" \
+    --data-urlencode "environment=dev" \
+    --data-urlencode "secretPath=/" 2>/dev/null || echo '{}')
+  
+  if echo "$SECRET_CHECK" | jq -e '.secret' > /dev/null 2>&1; then
+    echo "Secret $secret_name already exists, updating..."
+    curl -s -X PATCH "$BASE/api/v4/secrets/$secret_name" \
+      -H "Authorization: Bearer $ADMIN_TOKEN" -H "Content-Type: application/json" \
+      -d "{\"projectId\":\"$PROJECT_ID\",\"environment\":\"dev\",\"secretPath\":\"/\",\"secretValue\":\"$secret_value\"}" \
+      | jq .
+  else
+    echo "Creating secret $secret_name..."
+    curl -s -X POST "$BASE/api/v4/secrets/$secret_name" \
+      -H "Authorization: Bearer $ADMIN_TOKEN" -H "Content-Type: application/json" \
+      -d "{\"projectId\":\"$PROJECT_ID\",\"environment\":\"dev\",\"secretPath\":\"/\",\"secretValue\":\"$secret_value\"}" \
+      | jq .
+  fi
+}
 
-echo "Adding sample secrets to project..."
-curl -s -X POST "$BASE/api/v4/secrets/DB_PASSWORD" \
--H "Authorization: Bearer $ADMIN_TOKEN" -H "Content-Type: application/json" \
--d "{\"projectId\":\"$PROJECT_ID\",\"environment\":\"dev\",\"secretPath\":\"/\",\"secretValue\":\"postgres\"}" \
-| jq .
-
-curl -s -X POST "$BASE/api/v4/secrets/REDIS_URL" \
--H "Authorization: Bearer $ADMIN_TOKEN" -H "Content-Type: application/json" \
--d "{\"projectId\":\"$PROJECT_ID\",\"environment\":\"dev\",\"secretPath\":\"/\",\"secretValue\":\"valkey:6379\"}" \
-| jq .
+# Add or update secrets
+echo "Managing project secrets..."
+upsert_secret "DB_PASSWORD" "postgres"
+upsert_secret "REDIS_URL" "valkey:6379"
 
 echo "Infisical setup complete!"
 echo "CLIENT_ID: $CLIENT_ID"
-echo "CLIENT_SECRET: $CLIENT_SECRET"
+if [ "$CLIENT_SECRET" != "<existing-secret-not-retrievable>" ]; then
+  echo "CLIENT_SECRET: $CLIENT_SECRET"
+else
+  echo "CLIENT_SECRET: (existing - not shown for security)"
+fi
 echo "PROJECT_ID: $PROJECT_ID"
-echo "Save these credentials securely for your API to use."
 
 # Save credentials to a file for the API to read
-cat > /tmp/infisical-credentials.json << EOF
+if [ "$CLIENT_SECRET" != "<existing-secret-not-retrievable>" ]; then
+  cat > /tmp/infisical-credentials.json << EOF
 {
   "CLIENT_ID": "$CLIENT_ID",
   "CLIENT_SECRET": "$CLIENT_SECRET",
@@ -134,5 +253,7 @@ cat > /tmp/infisical-credentials.json << EOF
   "BASE_URL": "$BASE"
 }
 EOF
-
-echo "Credentials saved to /tmp/infisical-credentials.json"
+  echo "Credentials saved to /tmp/infisical-credentials.json"
+else
+  echo "Note: Client secret not available (already exists). Manual retrieval may be needed."
+fi

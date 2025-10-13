@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 
-import fs from 'fs';
-import path from 'path';
-import yaml from 'js-yaml';
 import { execSync } from 'child_process';
+import fs from 'fs';
+import yaml from 'js-yaml';
+import path from 'path';
 
 // --- Merge OpenAPI specs first ---
 const splitDir = 'specs';
@@ -116,7 +116,7 @@ Object.entries(openapiDoc.paths).forEach(([path, methods]) => {
   Object.entries(methods).forEach(([method, methodConfig]) => {
     const { tags, summary } = methodConfig;
     const constantName = createConstantName(summary || `${method}_${path}`);
-    
+
     if (!tags || tags.length === 0) {
       return; // Skip routes with no tags
     }
@@ -132,33 +132,33 @@ Object.entries(openapiDoc.paths).forEach(([path, methods]) => {
       case 'Management API':
       case 'Runtime API':
         const segments = formattedPath.replace(/^\//, '').split('/');
-        
+
         // --- STEP 1: Intelligently determine the GROUP KEY ---
         // If path is `/v1/rules`, the group segment is `rules`.
         // If path is `/rules`, the group segment is also `rules`.
         let groupSegment;
         if (segments.length > 1 && segments[0].toLowerCase() === 'v1') {
-            groupSegment = segments[1];
+          groupSegment = segments[1];
         } else {
-            groupSegment = segments[0];
+          groupSegment = segments[0];
         }
 
         if (!groupSegment) {
-            console.warn(`[!] Skipping API path "${path}" as it lacks a resource segment for grouping.`);
-            break;
+          console.warn(`[!] Skipping API path "${path}" as it lacks a resource segment for grouping.`);
+          break;
         }
-        
+
         const groupKey = groupSegment.toUpperCase().replace(/-/g, '_');
-        
+
         // --- STEP 2: Explicitly ensure the FINAL PATH has the /v1 prefix ---
         const finalPath = formattedPath.startsWith('/v1') ? formattedPath : `/v1${formattedPath}`;
-        
+
         const targetObject = mainTag === 'Management API' ? MGMT_V1_ROUTES : API_V1_ROUTES;
 
         if (!targetObject[groupKey]) {
           targetObject[groupKey] = {};
         }
-        
+
         // Assign the correctly prefixed path
         targetObject[groupKey][constantName] = finalPath;
         break;
@@ -177,47 +177,47 @@ let routesOutput = `/**
 
 // --- Generate DASHBOARD_ROUTES ---
 if (Object.keys(DASHBOARD_ROUTES).length > 0) {
-    // Note: Renamed from DASHBOARD_ROUTES to match your desired output
-    routesOutput += '// UI-only (session/cookies; unversioned)\n';
-    routesOutput += 'export const DASHBOARD_ROUTES = {\n';
-    for (const [key, value] of Object.entries(DASHBOARD_ROUTES)) {
-      routesOutput += `  ${key}: '${value}',\n`;
-    }
-    routesOutput += `} as const;\n\n`;
+  // Note: Renamed from DASHBOARD_ROUTES to match your desired output
+  routesOutput += '// UI-only (session/cookies; unversioned)\n';
+  routesOutput += 'export const DASHBOARD_ROUTES = {\n';
+  for (const [key, value] of Object.entries(DASHBOARD_ROUTES)) {
+    routesOutput += `  ${key}: '${value}',\n`;
+  }
+  routesOutput += `  };\n\n`;
 }
 
 // --- Generate MGMT_V1_ROUTES ---
 if (Object.keys(MGMT_V1_ROUTES).length > 0) {
-    routesOutput += '// Management API (versioned)\n';
-    routesOutput += 'export const MGMT_V1_ROUTES = {\n';
-    const sortedGroups = Object.keys(MGMT_V1_ROUTES).sort();
-    for (const group of sortedGroups) {
-      routesOutput += `  ${group}: {\n`;
-      const routes = MGMT_V1_ROUTES[group];
-      const sortedRoutes = Object.entries(routes).sort(([keyA], [keyB]) => keyA.localeCompare(keyB));
-      for (const [key, value] of sortedRoutes) {
-        routesOutput += `    ${key}: '${value}',\n`;
-      }
-      routesOutput += `  },\n`;
+  routesOutput += '// Management API (versioned)\n';
+  routesOutput += 'export const MGMT_V1_ROUTES = {\n';
+  const sortedGroups = Object.keys(MGMT_V1_ROUTES).sort();
+  for (const group of sortedGroups) {
+    routesOutput += `  ${group}: {\n`;
+    const routes = MGMT_V1_ROUTES[group];
+    const sortedRoutes = Object.entries(routes).sort(([keyA], [keyB]) => keyA.localeCompare(keyB));
+    for (const [key, value] of sortedRoutes) {
+      routesOutput += `    ${key}: '${value}',\n`;
     }
-    routesOutput += `} as const;\n\n`;
+    routesOutput += `  },\n`;
+  }
+  routesOutput += ` }; \n\n`;
 }
 
 // --- Generate API_V1_ROUTES ---
 if (Object.keys(API_V1_ROUTES).length > 0) {
-    routesOutput += '// Runtime API\n';
-    routesOutput += 'export const API_V1_ROUTES = {\n';
-    const sortedGroups = Object.keys(API_V1_ROUTES).sort();
-    for (const group of sortedGroups) {
-      routesOutput += `  ${group}: {\n`;
-      const routes = API_V1_ROUTES[group];
-      const sortedRoutes = Object.entries(routes).sort(([keyA], [keyB]) => keyA.localeCompare(keyB));
-      for (const [key, value] of sortedRoutes) {
-        routesOutput += `    ${key}: '${value}',\n`;
-      }
-      routesOutput += `  },\n`;
+  routesOutput += '// Runtime API\n';
+  routesOutput += 'export const API_V1_ROUTES = {\n';
+  const sortedGroups = Object.keys(API_V1_ROUTES).sort();
+  for (const group of sortedGroups) {
+    routesOutput += `  ${group}: {\n`;
+    const routes = API_V1_ROUTES[group];
+    const sortedRoutes = Object.entries(routes).sort(([keyA], [keyB]) => keyA.localeCompare(keyB));
+    for (const [key, value] of sortedRoutes) {
+      routesOutput += `    ${key}: '${value}',\n`;
     }
-    routesOutput += `} as const;\n`;
+    routesOutput += `  },\n`;
+  }
+  routesOutput += ` }; \n\n`;
 }
 
 

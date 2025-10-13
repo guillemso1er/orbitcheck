@@ -12,10 +12,17 @@ import { generateRequestId, rateLimitResponse, securityHeader, sendError, unauth
 // Import route constants from contracts package
 const ROUTES = MGMT_V1_ROUTES.WEBHOOKS;
 
-// Stripe configuration for webhook verification
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-    apiVersion: '2025-09-30.clover',
-});
+// Stripe configuration for webhook verification - lazy initialization
+let stripe: Stripe | null = null;
+
+function getStripe(): Stripe {
+    if (!stripe) {
+        stripe = new Stripe(process.env.STRIPE_SECRET_KEY || 'sk_test_dummy', {
+            apiVersion: '2025-09-30.clover',
+        });
+    }
+    return stripe;
+}
 
 
 export function registerWebhookRoutes(app: FastifyInstance, pool: Pool): void {
