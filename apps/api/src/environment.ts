@@ -9,6 +9,15 @@ const infisicalClient = new InfisicalSDK({
 });
 
 const getSecret = async (key: string, fallback?: string): Promise<string> => {
+  // For local development, use environment variables if Infisical access is not configured
+  if (process.env.NODE_ENV === 'development' && !process.env.INFISICAL_PROJECT_ID) {
+    const envKey = `INFISICAL_${key}`;
+    const envValue = process.env[envKey];
+    if (envValue !== undefined) {
+      return envValue;
+    }
+  }
+
   try {
     const secret = await infisicalClient.secrets().getSecret({
       environment: process.env.INFISICAL_ENVIRONMENT || "dev",

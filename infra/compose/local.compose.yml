@@ -115,7 +115,7 @@ services:
         condition: service_healthy
       infisical-redis:
         condition: service_started
-    image: infisical/infisical:latest-postgres
+    image: infisical/infisical:v0.150.0
     pull_policy: always
     env_file: .env.infisical
     ports:
@@ -124,6 +124,31 @@ services:
       - NODE_ENV=production
     networks:
       - infisical_net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/api/status"] 
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  infisical-setup:
+    image: alpine:latest
+    command: ["sh", "/setup.sh"]
+    volumes:
+      - ./infisical-setup.sh:/setup.sh
+      - infisical_credentials:/tmp
+    depends_on:
+      infisical-backend:
+        condition: service_healthy
+      infisical-db:
+        condition: service_healthy
+      infisical-redis:
+        condition: service_started
+    networks:
+      - infisical_net
+    environment:
+      - INFISICAL_RESET_DB=true
+    profiles:
+      - setup
 
   infisical-redis:
     image: redis
@@ -168,6 +193,8 @@ volumes:
   infisical_pg_data:
     driver: local
   infisical_redis_data:
+    driver: local
+  infisical_credentials:
     driver: local
 
 networks:
