@@ -21,5 +21,5 @@ export { API_V1_ROUTES, DASHBOARD_ROUTES, MGMT_V1_ROUTES } from '../dist/routes.
 import { readFileSync } from 'fs';
 import { resolve } from 'path';
 
-export const openapiYaml = readFileSync(resolve(import.meta.dirname || __dirname, '../dist/openapi.yaml'), 'utf8');
+export const openapiYaml = readFileSync(resolve(__dirname, '../dist/openapi.yaml'), 'utf8');
 

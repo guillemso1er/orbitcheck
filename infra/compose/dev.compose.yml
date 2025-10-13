@@ -87,6 +87,10 @@ services:
       LOG_LEVEL: info
       VIES_DOWN: "true"
       JWT_SECRET: dev-jwt-secret-key
+      INFISICAL_SITE_URL: http://infisical:8080
+      INFISICAL_ENVIRONMENT: dev
+      INFISICAL_PROJECT_ID: local-project
+      INFISICAL_SERVICE_TOKEN: local-dev-token
     depends_on:
       postgres:
         condition: service_healthy
@@ -94,6 +98,8 @@ services:
         condition: service_healthy
       minio:
         condition: service_healthy
+      infisical:
+        condition: service_started
     ports:
       - "8080:8080"
     healthcheck:
@@ -156,6 +162,17 @@ services:
     restart: always
     depends_on:
       - caddy
+
+  infisical:
+    image: infisical/self-host:latest
+    ports:
+      - "8083:8080"
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/infisical
+    volumes:
+      - infisical_data:/data
+    depends_on:
+      - postgres
 
 volumes:
   pg_data: {}

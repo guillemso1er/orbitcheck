@@ -71,9 +71,9 @@ describe('AuthContext', () => {
     );
 
     await waitFor(() => {
-        expect(screen.getByTestId('user')).toHaveTextContent('stored@example.com');
-        expect(screen.getByTestId('token')).toHaveTextContent('stored-token');
-        expect(screen.getByTestId('is-authenticated')).toHaveTextContent('true');
+      expect(screen.getByTestId('user')).toHaveTextContent('stored@example.com');
+      expect(screen.getByTestId('token')).toHaveTextContent('stored-token');
+      expect(screen.getByTestId('is-authenticated')).toHaveTextContent('true');
     });
   });
 
@@ -109,7 +109,7 @@ describe('AuthContext', () => {
         <TestComponent />
       </AuthProvider>
     );
-    
+
     // Wait for initial load to complete
     await waitFor(() => expect(screen.getByTestId('user')).toHaveTextContent('stored@example.com'));
 
@@ -120,9 +120,9 @@ describe('AuthContext', () => {
     expect(screen.getByTestId('user')).toHaveTextContent('No user');
     expect(screen.getByTestId('token')).toHaveTextContent('No token');
     expect(screen.getByTestId('is-authenticated')).toHaveTextContent('false');
-    
-    expect(mockLocalStorage.removeItem).toHaveBeenCalledWith('token');
+
     expect(mockLocalStorage.removeItem).toHaveBeenCalledWith('user');
+    expect(mockLocalStorage.removeItem).toHaveBeenCalledWith('token');
   });
 
   it('should transition to a loaded state upon initialization', async () => {

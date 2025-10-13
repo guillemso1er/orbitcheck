@@ -19,17 +19,9 @@ const mockApiClient = {
   })
 };
 
+// Mock the entire @orbicheck/contracts module
 jest.mock('@orbicheck/contracts', () => ({
-  createApiClient: jest.fn(() => mockApiClient)
-}));
-
-// Mock the API client
-jest.mock('@orbicheck/contracts', () => ({
-  ...jest.requireActual('@orbicheck/contracts'),
-  createApiClient: jest.fn(() => ({
-    loginUser: jest.fn(),
-    registerUser: jest.fn(),
-  })),
+  createApiClient: jest.fn(() => mockApiClient),
 }));
 
 const mockUseAuth = useAuth as jest.MockedFunction<typeof useAuth>;

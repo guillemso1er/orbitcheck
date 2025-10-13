@@ -26,6 +26,7 @@
         "@hapi/address": "^5.1.1",
         "@hapi/tlds": "^1.1.3",
         "@immobiliarelabs/fastify-metrics": "^7.0.0",
+        "@infisical/sdk": "^4.0.6",
         "@orbicheck/contracts": "link:../../packages/contracts",
         "@sentry/node": "^10.15.0",
         "@sinclair/typebox": "^0.34.41",
