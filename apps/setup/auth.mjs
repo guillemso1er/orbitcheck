@@ -122,6 +122,11 @@ export async function generateTemporaryToken() {
                 log.die('UA login successful but accessToken missing');
             }
             log.success('Access token generated');
+
+            // Ensure UA credentials are saved to file
+            const { saveUACredsToFile } = await import('./config.mjs');
+            await saveUACredsToFile(UA_CLIENT_ID, UA_CLIENT_SECRET, state.ORG_ID, state.PROJECT_ID, state.IDENTITY_ID);
+
             return;
         }
 
@@ -149,6 +154,11 @@ export async function generateTemporaryToken() {
                         log.die('UA login successful on retry but accessToken missing');
                     }
                     log.success('Access token generated after secret rotation');
+
+                    // Ensure UA credentials are saved to file after secret rotation
+                    const { saveUACredsToFile } = await import('./config.mjs');
+                    await saveUACredsToFile(UA_CLIENT_ID, UA_CLIENT_SECRET, state.ORG_ID, state.PROJECT_ID, state.IDENTITY_ID);
+
                     return;
                 }
             }
