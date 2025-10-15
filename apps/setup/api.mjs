@@ -214,10 +214,10 @@ export async function createReadOnlyIdentity() {
     await ensureIdentityUniversalAuth();
 }
 
-export async function assignReadOnlyRole() {
+export async function assignWriteRole() {
     requireAdmin();
 
-    log.info('Configuring read-only permissions...');
+    log.info('Configuring write permissions for secrets...');
 
     const rolesResult = await retryApiCall(config.MAX_RETRIES, async () => {
         const result = await makeApiRequest(
@@ -230,20 +230,22 @@ export async function assignReadOnlyRole() {
 
     const roles = rolesResult.data?.roles || [];
 
-    // Find suitable read-only role
-    let roleSlug = roles.find(r => r.slug === 'project_viewer')?.slug;
+    // Find suitable write-enabled role (developer/editor/admin)
+    let roleSlug = roles.find(r => r.slug === 'project_developer')?.slug ||
+                   roles.find(r => r.slug === 'project_editor')?.slug ||
+                   roles.find(r => r.slug === 'project_admin')?.slug ||
+                   roles.find(r => /developer|editor|admin/i.test(r.slug))?.slug;
+
     if (!roleSlug) {
-        roleSlug = roles.find(r => /viewer|read/i.test(r.slug))?.slug;
-    }
-    if (!roleSlug) {
+        // Fallback to role with most permissions if no specific write role found
         const sortedRoles = roles.sort((a, b) =>
-            (a.permissions?.length || 0) - (b.permissions?.length || 0)
+            (b.permissions?.length || 0) - (a.permissions?.length || 0)
         );
         roleSlug = sortedRoles[0]?.slug;
     }
 
     if (!roleSlug) {
-        log.die('No suitable read-only role found');
+        log.die('No suitable write-enabled role found');
     }
 
     log.info(`Using role: ${roleSlug}`);

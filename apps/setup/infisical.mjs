@@ -1,11 +1,9 @@
 #!/usr/bin/env zx
 
-import { log } from './utils.mjs';
-import { config } from './config.mjs';
-import { waitForService } from './api.mjs';
-import { loadUACredsFromFile, saveUACredsToFile } from './config.mjs';
+import { assignWriteRole, createReadOnlyIdentity, ensureProject, waitForService } from './api.mjs';
 import { bootstrapOrLogin, generateTemporaryToken } from './auth.mjs';
-import { ensureProject, createReadOnlyIdentity, assignReadOnlyRole } from './api.mjs';
+import { config, loadUACredsFromFile, saveUACredsToFile } from './config.mjs';
+import { log } from './utils.mjs';
 
 // ============================================================================
 //  Script Entry Point
@@ -25,7 +23,7 @@ export default async function setupInfisica() {
             // Admin path: ensure everything exists
             await ensureProject();
             await createReadOnlyIdentity();
-            await assignReadOnlyRole();
+            await assignWriteRole();
             await saveUACredsToFile(UA_CLIENT_ID, UA_CLIENT_SECRET, configState.ORG_ID, configState.PROJECT_ID, configState.IDENTITY_ID);
         } else {
             // Non-admin path: use existing credentials
