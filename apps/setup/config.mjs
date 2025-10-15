@@ -63,6 +63,8 @@ export const state = {
 // ============================================================================
 // UA Credential Helpers
 // ============================================================================
+export function setUA_CLIENT_ID(value) { UA_CLIENT_ID = value; }
+export function setUA_CLIENT_SECRET(value) { UA_CLIENT_SECRET = value; }
 export async function loadUACredsFromFile() {
     if (await fileExists(UA_CRED_FILE)) {
         log.info(`Loading Universal Auth credentials from ${UA_CRED_FILE}`);

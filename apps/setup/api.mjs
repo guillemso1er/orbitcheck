@@ -1,6 +1,6 @@
 #!/usr/bin/env zx
 
-import { config, sleep, state } from './config.mjs';
+import { config, sleep, state, UA_CLIENT_ID, UA_CLIENT_SECRET } from './config.mjs';
 import { log } from './utils.mjs';
 
 // ============================================================================
@@ -51,27 +51,13 @@ export function requireAdmin() {
 }
 
 export async function makeApiRequest(url, options = {}) {
-    const defaultOptions = {
-        headers: {
-            'Content-Type': 'application/json',
-            ...options.headers
-        }
-    };
-
-    if (options.body && typeof options.body === 'object') {
-        options.body = JSON.stringify(options.body);
-    }
-
-    const response = await fetch(url, { ...defaultOptions, ...options });
+    const headers = { 'Content-Type': 'application/json', ...(options.headers || {}) };
+    const finalOptions = { ...options, headers };
+    if (finalOptions.body && typeof finalOptions.body === 'object') { finalOptions.body = JSON.stringify(finalOptions.body); }
+    const response = await fetch(url, finalOptions);
     const text = await response.text();
-
-    let data;
-    try {
-        data = JSON.parse(text);
-    } catch {
-        data = text;
-    }
-
+    let data; try { data = JSON.parse(text); }
+    catch { data = text; }
     return { response, data, status: response.status };
 }
 
@@ -130,22 +116,28 @@ export async function ensureProject() {
 
     log.info(`Creating project '${config.PROJECT_NAME}'...`);
 
-    const { SCRIPT_NAME } = await import('./config.mjs');
+    const { SCRIPT_CONFIG: { SCRIPT_NAME } } = await import('./config.mjs');
 
-    // Try new API shape first
-    let createResult = await makeApiRequest(`${config.BASE}/api/v1/projects`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${state.ADMIN_TOKEN}` },
-        body: {
-            projectName: config.PROJECT_NAME,
-            orgId: state.ORG_ID,
-            description: `Managed by ${SCRIPT_NAME}`
-        }
-    });
+    // Try different payload shapes - the API validation error suggests a schema issue
+    let createResult;
 
-    // If failed, try legacy shape
+    // Try without organizationId at all - just name and description
+    createResult = await makeApiRequest(`${config.BASE}/api/v1/projects`,
+        {
+            method: 'POST', headers: { Authorization: `Bearer ${state.ADMIN_TOKEN}` },
+            body: {
+                projectName: config.PROJECT_NAME,
+                projectDescription: `Managed by ${SCRIPT_NAME}`,
+                slug: 'orbitcheck',
+                type: 'secret-manager',
+                shouldCreateDefaultEnvs: true
+            }
+        });
+
+    // If failed, try with organizationId
     if (!createResult.status.toString().startsWith('2')) {
-        log.warning('Create project failed. Retrying with legacy payload shape...');
+        log.warning('Create project failed. Retrying with organizationId...');
+        log.warning(`First attempt failed with: HTTP ${createResult.status}, data: ${JSON.stringify(createResult.data)}`);
 
         createResult = await makeApiRequest(`${config.BASE}/api/v1/projects`, {
             method: 'POST',
@@ -159,12 +151,14 @@ export async function ensureProject() {
     }
 
     if (!createResult.status.toString().startsWith('2')) {
-        log.die(`Failed to create project (HTTP ${createResult.status})`);
+        log.error(`Failed to create project (HTTP ${createResult.status})`);
+        log.error(`Error response: ${JSON.stringify(createResult.data)}`);
+        log.die(`Project creation failed`);
     }
 
-    state.PROJECT_ID = createResult.data?.project?.id || createResult.data?.id ||
-        createResult.data?.projectId || createResult.data?.workspace?.id ||
-        createResult.data?.workspaceId;
+    state.PROJECT_ID = createResult.data?.project?.id ||
+        createResult.data?.id || createResult.data?.projectId ||
+        createResult.data?.workspace?.id || createResult.data?.workspaceId;
 
     if (!state.PROJECT_ID) {
         log.die('Project creation response missing ID');
@@ -298,8 +292,7 @@ export async function assignReadOnlyRole() {
 export async function ensureIdentityUniversalAuth(forceRotate = false) {
     requireAdmin();
 
-    const configModule = await import('./config.mjs');
-    const { SCRIPT_NAME, loadUASecretOnly, saveUACredsToFile } = configModule;
+    const { SCRIPT_NAME, loadUASecretOnly, saveUACredsToFile } = await import('./config.mjs');
 
     log.info(`Ensuring Universal Auth is configured for identity '${config.IDENTITY_NAME}' (${state.IDENTITY_ID})...`);
     log.info('Attaching Universal Auth to identity (idempotent)...');
@@ -344,12 +337,13 @@ export async function ensureIdentityUniversalAuth(forceRotate = false) {
         log.die('Failed to determine clientId for identity');
     }
 
-    configModule.UA_CLIENT_ID = clientId;
+    const { setUA_CLIENT_ID } = await import('./config.mjs');
+    setUA_CLIENT_ID(clientId);
 
     // Load existing secret if available
     await loadUASecretOnly();
 
-    const needSecret = forceRotate || !configModule.UA_CLIENT_SECRET;
+    const needSecret = forceRotate || !UA_CLIENT_SECRET;
 
     if (needSecret) {
         log.info(`Creating client secret (ttl=${config.UA_SECRET_TTL}s; 0 => omit ttl)...`);
@@ -376,12 +370,13 @@ export async function ensureIdentityUniversalAuth(forceRotate = false) {
             return result;
         });
 
-        configModule.UA_CLIENT_SECRET = secretResult.data?.clientSecret;
-        if (!configModule.UA_CLIENT_SECRET) {
+        const { setUA_CLIENT_SECRET } = await import('./config.mjs');
+        setUA_CLIENT_SECRET(secretResult.data?.clientSecret);
+        if (!UA_CLIENT_SECRET) {
             log.die('Client secret missing in response');
         }
 
-        await saveUACredsToFile(configModule.UA_CLIENT_ID, configModule.UA_CLIENT_SECRET, state.ORG_ID, state.PROJECT_ID, state.IDENTITY_ID);
+        await saveUACredsToFile(UA_CLIENT_ID, UA_CLIENT_SECRET, state.ORG_ID, state.PROJECT_ID, state.IDENTITY_ID);
     } else {
         log.info('Using existing client secret');
     }

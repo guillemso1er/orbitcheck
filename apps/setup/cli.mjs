@@ -144,15 +144,20 @@ export async function startContainers(composeFile, useInfisical, token, infisica
         // Use Infisical token
         const infisicalDomain = process.env.INFISICAL_SITE_URL || 'http://localhost:8085';
 
-        await $`INFISICAL_TOKEN=${token} infisical run \
+        try {
+            await $`INFISICAL_TOKEN=${token} infisical run \
     --env=${infisicalEnv} \
     --path=/ \
     --projectId=${projectId} \
     --domain=${infisicalDomain} \
     -- ${runtime} compose -f ${composeFile} up -d --remove-orphans`;
+        } catch (error) {
+            log.warning('Infisical token failed, falling back to environment variables');
+            await $`${runtime} compose -f ${composeFile} up -d --remove-orphans`;
+        }
     } else {
         // Use environment variables directly
-        await $`${runtime} compose -f ${composeFile} up -d`;
+        await $`${runtime} compose -f ${composeFile} up -d --remove-orphans`;
     }
 
     // Check for container errors
