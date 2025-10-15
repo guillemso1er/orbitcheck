@@ -4,6 +4,7 @@ import { constants } from 'fs';
 import { access, readFile, writeFile } from 'fs/promises';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
+import { log } from './utils.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -15,8 +16,8 @@ const SCRIPT_DIR = __dirname;
 export const SCRIPT_CONFIG = {
     SCRIPT_NAME: 'setup.mjs',
     SCRIPT_DIR,
-    INFRA_DIR: join(SCRIPT_DIR, 'infra'),
-    COMPOSE_DIR: join(SCRIPT_DIR, 'infra/compose')
+    INFRA_DIR: join(SCRIPT_DIR, '..', '..', 'infra'),
+    COMPOSE_DIR: join(SCRIPT_DIR, '..', '..', 'infra', 'compose')
 };
 
 // ============================================================================
@@ -40,29 +41,31 @@ export const config = {
 // UA Credentials and State
 // ============================================================================
 // UA credentials
-export let UA_CLIENT_ID = process.env.INFISICAL_UA_CLIENT_ID || process.env.INFISICAL_CLIENT_ID || '';
-export let UA_CLIENT_SECRET = process.env.INFISICAL_UA_CLIENT_SECRET || process.env.INFISICAL_CLIENT_SECRET || '';
+var UA_CLIENT_ID = process.env.INFISICAL_UA_CLIENT_ID || process.env.INFISICAL_CLIENT_ID || '';
+var UA_CLIENT_SECRET = process.env.INFISICAL_UA_CLIENT_SECRET || process.env.INFISICAL_CLIENT_SECRET || '';
+
+export { UA_CLIENT_ID, UA_CLIENT_SECRET };
 
 // UA credential file
 export const UA_CRED_FILE_DEFAULT = join(SCRIPT_DIR, `.${config.IDENTITY_NAME}.ua.env`);
 export const UA_CRED_FILE = process.env.INFISICAL_UA_CRED_FILE || UA_CRED_FILE_DEFAULT;
 
-// State variables
-export let HAVE_ADMIN = false;
-export let ADMIN_TOKEN = '';
-export let ACCESS_TOKEN = '';
-export let ORG_ID = '';
-export let PROJECT_ID = '';
-export let IDENTITY_ID = '';
+// State variables (mutable object to avoid const assignment issues)
+export const state = {
+    HAVE_ADMIN: false,
+    ADMIN_TOKEN: '',
+    ACCESS_TOKEN: '',
+    ORG_ID: '',
+    PROJECT_ID: '',
+    IDENTITY_ID: ''
+};
 
 // ============================================================================
 // UA Credential Helpers
 // ============================================================================
 export async function loadUACredsFromFile() {
     if (await fileExists(UA_CRED_FILE)) {
-        import('./utils.mjs').then(({ log }) => {
-            log.info(`Loading Universal Auth credentials from ${UA_CRED_FILE}`);
-        });
+        log.info(`Loading Universal Auth credentials from ${UA_CRED_FILE}`);
 
         const content = await readFile(UA_CRED_FILE, 'utf-8');
         const lines = content.split('\n');
@@ -81,13 +84,13 @@ export async function loadUACredsFromFile() {
                     if (!UA_CLIENT_SECRET) UA_CLIENT_SECRET = value;
                     break;
                 case 'INFISICAL_ORG_ID':
-                    if (!ORG_ID) ORG_ID = value;
+                    if (!state.ORG_ID) state.ORG_ID = value;
                     break;
                 case 'INFISICAL_PROJECT_ID':
-                    if (!PROJECT_ID) PROJECT_ID = value;
+                    if (!state.PROJECT_ID) state.PROJECT_ID = value;
                     break;
                 case 'INFISICAL_IDENTITY_ID':
-                    if (!IDENTITY_ID) IDENTITY_ID = value;
+                    if (!state.IDENTITY_ID) state.IDENTITY_ID = value;
                     break;
             }
         }
@@ -119,9 +122,7 @@ export async function saveUACredsToFile(clientId, clientSecret, orgId, projectId
     const content = lines.join('\n') + '\n';
 
     await writeFile(UA_CRED_FILE, content, { mode: 0o600 });
-    import('./utils.mjs').then(({ log }) => {
-        log.success(`Saved UA creds and IDs to ${UA_CRED_FILE}`);
-    });
+    log.success(`Saved UA creds and IDs to ${UA_CRED_FILE}`);
 }
 
 // ============================================================================
