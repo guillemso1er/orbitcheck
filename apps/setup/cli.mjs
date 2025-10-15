@@ -310,11 +310,28 @@ async function upsertSecret(secretName, secretValue, adminToken, projectId, base
 }
 
 export async function upsertSecrets(envFilePath, infisicalEnv, adminToken, projectId, options) {
-    if (!options.upsertSecrets || !adminToken || !projectId) {
+    if (!options.upsertSecrets || !projectId) {
         if (options.upsertSecrets && !adminToken) {
             log.warning('Secret upserting was requested but no admin token is available. Skipping.');
         }
         return;
+    }
+
+    if (!adminToken) {
+        log.warning('Secret upserting was requested but no admin token is available. Falling back to UA credentials.');
+        // Try to use UA credentials instead
+        const { generateTemporaryToken } = await import('./auth.mjs');
+        await generateTemporaryToken();
+
+        const { state, config } = await import('./config.mjs');
+        if (state.ACCESS_TOKEN) {
+            log.info('Attempting secret upsert using UA access token...');
+            adminToken = state.ACCESS_TOKEN;
+        } else {
+            log.warning('Unable to generate UA access token for secret upsert. Skipping.');
+            options.upsertSecrets = false;
+            return;
+        }
     }
 
     log.info('Upserting secrets from environment file to Infisical...');
@@ -369,10 +386,6 @@ export async function initializeInfisical(composeFile, options) {
                 log.success('Infisical tokens and project ID obtained (with admin access)');
             } else {
                 log.success('Infisical token and project ID obtained (using UA credentials)');
-                if (options.upsertSecrets) {
-                    log.warning('Secret upserting requested but no admin token available. Skipping secret upsert.');
-                    options.upsertSecrets = false;
-                }
             }
         } else {
             throw new Error('No token or project ID received');

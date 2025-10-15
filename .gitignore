@@ -90,3 +90,4 @@ packages/contracts/dist
 infra/compose/tmp
 infra/compose/tmp/infisical-credentials.json
 scripts/.orbicheck-reader.ua.env
+apps/setup/.orbicheck-reader.ua.env
