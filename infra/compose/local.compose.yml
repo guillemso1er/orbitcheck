@@ -130,24 +130,6 @@ services:
       timeout: 10s
       retries: 5
 
-  infisical-setup:
-    image: alpine:latest
-    command: ["sh", "/setup.sh"]
-    volumes:
-      - ./infisical-setup.sh:/setup.sh
-      - /tmp:/tmp
-    depends_on:
-      infisical-backend:
-        condition: service_healthy
-      infisical-db:
-        condition: service_healthy
-      infisical-redis:
-        condition: service_started
-    networks:
-      - infisical_net
-    environment:
-      - INFISICAL_RESET_DB=true
-
   infisical-redis:
     image: redis
     container_name: infisical-redis
