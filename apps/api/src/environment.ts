@@ -6,8 +6,10 @@ import { InfisicalSDK } from '@infisical/sdk';
 
 import { CRYPTO_KEY_BYTES } from "./constants.js";
 
+const enableInfisical = process.env.INFISICAL_RUNTIME_FETCH_SECRETS === 'true';
+
 let infisicalCreds: { CLIENT_ID?: string; CLIENT_SECRET?: string; PROJECT_ID?: string; BASE_URL?: string } = {};
-let infisicalAuthenticated = true;
+let infisicalAuthenticated = false;
 
 try {
   const credsPath = '/tmp/infisical-credentials.json';
@@ -23,58 +25,48 @@ const infisicalClient = new InfisicalSDK({
   siteUrl: infisicalCreds.BASE_URL || process.env.INFISICAL_SITE_URL || "https://app.infisical.com",
 });
 
-// Authenticate with Infisical
-try {
-  if (infisicalCreds.CLIENT_ID && infisicalCreds.CLIENT_SECRET) {
-    await infisicalClient.auth().universalAuth.login({
-      clientId: infisicalCreds.CLIENT_ID,
-      clientSecret: infisicalCreds.CLIENT_SECRET,
-    });
-    infisicalAuthenticated = true;
-  } else if (process.env.INFISICAL_SERVICE_TOKEN) {
-    // Use service token by accessing the auth client directly
-    (infisicalClient as any).authenticate(process.env.INFISICAL_SERVICE_TOKEN);
-    infisicalAuthenticated = true;
+// Authenticate with Infisical only if enabled
+if (enableInfisical) {
+  try {
+    if (infisicalCreds.CLIENT_ID && infisicalCreds.CLIENT_SECRET) {
+      await infisicalClient.auth().universalAuth.login({
+        clientId: infisicalCreds.CLIENT_ID,
+        clientSecret: infisicalCreds.CLIENT_SECRET,
+      });
+      infisicalAuthenticated = true;
+    } else if (process.env.INFISICAL_SERVICE_TOKEN) {
+      // Use service token by accessing the auth client directly
+      (infisicalClient as any).authenticate(process.env.INFISICAL_SERVICE_TOKEN);
+      infisicalAuthenticated = true;
+    }
+  } catch (error) {
+    console.warn('Failed to authenticate with Infisical:', error);
   }
-} catch (error) {
-  console.warn('Failed to authenticate with Infisical:', error);
 }
 
 const getSecret = async (key: string, fallback?: string): Promise<string> => {
-  // For local development, use environment variables directly first
-  if (process.env.NODE_ENV === 'development') {
-    const directValue = process.env[key];
-    if (directValue !== undefined) {
-      return directValue;
-    }
-    // Then check INFISICAL_ prefixed
-    const envKey = `INFISICAL_${key}`;
-    const envValue = process.env[envKey];
-    if (envValue !== undefined) {
-      return envValue;
-    }
-    // If no Infisical credentials available (no JSON file or env config), use fallback
-    if (!infisicalAuthenticated) {
-      return fallback || "";
+  // Always check environment variables first
+  const envValue = process.env[key];
+  if (envValue !== undefined) {
+    return envValue;
+  }
+
+  // If Infisical is enabled and authenticated, try to fetch from Infisical
+  if (enableInfisical && infisicalAuthenticated) {
+    try {
+      const secret = await infisicalClient.secrets().getSecret({
+        environment: process.env.INFISICAL_ENVIRONMENT || "dev",
+        projectId: infisicalCreds.PROJECT_ID || process.env.INFISICAL_PROJECT_ID || "",
+        secretName: key,
+      });
+      return secret.secretValue;
+    } catch (error) {
+      console.warn(`Failed to fetch secret ${key} from Infisical, using fallback:`, error);
     }
   }
 
-  // Skip Infisical calls if not authenticated
-  if (!infisicalAuthenticated) {
-    return fallback || "";
-  }
-
-  try {
-    const secret = await infisicalClient.secrets().getSecret({
-      environment: process.env.INFISICAL_ENVIRONMENT || "dev",
-      projectId: infisicalCreds.PROJECT_ID || process.env.INFISICAL_PROJECT_ID || "",
-      secretName: key,
-    });
-    return secret.secretValue;
-  } catch (error) {
-    console.warn(`Failed to fetch secret ${key} from Infisical, using fallback:`, error);
-    return fallback || "";
-  }
+  // Use fallback if environment variable not found and Infisical not available/enabled
+  return fallback || "";
 };
 
 const getNumberSecret = async (key: string, fallback: number): Promise<number> => {

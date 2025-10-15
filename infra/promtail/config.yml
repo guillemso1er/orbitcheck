@@ -17,7 +17,6 @@ scrape_configs:
           job: docker
     pipeline_stages:
       - docker: {}
-    __path__: /var/lib/docker/containers/*/*-json.log
   - job_name: journald
     journal:
       json: false

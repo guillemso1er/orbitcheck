@@ -254,18 +254,30 @@ main() {
         log_info "Initializing Infisical and obtaining tokens..."
         local token project_id admin_token
 
-    if output=$("$SCRIPT_DIR/scripts/init_infisical.sh"); then
-        read -r token project_id admin_token <<< "$output"
-        token="${token//[$'\r\n']}"
-        project_id="${project_id//[$'\r\n']}"
-        admin_token="${admin_token//[$'\r\n']}"
-            if [ -n "$token" ] && [ -n "$project_id" ] && [ -n "$admin_token" ]; then
-                log_success "Infisical tokens and project ID obtained"
+        if output=$("$SCRIPT_DIR/scripts/init_infisical.sh"  2>&1); then
+            read -r token project_id admin_token <<< "$output"
+            token="${token//[$'\r\n']}"
+            project_id="${project_id//[$'\r\n']}"
+            admin_token="${admin_token//[$'\r\n']}"
+            
+            # Check if we have the essential values (token and project_id)
+            # admin_token is optional and only required for upserting secrets
+            if [ -n "$token" ] && [ -n "$project_id" ]; then
+                if [ -n "$admin_token" ]; then
+                    log_success "Infisical tokens and project ID obtained (with admin access)"
+                else
+                    log_success "Infisical token and project ID obtained (using UA credentials)"
+                    # If upsert_secrets is requested but no admin token, warn the user
+                    if [ "$upsert_secrets" = true ]; then
+                        log_warning "Secret upserting requested but no admin token available. Skipping secret upsert."
+                        upsert_secrets=false
+                    fi
+                fi
             else
                 if [ "$fail_on_infisical_error" = true ]; then
-                    die "No token, project ID, or admin token received from init_infisical.sh: $output"
+                    die "No token or project ID received from init_infisical.sh: $output"
                 else
-                    log_warning "No token, project ID, or admin token received from init_infisical.sh, falling back to environment files: $output"
+                    log_warning "No token or project ID received from init_infisical.sh, falling back to environment files: $output"
                     use_infisical=false
                 fi
             fi
@@ -299,7 +311,8 @@ main() {
     fi
 
     # Upsert secrets if requested
-    if [ "$upsert_secrets" = true ] && [ "$use_infisical" = true ] && [ -n "$admin_token" ] && [ -n "$project_id" ]; then
+    # Now we explicitly check for admin_token before attempting to upsert
+    if [ "$upsert_secrets" = true ] && [ "$use_infisical" = true ] && [ -n "${admin_token:-}" ] && [ -n "${project_id:-}" ]; then
         log_info "Upserting secrets from environment file to Infisical..."
 
         # Parse the environment file and upsert each secret
@@ -309,7 +322,7 @@ main() {
             [[ -z "$key" ]] && continue
 
             # Remove quotes from value if present
-            value=$(echo "$value" | sed 's/^"\(.*\)"$/\1/' | sed "s/^'\(.*\)'$/\1/")
+            value=$(echo "$value" | sed 's/^"KATEX_INLINE_OPEN.*KATEX_INLINE_CLOSE"$/\1/' | sed "s/^'KATEX_INLINE_OPEN.*KATEX_INLINE_CLOSE'$/\1/")
 
             # Skip if value is empty
             [[ -z "$value" ]] && continue
@@ -320,14 +333,16 @@ main() {
         done < "$env_file"
 
         log_success "Secrets upserted successfully"
+    elif [ "$upsert_secrets" = true ] && [ -z "${admin_token:-}" ]; then
+        log_warning "Secret upserting was requested but no admin token is available. Skipping."
     fi
 
-    # Stop/delete non-Infisical containers
+    # Stop/delete Infisical containers
     if [ "$skip_cleanup" = false ]; then
-        log_info "Stopping and removing non-Infisical containers..."
-        podman compose -f "$compose_file" down --remove-orphans
+        log_info "Stopping and removing Infisical containers..."
+        podman compose -f "$compose_file" down infisical-backend infisical-redis infisical-db
     else
-        log_info "Skipping cleanup of non-Infisical containers as requested."
+        log_info "Skipping cleanup of Infisical containers as requested."
     fi
 
     # Start non-Infisical containers
@@ -340,10 +355,10 @@ main() {
             --path="/" \
             --projectId="$project_id" \
             --domain="${INFISICAL_SITE_URL:-http://localhost:8085}" \
-            -- podman compose -f "$compose_file" up -d --scale infisical-backend=0 --scale infisical-redis=0 --scale infisical-db=0 --remove-orphans
+            -- podman compose -f "$compose_file" up -d --remove-orphans
     else
         # Use environment variables directly
-        podman compose -f "$compose_file" up -d --scale infisical-backend=0 --scale infisical-redis=0 --scale infisical-db=0 
+        podman compose -f "$compose_file" up -d 
     fi
 
     # Log container errors
