@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="utf-8" />
   <title>VAT Checker — Orbicheck</title>
@@ -8,19 +9,23 @@
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet" />
   <link rel="stylesheet" href="/css/common.css" />
 </head>
+
 <body class="bg-gray-50 text-gray-900 antialiased">
   <main class="container py-12">
     <h1 class="text-3xl font-extrabold">EU VAT Checker</h1>
-    <p class="mt-2 text-gray-700">Local structure checks and Spain NIF/NIE checksum helper. For live VIES, use the API.</p>
+    <p class="mt-2 text-gray-700">Local structure checks and Spain NIF/NIE checksum helper. For live VIES, use the API.
+    </p>
     <form class="bg-white border border-gray-100 rounded-lg p-6 mt-6" onsubmit="return false">
       <label class="block text-sm font-medium text-gray-700 mb-1" for="vat">VAT ID</label>
-      <input id="vat" class="w-full border border-gray-300 rounded-md px-3 py-2" placeholder="ESB12345678 or ES X1234567L" />
-      <button id="check" class="mt-4 inline-flex items-center px-4 py-2 rounded-md bg-indigo-600 text-white">Check</button>
+      <input id="vat" class="w-full border border-gray-300 rounded-md px-3 py-2"
+        placeholder="ESB12345678 or ES X1234567L" />
+      <button id="check"
+        class="mt-4 inline-flex items-center px-4 py-2 rounded-md bg-indigo-600 text-white">Check</button>
       <div id="out" class="mt-4 text-sm text-gray-800"></div>
       <noscript>
         <div class="mt-4 text-sm text-gray-700">
           JavaScript is disabled. To validate via CLI:
-<pre><code>curl -s https://api.orbicheck.com/v1/validate/tax-id \
+          <pre><code>curl -s https://api.orbitcheck.io/v1/validate/tax-id \
   -H "Authorization: Bearer YOUR_KEY" \
   -H "Content-Type: application/json" \
   -d '{ "type": "vat", "value": "ESB12345678" }'
@@ -31,67 +36,68 @@
   </main>
 
   <script>
-  // Lightweight local helper: validate ES NIF/NIE; basic EU format checks
-  (function(){
-    var btn = document.getElementById('check');
-    if(!btn) return;
-    function checkESNIFNIE(v) {
-      v = v.toUpperCase().replace(/\s|-/g,'');
-      var nifRegex = /^(\d{8})([TRWAGMYFPDXBNJZSQVHLCKE])$/; // DNI
-      var nieRegex = /^[XYZ]\d{7}[TRWAGMYFPDXBNJZSQVHLCKE]$/; // NIE
-      var cifRegex = /^[ABCDEFGHJKLMNPQRSUVW]\d{7}[0-9A-J]$/; // CIF
-      var letters = 'TRWAGMYFPDXBNJZSQVHLCKE';
-      if(nifRegex.test(v)) {
-        var num = parseInt(v.substr(0,8),10);
-        var letter = letters[num % 23];
-        return {valid: letter === v[8], type:'DNI', normalized: v};
-      }
-      if(nieRegex.test(v)) {
-        var map = {X:'0', Y:'1', Z:'2'};
-        var num = parseInt(map[v[0]] + v.substr(1,7),10);
-        var letter = letters[num % 23];
-        return {valid: letter === v[8], type:'NIE', normalized: v};
-      }
-      if(cifRegex.test(v)) {
-        // Basic checksum for CIF
-        var control = v.slice(-1), digits = v.substr(1,7).split('').map(Number);
-        var sum = 0;
-        for (var i=0;i<digits.length;i++){
-          var n = digits[i];
-          if(i%2===0){ var t=n*2; sum += Math.floor(t/10) + (t%10); } else sum += n;
+    // Lightweight local helper: validate ES NIF/NIE; basic EU format checks
+    (function () {
+      var btn = document.getElementById('check');
+      if (!btn) return;
+      function checkESNIFNIE(v) {
+        v = v.toUpperCase().replace(/\s|-/g, '');
+        var nifRegex = /^(\d{8})([TRWAGMYFPDXBNJZSQVHLCKE])$/; // DNI
+        var nieRegex = /^[XYZ]\d{7}[TRWAGMYFPDXBNJZSQVHLCKE]$/; // NIE
+        var cifRegex = /^[ABCDEFGHJKLMNPQRSUVW]\d{7}[0-9A-J]$/; // CIF
+        var letters = 'TRWAGMYFPDXBNJZSQVHLCKE';
+        if (nifRegex.test(v)) {
+          var num = parseInt(v.substr(0, 8), 10);
+          var letter = letters[num % 23];
+          return { valid: letter === v[8], type: 'DNI', normalized: v };
         }
-        var res = (10 - (sum % 10)) % 10;
-        var valid = (/[ABEH]/.test(v[0]) && String(res)===control) ||
-                    (/[KPQS]/.test(v[0]) && 'JABCDEFGHI'[res]===control) ||
-                    (/[CDFGJLMNRUVW]/.test(v[0]) && (String(res)===control || 'JABCDEFGHI'[res]===control));
-        return {valid: valid, type:'CIF', normalized: v};
-      }
-      return null;
-    }
-    function isLikelyVAT(v) {
-      v = v.toUpperCase().replace(/\s|-/g,'');
-      return /^[A-Z]{2}[A-Z0-9]+$/.test(v);
-    }
-    btn.addEventListener('click', function(){
-      var v = document.getElementById('vat').value || '';
-      var out = document.getElementById('out');
-      if(!v){ out.textContent = 'Enter a VAT ID.'; return; }
-      if(/^ES/.test(v.toUpperCase())){
-        var core = v.toUpperCase().replace(/^ES\s*/,'');
-        var es = checkESNIFNIE(core);
-        if(es) {
-          out.innerHTML = (es.valid ? '✅ Valid ' : '❌ Invalid ') + es.type + ' structure (Spain). ' +
-            'Normalized: <code>'+es.normalized+'</code>. For live VIES: use API.';
-          return;
+        if (nieRegex.test(v)) {
+          var map = { X: '0', Y: '1', Z: '2' };
+          var num = parseInt(map[v[0]] + v.substr(1, 7), 10);
+          var letter = letters[num % 23];
+          return { valid: letter === v[8], type: 'NIE', normalized: v };
         }
+        if (cifRegex.test(v)) {
+          // Basic checksum for CIF
+          var control = v.slice(-1), digits = v.substr(1, 7).split('').map(Number);
+          var sum = 0;
+          for (var i = 0; i < digits.length; i++) {
+            var n = digits[i];
+            if (i % 2 === 0) { var t = n * 2; sum += Math.floor(t / 10) + (t % 10); } else sum += n;
+          }
+          var res = (10 - (sum % 10)) % 10;
+          var valid = (/[ABEH]/.test(v[0]) && String(res) === control) ||
+            (/[KPQS]/.test(v[0]) && 'JABCDEFGHI'[res] === control) ||
+            (/[CDFGJLMNRUVW]/.test(v[0]) && (String(res) === control || 'JABCDEFGHI'[res] === control));
+          return { valid: valid, type: 'CIF', normalized: v };
+        }
+        return null;
       }
-      if(isLikelyVAT(v)){
-        out.innerHTML = 'ℹ️ Format looks like a VAT ID. For authoritative check use VIES via API.';
-      } else {
-        out.innerHTML = '❌ Not a recognized VAT format. Expect 2-letter country code + identifier.';
+      function isLikelyVAT(v) {
+        v = v.toUpperCase().replace(/\s|-/g, '');
+        return /^[A-Z]{2}[A-Z0-9]+$/.test(v);
       }
-    });
-  })();
+      btn.addEventListener('click', function () {
+        var v = document.getElementById('vat').value || '';
+        var out = document.getElementById('out');
+        if (!v) { out.textContent = 'Enter a VAT ID.'; return; }
+        if (/^ES/.test(v.toUpperCase())) {
+          var core = v.toUpperCase().replace(/^ES\s*/, '');
+          var es = checkESNIFNIE(core);
+          if (es) {
+            out.innerHTML = (es.valid ? '✅ Valid ' : '❌ Invalid ') + es.type + ' structure (Spain). ' +
+              'Normalized: <code>' + es.normalized + '</code>. For live VIES: use API.';
+            return;
+          }
+        }
+        if (isLikelyVAT(v)) {
+          out.innerHTML = 'ℹ️ Format looks like a VAT ID. For authoritative check use VIES via API.';
+        } else {
+          out.innerHTML = '❌ Not a recognized VAT format. Expect 2-letter country code + identifier.';
+        }
+      });
+    })();
   </script>
 </body>
+
 </html>

@@ -1,5 +1,4 @@
 import cors from '@fastify/cors';
-import * as Sentry from '@sentry/node';
 import { Queue, Worker } from 'bullmq';
 import Fastify from 'fastify';
 import { type Redis as IORedisType, Redis } from 'ioredis';
@@ -172,8 +171,8 @@ describe('Server Build', () => {
     await expect(options.origin(undefined)).resolves.toBe(true);
     await expect(options.origin('http://localhost:5173')).resolves.toBe(false);
     await expect(options.origin(`http://localhost:${environment.PORT}`)).resolves.toBe(true);
-    await expect(options.origin('https://dashboard.orbicheck.com')).resolves.toBe(true);
-    await expect(options.origin('https://api.orbicheck.com')).resolves.toBe(true);
+    await expect(options.origin('https://dashboard.orbitcheck.io')).resolves.toBe(true);
+    await expect(options.origin('https://api.orbitcheck.io')).resolves.toBe(true);
     await expect(options.origin('http://evil.com')).resolves.toBe(false);
 
     expect(options.credentials).toBe(true);
@@ -190,10 +189,10 @@ describe('Server Startup', () => {
     jest.clearAllMocks();
     jest.clearAllTimers();
     jest.useFakeTimers();
-    
+
     // Store original setTimeout before mocking
     originalSetTimeout = global.setTimeout;
-    
+
     mockPool = {
       query: jest.fn(),
       connect: jest.fn().mockResolvedValue({
@@ -202,7 +201,7 @@ describe('Server Startup', () => {
       }),
       end: jest.fn().mockResolvedValue(undefined),
     } as any;
-    
+
     mockRedis = {
       quit: jest.fn().mockResolvedValue(true),
       status: 'ready' as const,
@@ -212,11 +211,11 @@ describe('Server Startup', () => {
       del: jest.fn().mockResolvedValue(1),
       rename: jest.fn().mockResolvedValue('OK'),
     } as any;
-    
+
     (Pool as unknown as jest.Mock).mockImplementation(() => mockPool);
     (Redis as unknown as jest.Mock).mockImplementation(() => mockRedis);
     (mockQueue.add).mockResolvedValue({});
-    
+
     // Mock process.exit to prevent actual exit
     mockProcessExit = jest.spyOn(process, 'exit').mockImplementation(((code?: string | number | null) => {
       // Do nothing - prevent actual exit
@@ -227,7 +226,7 @@ describe('Server Startup', () => {
     // Clear all timers to prevent timeout from executing after test
     jest.clearAllTimers();
     jest.useRealTimers();
-    
+
     // Restore process.exit
     mockProcessExit.mockRestore();
   });

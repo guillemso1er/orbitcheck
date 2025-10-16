@@ -1,8 +1,6 @@
 import { config } from 'dotenv';
-config({ path: '../../.env' });
 import { once } from 'node:events';
-import { readFileSync } from 'node:fs';
-import path from 'node:path';
+config({ path: '../../.env' });
 
 import cookie from "@fastify/cookie";
 import cors from "@fastify/cors";
@@ -89,8 +87,8 @@ export async function build(pool: Pool, redis: IORedisType): Promise<FastifyInst
 
     // Add environment-specific origins
     if (process.env.NODE_ENV === 'production') {
-        allowedOrigins.add('https://dashboard.orbicheck.com');
-        allowedOrigins.add('https://api.orbicheck.com');
+        allowedOrigins.add('https://dashboard.orbitcheck.io');
+        allowedOrigins.add('https://api.orbitcheck.io');
         // Add your OIDC provider domain if needed
         if (environment.OIDC_PROVIDER_URL) {
             allowedOrigins.add(new URL(environment.OIDC_PROVIDER_URL).origin);
@@ -142,7 +140,7 @@ export async function build(pool: Pool, redis: IORedisType): Promise<FastifyInst
             sameSite: 'lax', // CSRF protection while allowing navigation
             maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
             domain: process.env.NODE_ENV === 'production'
-                ? '.orbicheck.com' // Allow subdomain sharing in production
+                ? '.orbitcheck.io' // Allow subdomain sharing in production
                 : undefined
         }
     });
@@ -201,16 +199,16 @@ export async function build(pool: Pool, redis: IORedisType): Promise<FastifyInst
         } else if (request.id) {
             reply.header('Correlation-Id', request.id);
         }
-    
-            return payload;
-        });
-    
-        // Status endpoint (public, no auth required)
-        app.get("/v1/status", async (): Promise<{ status: string; version: string; timestamp: string }> => ({
-            status: "healthy",
-            version: "0.1.0",
-            timestamp: new Date().toISOString()
-        }));
+
+        return payload;
+    });
+
+    // Status endpoint (public, no auth required)
+    app.get("/v1/status", async (): Promise<{ status: string; version: string; timestamp: string }> => ({
+        status: "healthy",
+        version: "0.1.0",
+        timestamp: new Date().toISOString()
+    }));
 
     // Health check endpoint (public, no auth required)
     app.get("/health", async (): Promise<{ ok: true; timestamp: string; environment: string }> => ({

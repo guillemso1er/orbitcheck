@@ -1,15 +1,18 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-   <meta charset="utf-8" />
-   <title>Docs — Orbicheck</title>
-   <meta name="description" content="Orbicheck developer docs: API-first validation for emails, phones, addresses, EU VAT, ES-LATAM tax IDs; dedupe; rules; webhooks." />
-   <meta name="viewport" content="width=device-width, initial-scale=1" />
-   <link rel="canonical" href="https://orbicheck.com/docs/" />
-   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet" />
-   <link rel="stylesheet" href="/css/common.css" />
+  <meta charset="utf-8" />
+  <title>Docs — Orbicheck</title>
+  <meta name="description"
+    content="Orbicheck developer docs: API-first validation for emails, phones, addresses, EU VAT, ES-LATAM tax IDs; dedupe; rules; webhooks." />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="canonical" href="https://orbitcheck.io/docs/" />
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet" />
+  <link rel="stylesheet" href="/css/common.css" />
 </head>
+
 <body class="bg-gray-50 text-gray-900 antialiased">
   <header class="bg-white border-b border-gray-100">
     <div class="container-wide py-4 flex items-center justify-between">
@@ -27,7 +30,7 @@
         <a href="/changelog.html" class="text-gray-700 hover:text-gray-900">Changelog</a>
         <a href="/blog/index.html" class="text-gray-700 hover:text-gray-900">Blog</a>
         <a href="/tools/index.html" class="text-gray-700 hover:text-gray-900">Free Tools</a>
-        <a href="https://status.orbicheck.com" class="text-gray-700 hover:text-gray-900">Status</a>
+        <a href="https://status.orbitcheck.io" class="text-gray-700 hover:text-gray-900">Status</a>
       </nav>
       <div class="hidden md:flex items-center space-x-3">
         <a href="/pricing.html" class="btn btn-secondary">See pricing</a>
@@ -37,7 +40,9 @@
       <details class="md:hidden relative">
         <summary class="list-none cursor-pointer inline-flex items-center space-x-2">
           <span class="sr-only">Menu</span>
-          <svg class="w-7 h-7 text-gray-700 rotate transition-transform"><path fill="currentColor" d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+          <svg class="w-7 h-7 text-gray-700 rotate transition-transform">
+            <path fill="currentColor" d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z" />
+          </svg>
         </summary>
         <div class="absolute right-0 mt-3 w-64 bg-white border border-gray-100 shadow-lg rounded-md p-3 space-y-2 z-50">
           <a href="/#features" class="block px-3 py-2 rounded hover:bg-gray-50">Product</a>
@@ -46,7 +51,7 @@
           <a href="/changelog.html" class="block px-3 py-2 rounded hover:bg-gray-50">Changelog</a>
           <a href="/blog/index.html" class="block px-3 py-2 rounded hover:bg-gray-50">Blog</a>
           <a href="/tools/index.html" class="block px-3 py-2 rounded hover:bg-gray-50">Free Tools</a>
-          <a href="https://status.orbicheck.com" class="block px-3 py-2 rounded hover:bg-gray-50">Status</a>
+          <a href="https://status.orbitcheck.io" class="block px-3 py-2 rounded hover:bg-gray-50">Status</a>
           <div class="border-t border-gray-100 pt-2 flex space-x-2">
             <a href="/pricing.html" class="flex-1 btn btn-secondary w-full">Pricing</a>
             <a href="APP_SIGNUP_URL" class="flex-1 btn btn-primary w-full">Start</a>
@@ -76,41 +81,44 @@
       <section class="lg:col-span-3 space-y-10">
         <section id="quickstart" class="card p-6">
           <h1 class="text-2xl font-bold">Quickstart</h1>
-          <p class="mt-2 text-gray-700">Orbicheck is API-first. Get an API key from your dashboard and hit our endpoints from your backend or edge.</p>
-<pre><code># 1) Set your API key
+          <p class="mt-2 text-gray-700">Orbicheck is API-first. Get an API key from your dashboard and hit our endpoints
+            from your backend or edge.</p>
+          <pre><code># 1) Set your API key
 export ORBICHECK_KEY=oc_live_xxx
 
 # 2) Validate a VAT ID
-curl -s https://api.orbicheck.com/v1/validate/vat \
+curl -s https://api.orbitcheck.io/v1/validate/vat \
   -H "Authorization: Bearer $ORBICHECK_KEY" \
   -H "Content-Type: application/json" \
   -d '{ "vat": "ESB12345678" }' | jq .
 
 # 3) Standardize a phone number (E.164)
-curl -s https://api.orbicheck.com/v1/validate/phone \
+curl -s https://api.orbitcheck.io/v1/validate/phone \
   -H "Authorization: Bearer $ORBICHECK_KEY" \
   -H "Content-Type: application/json" \
   -d '{ "phone": "600 123 456", "country": "ES" }' | jq .
 
 # 4) Dedupe customer
-curl -s https://api.orbicheck.com/v1/dedupe/customer \
+curl -s https://api.orbitcheck.io/v1/dedupe/customer \
   -H "Authorization: Bearer $ORBICHECK_KEY" \
   -H "Content-Type: application/json" \
   -d '{ "email": "a@b.com", "name": "A B", "phone": "+34600123456" }' | jq .
 </code></pre>
-          <p class="mt-3 text-sm text-gray-600">SDKs are optional; simple JSON in/out. Use connectors for Shopify/Woo/BigCommerce/Magento if needed.</p>
+          <p class="mt-3 text-sm text-gray-600">SDKs are optional; simple JSON in/out. Use connectors for
+            Shopify/Woo/BigCommerce/Magento if needed.</p>
         </section>
 
         <section id="auth" class="card p-6">
           <h2 class="text-xl font-semibold">Authentication</h2>
-          <p class="mt-2 text-gray-700">Bearer tokens via Authorization header. Separate keys per project recommended.</p>
-<pre><code>Authorization: Bearer oc_live_xxx</code></pre>
+          <p class="mt-2 text-gray-700">Bearer tokens via Authorization header. Separate keys per project recommended.
+          </p>
+          <pre><code>Authorization: Bearer oc_live_xxx</code></pre>
         </section>
 
         <section id="validation" class="card p-6">
           <h2 class="text-xl font-semibold">Validation API</h2>
           <h3 class="mt-3 font-semibold">VAT</h3>
-<pre><code>POST /v1/validate/vat
+          <pre><code>POST /v1/validate/vat
 {
   "vat": "ESB12345678",
   "cache_max_age": 86400
@@ -118,7 +126,7 @@ curl -s https://api.orbicheck.com/v1/dedupe/customer \
 # → { "valid": true, "country": "ES", "source": "VIES|cache|fallback", "reason_codes": [] }
 </code></pre>
           <h3 class="mt-3 font-semibold">Email/Phone/Address</h3>
-<pre><code>POST /v1/validate/phone
+          <pre><code>POST /v1/validate/phone
 { "phone": "(600) 123-456", "country": "ES" }
 # → { "valid": true, "e164": "+34600123456", "reason_codes": [] }
 
@@ -127,7 +135,7 @@ POST /v1/validate/address
 # → { "valid": true, "normalized": {...}, "reason_codes": [] }
 </code></pre>
           <h3 class="mt-3 font-semibold">ES-LATAM Tax IDs</h3>
-<pre><code>POST /v1/validate/id
+          <pre><code>POST /v1/validate/id
 { "id": "123.456.789-09", "country": "BR", "type": "CPF" }
 # → { "valid": true, "normalized": "12345678909", "reason_codes": [] }
 </code></pre>
@@ -135,7 +143,7 @@ POST /v1/validate/address
 
         <section id="dedupe" class="card p-6">
           <h2 class="text-xl font-semibold">Dedupe API</h2>
-<pre><code>POST /v1/dedupe/customer
+          <pre><code>POST /v1/dedupe/customer
 {
   "record": {"email":"a@b.com","name":"Ana B","phone":"+34600123456"},
   "strategy": {"deterministic":["email","phone"], "fuzzy":["name"], "threshold":0.82}
@@ -146,7 +154,7 @@ POST /v1/validate/address
 
         <section id="rules" class="card p-6">
           <h2 class="text-xl font-semibold">Rules & Holds</h2>
-<pre><code>POST /v1/rules/evaluate
+          <pre><code>POST /v1/rules/evaluate
 {
   "order": {"id":"ord_123","cod":true,"shipping":{"address":{...}}},
   "customer":{"id":"cus_123","history":{"rto_rate":0.2}}
@@ -157,15 +165,16 @@ POST /v1/validate/address
 
         <section id="webhooks" class="card p-6">
           <h2 class="text-xl font-semibold">Webhooks</h2>
-<pre><code>POST https://yourapp.com/webhooks/orbicheck
+          <pre><code>POST https://yourapp.com/webhooks/orbicheck
 { "type":"validation.completed", "data":{...}, "project":"proj_123" }
 </code></pre>
         </section>
 
         <section id="errors" class="card p-6">
           <h2 class="text-xl font-semibold">Errors & Reason Codes</h2>
-          <p class="mt-2 text-gray-700">Every response can include <code>reason_codes</code> suitable for exposure at checkout (human-friendly mappings available).</p>
-<pre><code># Example
+          <p class="mt-2 text-gray-700">Every response can include <code>reason_codes</code> suitable for exposure at
+            checkout (human-friendly mappings available).</p>
+          <pre><code># Example
 { "valid": false, "reason_codes": ["VAT_NOT_FOUND","ADDRESS_CITY_MISMATCH"] }</code></pre>
         </section>
 
@@ -180,7 +189,10 @@ POST /v1/validate/address
     <div class="container-wide py-12 grid md:grid-cols-4 gap-8">
       <div>
         <a href="/" class="flex items-center space-x-2">
-          <svg class="w-7 h-7 text-indigo-600" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="10" opacity="0.2"></circle><path d="M12 3a9 9 0 109 9h-9V3z"></path></svg>
+          <svg class="w-7 h-7 text-indigo-600" viewBox="0 0 24 24" fill="currentColor">
+            <circle cx="12" cy="12" r="10" opacity="0.2"></circle>
+            <path d="M12 3a9 9 0 109 9h-9V3z"></path>
+          </svg>
           <span class="font-bold">Orbicheck</span>
         </a>
         <p class="muted mt-3 text-sm">The API-first data hygiene guard for ecommerce.</p>
@@ -192,7 +204,7 @@ POST /v1/validate/address
           <li><a href="/pricing.html" class="text-gray-700 hover:text-gray-900">Pricing</a></li>
           <li><a href="/docs/index.html" class="text-gray-700 hover:text-gray-900">Docs</a></li>
           <li><a href="/changelog.html" class="text-gray-700 hover:text-gray-900">Changelog</a></li>
-          <li><a href="https://status.orbicheck.com" class="text-gray-700 hover:text-gray-900">Status</a></li>
+          <li><a href="https://status.orbitcheck.io" class="text-gray-700 hover:text-gray-900">Status</a></li>
         </ul>
       </div>
       <div>
@@ -209,11 +221,12 @@ POST /v1/validate/address
         <ul class="mt-3 space-y-2 text-sm">
           <li><a href="/docs/index.html" class="text-gray-700 hover:text-gray-900">Developer Docs</a></li>
           <li><a href="mailto:SALES_EMAIL" class="text-gray-700 hover:text-gray-900">Sales</a></li>
-          <li><a href="https://status.orbicheck.com" class="text-gray-700 hover:text-gray-900">System Status</a></li>
+          <li><a href="https://status.orbitcheck.io" class="text-gray-700 hover:text-gray-900">System Status</a></li>
         </ul>
       </div>
     </div>
-    <div class="container-wide py-6 border-t border-gray-100 flex flex-col md:flex-row items-center justify-between text-sm text-gray-500">
+    <div
+      class="container-wide py-6 border-t border-gray-100 flex flex-col md:flex-row items-center justify-between text-sm text-gray-500">
       <p>© 2025 Orbicheck</p>
       <div class="space-x-4">
         <a href="/legal/tos.html" class="hover:text-gray-900">ToS</a>
@@ -223,4 +236,5 @@ POST /v1/validate/address
     </div>
   </footer>
 </body>
+
 </html>

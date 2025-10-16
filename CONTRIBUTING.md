@@ -91,7 +91,7 @@ PRs are reviewed for quality, security, and alignment with project goals. Expect
 
 ## Security Issues
 
-Report vulnerabilities privately to support@orbicheck.com. Do not open public issues.
+Report vulnerabilities privately to support@orbitcheck.io. Do not open public issues.
 
 ## License
 

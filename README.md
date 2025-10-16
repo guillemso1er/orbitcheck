@@ -10,7 +10,7 @@ Orbicheck is a validation and risk assessment platform for e-commerce and busine
 - **Cache**: Redis
 - **Testing**: Jest (unit), Playwright (E2E), k6 (load)
 - **Deployment**: Docker, Docker Compose
-- **Observability**: Loki, Prometheus, Promtail, Grafana, Statping, Uptime Kuma
+- **Observability**: Loki, Prometheus, Promtail, Grafana, Statping, Uptime Kuma, Infisical
 - **Package Manager**: pnpm
 - **Monorepo Tool**: pnpm workspaces
 
@@ -110,7 +110,7 @@ Orbicheck includes a comprehensive observability stack for monitoring, logging, 
 - **Sentry/Glitchtip**: The API integrates with Sentry for error tracking. In production, errors are sent to a self-hosted Glitchtip instance (localhost:8030 in dev/prod compose). Set SENTRY_DSN environment variable to enable.
 
 ### Secrets Management
-- **Infisical (localhost:8081 in prod)**: Secrets management tool running in production. Currently not integrated with the API; can be used for managing environment variables and secrets separately.
+- **Infisical Backend (localhost:8085)**: Secrets management tool. Used for managing environment variables and secrets. Integrated with the API for secure configuration management.
 
 Automatic connections: Prometheus scrapes API metrics, Promtail ships logs to Loki, Grafana visualizes data from Prometheus and Loki. Statping and Uptime Kuma require manual configuration via their web interfaces to monitor specific endpoints and provide value.
 

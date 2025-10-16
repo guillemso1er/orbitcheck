@@ -5,11 +5,11 @@ info:
   version: 1.0.0
   contact:
     name: OrbiCheck Team
-    email: support@orbicheck.com
+    email: support@orbitcheck.io
 servers:
-  - url: https://api.orbicheck.com/v1
+  - url: https://api.orbitcheck.io/v1
     description: Production server
-  - url: https://dev-api.orbicheck.com/v1
+  - url: https://dev-api.orbitcheck.io/v1
     description: Development server
 security:
   - BearerAuth: []
