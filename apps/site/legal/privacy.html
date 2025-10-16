@@ -1,14 +1,83 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="utf-8" />
   <title>Privacy Policy — Orbicheck</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description"
+    content="Learn how Orbicheck handles your data privacy and complies with regulations." />
+  <link rel="canonical" href="https://orbitcheck.io/legal/privacy" />
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://orbitcheck.io/legal/privacy" />
+  <meta property="og:title" content="Privacy Policy | Orbicheck" />
+  <meta property="og:description"
+    content="Learn how Orbicheck handles your data privacy and complies with regulations." />
+  <meta property="og:image" content="https://orbitcheck.io/og-cover.png" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Privacy Policy | Orbicheck" />
+  <meta name="twitter:description"
+    content="Learn how Orbicheck handles your data privacy and complies with regulations." />
+  <meta name="twitter:image" content="https://orbitcheck.io/og-cover.png" />
+  <!-- Tailwind v2 CDN -->
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet" />
+  <!-- Custom styles that cannot be handled by Tailwind utilities -->
   <link rel="stylesheet" href="/css/common.css" />
 </head>
+
 <body class="bg-gray-50 text-gray-900 antialiased">
+  <!-- Header -->
+  <header class="bg-white border-b border-gray-100">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
+      <a href="/" class="flex items-center space-x-2">
+        <svg class="w-8 h-8 text-indigo-600" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <circle cx="12" cy="12" r="10" class="text-indigo-100" fill="currentColor" opacity="0.2"></circle>
+          <path d="M12 3a9 9 0 109 9h-9V3z" class="text-indigo-600" fill="currentColor"></path>
+        </svg>
+        <span class="font-extrabold text-xl">Orbicheck</span>
+      </a>
+      <nav class="hidden md:flex items-center space-x-6">
+        <a href="/#features" class="text-gray-700 hover:text-gray-900">Product</a>
+        <a href="/pricing.html" class="text-gray-700 hover:text-gray-900">Pricing</a>
+        <a href="/docs/index.html" class="text-gray-700 hover:text-gray-900">Docs</a>
+        <a href="/changelog.html" class="text-gray-700 hover:text-gray-900">Changelog</a>
+        <a href="/blog/index.html" class="text-gray-700 hover:text-gray-900">Blog</a>
+        <a href="/tools/index.html" class="text-gray-700 hover:text-gray-900">Free Tools</a>
+        <a href="https://status.orbitcheck.io" class="text-gray-700 hover:text-gray-900">Status</a>
+      </nav>
+      <div class="hidden md:flex items-center space-x-3">
+        <a href="/pricing.html" class="inline-flex items-center justify-center px-5 py-3 rounded-md font-semibold bg-white text-indigo-700 border border-indigo-200 hover:border-indigo-300">See pricing</a>
+        <!-- Replace # with your actual signup URL -->
+        <a href="#" class="inline-flex items-center justify-center px-5 py-3 rounded-md font-semibold bg-indigo-600 text-white hover:bg-indigo-700">Start free</a>
+      </div>
+      <!-- Mobile nav using details (no JS) -->
+      <details class="md:hidden relative">
+        <summary class="list-none cursor-pointer inline-flex items-center space-x-2">
+          <span class="sr-only">Menu</span>
+          <svg class="w-7 h-7 text-gray-700 rotate transition-transform">
+            <path fill="currentColor" d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z" />
+          </svg>
+        </summary>
+        <div class="absolute right-0 mt-3 w-64 bg-white border border-gray-100 shadow-lg rounded-md p-3 space-y-2 z-50">
+          <a href="/#features" class="block px-3 py-2 rounded hover:bg-gray-50">Product</a>
+          <a href="/pricing.html" class="block px-3 py-2 rounded hover:bg-gray-50">Pricing</a>
+          <a href="/docs/index.html" class="block px-3 py-2 rounded hover:bg-gray-50">Docs</a>
+          <a href="/changelog.html" class="block px-3 py-2 rounded hover:bg-gray-50">Changelog</a>
+          <a href="/blog/index.html" class="block px-3 py-2 rounded hover:bg-gray-50">Blog</a>
+          <a href="/tools/index.html" class="block px-3 py-2 rounded hover:bg-gray-50">Free Tools</a>
+          <a href="https://status.orbitcheck.io" class="block px-3 py-2 rounded hover:bg-gray-50">Status</a>
+          <div class="border-t border-gray-100 pt-2 flex space-x-2">
+            <a href="/pricing.html" class="flex-1 w-full inline-flex items-center justify-center px-5 py-3 rounded-md font-semibold bg-white text-indigo-700 border border-indigo-200 hover:border-indigo-300">Pricing</a>
+            <!-- Replace # with your actual signup URL -->
+            <a href="#" class="flex-1 w-full inline-flex items-center justify-center px-5 py-3 rounded-md font-semibold bg-indigo-600 text-white hover:bg-indigo-700">Start</a>
+          </div>
+        </div>
+      </details>
+    </div>
+  </header>
+
+  <!-- Main Content -->
   <main class="max-w-3xl mx-auto px-4 py-12">
     <h1 class="text-3xl font-extrabold">Privacy Policy</h1>
     <p class="mt-4 text-gray-700">We respect your privacy. This page describes what we collect, why, and how we protect it. Replace with your counsel–approved policy.</p>
@@ -24,5 +93,65 @@
     <p class="mt-2 text-gray-700">Access, correction, deletion where applicable.</p>
     <p class="mt-10 text-sm text-gray-500">Last updated: 2025-09-01</p>
   </main>
+
+  <!-- Footer -->
+  <footer class="bg-white border-t border-gray-100">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 grid md:grid-cols-4 gap-8">
+      <div>
+        <a href="/" class="flex items-center space-x-2">
+          <svg class="w-7 h-7 text-indigo-600" viewBox="0 0 24 24" fill="currentColor">
+            <circle cx="12" cy="12" r="10" opacity="0.2"></circle>
+            <path d="M12 3a9 9 0 109 9h-9V3z"></path>
+          </svg>
+          <span class="font-bold">Orbicheck</span>
+        </a>
+        <p class="text-gray-500 mt-3 text-sm">The API-first data hygiene guard for ecommerce.</p>
+      </div>
+      <div>
+        <h5 class="font-semibold">Product</h5>
+        <ul class="mt-3 space-y-2 text-sm">
+          <li><a href="/#features" class="text-gray-700 hover:text-gray-900">Features</a></li>
+          <li><a href="/pricing.html" class="text-gray-700 hover:text-gray-900">Pricing</a></li>
+          <li><a href="/docs/index.html" class="text-gray-700 hover:text-gray-900">Docs</a></li>
+          <li><a href="/changelog.html" class="text-gray-700 hover:text-gray-900">Changelog</a></li>
+          <li><a href="https://status.orbitcheck.io" class="text-gray-700 hover:text-gray-900">Status</a></li>
+        </ul>
+      </div>
+      <div>
+        <h5 class="font-semibold">Company</h5>
+        <ul class="mt-3 space-y-2 text-sm">
+          <li><a href="/blog/index.html" class="text-gray-700 hover:text-gray-900">Blog</a></li>
+          <li><a href="/legal/tos.html" class="text-gray-700 hover:text-gray-900">Terms of Service</a></li>
+          <li><a href="/legal/privacy.html" class="text-gray-700 hover:text-gray-900">Privacy Policy</a></li>
+          <li><a href="/legal/dpa.html" class="text-gray-700 hover:text-gray-900">DPA</a></li>
+        </ul>
+      </div>
+      <div>
+        <h5 class="font-semibold">Support</h5>
+        <ul class="mt-3 space-y-2 text-sm">
+          <li><a href="/docs/index.html" class="text-gray-700 hover:text-gray-900">Developer Docs</a></li>
+          <!-- Replace # with your sales email mailto link -->
+          <li><a href="mailto:#" class="text-gray-700 hover:text-gray-900">Sales</a></li>
+          <li><a href="https://status.orbitcheck.io" class="text-gray-700 hover:text-gray-900">System Status</a></li>
+        </ul>
+      </div>
+    </div>
+    <div
+      class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 border-t border-gray-100 flex flex-col md:flex-row items-center justify-between text-sm text-gray-500">
+      <p>© <span id="copyright-year">2025</span> Orbicheck</p>
+      <div class="space-x-4">
+        <a href="/legal/tos.html" class="hover:text-gray-900">ToS</a>
+        <a href="/legal/privacy.html" class="hover:text-gray-900">Privacy</a>
+        <a href="/legal/dpa.html" class="hover:text-gray-900">DPA</a>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    // Automatically update the copyright year
+    document.getElementById('copyright-year').textContent = new Date().getFullYear();
+  </script>
+
 </body>
+
 </html>
