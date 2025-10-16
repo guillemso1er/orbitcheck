@@ -9,13 +9,29 @@
     content="Transparent, usage-based pricing for Orbicheck. Free developer plan and paid tiers with aggressive caching to keep margins. 14-day Growth trial included." />
   <link rel="canonical" href="https://orbitcheck.io/pricing" />
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <!-- Tailwind v2 CDN -->
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet" />
+  <!-- Custom styles for elements that cannot be handled by Tailwind utilities alone -->
   <link rel="stylesheet" href="/css/common.css" />
+  <style>
+    /* CSS-only logic for the monthly/annual pricing switch */
+    .switch:checked+.switch-label .annual {
+      display: inline-flex;
+    }
+
+    .switch:checked+.switch-label .monthly {
+      display: none;
+    }
+
+    .annual {
+      display: none;
+    }
+  </style>
 </head>
 
 <body class="bg-gray-50 text-gray-900 antialiased">
   <header class="bg-white border-b border-gray-100">
-    <div class="container-wide py-4 flex items-center justify-between">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
       <a href="/" class="flex items-center space-x-2">
         <svg class="w-8 h-8 text-indigo-600" viewBox="0 0 24 24" fill="currentColor">
           <circle cx="12" cy="12" r="10" opacity="0.2"></circle>
@@ -31,12 +47,15 @@
         <a href="/tools/index.html" class="text-gray-700 hover:text-gray-900">Free Tools</a>
       </nav>
       <div class="hidden md:flex items-center space-x-3">
-        <a href="APP_SIGNUP_URL" class="btn btn-primary">Start free</a>
+        <!-- Replace # with your actual signup URL -->
+        <a href="#"
+          class="inline-flex items-center justify-center px-5 py-3 rounded-md font-semibold bg-indigo-600 text-white hover:bg-indigo-700">Start
+          free</a>
       </div>
     </div>
   </header>
 
-  <main class="container-wide py-16">
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
     <div class="text-center max-w-3xl mx-auto">
       <h1 class="text-4xl font-extrabold">Pricing that protects your margins</h1>
       <p class="mt-3 text-gray-700">Transparent, usage-based plans. Keep margins with aggressive caching and no platform
@@ -46,15 +65,18 @@
       <div class="mt-6 inline-flex items-center space-x-3">
         <input id="billingswitch" type="checkbox" class="switch hidden" />
         <label for="billingswitch" class="switch-label flex items-center space-x-2 cursor-pointer">
-          <span class="badge bg-gray-100 text-gray-800 monthly">Monthly</span>
-          <span class="badge bg-green-100 text-green-800 annual">Annual (save ~10%)</span>
+          <span
+            class="monthly inline-flex items-center px-2.5 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800">Monthly</span>
+          <span
+            class="annual inline-flex items-center px-2.5 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">Annual
+            (save ~10%)</span>
         </label>
       </div>
     </div>
 
     <div class="grid md:grid-cols-2 lg:grid-cols-5 gap-6 mt-10">
       <!-- Free -->
-      <div class="card p-6 flex flex-col">
+      <div class="bg-white shadow-sm rounded-lg border border-gray-100 p-6 flex flex-col">
         <h3 class="font-semibold text-lg">Free (Developer)</h3>
         <p class="mt-1 text-3xl font-extrabold">$0</p>
         <p class="mt-1 text-sm text-gray-600">1,000 validations/mo</p>
@@ -64,12 +86,14 @@
           <li>Community support</li>
           <li>No SLAs</li>
         </ul>
-        <a href="APP_SIGNUP_URL" class="btn btn-secondary mt-auto">Start</a>
+        <!-- Replace # with your actual signup URL -->
+        <a href="#"
+          class="mt-auto inline-flex items-center justify-center px-5 py-3 rounded-md font-semibold bg-white text-indigo-700 border border-indigo-200 hover:border-indigo-300">Start</a>
         <p class="text-xs text-gray-500 mt-2">Overage: $0.010 per validation (hard-capped at +2,000)</p>
       </div>
 
       <!-- Starter -->
-      <div class="card p-6 flex flex-col">
+      <div class="bg-white shadow-sm rounded-lg border border-gray-100 p-6 flex flex-col">
         <h3 class="font-semibold text-lg">Starter</h3>
         <p class="mt-1 text-3xl font-extrabold">
           <span class="monthly">$49</span><span class="annual">$44</span><span
@@ -84,13 +108,18 @@
           <li>Basic dedupe</li>
           <li>Standard support (24–48h)</li>
         </ul>
-        <a href="APP_SIGNUP_URL?plan=starter" class="btn btn-secondary mt-auto">Choose Starter</a>
+        <!-- Replace # with your actual signup URL -->
+        <a href="#"
+          class="mt-auto inline-flex items-center justify-center px-5 py-3 rounded-md font-semibold bg-white text-indigo-700 border border-indigo-200 hover:border-indigo-300">Choose
+          Starter</a>
         <p class="text-xs text-gray-500 mt-2">Overage: $0.006 per validation</p>
       </div>
 
       <!-- Growth (recommended) -->
-      <div class="card p-6 border-indigo-200 relative flex flex-col">
-        <span class="badge badge-green absolute -top-3 left-4">Most popular</span>
+      <div class="bg-white shadow-sm rounded-lg border-2 border-indigo-500 p-6 relative flex flex-col">
+        <span
+          class="absolute -top-3 left-1/2 -translate-x-1/2 inline-flex items-center px-2.5 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">Most
+          popular</span>
         <h3 class="font-semibold text-lg">Growth</h3>
         <p class="mt-1 text-3xl font-extrabold">
           <span class="monthly">$149</span><span class="annual">$134</span><span
@@ -104,12 +133,15 @@
           <li>Webhooks</li>
           <li>Priority support (same business day)</li>
         </ul>
-        <a href="APP_SIGNUP_URL?plan=growth" class="btn btn-primary mt-auto">Start Growth trial</a>
+        <!-- Replace # with your actual signup URL -->
+        <a href="#"
+          class="mt-auto inline-flex items-center justify-center px-5 py-3 rounded-md font-semibold bg-indigo-600 text-white hover:bg-indigo-700">Start
+          Growth trial</a>
         <p class="text-xs text-gray-500 mt-2">Overage: $0.004 per validation</p>
       </div>
 
       <!-- Scale -->
-      <div class="card p-6 flex flex-col">
+      <div class="bg-white shadow-sm rounded-lg border border-gray-100 p-6 flex flex-col">
         <h3 class="font-semibold text-lg">Scale</h3>
         <p class="mt-1 text-3xl font-extrabold">
           <span class="monthly">$399</span><span class="annual">$359</span><span
@@ -123,12 +155,15 @@
           <li>BI export</li>
           <li>99.9% SLA</li>
         </ul>
-        <a href="APP_SIGNUP_URL?plan=scale" class="btn btn-secondary mt-auto">Choose Scale</a>
+        <!-- Replace # with your actual signup URL -->
+        <a href="#"
+          class="mt-auto inline-flex items-center justify-center px-5 py-3 rounded-md font-semibold bg-white text-indigo-700 border border-indigo-200 hover:border-indigo-300">Choose
+          Scale</a>
         <p class="text-xs text-gray-500 mt-2">Overage: $0.0025 per validation</p>
       </div>
 
       <!-- Enterprise -->
-      <div class="card p-6 flex flex-col">
+      <div class="bg-white shadow-sm rounded-lg border border-gray-100 p-6 flex flex-col">
         <h3 class="font-semibold text-lg">Enterprise</h3>
         <p class="mt-1 text-3xl font-extrabold">Custom</p>
         <p class="mt-1 text-sm text-gray-600">Starts at $1,500/mo</p>
@@ -140,8 +175,10 @@
           <li>Custom limits</li>
           <li>Solution engineer</li>
         </ul>
-        <a href="mailto:SALES_EMAIL?subject=Enterprise%20plan%20request" class="btn btn-secondary mt-auto">Talk to
-          sales</a>
+        <!-- Replace # with your sales email mailto link -->
+        <a href="mailto:#?subject=Enterprise%20plan%20request"
+          class="mt-auto inline-flex items-center justify-center px-5 py-3 rounded-md font-semibold bg-white text-indigo-700 border border-indigo-200 hover:border-indigo-300">Talk
+          to sales</a>
       </div>
     </div>
 
@@ -154,7 +191,7 @@
   </main>
 
   <footer class="bg-white border-t border-gray-100">
-    <div class="container-wide py-12 grid md:grid-cols-4 gap-8">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 grid md:grid-cols-4 gap-8">
       <div>
         <a href="/" class="flex items-center space-x-2">
           <svg class="w-7 h-7 text-indigo-600" viewBox="0 0 24 24" fill="currentColor">
@@ -163,7 +200,7 @@
           </svg>
           <span class="font-bold">Orbicheck</span>
         </a>
-        <p class="muted mt-3 text-sm">The API-first data hygiene guard for ecommerce.</p>
+        <p class="text-gray-500 mt-3 text-sm">The API-first data hygiene guard for ecommerce.</p>
       </div>
       <div>
         <h5 class="font-semibold">Product</h5>
@@ -188,14 +225,15 @@
         <h5 class="font-semibold">Support</h5>
         <ul class="mt-3 space-y-2 text-sm">
           <li><a href="/docs/index.html" class="text-gray-700 hover:text-gray-900">Developer Docs</a></li>
-          <li><a href="mailto:SALES_EMAIL" class="text-gray-700 hover:text-gray-900">Sales</a></li>
+          <!-- Replace # with your sales email mailto link -->
+          <li><a href="mailto:#" class="text-gray-700 hover:text-gray-900">Sales</a></li>
           <li><a href="https://status.orbitcheck.io" class="text-gray-700 hover:text-gray-900">System Status</a></li>
         </ul>
       </div>
     </div>
     <div
-      class="container-wide py-6 border-t border-gray-100 flex flex-col md:flex-row items-center justify-between text-sm text-gray-500">
-      <p>© 2025 Orbicheck</p>
+      class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 border-t border-gray-100 flex flex-col md:flex-row items-center justify-between text-sm text-gray-500">
+      <p>© <span id="copyright-year">2025</span> Orbicheck</p>
       <div class="space-x-4">
         <a href="/legal/tos.html" class="hover:text-gray-900">ToS</a>
         <a href="/legal/privacy.html" class="hover:text-gray-900">Privacy</a>
@@ -203,6 +241,12 @@
       </div>
     </div>
   </footer>
+
+  <script>
+    // Automatically update the copyright year
+    document.getElementById('copyright-year').textContent = new Date().getFullYear();
+  </script>
+
 </body>
 
 </html>
