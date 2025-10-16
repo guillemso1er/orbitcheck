@@ -5,7 +5,7 @@ const getApiBase = () => {
   try {
     // In browser/Vite environment
     if (typeof window !== 'undefined' && (globalThis as any).import?.meta?.env) {
-      return (globalThis as any).import.meta.env.VITE_API_BASE ?? '/_api';
+      return (globalThis as any).import.meta.env.VITE_DASHBOARD_API_BASE ?? (globalThis as any).import.meta.env.VITE_API_BASE ?? '/_api';
     }
     return '/_api';
   } catch {
