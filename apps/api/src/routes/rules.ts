@@ -2,13 +2,13 @@ import { MGMT_V1_ROUTES } from "@orbicheck/contracts";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import type { Pool } from "pg";
 
+import { ERROR_CODE_DESCRIPTIONS } from "../errors.js";
+import { REASON_CODES } from "../validation.js";
 import { validateAddress } from "../validators/address.js";
 import { validateEmail } from "../validators/email.js";
 import { validateName } from "../validators/name.js";
 import { validatePhone } from "../validators/phone.js";
 import { buildAddressValidationResult, buildEmailValidationResult, buildNameValidationResult, buildPhoneValidationResult, generateRequestId, securityHeader, sendServerError } from "./utils.js";
-import { ERROR_CODE_DESCRIPTIONS } from "../errors.js";
-import { REASON_CODES } from "../validation.js";
 
 const reasonCodes: any[] = Object.entries(REASON_CODES).map(([_key, code]) => {
   // Map from code to description, category, severity - this is a simplification; in practice, you'd have a full mapping

@@ -27,7 +27,7 @@ export async function auth(request: FastifyRequest, rep: FastifyReply, pool: Poo
     const header = request.headers["authorization"];
     if (!header) {
         request.log.info('No Authorization header for runtime auth');
-        rep.status(HTTP_STATUS.UNAUTHORIZED).send({ error: { code: ERROR_CODES.UNAUTHORIZED, message: ERROR_MESSAGES[ERROR_CODES.UNAUTHORIZED] } });
+        rep.status(HTTP_STATUS.BAD_REQUEST).send({ error: { code: ERROR_CODES.UNAUTHORIZED, message: ERROR_MESSAGES[ERROR_CODES.UNAUTHORIZED] } });
         return;
     }
 
@@ -47,7 +47,7 @@ export async function auth(request: FastifyRequest, rep: FastifyReply, pool: Poo
         );
 
         if (rows.length === 0) {
-            rep.status(HTTP_STATUS.UNAUTHORIZED).send({ error: { code: ERROR_CODES.UNAUTHORIZED, message: ERROR_MESSAGES[ERROR_CODES.UNAUTHORIZED] } });
+            rep.status(HTTP_STATUS.BAD_REQUEST).send({ error: { code: ERROR_CODES.UNAUTHORIZED, message: ERROR_MESSAGES[ERROR_CODES.UNAUTHORIZED] } });
             return;
         }
 
@@ -72,7 +72,7 @@ export async function auth(request: FastifyRequest, rep: FastifyReply, pool: Poo
 
         if (!keyId || !signature || !ts || !nonce) {
             request.log.info('Missing HMAC parameters');
-            rep.status(HTTP_STATUS.UNAUTHORIZED).send({ error: { code: ERROR_CODES.UNAUTHORIZED, message: ERROR_MESSAGES[ERROR_CODES.UNAUTHORIZED] } });
+            rep.status(HTTP_STATUS.BAD_REQUEST).send({ error: { code: ERROR_CODES.UNAUTHORIZED, message: ERROR_MESSAGES[ERROR_CODES.UNAUTHORIZED] } });
             return;
         }
 
@@ -81,7 +81,7 @@ export async function auth(request: FastifyRequest, rep: FastifyReply, pool: Poo
         const requestTs = parseInt(ts);
         if (Math.abs(now - requestTs) > HMAC_VALIDITY_MINUTES * 60 * 1000) {
             request.log.info('HMAC ts too old');
-            rep.status(HTTP_STATUS.UNAUTHORIZED).send({ error: { code: ERROR_CODES.UNAUTHORIZED, message: ERROR_MESSAGES[ERROR_CODES.UNAUTHORIZED] } });
+            rep.status(HTTP_STATUS.BAD_REQUEST).send({ error: { code: ERROR_CODES.UNAUTHORIZED, message: ERROR_MESSAGES[ERROR_CODES.UNAUTHORIZED] } });
             return;
         }
 
@@ -93,7 +93,7 @@ export async function auth(request: FastifyRequest, rep: FastifyReply, pool: Poo
 
         if (rows.length === 0) {
             request.log.info('No active API key found for HMAC keyId');
-            rep.status(HTTP_STATUS.UNAUTHORIZED).send({ error: { code: ERROR_CODES.UNAUTHORIZED, message: ERROR_MESSAGES[ERROR_CODES.UNAUTHORIZED] } });
+            rep.status(HTTP_STATUS.BAD_REQUEST).send({ error: { code: ERROR_CODES.UNAUTHORIZED, message: ERROR_MESSAGES[ERROR_CODES.UNAUTHORIZED] } });
             return;
         }
 
@@ -113,7 +113,7 @@ export async function auth(request: FastifyRequest, rep: FastifyReply, pool: Poo
 
         if (signature !== expectedSignature) {
             request.log.info('HMAC signature mismatch');
-            rep.status(HTTP_STATUS.UNAUTHORIZED).send({ error: { code: ERROR_CODES.UNAUTHORIZED, message: ERROR_MESSAGES[ERROR_CODES.UNAUTHORIZED] } });
+            rep.status(HTTP_STATUS.BAD_REQUEST).send({ error: { code: ERROR_CODES.UNAUTHORIZED, message: ERROR_MESSAGES[ERROR_CODES.UNAUTHORIZED] } });
             return;
         }
 
@@ -130,7 +130,7 @@ export async function auth(request: FastifyRequest, rep: FastifyReply, pool: Poo
         request.project_id = rows[0].project_id;
     } else {
         request.log.info('Invalid Authorization header format for runtime auth');
-        rep.status(HTTP_STATUS.UNAUTHORIZED).send({ error: { code: ERROR_CODES.UNAUTHORIZED, message: ERROR_MESSAGES[ERROR_CODES.UNAUTHORIZED] } });
+        rep.status(HTTP_STATUS.BAD_REQUEST).send({ error: { code: ERROR_CODES.UNAUTHORIZED, message: ERROR_MESSAGES[ERROR_CODES.UNAUTHORIZED] } });
         return;
     }
 }

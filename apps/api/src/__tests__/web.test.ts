@@ -168,7 +168,7 @@ describe('Web Module', () => {
 
       await auth(mockRequest, mockReply, mockPool as any);
 
-      expect(mockReply.status).toHaveBeenCalledWith(401);
+      expect(mockReply.status).toHaveBeenCalledWith(400);
     });
   });
 
@@ -297,6 +297,9 @@ describe('Web Module', () => {
 
     it('should handle authentication flow for different route types', async () => {
       const app = Fastify({ logger: false });
+
+      // Reset mockSession to ensure no auth
+      mockSession.user_id = undefined;
 
       app.decorateRequest('session', {
         getter() {

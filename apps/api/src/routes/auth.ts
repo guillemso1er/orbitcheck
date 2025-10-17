@@ -5,10 +5,10 @@ import bcrypt from 'bcryptjs';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import type { Pool } from "pg";
 
+import { API_KEY_NAMES, API_KEY_PREFIX, API_KEY_PREFIX_LENGTH, AUDIT_ACTION_PAT_USED, AUDIT_RESOURCE_API, AUTHORIZATION_HEADER, BCRYPT_ROUNDS, BEARER_PREFIX, CRYPTO_IV_BYTES, CRYPTO_KEY_BYTES, DEFAULT_PAT_NAME, HASH_ALGORITHM, LOGOUT_MESSAGE,PAT_PREFIX, PAT_SCOPES_ALL, PG_UNIQUE_VIOLATION, PLAN_TYPES, PROJECT_NAMES, RANDOM_BYTES_FOR_API_KEY, STATUS } from "../config.js";
 import { environment } from "../environment.js";
+import { ERROR_CODES, ERROR_MESSAGES,HTTP_STATUS } from "../errors.js";
 import { errorSchema, generateRequestId, getDefaultProjectId, sendError, sendServerError } from "./utils.js";
-import { AUTHORIZATION_HEADER, BEARER_PREFIX, HASH_ALGORITHM, AUDIT_ACTION_PAT_USED, AUDIT_RESOURCE_API, BCRYPT_ROUNDS, PROJECT_NAMES, PLAN_TYPES, RANDOM_BYTES_FOR_API_KEY, API_KEY_PREFIX, API_KEY_PREFIX_LENGTH, CRYPTO_IV_BYTES, STATUS, API_KEY_NAMES, CRYPTO_KEY_BYTES, PAT_PREFIX, DEFAULT_PAT_NAME, PAT_SCOPES_ALL, PG_UNIQUE_VIOLATION, LOGOUT_MESSAGE } from "../config.js";
-import { HTTP_STATUS, ERROR_CODES, ERROR_MESSAGES } from "../errors.js";
 
 /**
  * Verifies session cookie for dashboard authentication.
@@ -22,7 +22,7 @@ import { HTTP_STATUS, ERROR_CODES, ERROR_MESSAGES } from "../errors.js";
  */
 export async function verifySession(request: FastifyRequest, rep: FastifyReply, pool: Pool): Promise<void> {
     if (!request.session.user_id) {
-        rep.status(HTTP_STATUS.UNAUTHORIZED).send({ error: { code: ERROR_CODES.UNAUTHORIZED, message: ERROR_MESSAGES[ERROR_CODES.UNAUTHORIZED] } });
+        rep.status(HTTP_STATUS.BAD_REQUEST).send({ error: { code: ERROR_CODES.UNAUTHORIZED, message: ERROR_MESSAGES[ERROR_CODES.UNAUTHORIZED] } });
         return;
     }
 
@@ -61,7 +61,7 @@ export async function verifyPAT(request: FastifyRequest, rep: FastifyReply, pool
     const authHeader = Array.isArray(header) ? header[0] : header;
     if (!authHeader || !authHeader.startsWith(BEARER_PREFIX)) {
         request.log.info('No or invalid Bearer header for PAT auth');
-        rep.status(HTTP_STATUS.UNAUTHORIZED).send({ error: { code: ERROR_CODES.UNAUTHORIZED, message: ERROR_MESSAGES[ERROR_CODES.UNAUTHORIZED] } });
+        rep.status(HTTP_STATUS.BAD_REQUEST).send({ error: { code: ERROR_CODES.UNAUTHORIZED, message: ERROR_MESSAGES[ERROR_CODES.UNAUTHORIZED] } });
         return;
     }
     const token = authHeader.slice(7).trim();

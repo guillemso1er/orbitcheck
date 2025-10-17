@@ -11,7 +11,7 @@ import { DEDUPE_ACTIONS, HIGH_VALUE_THRESHOLD, ORDER_ACTIONS, ORDER_TAGS, PAYMEN
 import { validateAddress } from "../validators/address.js";
 import { validateEmail } from "../validators/email.js";
 import { validatePhone } from "../validators/phone.js";
-import { generateRequestId, rateLimitResponse, securityHeader, sendServerError, unauthorizedResponse, validationErrorResponse } from "./utils.js";
+import { generateRequestId, rateLimitResponse, runtimeSecurityHeader as securityHeader, sendServerError, unauthorizedResponse, validationErrorResponse } from "./utils.js";
 
 
 const customerMatchSchema = {

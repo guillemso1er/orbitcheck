@@ -4,10 +4,10 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import type { Pool } from "pg";
 
 import { dedupeAddress, dedupeCustomer } from "../dedupe.js";
+import { ERROR_CODES, ERROR_MESSAGES,HTTP_STATUS } from "../errors.js";
 import { logEvent } from "../hooks.js";
-import { generateRequestId, rateLimitResponse, securityHeader, sendServerError, unauthorizedResponse, validationErrorResponse } from "./utils.js";
-import { HTTP_STATUS, ERROR_CODES, ERROR_MESSAGES } from "../errors.js";
 import { MERGE_TYPES } from "../validation.js";
+import { generateRequestId, rateLimitResponse, runtimeSecurityHeader as securityHeader, sendServerError, unauthorizedResponse, validationErrorResponse } from "./utils.js";
 
 export function registerDedupeRoutes(app: FastifyInstance, pool: Pool): void {
     app.post(API_V1_ROUTES.DEDUPE.DEDUPLICATE_CUSTOMER, {

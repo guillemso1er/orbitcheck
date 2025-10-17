@@ -3,8 +3,8 @@ import fastifySwaggerUi from '@fastify/swagger-ui'
 import ScalarApiReference from '@scalar/fastify-api-reference'
 import type { FastifyInstance } from 'fastify'
 
+import { API_VERSION,ROUTES } from '../config.js'
 import { environment } from '../environment.js'
-import { ROUTES, API_VERSION } from '../config.js'
 
 export async function setupDocumentation(app: FastifyInstance): Promise<void> {
 

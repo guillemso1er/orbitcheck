@@ -2,6 +2,7 @@ import crypto from "node:crypto";
 
 import type { FastifyReply, FastifyRequest } from "fastify";
 import type { Pool } from "pg";
+
 import { PROJECT_NAMES } from "../config.js";
 import { ERROR_CODES, ERROR_MESSAGES } from "../errors.js";
 
@@ -20,6 +21,16 @@ export const errorSchema = {
 };
 
 export const securityHeader = {
+    type: 'object',
+    properties: {
+        'authorization': { type: 'string' },
+        'idempotency-key': { type: 'string' },
+        'Idempotency-Key': { type: 'string' }
+    }
+};
+
+// For runtime routes that require API key auth
+export const runtimeSecurityHeader = {
     type: 'object',
     properties: {
         'authorization': { type: 'string' },

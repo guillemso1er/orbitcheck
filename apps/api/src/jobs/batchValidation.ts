@@ -2,12 +2,12 @@ import type { Job } from "bullmq";
 import type { Redis } from 'ioredis';
 import type { Pool } from "pg";
 
+import { MESSAGES } from "../config.js";
 import { validateAddress } from "../validators/address.js";
 import { validateEmail } from "../validators/email.js";
 import { validatePhone } from "../validators/phone.js";
 import { validateTaxId } from "../validators/taxid.js";
 import { processBatchJob } from "./batchJobProcessor.js";
-import { MESSAGES } from "../config.js";
 
 export interface BatchValidationInput {
   type: 'email' | 'phone' | 'address' | 'tax-id';

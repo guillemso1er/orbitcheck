@@ -2,9 +2,9 @@ import { API_V1_ROUTES } from "@orbicheck/contracts";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import type { Pool } from "pg";
 
+import { ERROR_CODES, ERROR_MESSAGES,HTTP_STATUS } from "../errors.js";
 import { logEvent } from "../hooks.js";
-import { generateRequestId, rateLimitResponse, securityHeader, sendServerError, unauthorizedResponse, validationErrorResponse } from "./utils.js";
-import { HTTP_STATUS, ERROR_CODES, ERROR_MESSAGES } from "../errors.js";
+import { generateRequestId, rateLimitResponse, runtimeSecurityHeader as securityHeader, sendServerError, unauthorizedResponse, validationErrorResponse } from "./utils.js";
 
 export function registerJobRoutes(app: FastifyInstance, pool: Pool): void {
     app.get(API_V1_ROUTES.JOBS.GET_JOB_STATUS, {

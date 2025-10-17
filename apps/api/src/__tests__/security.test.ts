@@ -56,6 +56,7 @@ describe('Security and Authentication', () => {
     });
 
     it('should reject requests with an invalid API key', async () => {
+      // Set expected status to 400 (BAD_REQUEST) as per auth function
       // For this specific test, override the default mock to simulate a key not being found
       mockPool.query.mockImplementation((queryText: string) => {
         const upperQuery = queryText.toUpperCase();
@@ -70,7 +71,7 @@ describe('Security and Authentication', () => {
         .set('Authorization', 'Bearer invalid_key')
         .send({ email: 'test@example.com' });
 
-      expect(result.statusCode).toBe(401);
+      expect(result.statusCode).toBe(400);
       expect((result.body as { error: { code: string } }).error.code).toBe('unauthorized');
     });
   });
