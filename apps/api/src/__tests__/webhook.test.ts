@@ -1,3 +1,79 @@
+jest.mock('@orbicheck/contracts', () => ({
+  DASHBOARD_ROUTES: {
+    REGISTER_NEW_USER: '/auth/register',
+    USER_LOGIN: '/auth/login',
+    USER_LOGOUT: '/auth/logout',
+  },
+  MGMT_V1_ROUTES: {
+    API_KEYS: {
+      CREATE_API_KEY: '/v1/api-keys',
+      LIST_API_KEYS: '/v1/api-keys',
+      REVOKE_API_KEY: '/v1/api-keys/:id',
+    },
+    WEBHOOKS: {
+      LIST_WEBHOOKS: '/v1/webhooks',
+      CREATE_WEBHOOK: '/v1/webhooks',
+      DELETE_WEBHOOK: '/v1/webhooks/:id',
+      TEST_WEBHOOK: '/v1/webhooks/test',
+    },
+    DATA: {
+      ERASE_USER_DATA: '/v1/data/erase',
+      GET_EVENT_LOGS: '/v1/data/logs',
+      GET_USAGE_STATISTICS: '/v1/data/usage',
+    },
+    RULES: {
+      GET_AVAILABLE_RULES: '/v1/rules',
+      GET_ERROR_CODE_CATALOG: '/v1/rules/error-codes',
+      GET_REASON_CODE_CATALOG: '/v1/rules/catalog',
+      REGISTER_CUSTOM_RULES: '/v1/rules/register',
+      TEST_RULES_AGAINST_PAYLOAD: '/v1/rules/test',
+    },
+    SETTINGS: {
+      GET_TENANT_SETTINGS: '/v1/settings',
+      UPDATE_TENANT_SETTINGS: '/v1/settings',
+    },
+    LOGS: {
+      DELETE_LOG_ENTRY: '/v1/logs/:id',
+    },
+    BILLING: {
+      CREATE_STRIPE_CHECKOUT_SESSION: '/v1/billing/checkout',
+      CREATE_STRIPE_CUSTOMER_PORTAL_SESSION: '/v1/billing/portal',
+    },
+  },
+  API_V1_ROUTES: {
+    BATCH: {
+      BATCH_VALIDATE_DATA: '/v1/batch/validate',
+      BATCH_DEDUPLICATE_DATA: '/v1/batch/dedupe',
+    },
+    JOBS: {
+      GET_JOB_STATUS: '/v1/jobs/:id',
+    },
+    NORMALIZE: {
+      NORMALIZE_ADDRESS_CHEAP: '/v1/normalize/address',
+    },
+    VALIDATE: {
+      VALIDATE_EMAIL_ADDRESS: '/v1/validate/email',
+      VALIDATE_PHONE_NUMBER: '/v1/validate/phone',
+      VALIDATE_ADDRESS: '/v1/validate/address',
+      VALIDATE_NAME: '/v1/validate/name',
+      VALIDATE_TAX_ID: '/v1/validate/tax-id',
+    },
+    VERIFY: {
+      VERIFY_PHONE_OTP: '/v1/verify/phone',
+    },
+    DEDUPE: {
+      DEDUPLICATE_ADDRESS: '/v1/dedupe/address',
+      DEDUPLICATE_CUSTOMER: '/v1/dedupe/customer',
+      MERGE_DEDUPLICATED_RECORDS: '/v1/dedupe/merge',
+    },
+    ORDERS: {
+      EVALUATE_ORDER_FOR_RISK_AND_RULES: '/v1/orders/evaluate',
+    },
+  },
+}));
+
+jest.mock('dotenv');
+
 import type { FastifyInstance } from 'fastify';
 import fetch from 'node-fetch';
 import request from 'supertest';

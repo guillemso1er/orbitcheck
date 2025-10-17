@@ -1,5 +1,6 @@
-import { config } from 'dotenv';
 import { once } from 'node:events';
+
+import { config } from 'dotenv';
 config({ path: '../../.env' });
 
 import cookie from "@fastify/cookie";
@@ -8,6 +9,7 @@ import secureSession from '@fastify/secure-session';
 import fastifySwagger from '@fastify/swagger';
 import fastifySwaggerUi from '@fastify/swagger-ui';
 import metrics from "@immobiliarelabs/fastify-metrics";
+import ScalarApiReference from '@scalar/fastify-api-reference';
 import * as Sentry from '@sentry/node';
 import { Queue, Worker } from 'bullmq';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
@@ -17,14 +19,16 @@ import yaml from 'js-yaml';
 import cron from 'node-cron';
 import { Pool } from "pg";
 
-import { MESSAGES } from "./constants.js";
+import { API_VERSION, MESSAGES, REQUEST_TIMEOUT_MS, ROUTES, SESSION_MAX_AGE_MS, STARTUP_SMOKE_TEST_TIMEOUT_MS } from "./constants.js";
 import { runLogRetention } from './cron/retention.js';
 import { environment } from "./environment.js";
 import { batchDedupeProcessor } from './jobs/batchDedupe.js';
 import { batchValidationProcessor } from './jobs/batchValidation.js';
 import { disposableProcessor } from './jobs/refreshDisposable.js';
+import { inputSanitizationHook } from "./middleware/inputSanitization.js";
 import { openapiValidation } from "./plugins/openapi.js";
 import startupGuard from './startup-guard.js';
+import { ErrorHandler } from "./utils/errorHandler.js";
 import { registerRoutes } from "./web.js";
 
 export async function build(pool: Pool, redis: IORedisType): Promise<FastifyInstance> {
@@ -42,36 +46,76 @@ export async function build(pool: Pool, redis: IORedisType): Promise<FastifyInst
                 ? undefined
                 : { target: 'pino-pretty', options: { colorize: true, translateTime: 'SYS:standard' } }
         },
-        requestTimeout: 10_000,
+        requestTimeout: REQUEST_TIMEOUT_MS,
         trustProxy: true, // Important for secure cookies behind proxies
     });
+
+    // Add input sanitization hook early in the request lifecycle
+    app.addHook('preHandler', inputSanitizationHook);
 
     if (process.env.NODE_ENV !== 'production') {
         await app.register(startupGuard);
     }
 
-    // Error handler
+    // Enhanced error handler to prevent sensitive information leakage
     app.setErrorHandler(async (error: Error & { code?: string; statusCode?: number }, request: FastifyRequest, reply: FastifyReply) => {
+        // Use the ErrorHandler utility for secure logging
+        ErrorHandler.logErrorSecurely(request.log, error, {
+            method: request.method,
+            url: request.url,
+            reqId: request.id,
+            userId: (request as any).user_id,
+            projectId: (request as any).project_id
+        });
+
+        // Handle specific error types with safe responses
         if (error.code === 'FST_ERR_REQUEST_TIMEOUT' || error.name === 'RequestTimeoutError') {
-            request.log.error({ method: request.method, url: request.url, reqId: request.id }, 'Request timed out — likely stuck in a hook/handler');
-            return reply.status(503).send({ error: 'timeout' });
+            return reply.status(503).send({ error: 'timeout', message: 'Request timed out' });
         }
-        request.log.error({ err: error }, 'Unhandled error');
-        return reply.status(error.statusCode ?? 500).send({ error: 'internal_error' });
+
+        // Handle database errors with specialized handling
+        if (error.code && typeof error.code === 'string' && (error.code.startsWith('42') || error.code.startsWith('23'))) {
+            return ErrorHandler.handleDatabaseError(reply, error, 'request_handler');
+        }
+
+        // Handle authentication errors
+        if (error.statusCode === 401 || error.code === 'UNAUTHORIZED') {
+            return reply.status(401).send({ error: 'unauthorized', message: 'Authentication required' });
+        }
+
+        // Handle validation errors - these are generally safe to expose
+        if ((error.statusCode === 400 || error.code === 'VALIDATION_ERROR') && ErrorHandler.isSafeToExpose(error)) {
+            return reply.status(400).send(ErrorHandler.createSafeErrorResponse(error, true));
+        }
+
+        // Handle external service errors
+        if (error.code === 'EXTERNAL_SERVICE_ERROR') {
+            return ErrorHandler.handleExternalServiceError(reply, error, 'external_service');
+        }
+
+        // Default error response - don't expose internal error details
+        const statusCode = error.statusCode && error.statusCode >= 400 && error.statusCode < 600 ? error.statusCode : 500;
+        return reply.status(statusCode).send({
+            error: statusCode >= 500 ? 'internal_error' : 'bad_request',
+            message: statusCode >= 500 ? 'An unexpected error occurred' : 'Invalid request'
+        });
     });
 
-    // Load OpenAPI spec from contracts package
-    const { openapiYaml } = await import('@orbicheck/contracts');
-    const openapiSpec = yaml.load(openapiYaml);
 
     // Register OpenAPI/Swagger for automatic API documentation generation
     await app.register(fastifySwagger, {
         openapi: {
-            ...(openapiSpec as Record<string, unknown>),
             servers: [{
                 url: `http://localhost:${environment.PORT}`,
                 description: 'Development server'
             }]
+        },
+        transform: ({ schema, url }: { schema: any; url: string }) => {
+            // Exclude internal/dashboard routes that should not be visible in public API docs
+            if (url.startsWith('/dashboard') || url.startsWith(ROUTES.DASHBOARD) || url.startsWith(ROUTES.REFERENCE) || url.startsWith(ROUTES.DOCUMENTATION) || url.startsWith(ROUTES.STATUS) || url.startsWith(ROUTES.HEALTH) || url.startsWith(ROUTES.READY)) {
+                return { schema: null as any, url };
+            }
+            return { schema, url };
         }
     });
 
@@ -80,15 +124,25 @@ export async function build(pool: Pool, redis: IORedisType): Promise<FastifyInst
         routePrefix: '/documentation',
     });
 
+    // Register Scalar API Reference for beautiful API documentation at /reference
+    await app.register(ScalarApiReference, {
+        routePrefix: '/reference',
+    });
+
     // Define allowed origins based on environment
     const allowedOrigins = new Set([
         `http://localhost:${environment.PORT}`, // API itself for health/docs
     ]);
 
-    // Add environment-specific origins
+    // Add production origins from environment variable or defaults
     if (process.env.NODE_ENV === 'production') {
-        allowedOrigins.add('https://dashboard.orbitcheck.io');
-        allowedOrigins.add('https://api.orbitcheck.io');
+        // Allow origins from environment variable or use defaults
+        const corsOrigins = environment.CORS_ORIGINS ? environment.CORS_ORIGINS.split(',') : [
+            'https://dashboard.orbitcheck.io',
+            'https://api.orbitcheck.io'
+        ];
+        corsOrigins.forEach(origin => allowedOrigins.add(origin.trim()));
+
         // Add your OIDC provider domain if needed
         if (environment.OIDC_PROVIDER_URL) {
             allowedOrigins.add(new URL(environment.OIDC_PROVIDER_URL).origin);
@@ -98,6 +152,11 @@ export async function build(pool: Pool, redis: IORedisType): Promise<FastifyInst
         allowedOrigins.add('http://localhost:5173'); // Vite dev server
         allowedOrigins.add('http://localhost:3000'); // Alternative dev server
         allowedOrigins.add('http://localhost:5174'); // Dashboard dev server
+
+        // Allow additional dev origins from environment
+        if (environment.CORS_ORIGINS) {
+            environment.CORS_ORIGINS.split(',').forEach(origin => allowedOrigins.add(origin.trim()));
+        }
     }
 
     // Enable CORS with proper configuration for different auth methods
@@ -138,7 +197,7 @@ export async function build(pool: Pool, redis: IORedisType): Promise<FastifyInst
             httpOnly: true, // Prevents JavaScript access
             secure: process.env.NODE_ENV === 'production', // HTTPS only in production
             sameSite: 'lax', // CSRF protection while allowing navigation
-            maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+            maxAge: SESSION_MAX_AGE_MS, // 7 days
             domain: process.env.NODE_ENV === 'production'
                 ? '.orbitcheck.io' // Allow subdomain sharing in production
                 : undefined
@@ -171,7 +230,7 @@ export async function build(pool: Pool, redis: IORedisType): Promise<FastifyInst
         reply.header('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
 
         // Add CSP for dashboard routes
-        if (request.url.startsWith('/dashboard') || request.url.startsWith('/api/dashboard')) {
+        if (request.url.startsWith('/dashboard') || request.url.startsWith(ROUTES.DASHBOARD)) {
             reply.header('Content-Security-Policy',
                 "default-src 'self'; " +
                 "script-src 'self' 'unsafe-inline' 'unsafe-eval'; " + // May need to adjust for your frontend
@@ -204,21 +263,21 @@ export async function build(pool: Pool, redis: IORedisType): Promise<FastifyInst
     });
 
     // Status endpoint (public, no auth required)
-    app.get("/v1/status", async (): Promise<{ status: string; version: string; timestamp: string }> => ({
+    app.get(ROUTES.STATUS, async (): Promise<{ status: string; version: string; timestamp: string }> => ({
         status: "healthy",
-        version: "0.1.0",
+        version: API_VERSION,
         timestamp: new Date().toISOString()
     }));
 
     // Health check endpoint (public, no auth required)
-    app.get("/health", async (): Promise<{ ok: true; timestamp: string; environment: string }> => ({
+    app.get(ROUTES.HEALTH, async (): Promise<{ ok: true; timestamp: string; environment: string }> => ({
         ok: true,
         timestamp: new Date().toISOString(),
         environment: process.env.NODE_ENV || 'development'
     }));
 
     // Add a ready check that verifies all dependencies
-    app.get("/ready", async (): Promise<{ ready: boolean; checks: Record<string, boolean> }> => {
+    app.get(ROUTES.READY, async (): Promise<{ ready: boolean; checks: Record<string, boolean> }> => {
         const checks = {
             database: false,
             redis: false
@@ -268,7 +327,6 @@ async function withTimeout<T>(promise: Promise<T>, ms: number, message: string):
     ]);
 }
 
-// *** CHANGE 1: Add a graceful shutdown function ***
 /**
  * Gracefully closes all application resources: Fastify server, DB pool, and Redis client.
  * Uses Promise.allSettled to ensure all resources are attempted to be closed, even if one fails.
@@ -340,10 +398,10 @@ export async function start(): Promise<void> {
         }
         await appRedis.ping();
 
-        const timeoutMs = Number(process.env.STARTUP_SMOKETEST_TIMEOUT ?? 2000);
+        const timeoutMs = Number(process.env.STARTUP_SMOKETEST_TIMEOUT ?? STARTUP_SMOKE_TEST_TIMEOUT_MS);
         try {
             const response = await withTimeout(
-                app.inject({ method: 'GET', url: '/health' }),
+                app.inject({ method: 'GET', url: ROUTES.HEALTH }),
                 timeoutMs,
                 `Startup smoke test timed out after ${timeoutMs}ms. A hook/handler is likely not async or not calling done().`
             );
@@ -397,14 +455,17 @@ export async function start(): Promise<void> {
             Sentry.captureException(error);
         }
 
-        // *** THE FIX: GUARANTEE PROCESS TERMINATION ***
+        // Close resources gracefully before exit
+        await closeResources(app, pool, appRedis);
+
+        // Force cleanup after timeout
         setTimeout(() => {
             console.error('Process did not exit cleanly, forcing shutdown now.');
             process.exit(1);
         }, 1000).unref();
 
-        // Attempt a clean exit first
-        process.exit(1);
+        // Attempt a clean exit by throwing error
+        throw error;
     }
 }
 

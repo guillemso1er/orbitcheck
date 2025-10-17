@@ -94,19 +94,23 @@ export function registerApiKeysRoutes(app: FastifyInstance, pool: Pool): void {
             const request_id = generateRequestId();
 
             // Generate full key
-            const buf = new Promise<Buffer>((resolve, reject) => {
-                // eslint-disable-next-line promise/prefer-await-to-callbacks
+            const buf = await new Promise<Buffer>((resolve, reject) => {
                 crypto.randomBytes(CRYPTO_KEY_BYTES, (error, buf) => {
                     if (error) reject(error);
                     else resolve(buf);
                 });
             });
-            const full_key = API_KEY_PREFIX + (await buf).toString('hex');
+            const full_key = API_KEY_PREFIX + buf.toString('hex');
             const prefix = full_key.slice(0, 6);
             const keyHash = crypto.createHash(HASH_ALGORITHM).update(full_key).digest('hex');
 
             // Encrypt the full key
-            const iv = crypto.randomBytes(CRYPTO_IV_BYTES);
+            const iv = await new Promise<Buffer>((resolve, reject) => {
+                crypto.randomBytes(CRYPTO_IV_BYTES, (error, buf) => {
+                    if (error) reject(error);
+                    else resolve(buf);
+                });
+            });
             const cipher = crypto.createCipheriv('aes-256-cbc', Buffer.from(environment.ENCRYPTION_KEY, 'hex'), iv);
             let encrypted = cipher.update(full_key, 'utf8', 'hex');
             encrypted += cipher.final('hex');

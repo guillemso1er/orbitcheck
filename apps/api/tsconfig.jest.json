@@ -1,9 +1,16 @@
 {
   "extends": "./tsconfig.json",
   "compilerOptions": {
-    "module": "ESNext",              // not NodeNext/Node16 -> no hybrid mode
-    "moduleResolution": "NodeNext",  // keep modern resolution/exports support
-    "verbatimModuleSyntax": true,    // TS 5+ recommended with ESM
-    "types": ["jest", "node"]
+    "module": "ESNext",
+    "moduleResolution": "NodeNext", // keep modern resolution/exports support
+    "verbatimModuleSyntax": true, // TS 5+ recommended with ESM
+    "types": [
+      "jest",
+      "node"
+    ],
+    "target": "ES2022",
+    "allowJs": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true
   }
 }

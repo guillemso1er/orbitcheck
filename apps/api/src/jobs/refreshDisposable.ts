@@ -2,6 +2,7 @@ import type { Job } from "bullmq";
 import { Redis } from 'ioredis';
 import fetch from "node-fetch";
 
+import { BATCH_SIZE_DISPOSABLE_UPDATE } from "../constants.js";
 import { environment } from "../environment.js";
 
 export const disposableProcessor = async (job: Job): Promise<void> => {
@@ -18,7 +19,7 @@ export const disposableProcessor = async (job: Job): Promise<void> => {
         const temporary = `${key}_tmp`;
         await redis.del(temporary);
 
-        const batchSize = 5000;
+        const batchSize = BATCH_SIZE_DISPOSABLE_UPDATE;
         console.warn(`Processing ${list.length} domains in batches of ${batchSize}...`);
 
         const promises = [];

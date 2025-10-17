@@ -1,8 +1,8 @@
-import { randomBytes } from 'crypto';
 import 'dotenv/config';
-import fs from 'fs';
 
 import { InfisicalSDK } from '@infisical/sdk';
+import { randomBytes } from 'crypto';
+import fs from 'fs';
 
 import { CRYPTO_KEY_BYTES } from "./constants.js";
 
@@ -91,6 +91,7 @@ export const environment = {
   VIES_WSDL_URL: await getSecret("API_VIES_WSDL_URL", "https://ec.europa.eu/taxation_customs/vies/checkVatService.wsdl"),
   RETENTION_DAYS: await getNumberSecret("API_RETENTION_DAYS", 90),
   RATE_LIMIT_COUNT: await getNumberSecret("API_RATE_LIMIT_COUNT", 300),
+  RATE_LIMIT_BURST: await getNumberSecret("API_RATE_LIMIT_BURST", 500),
   TWILIO_ACCOUNT_SID: await getSecret("API_TWILIO_ACCOUNT_SID", ""),
   TWILIO_AUTH_TOKEN: await getSecret("API_TWILIO_AUTH_TOKEN", ""),
   TWILIO_VERIFY_SERVICE_SID: await getSecret("API_TWILIO_VERIFY_SERVICE_SID", ""),
@@ -118,6 +119,7 @@ export const environment = {
   STRIPE_USAGE_PRICE_ID: await getSecret("API_STRIPE_USAGE_PRICE_ID", "price_dummy"),
   STRIPE_STORE_ADDON_PRICE_ID: await getSecret("API_STRIPE_STORE_ADDON_PRICE_ID", "price_dummy"),
   FRONTEND_URL: await getSecret("API_FRONTEND_URL", "http://localhost:5173"),
+  CORS_ORIGINS: await getSecret("API_CORS_ORIGINS"),
 
   // Infisical (for secret management) - don't fetch these from Infisical itself
   INFISICAL_PROJECT_ID: infisicalCreds.PROJECT_ID || process.env.API_INFISICAL_PROJECT_ID || "",

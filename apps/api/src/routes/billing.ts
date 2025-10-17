@@ -1,10 +1,9 @@
+import { MGMT_V1_ROUTES } from "@orbicheck/contracts";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import type { Pool } from "pg";
 import Stripe from 'stripe';
 
-import { MGMT_V1_ROUTES } from "@orbicheck/contracts";
-
-import { ERROR_CODES, HTTP_STATUS } from "../constants.js";
+import { ERROR_CODES, HTTP_STATUS, STRIPE_API_VERSION, STRIPE_DEFAULT_SECRET_KEY } from "../constants.js";
 import { environment } from "../environment.js";
 import { generateRequestId, rateLimitResponse, sendError, unauthorizedResponse } from "./utils.js";
 
@@ -14,8 +13,8 @@ let stripe: Stripe | null = null;
 function getStripe(): Stripe {
     if (!stripe) {
         console.log('Initializing Stripe with key:', process.env.STRIPE_SECRET_KEY);
-        stripe = new Stripe(process.env.STRIPE_SECRET_KEY || 'sk_test_dummy', {
-            apiVersion: '2025-09-30.clover',
+        stripe = new Stripe(process.env.STRIPE_SECRET_KEY || STRIPE_DEFAULT_SECRET_KEY, {
+            apiVersion: STRIPE_API_VERSION,
         });
     }
     return stripe;
@@ -104,7 +103,7 @@ export function registerBillingRoutes(app: FastifyInstance, pool: Pool): void {
                 allow_promotion_codes: true,
                 metadata: {
                     account_id: account.id,
-                    user_id: user_id,
+                    user_id,
                 },
             };
 
@@ -113,7 +112,7 @@ export function registerBillingRoutes(app: FastifyInstance, pool: Pool): void {
                 sessionParams.customer = account.stripe_customer_id;
             }
 
-            const session = await stripe.checkout.sessions.create(sessionParams);
+            const session = await getStripe().checkout.sessions.create(sessionParams);
 
             return rep.send({
                 session_url: session.url,
@@ -162,7 +161,7 @@ export function registerBillingRoutes(app: FastifyInstance, pool: Pool): void {
 
             const customerId = accountResult.rows[0].stripe_customer_id;
 
-            const session = await stripe.billingPortal.sessions.create({
+            const session = await getStripe().billingPortal.sessions.create({
                 customer: customerId,
                 return_url: `${process.env.FRONTEND_URL}/billing`,
             });

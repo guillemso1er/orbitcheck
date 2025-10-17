@@ -1,16 +1,15 @@
-import cors from '@fastify/cors';
-import { Queue, Worker } from 'bullmq';
-import Fastify from 'fastify';
-import { type Redis as IORedisType, Redis } from 'ioredis';
-import cron from 'node-cron';
-import { Pool } from 'pg';
-
-import { registerRoutes } from '../web.js';
-
-// --- Top-level Mocks ---
 
 // Tell Jest to use the manual mock we created in src/mocks/environment.ts
-// This line MUST come before any imports from '../server.js' or its dependencies.
+jest.mock('@orbicheck/contracts', () => ({
+  DASHBOARD_ROUTES: {
+    REGISTER_NEW_USER: '/auth/register',
+    USER_LOGIN: '/auth/login',
+    USER_LOGOUT: '/auth/logout',
+  }
+}));
+
+jest.mock('dotenv');
+
 jest.mock('../environment', () => ({
   environment: {
     PORT: 8080,
@@ -27,6 +26,7 @@ jest.mock('@sentry/node', () => ({
   captureException: jest.fn(),
 }));
 
+// Mock all dependencies BEFORE importing them
 jest.mock('@fastify/cors', () => jest.fn());
 jest.mock('@fastify/cookie', () => jest.fn());
 jest.mock('@fastify/session', () => jest.fn());
@@ -99,6 +99,16 @@ jest.mock('js-yaml', () => ({
     paths: {}
   })),
 }));
+
+// Now these imports will receive the mocked modules
+import cors from '@fastify/cors';
+import { Queue, Worker } from 'bullmq';
+import Fastify from 'fastify';
+import { type Redis as IORedisType, Redis } from 'ioredis';
+import cron from 'node-cron';
+import { Pool } from 'pg';
+
+import { registerRoutes } from '../web.js';
 
 // Import the mocked env so we can manipulate it in tests
 import { environment } from '../environment.js';

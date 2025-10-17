@@ -1,12 +1,12 @@
 import crypto from "node:crypto";
 
 import { MGMT_V1_ROUTES } from "@orbicheck/contracts";
-import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
+import type { FastifyInstance } from "fastify";
 import fetch from "node-fetch";
 import type { Pool } from "pg";
 import Stripe from 'stripe';
 
-import { CONTENT_TYPES, CRYPTO_KEY_BYTES, ERROR_CODES, ERROR_MESSAGES, EVENT_TYPES, HTTP_STATUS, MESSAGES, ORDER_ACTIONS, PAYLOAD_TYPES, REASON_CODES, URL_PATTERNS } from "../constants.js";
+import { CONTENT_TYPES, CRYPTO_KEY_BYTES, ERROR_CODES, ERROR_MESSAGES, EVENT_TYPES, HTTP_STATUS, MESSAGES, ORDER_ACTIONS, PAYLOAD_TYPES, REASON_CODES, STRIPE_API_VERSION, STRIPE_DEFAULT_SECRET_KEY, URL_PATTERNS, USER_AGENT_WEBHOOK_TESTER, WEBHOOK_TEST_LOW_RISK_TAG, WEBHOOK_TEST_ORDER_ID, WEBHOOK_TEST_RISK_SCORE } from "../constants.js";
 import { logEvent } from "../hooks.js";
 import { generateRequestId, rateLimitResponse, securityHeader, sendError, unauthorizedResponse } from "./utils.js";
 // Import route constants from contracts package
@@ -17,8 +17,8 @@ let stripe: Stripe | null = null;
 
 function getStripe(): Stripe {
     if (!stripe) {
-        stripe = new Stripe(process.env.STRIPE_SECRET_KEY || 'sk_test_dummy', {
-            apiVersion: '2025-09-30.clover',
+        stripe = new Stripe(process.env.STRIPE_SECRET_KEY || STRIPE_DEFAULT_SECRET_KEY, {
+            apiVersion: STRIPE_API_VERSION,
         });
     }
     return stripe;
@@ -142,7 +142,12 @@ export function registerWebhookRoutes(app: FastifyInstance, pool: Pool): void {
                 return await sendError(rep, HTTP_STATUS.BAD_REQUEST, ERROR_CODES.INVALID_TYPE, MESSAGES.INVALID_EVENTS + invalidEvents.join(', '), request_id);
             }
 
-            const secret = crypto.randomBytes(CRYPTO_KEY_BYTES).toString('hex');
+            const secret = await new Promise<string>((resolve, reject) => {
+                crypto.randomBytes(CRYPTO_KEY_BYTES, (error, buf) => {
+                    if (error) reject(error);
+                    else resolve(buf.toString('hex'));
+                });
+            });
 
             const result = await pool.query(
                 'INSERT INTO webhooks (project_id, url, events, secret, status) VALUES ($1, $2, $3, $4, $5) RETURNING id, url, events, secret, status, created_at',
@@ -318,11 +323,11 @@ export function registerWebhookRoutes(app: FastifyInstance, pool: Pool): void {
                     payload = {
                         ...common,
                         event: EVENT_TYPES.ORDER_EVALUATED,
-                        order_id: 'test-order-123',
-                        risk_score: 25,
+                        order_id: WEBHOOK_TEST_ORDER_ID,
+                        risk_score: WEBHOOK_TEST_RISK_SCORE,
                         action: ORDER_ACTIONS.APPROVE,
                         reason_codes: [], // Use actual reason code if needed
-                        tags: ['low_risk']
+                        tags: [WEBHOOK_TEST_LOW_RISK_TAG]
                     };
                     break;
                 }
@@ -342,7 +347,7 @@ export function registerWebhookRoutes(app: FastifyInstance, pool: Pool): void {
                 method: 'POST',
                 headers: {
                     'Content-Type': CONTENT_TYPES.APPLICATION_JSON,
-                    'User-Agent': 'OrbiCheck-Webhook-Tester/1.0'
+                    'User-Agent': USER_AGENT_WEBHOOK_TESTER
                 },
                 body: JSON.stringify(payload)
             });
@@ -410,7 +415,7 @@ export function registerWebhookRoutes(app: FastifyInstance, pool: Pool): void {
         let event: Stripe.Event;
 
         try {
-            event = stripe.webhooks.constructEvent(request.body as string | Buffer, sig, endpointSecret);
+            event = getStripe().webhooks.constructEvent(request.body as string | Buffer, sig, endpointSecret);
         } catch (err) {
             request.log.error({ err }, 'Webhook signature verification failed');
             return rep.status(HTTP_STATUS.BAD_REQUEST).send({ error: 'Webhook signature verification failed' });

@@ -9,6 +9,8 @@ import AdmZip from 'adm-zip';
 import fetch from 'node-fetch';
 import { Pool } from "pg";
 
+import { BATCH_SIZE_GEONAMES, GEO_NAMES_BASE_URL, SEED_API_KEY_PREFIX, SEED_PROJECT_NAME } from "./constants.js";
+
 console.warn('DATABASE_URL:', process.env.DATABASE_URL);
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
@@ -17,12 +19,12 @@ async function randomBytesAsync(size: number): Promise<Buffer> {
     return randomBytes(size);
 }
 
-async function processCountry(country: string, temporaryDirectory: string, GEONAMES_BASE_URL: string): Promise<number> {
+async function processCountry(country: string, temporaryDirectory: string, geonamesBaseUrl: string): Promise<number> {
     const zipPath = path.join(temporaryDirectory, `${country}.zip`);
     const tsvPath = path.join(temporaryDirectory, `${country}postalCodeLatLongCity.txt`);
 
     console.warn(`Downloading GeoNames postal codes for ${country}...`);
-    const url = `${GEONAMES_BASE_URL}/${country}.zip`;
+    const url = `${geonamesBaseUrl}/${country}.zip`;
     const response = await fetch(url);
     if (!response.ok) {
         console.warn(`Download failed for ${country}: ${response.status}. Skipping.`);
@@ -47,7 +49,7 @@ async function processCountry(country: string, temporaryDirectory: string, GEONA
     const data = await fs.readFile(tsvPath, 'utf8');
     const lines = data.trim().split('\n').slice(1); // Skip header if present
 
-    const batchSize = 1000;
+    const batchSize = BATCH_SIZE_GEONAMES;
     const allBatches: (string | number)[][][] = [];
     let currentBatch: (string | number)[][] = [];
     let countryCount = 0;
@@ -90,7 +92,6 @@ async function processCountry(country: string, temporaryDirectory: string, GEONA
 async function downloadAndImport(): Promise<void> {
     const temporaryDirectory = '/tmp/geonames';
     const countries = ['AR']; // Default to Argentina; extend as needed
-    const GEONAMES_BASE_URL = 'http://download.geonames.org/export/zip';
 
     try {
         // Create temp dir
@@ -101,7 +102,7 @@ async function downloadAndImport(): Promise<void> {
         }
 
         // Process countries
-        const totalCount = await processCountry(countries[0], temporaryDirectory, GEONAMES_BASE_URL);
+        const totalCount = await processCountry(countries[0], temporaryDirectory, GEO_NAMES_BASE_URL);
 
         // For parallel processing (use with caution):
         // const counts = await Promise.all(
@@ -136,10 +137,10 @@ async function insertBatch(_pool: Pool, batch: (string | number)[][]): Promise<v
 
 async function main(): Promise<void> {
     try {
-        const { rows } = await pool.query("insert into projects (name, plan) values ($1, $2) returning id", ["Dev Project", "dev"]);
+        const { rows } = await pool.query("insert into projects (name, plan) values ($1, $2) returning id", [SEED_PROJECT_NAME, "dev"]);
         const project_id = rows[0].id;
         const buf = await randomBytesAsync(18);
-        const raw = "ok_test_" + buf.toString("hex");
+        const raw = SEED_API_KEY_PREFIX + buf.toString("hex");
 
         // Use the same hashing mechanism as the auth function
         const hash = createHash('sha256').update(raw).digest('hex');

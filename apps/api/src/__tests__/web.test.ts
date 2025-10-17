@@ -211,7 +211,9 @@ describe('Web Module', () => {
         ip: '127.0.0.1',
         log: { info: jest.fn() }
       } as any;
-      const mockReply = {} as FastifyReply;
+      const mockReply = {
+        header: jest.fn(),
+      } as unknown as FastifyReply;
 
       mockRedisInstance.incr.mockResolvedValue(1);
       mockRedisInstance.expire.mockResolvedValue(1);

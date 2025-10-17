@@ -11,6 +11,7 @@
         "migrate": "node-pg-migrate -m ./migrations up",
         "migrate:create": "node-pg-migrate create -m ./migrations",
         "db:init": "tsx ./src/jobs/refreshDisposable.ts",
+        "generate:endpoints": "tsx src/generate-endpoints.ts",
         "test": "jest",
         "test:watch": "jest --watch --module esnext",
         "lint": "eslint src/ --fix"
@@ -28,6 +29,7 @@
         "@immobiliarelabs/fastify-metrics": "^7.0.0",
         "@infisical/sdk": "^4.0.6",
         "@orbicheck/contracts": "link:../../packages/contracts",
+        "@scalar/fastify-api-reference": "^1.38.1",
         "@sentry/node": "^10.15.0",
         "@sinclair/typebox": "^0.34.41",
         "@types/bcryptjs": "^3.0.0",
@@ -58,6 +60,7 @@
         "tldts": "^7.0.16",
         "twilio": "^5.10.1",
         "uuid": "13.0.0",
+        "validator": "^13.15.15",
         "zod": "4.1.11"
     },
     "devDependencies": {
@@ -68,6 +71,7 @@
         "@types/node-fetch": "^2.6.13",
         "@types/pg": "^8.15.5",
         "@types/supertest": "6.0.3",
+        "@types/validator": "^13.15.3",
         "@typescript-eslint/eslint-plugin": "^8.44.1",
         "@typescript-eslint/parser": "^8.44.1",
         "add-js-extension": "^1.0.4",

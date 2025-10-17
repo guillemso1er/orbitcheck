@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+
 import type { Pool } from "pg";
 
 import {
@@ -8,8 +9,8 @@ import {
   SIMILARITY_EXACT,
   SIMILARITY_FUZZY_THRESHOLD
 } from "./constants.js";
-import { normalizeAddress } from "./validators/address.js";
 import { buildFullName, normalizeEmail, normalizePhone } from "./utils.js";
+import { normalizeAddress } from "./validators/address.js";
 
 export interface DedupeMatch {
   id: string;

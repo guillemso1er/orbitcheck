@@ -3,6 +3,7 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { type Redis as IORedisType } from 'ioredis';
 import type { Pool } from "pg";
 
+import { ROUTES } from "./constants.js";
 import { auth, idempotency, rateLimit } from "./hooks.js";
 import { registerApiKeysRoutes } from './routes/api-keys.js';
 import { registerAuthRoutes, verifyPAT, verifySession } from "./routes/auth.js";
@@ -36,9 +37,9 @@ export async function authenticateRequest(request: FastifyRequest, rep: FastifyR
     const url = request.url;
 
     // Skip authentication for public endpoints: health checks, API docs, metrics, and auth routes
-    if (url.startsWith('/health') ||
-        url.startsWith('/documentation') ||
-        url.startsWith('/metrics') ||
+    if (url.startsWith(ROUTES.HEALTH) ||
+        url.startsWith(ROUTES.DOCUMENTATION) ||
+        url.startsWith(ROUTES.METRICS) ||
         url.startsWith(AUTH_REGISTER) ||
         url.startsWith(AUTH_LOGIN) ||
         url.startsWith(AUTH_LOGOUT)) {
@@ -47,24 +48,24 @@ export async function authenticateRequest(request: FastifyRequest, rep: FastifyR
 
     // Dashboard routes - use session-based authentication
     const isDashboardRoute = url.startsWith('/dashboard') ||
-        url.startsWith('/api/dashboard');
+        url.startsWith(ROUTES.DASHBOARD);
 
     // Management routes - use PAT authentication, fallback to session
-    const isMgmtRoute = url.startsWith('/v1/api-keys') ||
-        url.startsWith('/v1/data') ||
-        url.startsWith('/v1/logs') ||
-        url.startsWith('/v1/rules') ||
-        url.startsWith('/v1/settings') ||
-        url.startsWith('/v1/webhooks');
+    const isMgmtRoute = url.startsWith(ROUTES.API_KEYS) ||
+        url.startsWith(ROUTES.DATA) ||
+        url.startsWith(ROUTES.LOGS) ||
+        url.startsWith(ROUTES.RULES) ||
+        url.startsWith(ROUTES.SETTINGS) ||
+        url.startsWith(ROUTES.WEBHOOKS);
 
     // Runtime routes - use API key with HMAC
-    const isRuntimeRoute = url.startsWith('/v1/dedupe') ||
-        url.startsWith('/v1/orders') ||
-        url.startsWith('/v1/validate') ||
-        url.startsWith('/v1/normalize') ||
-        url.startsWith('/v1/verify') ||
-        url.startsWith('/v1/batch') ||
-        url.startsWith('/v1/jobs');
+    const isRuntimeRoute = url.startsWith(ROUTES.DEDUPE) ||
+        url.startsWith(ROUTES.ORDERS) ||
+        url.startsWith(ROUTES.VALIDATE) ||
+        url.startsWith(ROUTES.NORMALIZE) ||
+        url.startsWith(ROUTES.VERIFY) ||
+        url.startsWith(ROUTES.BATCH) ||
+        url.startsWith(ROUTES.JOBS);
 
     // Log the auth method being used for debugging
     request.log.info({ url, isDashboardRoute, isMgmtRoute, isRuntimeRoute }, 'Auth method determination');
@@ -105,9 +106,9 @@ export async function applyRateLimitingAndIdempotency(request: FastifyRequest, r
     const url = request.url;
 
     // Skip middleware for health, docs, metrics, and auth
-    if (url.startsWith('/health') ||
-        url.startsWith('/documentation') ||
-        url.startsWith('/metrics') ||
+    if (url.startsWith(ROUTES.HEALTH) ||
+        url.startsWith(ROUTES.DOCUMENTATION) ||
+        url.startsWith(ROUTES.METRICS) ||
         url.startsWith(AUTH_REGISTER) ||
         url.startsWith(AUTH_LOGIN) ||
         url.startsWith(AUTH_LOGOUT)) {
@@ -115,13 +116,13 @@ export async function applyRateLimitingAndIdempotency(request: FastifyRequest, r
     }
 
     // Only apply rate limiting and idempotency to runtime routes
-    const isRuntimeRoute = url.startsWith('/v1/dedupe') ||
-        url.startsWith('/v1/orders') ||
-        url.startsWith('/v1/validate') ||
-        url.startsWith('/v1/normalize') ||
-        url.startsWith('/v1/verify') ||
-        url.startsWith('/v1/batch') ||
-        url.startsWith('/v1/jobs');
+    const isRuntimeRoute = url.startsWith(ROUTES.DEDUPE) ||
+        url.startsWith(ROUTES.ORDERS) ||
+        url.startsWith(ROUTES.VALIDATE) ||
+        url.startsWith(ROUTES.NORMALIZE) ||
+        url.startsWith(ROUTES.VERIFY) ||
+        url.startsWith(ROUTES.BATCH) ||
+        url.startsWith(ROUTES.JOBS);
 
     if (isRuntimeRoute) {
         await rateLimit(request, rep, redis);

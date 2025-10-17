@@ -1,6 +1,6 @@
+import { openapiYaml } from '@orbicheck/contracts';
 import type { FastifyInstance, FastifyRequest } from "fastify";
 import yaml from 'js-yaml';
-import { openapiYaml } from '@orbicheck/contracts';
 
 // Load OpenAPI spec
 const openapiSchema = yaml.load(openapiYaml);

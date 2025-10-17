@@ -5,7 +5,7 @@ import bcrypt from 'bcryptjs';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import type { Pool } from "pg";
 
-import { API_KEY_NAMES, API_KEY_PREFIX, AUDIT_ACTION_PAT_USED, AUDIT_RESOURCE_API, AUTHORIZATION_HEADER, BEARER_PREFIX, CRYPTO_IV_BYTES, CRYPTO_KEY_BYTES, DEFAULT_PAT_NAME, ERROR_CODES, ERROR_MESSAGES, HASH_ALGORITHM, HTTP_STATUS, LOGOUT_MESSAGE, PAT_PREFIX, PAT_SCOPES_ALL, PG_UNIQUE_VIOLATION, PLAN_TYPES, PROJECT_NAMES, STATUS } from "../constants.js";
+import { API_KEY_NAMES, API_KEY_PREFIX, API_KEY_PREFIX_LENGTH, AUDIT_ACTION_PAT_USED, AUDIT_RESOURCE_API, AUTHORIZATION_HEADER, BCRYPT_ROUNDS, BEARER_PREFIX, CRYPTO_IV_BYTES, CRYPTO_KEY_BYTES, DEFAULT_PAT_NAME, ERROR_CODES, ERROR_MESSAGES, HASH_ALGORITHM, HTTP_STATUS, LOGOUT_MESSAGE, PAT_PREFIX, PAT_SCOPES_ALL, PG_UNIQUE_VIOLATION, PLAN_TYPES, PROJECT_NAMES, RANDOM_BYTES_FOR_API_KEY, STATUS } from "../constants.js";
 import { environment } from "../environment.js";
 import { errorSchema, generateRequestId, getDefaultProjectId, sendError, sendServerError } from "./utils.js";
 
@@ -33,13 +33,11 @@ export async function verifySession(request: FastifyRequest, rep: FastifyReply, 
         rep.status(HTTP_STATUS.UNAUTHORIZED).send({ error: { code: ERROR_CODES.INVALID_TOKEN, message: ERROR_MESSAGES[ERROR_CODES.INVALID_TOKEN] } });
         return;
     }
-    // eslint-disable-next-line require-atomic-updates
-    request.user_id = user_id;
 
     // Get default project for user
     try {
         const projectId = await getDefaultProjectId(pool, user_id);
-        // eslint-disable-next-line require-atomic-updates
+        request.user_id = user_id;
         request.project_id = projectId;
     } catch (error) {
         rep.status(HTTP_STATUS.FORBIDDEN).send({ error: { code: ERROR_CODES.NO_PROJECT, message: ERROR_MESSAGES[ERROR_CODES.NO_PROJECT] } });
@@ -86,16 +84,12 @@ export async function verifyPAT(request: FastifyRequest, rep: FastifyReply, pool
         [rows[0].id]
     );
 
-    // Attach user_id and scopes to request
-    // eslint-disable-next-line require-atomic-updates
-    request.user_id = rows[0].user_id;
-    // eslint-disable-next-line require-atomic-updates
-    request.pat_scopes = rows[0].scopes || [];
-
-    // Get default project for user
+    // Get default project for user and attach all properties atomically
     try {
-        const projectId = await getDefaultProjectId(pool, rows[0].user_id);
-        // eslint-disable-next-line require-atomic-updates
+        const userId = rows[0].user_id;
+        const projectId = await getDefaultProjectId(pool, userId);
+        request.user_id = userId;
+        request.pat_scopes = rows[0].scopes || [];
         request.project_id = projectId;
     } catch (error) {
         rep.status(HTTP_STATUS.FORBIDDEN).send({ error: { code: ERROR_CODES.NO_PROJECT, message: ERROR_MESSAGES[ERROR_CODES.NO_PROJECT] } });
@@ -146,7 +140,7 @@ export function registerAuthRoutes(app: FastifyInstance, pool: Pool): void {
             const request_id = generateRequestId();
             const body = request.body as any;
             const { email, password } = body;
-            const hashedPassword = await bcrypt.hash(password, 12);
+            const hashedPassword = await bcrypt.hash(password, BCRYPT_ROUNDS);
 
             // Create user
             const { rows: userRows } = await pool.query(
@@ -170,13 +164,13 @@ export function registerAuthRoutes(app: FastifyInstance, pool: Pool): void {
 
             // Generate API key for runtime endpoints
             const buf = await new Promise<Buffer>((resolve, reject) => {
-                crypto.randomBytes(CRYPTO_KEY_BYTES, (error, buf) => {
+                crypto.randomBytes(RANDOM_BYTES_FOR_API_KEY, (error, buf) => {
                     if (error) reject(error);
                     else resolve(buf);
                 });
             });
             const fullKey = API_KEY_PREFIX + buf.toString('hex');
-            const prefix = fullKey.slice(0, 6);
+            const prefix = fullKey.slice(0, API_KEY_PREFIX_LENGTH);
             const keyHash = crypto.createHash('sha256').update(fullKey).digest('hex');
 
             // Encrypt the full key for HMAC verification

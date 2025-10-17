@@ -1,11 +1,11 @@
 import crypto from "node:crypto";
 
 import type { FastifyReply, FastifyRequest } from "fastify";
-import fetch from "node-fetch";
 import { type Redis as IORedisType } from 'ioredis';
+import fetch from "node-fetch";
 import type { Pool } from "pg";
 
-import { CONTENT_TYPES, ERROR_CODES, ERROR_MESSAGES, EVENT_TYPES, HASH_ALGORITHM, HTTP_STATUS, STATUS } from "./constants.js";
+import { API_KEY_PREFIX_LENGTH, CONTENT_TYPES, ERROR_CODES, ERROR_MESSAGES, EVENT_TYPES, HASH_ALGORITHM, HMAC_VALIDITY_MINUTES, HTTP_STATUS, IDEMPOTENCY_TTL_SECONDS, RATE_LIMIT_TTL_SECONDS, STATUS, USER_AGENT_WEBHOOK } from "./constants.js";
 import { environment } from "./environment.js";
 
 
@@ -33,7 +33,7 @@ export async function auth(request: FastifyRequest, rep: FastifyReply, pool: Poo
         request.log.info('Using Bearer API key auth for runtime');
         // API key auth
         const key = header.slice(7).trim();
-        const prefix = key.slice(0, 6);
+        const prefix = key.slice(0, API_KEY_PREFIX_LENGTH);
 
         // Compute SHA-256 hash for secure storage and comparison (avoids storing plaintext keys)
         const keyHash = crypto.createHash(HASH_ALGORITHM).update(key).digest('hex');
@@ -77,7 +77,7 @@ export async function auth(request: FastifyRequest, rep: FastifyReply, pool: Poo
         // Check ts is recent (within 5 minutes)
         const now = Date.now();
         const requestTs = parseInt(ts);
-        if (Math.abs(now - requestTs) > 5 * 60 * 1000) {
+        if (Math.abs(now - requestTs) > HMAC_VALIDITY_MINUTES * 60 * 1000) {
             request.log.info('HMAC ts too old');
             rep.status(HTTP_STATUS.UNAUTHORIZED).send({ error: { code: ERROR_CODES.UNAUTHORIZED, message: ERROR_MESSAGES[ERROR_CODES.UNAUTHORIZED] } });
             return;
@@ -145,16 +145,21 @@ export async function auth(request: FastifyRequest, rep: FastifyReply, pool: Poo
  */
 export async function rateLimit(request: FastifyRequest, rep: FastifyReply, redis: IORedisType): Promise<void> {
     const key = `rl:${request.project_id}:${request.ip}`;
-    const limit = environment.RATE_LIMIT_COUNT;
-    const ttl = 60;
+    const limit = process.env.NODE_ENV === 'production' ? environment.RATE_LIMIT_BURST : environment.RATE_LIMIT_COUNT;
+    const ttl = RATE_LIMIT_TTL_SECONDS;
     const cnt = await redis.incr(key);
     if (cnt === 1) await redis.expire(key, ttl);
     if (cnt > limit) {
         const remainingTtl = await redis.ttl(key);
         rep.header('Retry-After', Math.max(remainingTtl, 1).toString());
+        rep.header('X-RateLimit-Limit', limit.toString());
+        rep.header('X-RateLimit-Remaining', Math.max(0, limit - cnt).toString());
         rep.status(HTTP_STATUS.TOO_MANY_REQUESTS).send({ error: { code: ERROR_CODES.RATE_LIMITED, message: ERROR_MESSAGES[ERROR_CODES.RATE_LIMITED] } });
         return;
     }
+    // Add rate limit headers for informational purposes
+    rep.header('X-RateLimit-Limit', limit.toString());
+    rep.header('X-RateLimit-Remaining', Math.max(0, limit - cnt).toString());
 }
 
 
@@ -180,7 +185,7 @@ export async function idempotency(request: FastifyRequest, rep: FastifyReply, re
         return;
     }
     rep.saveIdem = async (payload: unknown) => {
-        await redis.set(cacheKey, JSON.stringify(payload), "EX", 24 * 60 * 60);
+        await redis.set(cacheKey, JSON.stringify(payload), "EX", IDEMPOTENCY_TTL_SECONDS);
     };
 }
 
@@ -225,7 +230,7 @@ async function sendWebhooks(project_id: string, event: string, payload: Record<s
                     headers: {
                         'Content-Type': CONTENT_TYPES.APPLICATION_JSON,
                         'X-OrbiCheck-Signature': `sha256=${signature}`,
-                        'User-Agent': 'OrbiCheck-Webhook/1.0'
+                        'User-Agent': USER_AGENT_WEBHOOK
                     },
                     body: JSON.stringify(payload)
                 });

@@ -8,11 +8,11 @@ import type { Redis } from "ioredis";
 import fetch from "node-fetch";
 import type { Pool } from "pg";
 
-import { REASON_CODES } from "../constants.js";
+import { ADDRESS_VALIDATION_TTL_DAYS,REASON_CODES , USER_AGENT_ADDRESS_VALIDATION  } from "../constants.js";
 import { environment } from "../environment.js";
 
 // Cache TTL in seconds (7 days)
-const CACHE_TTL_SECONDS = 7 * 24 * 3600;
+const CACHE_TTL_SECONDS = ADDRESS_VALIDATION_TTL_DAYS * 24 * 3600;
 
 // Simple PO Box detector for multiple locales
 /**
@@ -195,7 +195,7 @@ export async function validateAddress(
                 const data = await r.json();
                 if (Array.isArray(data) && data[0]) {
                     const index = data as LocationResponse[];
-                    geo = { lat: Number.parseFloat(index[0].lat), lng: Number.parseFloat(index[0].lon), confidence: 0.9, source: 'locationiq' };
+                    geo = { lat: Number.parseFloat(index[0].lat), lng: Number.parseFloat(index[0].lon), confidence: 0.9, source: 'locationiq' as const };
                     primarySuccess = true;
                 }
             }
@@ -206,7 +206,7 @@ export async function validateAddress(
                 const data = await r.json();
                 if (Array.isArray(data) && data[0]) {
                     const index = data as LocationResponse[];
-                    geo = { lat: Number.parseFloat(index[0].lat), lng: Number.parseFloat(index[0].lon), confidence: 0.7, source: 'nominatim' };
+                    geo = { lat: Number.parseFloat(index[0].lat), lng: Number.parseFloat(index[0].lon), confidence: 0.7, source: 'nominatim' as const };
                     primarySuccess = true;
                 }
             }
@@ -220,7 +220,7 @@ export async function validateAddress(
                 const gj: GoogleGeocodeResponse = await gr.json();
                 if (gj.status === 'OK' && gj.results && gj.results[0]) {
                     const loc = gj.results[0].geometry.location;
-                    geo = { lat: loc.lat, lng: loc.lng, confidence: 0.8, source: 'google' };
+                    geo = { lat: loc.lat, lng: loc.lng, confidence: 0.8, source: 'google' as const };
                 }
             }
         }
