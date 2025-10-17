@@ -15,6 +15,8 @@ test.describe('Full Application Journey', () => {
 
     // Step 1: Navigate to login page and verify UI elements
     await page.goto('/login');
+    await page.waitForLoadState('networkidle');
+    await page.waitForSelector('h2:has-text("Welcome Back")', { timeout: 10000 });
     await expect(page.getByRole('heading', { name: 'Welcome Back' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Create Account' })).toBeVisible();
 
@@ -133,46 +135,56 @@ test.describe('Full Application Journey', () => {
     await page.getByRole('button', { name: 'Clear' }).click();
     await expect(page.locator('.result-section')).not.toBeVisible();
 
-    // Step 21: Navigate to Bulk CSV Tool
+    // Step 23: Navigate to API Docs and verify redirect
+    const [newPage] = await Promise.all([
+      page.context().waitForEvent('page'),
+      page.locator('.nav-link').filter({ hasText: 'API Docs' }).click()
+    ]);
+
+    await expect(newPage).toHaveURL(/.*\/api-reference/);
+    await newPage.waitForLoadState('networkidle');
+    await newPage.close();
+
+    // Step 24: Navigate to Bulk CSV Tool
     await page.locator('.nav-link').filter({ hasText: 'Bulk CSV Tool' }).click();
     await expect(page).toHaveURL(/.*\/bulk-csv/);
     await page.waitForLoadState('networkidle');
 
-    // Step 22: Test Bulk CSV Tool default state
+    // Step 25: Test Bulk CSV Tool default state
     await expect(page.getByRole('heading', { name: 'Bulk CSV Tool' })).toBeVisible();
     await expect(page.locator('select#csv-type')).toHaveValue('customers');
 
-    // Step 23: Switch to orders CSV type
+    // Step 26: Switch to orders CSV type
     await page.selectOption('select#csv-type', 'orders');
     await expect(page.locator('select#csv-type')).toHaveValue('orders');
 
-    // Step 24: Switch back to customers CSV type
+    // Step 27: Switch back to customers CSV type
     await page.selectOption('select#csv-type', 'customers');
     await expect(page.locator('select#csv-type')).toHaveValue('customers');
 
-    // Step 25: Upload invalid file type (should show error)
+    // Step 28: Upload invalid file type (should show error)
     await page.setInputFiles('input[type="file"]', 'e2e/fixtures/invalid-file.txt');
     await expect(page.locator('.alert-danger')).toContainText('Please select a CSV file');
 
-    // Step 26: Upload invalid customers CSV (missing email/phone columns)
+    // Step 29: Upload invalid customers CSV (missing email/phone columns)
     await page.setInputFiles('input[type="file"]', 'e2e/fixtures/invalid-customers.csv');
     await expect(page.locator('.alert-danger')).toContainText('must contain email or phone columns');
 
-    // Step 27: Test customers CSV upload
+    // Step 30: Test customers CSV upload
     await page.setInputFiles('input[type="file"]', 'e2e/fixtures/valid-customers.csv');
     await expect(page.locator('.file-name')).toContainText('valid-customers.csv');
 
-    // Step 28: Test orders CSV type and upload
+    // Step 31: Test orders CSV type and upload
     await page.selectOption('select#csv-type', 'orders');
     await page.setInputFiles('input[type="file"]', 'e2e/fixtures/orders.csv');
     await expect(page.locator('.file-name')).toContainText('orders.csv');
 
-    // Step 29: Navigate to Rules Editor
+    // Step 32: Navigate to Rules Editor
     await page.locator('.nav-link').filter({ hasText: 'Rules Editor' }).click();
     await expect(page).toHaveURL(/.*\/rules/);
     await page.waitForLoadState('networkidle');
 
-    // Step 30: Verify Rules Editor loads and test basic functionality
+    // Step 33: Verify Rules Editor loads and test basic functionality
     await expect(page.getByRole('heading', { name: 'Rules Editor' })).toBeVisible();
     await expect(page.locator('h3').filter({ hasText: 'Rule Editor' })).toBeVisible();
     await expect(page.locator('h3').filter({ hasText: 'Test Harness' })).toBeVisible();
@@ -196,20 +208,17 @@ test.describe('Full Application Journey', () => {
     const testButton = page.getByRole('button', { name: 'Test Rule' });
     await expect(testButton).toBeVisible();
 
-    // Note: Skipping actual API testing in e2e due to complex dependencies
-    // The UI components and basic functionality are verified
-
-    // Step 31: Logout from the application
+    // Step 34: Logout from the application
     await page.locator('.logout-btn').click();
     await expect(page).toHaveURL(/.*\/login/);
 
-    // Step 22: Login again with same credentials
+    // Step 35: Login again with same credentials
     await page.fill('input[type="email"]', testEmail);
     await page.fill('input[type="password"]', password);
     await page.getByRole('button', { name: 'Sign In' }).click();
     await page.waitForResponse(resp => resp.url().includes('/auth/login') && resp.status() === 200);
 
-    // Step 23: Verify successful login and dashboard access
+    // Step 36: Verify successful login and dashboard access
     await expect(page).toHaveURL(/.*\/api-keys/);
     await expect(page.getByRole('heading', { name: 'OrbiCheck' })).toBeVisible();
   });

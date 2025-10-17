@@ -96,6 +96,16 @@ function App() {
                   <span className="nav-label">{item.label}</span>
                 </NavLink>
               ))}
+              <a
+                href={`${window.location.origin}/api-reference`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="nav-link"
+                onClick={handleNavClick}
+              >
+                <span className="nav-icon" aria-hidden="true">📖</span>
+                <span className="nav-label">API Docs</span>
+              </a>
             </nav>
             <div className="sidebar-footer">
               <button onClick={() => { logout(); handleNavClick(); }} className="logout-btn">{UI_STRINGS.LOGOUT}</button>
@@ -169,6 +179,20 @@ function App() {
               <ProtectedRoute>
                 <div role="region" aria-label={UI_STRINGS.WEBHOOK_TESTER}>
                   <WebhookTester />
+                </div>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/api-docs"
+            element={
+              <ProtectedRoute>
+                <div role="region" aria-label="API Documentation">
+                  <iframe
+                    src={`${window.location.origin}/api-reference`}
+                    style={{ width: '100%', height: 'calc(100vh - 60px)', border: 'none' }}
+                    title="API Documentation"
+                  />
                 </div>
               </ProtectedRoute>
             }
