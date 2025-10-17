@@ -1,5 +1,6 @@
 import { once } from 'node:events';
 
+import fastifyStatic from '@fastify/static';
 import { config } from 'dotenv';
 config({ path: '../../.env' });
 
@@ -15,10 +16,11 @@ import { Queue, Worker } from 'bullmq';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import Fastify from "fastify";
 import { type Redis as IORedisType, Redis } from 'ioredis';
-import yaml from 'js-yaml';
 import cron from 'node-cron';
 import { Pool } from "pg";
 
+import { createRequire } from 'node:module';
+import { dirname, join } from 'node:path';
 import { API_VERSION, MESSAGES, REQUEST_TIMEOUT_MS, ROUTES, SESSION_MAX_AGE_MS, STARTUP_SMOKE_TEST_TIMEOUT_MS, STATUS } from "./constants.js";
 import { runLogRetention } from './cron/retention.js';
 import { environment } from "./environment.js";
@@ -26,10 +28,15 @@ import { batchDedupeProcessor } from './jobs/batchDedupe.js';
 import { batchValidationProcessor } from './jobs/batchValidation.js';
 import { disposableProcessor } from './jobs/refreshDisposable.js';
 import { inputSanitizationHook } from "./middleware/inputSanitization.js";
+import { setupCors } from "./plugins/cors.js";
+import { setupDocumentation } from "./plugins/documentation.js";
+import { setupErrorHandler } from "./plugins/errorHandler.js";
+import { setupSecurityHeaders } from "./plugins/securityHeaders.js";
 import { openapiValidation } from "./plugins/openapi.js";
 import startupGuard from './startup-guard.js';
-import { ErrorHandler } from "./utils/errorHandler.js";
-import { registerRoutes, authenticateRequest } from "./web.js";
+import { registerHealthRoutes } from "./routes/health.js";
+import { registerAuthenticatedDocsRoutes } from "./routes/authenticatedDocs.js";
+import { registerRoutes } from "./web.js";
 
 export async function build(pool: Pool, redis: IORedisType): Promise<FastifyInstance> {
     if (environment.SENTRY_DSN) {
@@ -50,188 +57,34 @@ export async function build(pool: Pool, redis: IORedisType): Promise<FastifyInst
         trustProxy: true, // Important for secure cookies behind proxies
     });
 
-    // Add input sanitization hook early in the request lifecycle
-    app.addHook('preHandler', inputSanitizationHook);
+   // Setup API documentation
+   await setupDocumentation(app, pool);
+
+    // NOW add input sanitization hook AFTER documentation is registered
+    app.addHook('preHandler', async (request, reply) => {
+        // Skip for documentation and reference routes
+        if (request.url.startsWith('/documentation') || 
+            request.url.startsWith('/reference')) {
+            return;
+        }
+        
+        await inputSanitizationHook(request, reply);
+    });
+
 
     if (process.env.NODE_ENV !== 'production') {
         await app.register(startupGuard);
     }
 
-    // Enhanced error handler to prevent sensitive information leakage
-    app.setErrorHandler(async (error: Error & { code?: string; statusCode?: number }, request: FastifyRequest, reply: FastifyReply) => {
-        // Use the ErrorHandler utility for secure logging
-        ErrorHandler.logErrorSecurely(request.log, error, {
-            method: request.method,
-            url: request.url,
-            reqId: request.id,
-            userId: (request as any).user_id,
-            projectId: (request as any).project_id
-        });
-
-        // Handle specific error types with safe responses
-        if (error.code === 'FST_ERR_REQUEST_TIMEOUT' || error.name === 'RequestTimeoutError') {
-            return reply.status(503).send({ error: 'timeout', message: 'Request timed out' });
-        }
-
-        // Handle database errors with specialized handling
-        if (error.code && typeof error.code === 'string' && (error.code.startsWith('42') || error.code.startsWith('23'))) {
-            return ErrorHandler.handleDatabaseError(reply, error, 'request_handler');
-        }
-
-        // Handle authentication errors
-        if (error.statusCode === 401 || error.code === 'UNAUTHORIZED') {
-            return reply.status(401).send({ error: 'unauthorized', message: 'Authentication required' });
-        }
-
-        // Handle validation errors - these are generally safe to expose
-        if ((error.statusCode === 400 || error.code === 'VALIDATION_ERROR') && ErrorHandler.isSafeToExpose(error)) {
-            return reply.status(400).send(ErrorHandler.createSafeErrorResponse(error, true));
-        }
-
-        // Handle external service errors
-        if (error.code === 'EXTERNAL_SERVICE_ERROR') {
-            return ErrorHandler.handleExternalServiceError(reply, error, 'external_service');
-        }
-
-        // Default error response - don't expose internal error details
-        const statusCode = error.statusCode && error.statusCode >= 400 && error.statusCode < 600 ? error.statusCode : 500;
-        return reply.status(statusCode).send({
-            error: statusCode >= 500 ? 'internal_error' : 'bad_request',
-            message: statusCode >= 500 ? 'An unexpected error occurred' : 'Invalid request'
-        });
-    });
+    // Setup error handler
+    await setupErrorHandler(app);
 
 
-    // Register OpenAPI/Swagger for automatic API documentation generation
-    await app.register(fastifySwagger, {
-        openapi: {
-            servers: [{
-                url: `http://localhost:${environment.PORT}`,
-                description: 'Development server'
-            }]
-        },
-        transform: ({ schema, url }: { schema: any; url: string }) => {
-            // Exclude internal/dashboard routes that should not be visible in public API docs
-            if (url.startsWith('/dashboard') || url.startsWith(ROUTES.DASHBOARD) || url.startsWith(ROUTES.REFERENCE) || url.startsWith(ROUTES.DOCUMENTATION) || url.startsWith(ROUTES.STATUS) || url.startsWith(ROUTES.HEALTH) || url.startsWith(ROUTES.READY)) {
-                return { schema: null as any, url };
-            }
-            return { schema, url };
-        }
-    });
+    // Register authenticated documentation routes
+    await registerAuthenticatedDocsRoutes(app, pool);
 
-    // Register Swagger UI for interactive API documentation at /documentation
-    await app.register(fastifySwaggerUi, {
-        routePrefix: '/documentation',
-    });
-
-    // Register Scalar API Reference for beautiful API documentation
-
-    // Public API documentation at /reference (mock mode or manual auth)
-    await app.register(ScalarApiReference, {
-        routePrefix: '/reference',
-    });
-
-    // Authenticated dashboard API documentation (embedded in dashboard)
-    // This route is protected and will inject user-specific authentication
-    app.register(async (app) => {
-        // Protect the entire api-reference route
-        app.addHook('preHandler', async (request, reply) => {
-            await authenticateRequest(request, reply, pool);
-        });
-
-        await app.register(ScalarApiReference, {
-            routePrefix: '/api-reference',
-        });
-
-        // Custom route to serve the Scalar page with user-specific authentication
-        app.get('/api-reference/*', async (request, reply) => {
-            // Get user's API keys for prefilled authentication
-            const userId = (request as any).user_id;
-            if (!userId) {
-                return reply.status(401).send({ error: 'unauthorized' });
-            }
-
-            try {
-                // Fetch user's API keys for display (we'll show a masked version)
-                const apiKeysResult = await pool.query(
-                    'SELECT key_prefix || \'****\' || RIGHT(key_hash, 4) as masked_key FROM api_keys WHERE user_id = $1 AND status = $2 LIMIT 1',
-                    [userId, STATUS.ACTIVE]
-                );
-
-                const maskedApiKey = apiKeysResult.rows[0]?.masked_key || 'ok_****';
-
-                // In a real implementation, you'd want to securely pass the actual API key
-                // For now, we'll show a placeholder that indicates authentication is available
-                const apiKey = maskedApiKey;
-
-                // Get user's settings for workspace-specific defaults
-                const settingsResult = await pool.query(
-                    'SELECT country_defaults, formatting, risk_thresholds FROM user_settings WHERE user_id = $1',
-                    [userId]
-                );
-
-                const userSettings = settingsResult.rows[0] || {};
-
-            } catch (error) {
-                app.log.error({ err: error }, 'Error fetching user data for API docs');
-                return reply.status(500).send({ error: 'internal_error' });
-            }
-        });
-    });
-
-    // Define allowed origins based on environment
-    const allowedOrigins = new Set([
-        `http://localhost:${environment.PORT}`, // API itself for health/docs
-    ]);
-
-    // Add production origins from environment variable or defaults
-    if (process.env.NODE_ENV === 'production') {
-        // Allow origins from environment variable or use defaults
-        const corsOrigins = environment.CORS_ORIGINS ? environment.CORS_ORIGINS.split(',') : [
-            'https://dashboard.orbitcheck.io',
-            'https://api.orbitcheck.io'
-        ];
-        corsOrigins.forEach(origin => allowedOrigins.add(origin.trim()));
-
-        // Add your OIDC provider domain if needed
-        if (environment.OIDC_PROVIDER_URL) {
-            allowedOrigins.add(new URL(environment.OIDC_PROVIDER_URL).origin);
-        }
-    } else {
-        // Development origins
-        allowedOrigins.add('http://localhost:5173'); // Vite dev server
-        allowedOrigins.add('http://localhost:3000'); // Alternative dev server
-        allowedOrigins.add('http://localhost:5174'); // Dashboard dev server
-
-        // Allow additional dev origins from environment
-        if (environment.CORS_ORIGINS) {
-            environment.CORS_ORIGINS.split(',').forEach(origin => allowedOrigins.add(origin.trim()));
-        }
-    }
-
-    // Enable CORS with proper configuration for different auth methods
-    await app.register(cors, {
-        origin: async (origin: string | undefined) => {
-            // Allow requests with no Origin header (e.g., server-to-server, Postman, curl)
-            // This is important for PAT and API key authentication
-            if (!origin) return true;
-
-            // Check if origin is in allowed list
-            return allowedOrigins.has(origin);
-        },
-        credentials: true, // Required for session cookies
-        methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-        allowedHeaders: [
-            'Content-Type',
-            'Authorization', // For PAT and API keys
-            'X-Idempotency-Key', // For idempotency
-            'Idempotency-Key', // For idempotency (standard header)
-            'X-Request-Id', // For request tracking
-            'Correlation-Id', // For correlation tracking
-            'X-Correlation-Id' // For correlation tracking
-        ],
-        exposedHeaders: ['X-Request-Id', 'Correlation-Id', 'X-RateLimit-Remaining', 'X-RateLimit-Reset'],
-    });
+    // Setup CORS
+    await setupCors(app);
 
     // Register cookie support (required for secure sessions)
     await app.register(cookie);
@@ -270,89 +123,11 @@ export async function build(pool: Pool, redis: IORedisType): Promise<FastifyInst
     // Register OpenAPI validation (after routes are registered)
     await openapiValidation(app);
 
-    // Add security headers (enhanced security)
-    app.addHook('onSend', async (request, reply, payload) => {
-        // Basic security headers
-        reply.header('X-Content-Type-Options', 'nosniff');
-        reply.header('X-Frame-Options', 'DENY');
-        reply.header('X-XSS-Protection', '1; mode=block');
-        reply.header('Referrer-Policy', 'strict-origin-when-cross-origin');
-        reply.header('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+    // Setup security headers
+    await setupSecurityHeaders(app);
 
-        // Add CSP for dashboard routes
-        if (request.url.startsWith('/dashboard') || request.url.startsWith(ROUTES.DASHBOARD)) {
-            reply.header('Content-Security-Policy',
-                "default-src 'self'; " +
-                "script-src 'self' 'unsafe-inline' 'unsafe-eval'; " + // May need to adjust for your frontend
-                "style-src 'self' 'unsafe-inline'; " +
-                "img-src 'self' data: https:; " +
-                "connect-src 'self' " + (environment.OIDC_PROVIDER_URL || '') + "; " +
-                "frame-ancestors 'none';"
-            );
-        }
-
-        // Add HSTS in production
-        if (process.env.NODE_ENV === 'production') {
-            reply.header('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
-        }
-
-        // Add request ID and correlation ID to response headers for tracing
-        if (request.id) {
-            reply.header('X-Request-Id', request.id);
-        }
-
-        // Support Correlation-Id header for request tracing
-        const correlationId = request.headers['correlation-id'] || request.headers['x-correlation-id'];
-        if (correlationId && typeof correlationId === 'string') {
-            reply.header('Correlation-Id', correlationId);
-        } else if (request.id) {
-            reply.header('Correlation-Id', request.id);
-        }
-
-        return payload;
-    });
-
-    // Status endpoint (public, no auth required)
-    app.get(ROUTES.STATUS, async (): Promise<{ status: string; version: string; timestamp: string }> => ({
-        status: "healthy",
-        version: API_VERSION,
-        timestamp: new Date().toISOString()
-    }));
-
-    // Health check endpoint (public, no auth required)
-    app.get(ROUTES.HEALTH, async (): Promise<{ ok: true; timestamp: string; environment: string }> => ({
-        ok: true,
-        timestamp: new Date().toISOString(),
-        environment: process.env.NODE_ENV || 'development'
-    }));
-
-    // Add a ready check that verifies all dependencies
-    app.get(ROUTES.READY, async (): Promise<{ ready: boolean; checks: Record<string, boolean> }> => {
-        const checks = {
-            database: false,
-            redis: false
-        };
-
-        try {
-            // Check database
-            const dbResult = await pool.query('SELECT 1');
-            checks.database = dbResult.rows.length > 0;
-        } catch (error) {
-            app.log.error({ err: error }, 'Database health check failed');
-        }
-
-        try {
-            // Check Redis
-            await redis.ping();
-            checks.redis = true;
-        } catch (error) {
-            app.log.error({ err: error }, 'Redis health check failed');
-        }
-
-        const ready = Object.values(checks).every(status => status);
-
-        return { ready, checks };
-    });
+    // Register health check routes
+    await registerHealthRoutes(app, pool, redis);
 
     return app;
 }
