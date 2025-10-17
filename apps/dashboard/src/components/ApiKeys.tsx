@@ -276,6 +276,27 @@ const ApiKeys: React.FC<ApiKeysProps> = () => {
         )}
       </div>
 
+      {/* Postman Collection Section */}
+      <div className="postman-section">
+        <h3>Test in Postman</h3>
+        <p>Use our Postman collection to quickly test the API endpoints with pre-configured requests and examples.</p>
+        <div className="postman-buttons">
+          <a href="https://www.postman.com/run-collection/your-collection-id-here"
+             className="btn btn-postman"
+             target="_blank"
+             rel="noopener noreferrer">
+            <span className="btn-icon">🚀</span> Run in Postman
+          </a>
+          <div className="postman-links">
+            <a href="/docs/postman/postman_collection.json" className="link-secondary">Download collection</a>
+            <span className="separator">|</span>
+            <a href="/docs/postman/postman_sandbox_environment.json" className="link-secondary">Sandbox env</a>
+            <span className="separator">|</span>
+            <a href="/docs/postman/postman_production_environment.json" className="link-secondary">Production env</a>
+          </div>
+        </div>
+      </div>
+
       <style>{`
         .api-keys-page {
           max-width: 1200px;

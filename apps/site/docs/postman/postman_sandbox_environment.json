@@ -1,0 +1,19 @@
+{
+    "id": "sandbox-env",
+    "name": "Sandbox",
+    "values": [
+        {
+            "key": "baseUrl",
+            "value": "https://dev-api.orbitcheck.io",
+            "description": "Sandbox API base URL",
+            "enabled": true
+        },
+        {
+            "key": "token",
+            "value": "your_sandbox_api_token_here",
+            "description": "API token for sandbox environment",
+            "enabled": true
+        }
+    ],
+    "_postman_variable_scope": "environment"
+}
