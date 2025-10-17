@@ -284,6 +284,9 @@ describe('Server Startup', () => {
     // and the reason for the rejection should be an error with this message."
     await expect(start()).rejects.toThrow('Database connection failed');
 
+    // Advance timers to trigger the forced exit timeout
+    jest.advanceTimersByTime(1000);
+
     // You can also assert that process.exit was called if that's part of your logic
     expect(mockProcessExit).toHaveBeenCalledWith(1);
   });
