@@ -1,4 +1,15 @@
+jest.mock('@scalar/fastify-api-reference', () => ({
+  __esModule: true, // This is important for mocking ESM modules
+  default: jest.fn(), // Mock the default export, which is the fastify plugin
+}));
 
+jest.mock('validator', () => ({
+  // Your inputSanitizationHook likely uses `escape`. Mock it to return the
+  // input so it doesn't break your code during the test.
+  escape: jest.fn(str => str),
+  trim: jest.fn(str => str),
+  // Add any other validator functions you use in your hooks if needed
+}));
 // Tell Jest to use the manual mock we created in src/mocks/environment.ts
 jest.mock('@orbicheck/contracts', () => ({
   DASHBOARD_ROUTES: {
@@ -263,18 +274,18 @@ describe('Server Startup', () => {
   it('should handle startup errors', async () => {
     // Arrange
     const error = new Error('Database connection failed');
+    // Make the Pool constructor throw when it's called inside start()
     (Pool as unknown as jest.Mock).mockImplementationOnce(() => {
       throw error;
     });
 
-    // Act
-    await start();
+    // Act & Assert
+    // This line tells Jest: "I expect the start() promise to be rejected,
+    // and the reason for the rejection should be an error with this message."
+    await expect(start()).rejects.toThrow('Database connection failed');
 
-    // Assert that process.exit was called
+    // You can also assert that process.exit was called if that's part of your logic
     expect(mockProcessExit).toHaveBeenCalledWith(1);
-
-    // Clear the timeout that was set in the error handler
-    jest.clearAllTimers();
   });
 
   it('should register /v1/status endpoint', async () => {
