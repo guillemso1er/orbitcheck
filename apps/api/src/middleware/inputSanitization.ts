@@ -1,4 +1,4 @@
-import type { FastifyReply,FastifyRequest } from 'fastify';
+import type { FastifyReply, FastifyRequest } from 'fastify';
 
 import { InputSanitizer } from '../utils/sanitization.js';
 
@@ -38,6 +38,9 @@ function sanitizeRequestBody(body: any): any {
         return body;
     }
 
+    if (isAuthRequest(body)) {
+        return sanitizeAuthRequest(body);
+    }
     // Handle different validation endpoints that have known schemas
     if (isValidationRequest(body)) {
         return sanitizeValidationRequest(body);
@@ -205,7 +208,7 @@ function sanitizeWebhookRequest(body: any): any {
  */
 function isAuthRequest(body: any): boolean {
     return body && (
-        (body.email && body.password) || // login/register
+        (body.email !== undefined && body.password !== undefined) || // login/register
         body.name // API key name
     );
 }
@@ -220,10 +223,10 @@ function sanitizeAuthRequest(body: any): any {
         sanitized.email = InputSanitizer.sanitizeEmail(body.email);
     }
 
-    if (body.password) {
+    if (body.password !== undefined) {
         // Passwords should NOT be sanitized as they may contain special characters
-        // Just ensure it's a string
-        sanitized.password = typeof body.password === 'string' ? body.password : '';
+        // Just ensure it's a string and trim whitespace
+        sanitized.password = InputSanitizer.sanitizePassword(body.password);
     }
 
     if (body.name) {

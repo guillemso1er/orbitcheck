@@ -187,9 +187,9 @@ export const ROUTES = {
   METRICS: '/metrics',
 
   // Auth routes (dashboard)
-  REGISTER: '/dashboard/auth/register',
-  LOGIN: '/dashboard/auth/login',
-  LOGOUT: '/dashboard/auth/logout',
+  REGISTER: '/auth/register',
+  LOGIN: '/auth/login',
+  LOGOUT: '/auth/logout',
 
   // Management API routes (v1)
   API_KEYS: '/v1/api-keys',

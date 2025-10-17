@@ -139,4 +139,16 @@ export class InputSanitizer {
 
         return obj;
     }
+
+    /**
+     * Sanitizes password input - preserves special characters needed for strong passwords
+     */
+    static sanitizePassword(password: string): string {
+        if (typeof password !== 'string') {
+            return '';
+        }
+        // Do not sanitize passwords - they may contain special characters
+        // Just trim whitespace
+        return password.trim();
+    }
 }

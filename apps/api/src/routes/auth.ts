@@ -142,6 +142,10 @@ export function registerAuthRoutes(app: FastifyInstance, pool: Pool): void {
             const request_id = generateRequestId();
             const body = request.body as any;
             const { email, password } = body;
+            request.log.info({ email: !!email, password: !!password, passwordType: typeof password, passwordValue: password, bodyKeys: Object.keys(body), body: body }, 'Auth register body check');
+            if (!password || typeof password !== 'string') {
+                return sendError(rep, HTTP_STATUS.BAD_REQUEST, ERROR_CODES.INVALID_INPUT, 'Valid password is required', request_id);
+            }
             const hashedPassword = await bcrypt.hash(password, BCRYPT_ROUNDS);
 
             // Create user
