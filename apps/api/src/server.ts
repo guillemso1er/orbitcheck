@@ -1,27 +1,20 @@
 import { once } from 'node:events';
 
-import fastifyStatic from '@fastify/static';
 import { config } from 'dotenv';
 config({ path: '../../.env' });
 
 import cookie from "@fastify/cookie";
-import cors from "@fastify/cors";
 import secureSession from '@fastify/secure-session';
-import fastifySwagger from '@fastify/swagger';
-import fastifySwaggerUi from '@fastify/swagger-ui';
 import metrics from "@immobiliarelabs/fastify-metrics";
-import ScalarApiReference from '@scalar/fastify-api-reference';
 import * as Sentry from '@sentry/node';
 import { Queue, Worker } from 'bullmq';
-import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
+import type { FastifyInstance } from "fastify";
 import Fastify from "fastify";
 import { type Redis as IORedisType, Redis } from 'ioredis';
 import cron from 'node-cron';
 import { Pool } from "pg";
 
-import { createRequire } from 'node:module';
-import { dirname, join } from 'node:path';
-import { API_VERSION, MESSAGES, REQUEST_TIMEOUT_MS, ROUTES, SESSION_MAX_AGE_MS, STARTUP_SMOKE_TEST_TIMEOUT_MS, STATUS } from "./constants.js";
+import { MESSAGES, REQUEST_TIMEOUT_MS, ROUTES, SESSION_MAX_AGE_MS, STARTUP_SMOKE_TEST_TIMEOUT_MS } from "./constants.js";
 import { runLogRetention } from './cron/retention.js';
 import { environment } from "./environment.js";
 import { batchDedupeProcessor } from './jobs/batchDedupe.js';
@@ -31,11 +24,11 @@ import { inputSanitizationHook } from "./middleware/inputSanitization.js";
 import { setupCors } from "./plugins/cors.js";
 import { setupDocumentation } from "./plugins/documentation.js";
 import { setupErrorHandler } from "./plugins/errorHandler.js";
-import { setupSecurityHeaders } from "./plugins/securityHeaders.js";
 import { openapiValidation } from "./plugins/openapi.js";
-import startupGuard from './startup-guard.js';
-import { registerHealthRoutes } from "./routes/health.js";
+import { setupSecurityHeaders } from "./plugins/securityHeaders.js";
 import { registerAuthenticatedDocsRoutes } from "./routes/authenticatedDocs.js";
+import { registerHealthRoutes } from "./routes/health.js";
+import startupGuard from './startup-guard.js';
 import { registerRoutes } from "./web.js";
 
 export async function build(pool: Pool, redis: IORedisType): Promise<FastifyInstance> {
@@ -57,20 +50,20 @@ export async function build(pool: Pool, redis: IORedisType): Promise<FastifyInst
         trustProxy: true, // Important for secure cookies behind proxies
     });
 
-   // Setup API documentation
-   await setupDocumentation(app, pool);
+    // Setup API documentation
+    await setupDocumentation(app);
 
     // NOW add input sanitization hook AFTER documentation is registered
     app.addHook('preHandler', async (request, reply) => {
-        // Skip for documentation and reference routes
-        if (request.url.startsWith('/documentation') || 
-            request.url.startsWith('/reference')) {
+        if (
+            request.url.startsWith('/documentation') ||
+            request.url.startsWith('/reference') ||
+            request.url.startsWith('/api-reference')
+        ) {
             return;
         }
-        
         await inputSanitizationHook(request, reply);
     });
-
 
     if (process.env.NODE_ENV !== 'production') {
         await app.register(startupGuard);
