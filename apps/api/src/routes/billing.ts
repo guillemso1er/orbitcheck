@@ -1,11 +1,11 @@
 import { MGMT_V1_ROUTES } from "@orbicheck/contracts";
-import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
+import type { FastifyInstance } from "fastify";
 import type { Pool } from "pg";
 import Stripe from 'stripe';
 
-import { ERROR_CODES, HTTP_STATUS, STRIPE_API_VERSION, STRIPE_DEFAULT_SECRET_KEY } from "../constants.js";
-import { environment } from "../environment.js";
 import { generateRequestId, rateLimitResponse, sendError, unauthorizedResponse } from "./utils.js";
+import { STRIPE_DEFAULT_SECRET_KEY, STRIPE_API_VERSION } from "../config.js";
+import { HTTP_STATUS, ERROR_CODES } from "../errors.js";
 
 // Stripe configuration - lazy initialization
 let stripe: Stripe | null = null;

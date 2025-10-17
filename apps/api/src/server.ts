@@ -14,7 +14,7 @@ import { type Redis as IORedisType, Redis } from 'ioredis';
 import cron from 'node-cron';
 import { Pool } from "pg";
 
-import { MESSAGES, REQUEST_TIMEOUT_MS, ROUTES, SESSION_MAX_AGE_MS, STARTUP_SMOKE_TEST_TIMEOUT_MS } from "./constants.js";
+import { MESSAGES, REQUEST_TIMEOUT_MS, ROUTES, SESSION_MAX_AGE_MS, STARTUP_SMOKE_TEST_TIMEOUT_MS } from "./config.js";
 import { runLogRetention } from './cron/retention.js';
 import { environment } from "./environment.js";
 import { batchDedupeProcessor } from './jobs/batchDedupe.js';

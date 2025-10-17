@@ -8,8 +8,8 @@ import type { Redis } from "ioredis";
 import fetch from "node-fetch";
 import type { Pool } from "pg";
 
-import { ADDRESS_VALIDATION_TTL_DAYS,REASON_CODES , USER_AGENT_ADDRESS_VALIDATION  } from "../constants.js";
 import { environment } from "../environment.js";
+import { ADDRESS_VALIDATION_TTL_DAYS, REASON_CODES } from "../validation.js";
 
 // Cache TTL in seconds (7 days)
 const CACHE_TTL_SECONDS = ADDRESS_VALIDATION_TTL_DAYS * 24 * 3600;

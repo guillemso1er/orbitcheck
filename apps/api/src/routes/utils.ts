@@ -2,8 +2,9 @@ import crypto from "node:crypto";
 
 import type { FastifyReply, FastifyRequest } from "fastify";
 import type { Pool } from "pg";
+import { PROJECT_NAMES } from "../config.js";
+import { ERROR_CODES, ERROR_MESSAGES } from "../errors.js";
 
-import { ERROR_CODES, ERROR_MESSAGES, HTTP_STATUS, PROJECT_NAMES } from "../constants.js";
 
 export const errorSchema = {
     type: 'object',

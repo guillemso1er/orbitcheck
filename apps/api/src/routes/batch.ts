@@ -4,9 +4,9 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import type { Redis as IORedisType } from 'ioredis';
 import type { Pool } from "pg";
 
-import { ERROR_CODES, ERROR_MESSAGES, HTTP_STATUS } from "../constants.js";
 import { logEvent } from "../hooks.js";
 import { generateRequestId, rateLimitResponse, securityHeader, sendServerError, unauthorizedResponse, validationErrorResponse } from "./utils.js";
+import { HTTP_STATUS, ERROR_CODES, ERROR_MESSAGES } from "../errors.js";
 
 export function registerBatchRoutes(app: FastifyInstance, pool: Pool, redis: IORedisType): void {
     // Create queues

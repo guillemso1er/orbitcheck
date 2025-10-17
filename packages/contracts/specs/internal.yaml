@@ -23,7 +23,7 @@ components:
       type: http
       scheme: bearer
       bearerFormat: JWT
-      description: JWT token obtained from login
+      description: Internal JWT token for system administration
   schemas:
     Error:
       type: object

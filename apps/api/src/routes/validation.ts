@@ -5,7 +5,6 @@ import { type Redis as IORedisType } from 'ioredis';
 import type { Pool } from "pg";
 import twilio from 'twilio';
 
-import { ERROR_CODES, ERROR_MESSAGES, HTTP_STATUS, TWILIO_CHANNEL_SMS } from "../constants.js";
 // Import route constants from contracts package
 import { environment } from "../environment.js";
 import { logEvent } from "../hooks.js";
@@ -14,6 +13,8 @@ import { validateEmail } from "../validators/email.js";
 import { validatePhone } from "../validators/phone.js";
 import { validateTaxId } from "../validators/taxid.js";
 import { generateRequestId, rateLimitResponse, securityHeader, sendServerError, unauthorizedResponse, validationErrorResponse } from "./utils.js";
+import { TWILIO_CHANNEL_SMS } from "../config.js";
+import { HTTP_STATUS, ERROR_CODES, ERROR_MESSAGES } from "../errors.js";
 
 export function registerValidationRoutes(app: FastifyInstance, pool: Pool, redis: IORedisType): void {
     app.post(API_V1_ROUTES.VALIDATE.VALIDATE_EMAIL_ADDRESS, {

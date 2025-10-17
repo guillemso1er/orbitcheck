@@ -1,4 +1,4 @@
-import { FULL_NAME_SEPARATOR, PHONE_NORMALIZE_REGEX } from "./constants.js";
+import { PHONE_NORMALIZE_REGEX, FULL_NAME_SEPARATOR } from "./validation.js";
 
 export function normalizeEmail(email: string | null): string | null {
   return email ? email.trim().toLowerCase() : null;

@@ -13,6 +13,17 @@ servers:
   description: Development server
 security:
 - BearerAuth: []
+- ApiKeyAuth: []
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      description: Bearer token authentication using API key or Personal Access Token
+    ApiKeyAuth:
+      type: http
+      scheme: bearer
+      description: API key authentication for runtime operations
 tags:
 - name: Runtime API
   description: Core operational endpoints for data validation, deduplication, and
@@ -1495,3 +1506,15 @@ paths:
                   request_id:
                     type: string
                     description: Request identifier
+ncomponents:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token obtained from login or Personal Access Token (not recommended for runtime API)
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: Authorization
+      description: API key for authentication, supports both Bearer token format (Bearer <key>) and HMAC format (HMAC keyId=<prefix>&signature=<sig>&ts=<timestamp>&nonce=<nonce>)

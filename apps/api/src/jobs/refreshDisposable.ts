@@ -2,8 +2,8 @@ import type { Job } from "bullmq";
 import { Redis } from 'ioredis';
 import fetch from "node-fetch";
 
-import { BATCH_SIZE_DISPOSABLE_UPDATE } from "../constants.js";
 import { environment } from "../environment.js";
+import { BATCH_SIZE_DISPOSABLE_UPDATE } from "../config.js";
 
 export const disposableProcessor = async (job: Job): Promise<void> => {
     // Determine if we need to create a new Redis client or use an existing one.

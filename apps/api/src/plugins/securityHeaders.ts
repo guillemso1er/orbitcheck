@@ -1,6 +1,7 @@
 import type { FastifyInstance, FastifyRequest } from "fastify";
+
+import { ROUTES } from "../config.js";
 import { environment } from "../environment.js";
-import { ROUTES } from "../constants.js";
 
 /**
  * Adds comprehensive security headers to all responses.

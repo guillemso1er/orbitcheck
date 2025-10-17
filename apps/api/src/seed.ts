@@ -9,7 +9,7 @@ import AdmZip from 'adm-zip';
 import fetch from 'node-fetch';
 import { Pool } from "pg";
 
-import { BATCH_SIZE_GEONAMES, GEO_NAMES_BASE_URL, SEED_API_KEY_PREFIX, SEED_PROJECT_NAME } from "./constants.js";
+import { BATCH_SIZE_GEONAMES, GEO_NAMES_BASE_URL, SEED_API_KEY_PREFIX, SEED_PROJECT_NAME } from "./config.js";
 
 console.warn('DATABASE_URL:', process.env.DATABASE_URL);
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });

@@ -3,7 +3,7 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { type Redis as IORedisType } from 'ioredis';
 import type { Pool } from "pg";
 
-import { ROUTES } from "./constants.js";
+import { ROUTES } from "./config.js";
 import { auth, idempotency, rateLimit } from "./hooks.js";
 import { registerApiKeysRoutes } from './routes/api-keys.js';
 import { registerAuthRoutes, verifyPAT, verifySession } from "./routes/auth.js";

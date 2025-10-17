@@ -2,14 +2,14 @@ import crypto from "node:crypto";
 
 import type { Pool } from "pg";
 
+import { buildFullName, normalizeEmail, normalizePhone } from "./utils.js";
 import {
   DEDUPE_ACTIONS,
   DEDUPE_FUZZY_LIMIT,
   MATCH_TYPES,
   SIMILARITY_EXACT,
   SIMILARITY_FUZZY_THRESHOLD
-} from "./constants.js";
-import { buildFullName, normalizeEmail, normalizePhone } from "./utils.js";
+} from "./validation.js";
 import { normalizeAddress } from "./validators/address.js";
 
 export interface DedupeMatch {

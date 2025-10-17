@@ -119,12 +119,11 @@ import { type Redis as IORedisType, Redis } from 'ioredis';
 import cron from 'node-cron';
 import { Pool } from 'pg';
 
-import { registerRoutes } from '../web.js';
-
 // Import the mocked env so we can manipulate it in tests
 import { environment } from '../environment.js';
 // Re-require the server module to ensure it gets the mocked dependencies
 import { build, start } from '../server.js';
+import { registerRoutes } from '../web.js';
 
 const mockRegisterRoutes = registerRoutes as jest.Mock;
 

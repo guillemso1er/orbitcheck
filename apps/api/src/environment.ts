@@ -4,7 +4,7 @@ import { InfisicalSDK } from '@infisical/sdk';
 import { randomBytes } from 'crypto';
 import fs from 'fs';
 
-import { CRYPTO_KEY_BYTES } from "./constants.js";
+import { CRYPTO_KEY_BYTES } from "./config.js";
 
 const enableInfisical = process.env.INFISICAL_RUNTIME_FETCH_SECRETS === 'true';
 

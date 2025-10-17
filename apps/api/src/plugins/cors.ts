@@ -1,5 +1,6 @@
 import cors from "@fastify/cors";
 import type { FastifyInstance } from "fastify";
+
 import { environment } from "../environment.js";
 
 /**

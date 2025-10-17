@@ -1,13 +1,13 @@
-import crypto from "node:crypto";
 
 import { API_V1_ROUTES } from "@orbicheck/contracts";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import type { Pool } from "pg";
 
-import { DEDUPE_ACTIONS, ERROR_CODES, ERROR_MESSAGES, HTTP_STATUS, MERGE_TYPES } from "../constants.js";
 import { dedupeAddress, dedupeCustomer } from "../dedupe.js";
 import { logEvent } from "../hooks.js";
 import { generateRequestId, rateLimitResponse, securityHeader, sendServerError, unauthorizedResponse, validationErrorResponse } from "./utils.js";
+import { HTTP_STATUS, ERROR_CODES, ERROR_MESSAGES } from "../errors.js";
+import { MERGE_TYPES } from "../validation.js";
 
 export function registerDedupeRoutes(app: FastifyInstance, pool: Pool): void {
     app.post(API_V1_ROUTES.DEDUPE.DEDUPLICATE_CUSTOMER, {

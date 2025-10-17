@@ -1,7 +1,8 @@
 import type { FastifyInstance } from "fastify";
-import type { Pool } from "pg";
 import type { Redis as IORedisType } from 'ioredis';
-import { API_VERSION, ROUTES } from "../constants.js";
+import type { Pool } from "pg";
+
+import { API_VERSION, ROUTES } from "../config.js";
 
 /**
  * Registers health check endpoints for monitoring application status.

@@ -1,6 +1,7 @@
 import ScalarApiReference from '@scalar/fastify-api-reference'
 import type { FastifyInstance } from 'fastify'
 import type { Pool } from 'pg'
+
 import { authenticateRequest } from '../web.js'
 
 export async function registerAuthenticatedDocsRoutes(app: FastifyInstance, pool: Pool): Promise<void> {

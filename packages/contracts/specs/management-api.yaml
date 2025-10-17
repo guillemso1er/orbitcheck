@@ -13,6 +13,51 @@ servers:
     description: Development server
 security:
   - BearerAuth: []
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      description: Bearer token authentication using Personal Access Token for management operations
+  schemas:
+    ApiKey:
+      type: object
+      properties:
+        id:
+          type: string
+          description: API key ID
+        prefix:
+          type: string
+          description: API key prefix (first 6 characters)
+        status:
+          type: string
+          enum: [active, revoked]
+          description: API key status
+        name:
+          type: string
+          nullable: true
+          description: Optional name for the API key
+        created_at:
+          type: string
+          format: date-time
+          description: Creation timestamp
+        last_used_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: Last usage timestamp
+    Error:
+      type: object
+      properties:
+        code:
+          type: string
+          description: Error code
+        message:
+          type: string
+          description: Error message
+        request_id:
+          type: string
+          description: Request identifier
 tags:
   - name: Management API
     description: Endpoints for managing your account, data, API keys, and configurations.
@@ -1008,7 +1053,7 @@ paths:
       type: http
       scheme: bearer
       bearerFormat: JWT
-      description: JWT token obtained from login
+      description: Personal Access Token (PAT) or session cookie for management API authentication
   schemas:
     Error:
       type: object

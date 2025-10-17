@@ -6,7 +6,7 @@ import { isEmailValid } from '@hapi/address';
 import type { Redis } from "ioredis";
 import { getDomain as getRegistrableDomain } from 'tldts';
 
-import { DNS_TIMEOUT_MS, DOMAIN_CACHE_TTL_DAYS, REASON_CODES, TTL_EMAIL } from "../constants.js";
+import { DNS_TIMEOUT_MS, DOMAIN_CACHE_TTL_DAYS, REASON_CODES,TTL_EMAIL } from "../validation.js";
 
 /**
  * Utility to add timeout to a Promise, preventing long hangs (e.g., for DNS lookups).

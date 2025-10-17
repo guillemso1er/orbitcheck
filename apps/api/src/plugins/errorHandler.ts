@@ -1,4 +1,5 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
+
 import { ErrorHandler } from "../utils/errorHandler.js";
 
 /**
