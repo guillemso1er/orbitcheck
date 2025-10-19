@@ -185,6 +185,7 @@ export const ROUTES = {
   DOCUMENTATION: '/documentation',
   REFERENCE: '/reference',
   METRICS: '/metrics',
+  TEST: '/test2',
 
   // Auth routes (dashboard)
   REGISTER: '/auth/register',
