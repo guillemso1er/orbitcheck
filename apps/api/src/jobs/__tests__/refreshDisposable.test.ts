@@ -14,9 +14,8 @@ import { disposableProcessor } from '../refreshDisposable.js';
 jest.mock('ioredis', () => ({
   Redis: jest.fn(),
 }));
-jest.mock('node-fetch');
 
-const mockFetch = fetch as jest.MockedFunction<typeof fetch>;
+let mockFetch: jest.MockedFunction<typeof fetch> = global.fetch as jest.MockedFunction<typeof fetch>;
 
 describe('Disposable Domains Refresh Job', () => {
   let mockRedis: jest.Mocked<Redis>;

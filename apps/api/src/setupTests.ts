@@ -3,6 +3,9 @@
 // Mock process.exit to prevent test suite from exiting
 jest.spyOn(process, 'exit').mockImplementation((() => undefined) as any);
 
+// Mock fetch globally to prevent real HTTP requests during tests
+global.fetch = jest.fn();
+
 jest.mock('./environment', () => ({
     environment: {
         // Provide a default set of mock values for your entire test suite

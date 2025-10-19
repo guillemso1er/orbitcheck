@@ -125,7 +125,6 @@ jest.mock('stripe', () => jest.fn(() => ({
   },
 })));
 
-jest.mock('node-fetch', () => jest.fn());
 
 jest.mock('node:dns/promises', () => ({
   resolveMx: jest.fn(),

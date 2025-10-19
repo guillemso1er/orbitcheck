@@ -1,7 +1,6 @@
 import AdmZip from 'adm-zip';
 import * as dotenv from 'dotenv';
 import * as fs from 'fs';
-import fetch from 'node-fetch';
 import * as path from 'path';
 import { Pool } from 'pg';
 

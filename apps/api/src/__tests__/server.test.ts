@@ -19,7 +19,9 @@ jest.mock('@orbitcheck/contracts', () => ({
   }
 }));
 
-jest.mock('dotenv');
+jest.mock('@dotenvx/dotenvx/config', () => ({
+  
+}));
 
 jest.mock('../environment', () => ({
   environment: {
@@ -40,7 +42,7 @@ jest.mock('@sentry/node', () => ({
 // Mock all dependencies BEFORE importing them
 jest.mock('@fastify/cors', () => jest.fn());
 jest.mock('@fastify/cookie', () => jest.fn());
-jest.mock('@fastify/session', () => jest.fn());
+jest.mock('@fastify/secure-session', () => jest.fn());
 jest.mock('@fastify/swagger', () => jest.fn());
 jest.mock('@fastify/swagger-ui', () => jest.fn());
 
@@ -94,9 +96,14 @@ jest.mock('../jobs/refreshDisposable', () => ({
   disposableProcessor: jest.fn(),
 }));
 
+jest.mock('node-postal', () => ({
+  parse: jest.fn(() => ({})),
+}));
+
 // Mock fs and yaml for OpenAPI spec loading
 jest.mock('node:fs', () => ({
   readFileSync: jest.fn(() => 'mocked yaml content'),
+  existsSync: jest.fn(() => false),
 }));
 
 jest.mock('js-yaml', () => ({

@@ -1,4 +1,4 @@
-import { once } from 'node:events';
+ import { once } from 'node:events';
 
 import '@dotenvx/dotenvx/config';
 

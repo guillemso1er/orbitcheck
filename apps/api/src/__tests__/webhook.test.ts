@@ -81,8 +81,6 @@ import * as hooks from '../hooks.js';
 import { verifyPAT } from '../routes/auth.js';
 import { createApp, mockPool, setupBeforeAll } from './testSetup.js';
 
-// --- Tell Jest to mock the modules ---
-jest.mock('node-fetch');
 
 jest.mock('jsonwebtoken');
 
@@ -99,7 +97,7 @@ jest.mock('../routes/auth', () => {
 });
 
 // Cast the fetch mock for convenience
-const fetchMock = fetch as unknown as jest.Mock;
+let fetchMock: jest.MockedFunction<typeof fetch>;
 
 const MOCK_JWT = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoidGVzdF91c2VyIn0.ignore';
 
@@ -274,14 +272,17 @@ describe('Webhook Test Routes (JWT Auth)', () => {
     beforeEach(() => {
         jest.clearAllMocks();
 
+        fetchMock = global.fetch as jest.MockedFunction<typeof fetch>;
+
         // Default mock for successful fetch requests
         fetchMock.mockResolvedValue({
             status: 200,
             statusText: 'OK',
-            headers: new Map([['content-type', 'application/json']]),
+            headers: new Headers([['content-type', 'application/json']]),
             text: jest.fn().mockResolvedValue('{"status": "ok"}'),
             json: jest.fn().mockResolvedValue({ status: 'ok' }),
-        });
+            ok: true,
+        } as any);
 
         jest.spyOn(hooks, 'logEvent').mockImplementation(jest.fn().mockResolvedValue(undefined));
 
@@ -314,7 +315,12 @@ describe('Webhook Test Routes (JWT Auth)', () => {
 
         expectStatus(res, 200);
         expect(fetchMock).toHaveBeenCalledWith('https://example.com/webhook', expect.any(Object));
-        expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toMatchObject({
+        const call = fetchMock.mock.calls[0];
+        expect(call[1]).toBeDefined();
+        const options = call[1]!;
+        expect(options.body).toBeDefined();
+        const body = options.body as string;
+        expect(JSON.parse(body)).toMatchObject({
             event: 'validation_result',
             type: 'email'
         });
@@ -333,8 +339,12 @@ describe('Webhook Test Routes (JWT Auth)', () => {
             });
 
         expectStatus(res, 200);
-        const call = fetchMock.mock.calls[0][1];
-        expect(JSON.parse(call.body)).toMatchObject({
+        const call = fetchMock.mock.calls[0];
+        expect(call[1]).toBeDefined();
+        const options = call[1]!;
+        expect(options.body).toBeDefined();
+        const body = options.body as string;
+        expect(JSON.parse(body)).toMatchObject({
             event: 'custom_event',
             data: 'test'
         });
@@ -434,10 +444,11 @@ describe('Webhook Event Sending', () => {
         fetchMock.mockResolvedValue({
             status: 200,
             statusText: 'OK',
-            headers: new Map([['content-type', 'application/json']]),
+            headers: new Headers([['content-type', 'application/json']]),
             text: jest.fn().mockResolvedValue('{"status": "ok"}'),
             json: jest.fn().mockResolvedValue({ status: 'ok' }),
-        });
+            ok: true,
+        } as any);
 
         mockPool.query.mockImplementation((queryText: string, values: unknown[]) => {
             const upperQuery = queryText.toUpperCase();
@@ -475,10 +486,13 @@ describe('Webhook Event Sending', () => {
         expect(fetchMock).toHaveBeenCalledTimes(1);
         const call = fetchMock.mock.calls[0];
         expect(call[0]).toBe('https://example.com/webhook');
-        expect(call[1].method).toBe('POST');
-        expect(call[1].headers['X-OrbiCheck-Signature']).toMatch(/^sha256=[a-f0-9]+$/);
+        const options = call[1]!;
+        expect(options.method).toBe('POST');
+        expect(options.headers).toBeDefined();
+        const headers = options.headers as Record<string, string>;
+        expect(headers['X-OrbiCheck-Signature']).toMatch(/^sha256=[a-f0-9]+$/);
 
-        const payload = JSON.parse(call[1].body as string);
+        const payload = JSON.parse(options.body as string);
         expect(payload).toMatchObject({
             project_id: 'test_project',
             event: 'validation_result',

@@ -69,11 +69,9 @@ export async function normalizeAddress(addr: { line1: string; line2?: string; ci
     try {
         const parsed = postal.parser.parse_address(joined);
         const parts: Record<string, string> = {};
-        for (const line of parsed.split("\n")) {
-            const colonIndex = line.indexOf(":");
-            if (colonIndex === -1) continue;
-            const k = line.slice(0, colonIndex).trim();
-            const v = line.slice(colonIndex + 1).trim();
+        for (const item of parsed) {
+            const k = item.component;
+            const v = item.value;
             if (k && v) parts[k] = v;
         }
         return {
