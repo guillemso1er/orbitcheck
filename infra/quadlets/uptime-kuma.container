@@ -4,8 +4,8 @@ Description=Uptime Kuma
 [Container]
 Image=docker.io/louislam/uptime-kuma:1.23.13
 ContainerName=uptime-kuma
-Pod=myapp
-Volume=/srv/myapp/uptime/data:/app/data:Z,U
+Pod=orbitcheck
+Volume=/var/lib/containers/volumes/uptime-kuma-data:/app/data:Z,U
 ContainerAutoUpdate=registry
 NoNewPrivileges=yes
 

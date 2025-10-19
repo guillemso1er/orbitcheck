@@ -6,9 +6,9 @@ Wants=network-online.target
 [Container]
 Image=docker.io/minio/minio:latest
 ContainerName=minio
-Pod=myapp
+Pod=orbitcheck
 EnvironmentFile=/srv/myapp/minio/env/minio.env
-Volume=/srv/myapp/minio/data:/data:Z,U
+Volume=/var/lib/containers/volumes/minio-data:/data:Z,U
 # Console on 9001, S3 on 9000; expose only via Caddy unless you want public S3 ports
 # Access internally within the Pod via service name "minio:9000"
 Command=server /data --console-address :9001

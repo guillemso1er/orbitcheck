@@ -6,8 +6,8 @@ Wants=loki.service
 [Container]
 Image=docker.io/grafana/promtail:2.9.8
 ContainerName=promtail
-Pod=myapp
-Volume=/srv/myapp/promtail/config:/etc/promtail:Z
+Pod=orbitcheck
+Volume=/var/lib/containers/volumes/promtail-config:/etc/promtail:Z
 # For rootless, scrape container logs from $XDG_RUNTIME_DIR/containers or JSON logs
 # Mount the containers storage if needed:
 # Volume=/home/podmanuser/.local/share/containers:/containers:ro

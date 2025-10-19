@@ -6,7 +6,7 @@ Wants=network-online.target
 [Container]
 Image=docker.io/library/node:24
 ContainerName=frontend
-Pod=myapp
+Pod=orbitcheck
 # Better: build a static site at CI time and serve via Caddy directly
 # If you must run node, set your start cmd via Command=...
 ContainerAutoUpdate=registry

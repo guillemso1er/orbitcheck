@@ -6,9 +6,9 @@ Wants=network-online.target
 [Container]
 Image=docker.io/prom/prometheus:v2.53.0
 ContainerName=prometheus
-Pod=myapp
-Volume=/srv/myapp/prometheus/config:/etc/prometheus:Z
-Volume=/srv/myapp/prometheus/data:/prometheus:Z,U
+Pod=orbitcheck
+Volume=/var/lib/containers/volumes/prometheus-config:/etc/prometheus:Z
+Volume=/var/lib/containers/volumes/prometheus-data:/prometheus:Z,U
 ContainerAutoUpdate=registry
 NoNewPrivileges=yes
 

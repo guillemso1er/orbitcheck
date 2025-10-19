@@ -6,12 +6,12 @@ Wants=network-online.target
 [Container]
 Image=docker.io/library/caddy:2.10.2
 ContainerName=caddy
-Pod=myapp
+Pod=orbitcheck
 PublishPort=80:80/tcp
 PublishPort=443:443/tcp
-Volume=/srv/myapp/caddy/Caddyfile:/etc/caddy/Caddyfile:Z
-Volume=/srv/myapp/caddy/data:/data:Z,U
-Volume=/srv/myapp/caddy/config:/config:Z,U
+Volume=/var/lib/containers/volumes/caddy-caddyfile:/etc/caddy/Caddyfile:Z
+Volume=/var/lib/containers/volumes/caddy-data:/data:Z,U
+Volume=/var/lib/containers/volumes/caddy-config:/config:Z,U
 ContainerAutoUpdate=registry
 NoNewPrivileges=yes
 PidsLimit=500

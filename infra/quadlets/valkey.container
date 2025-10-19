@@ -6,8 +6,8 @@ Wants=network-online.target
 [Container]
 Image=docker.io/valkey/valkey:7.2.11
 ContainerName=valkey
-Pod=myapp
-Volume=/srv/myapp/valkey/data:/data:Z,U
+Pod=orbitcheck
+Volume=/var/lib/containers/volumes/valkey-data:/data:Z,U
 ContainerAutoUpdate=registry
 NoNewPrivileges=yes
 ReadOnly=false

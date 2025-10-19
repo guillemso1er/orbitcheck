@@ -6,9 +6,9 @@ Wants=postgres.service valkey.service
 [Container]
 Image=docker.io/glitchtip/glitchtip:latest
 ContainerName=glitchtip
-Pod=myapp
+Pod=orbitcheck
 EnvironmentFile=/srv/myapp/glitchtip/env/glitchtip.env
-Volume=/srv/myapp/glitchtip/data:/data:Z,U
+Volume=/var/lib/containers/volumes/glitchtip-data:/data:Z,U
 ContainerAutoUpdate=registry
 NoNewPrivileges=yes
 

@@ -6,10 +6,10 @@ Wants=postgres.service valkey.service
 [Container]
 Image=ghcr.io/OWNER/api:prod
 ContainerName=api
-Pod=myapp
+Pod=orbitcheck
 EnvironmentFile=/srv/myapp/api/env/api.env
 # Example static files or uploads mount
-Volume=/srv/myapp/api/data:/app/data:Z,U
+Volume=/var/lib/containers/volumes/api-data:/app/data:Z,U
 ContainerAutoUpdate=registry
 NoNewPrivileges=yes
 ReadOnly=true
