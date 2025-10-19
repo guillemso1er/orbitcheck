@@ -8,8 +8,12 @@ on:
 permissions:
   contents: read
   packages: write
-  id-token: write # Required for Cosign keyless signing
+  id-token: write
   attestations: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 env:
   REGISTRY: ghcr.io
@@ -17,7 +21,43 @@ env:
   API_IMAGE_NAME: api
 
 jobs:
-  build-and-push:
+  detect-changes:
+    name: Detect changes
+    runs-on: ubuntu-latest
+    outputs:
+      api: ${{ steps.filter.outputs.api }}
+      dashboard: ${{ steps.filter.outputs.dashboard }}
+      infra: ${{ steps.filter.outputs.infra }}
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+
+      - id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            # API Docker image build inputs
+            api:
+              - 'apps/api/**'
+              - 'apps/api/Dockerfile'
+              - 'pnpm-lock.yaml'
+              - 'packages/**'        # include if API imports from shared packages
+
+            # Dashboard static build inputs
+            dashboard:
+              - 'apps/dashboard/**'
+              - 'pnpm-lock.yaml'
+              - 'packages/**'        # include if dashboard imports from shared packages
+
+            # Infra files that should be synced to the server
+            infra:
+              - 'infra/**'
+              - '.github/workflows/**'
+
+  build-api:
+    name: Build and push API (only if changed)
+    needs: [detect-changes]
+    if: needs.detect-changes.outputs.api == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -33,12 +73,12 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GHCR_PAT }}
 
-      # --- Build and Push API Image ---
+      # Build with per-app cache and narrow context to avoid invalidations
       - name: Build and push API image
         uses: docker/build-push-action@v6
         with:
-          context: .
-          file: apps/api/Dockerfile # Adjust path to your API's Dockerfile
+          context: ./apps/api
+          file: ./apps/api/Dockerfile
           push: true
           tags: |
             ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/${{ env.API_IMAGE_NAME }}:prod
@@ -46,30 +86,8 @@ jobs:
           labels: |
             org.opencontainers.image.source=${{ github.repository }}
             org.opencontainers.image.revision=${{ github.sha }}
-
-      - name: Install pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 10
-
-      # --- Build Dashboard Static Files ---
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 23
-          cache: "pnpm"
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Build contracts package
-        run: pnpm run generate
-
-      - name: Install dependencies and build dashboard
-        run: |
-          cd apps/dashboard
-          pnpm install --frozen-lockfile
-          pnpm run build
+          cache-from: type=gha,scope=api
+          cache-to: type=gha,scope=api,mode=max
 
       - name: Install Cosign
         uses: sigstore/cosign-installer@v3.7.0
@@ -80,52 +98,120 @@ jobs:
         run: |
           cosign sign --yes ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/${{ env.API_IMAGE_NAME }}:prod
 
-  deploy:
-    needs: [build-and-push]
+  build-dashboard:
+    name: Build dashboard (only if changed)
+    needs: [detect-changes]
+    if: needs.detect-changes.outputs.dashboard == 'true'
     runs-on: ubuntu-latest
-    environment:
-      name: production
-      url: https:/api.orbitcheck.io # Change this to your actual domain
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # --- New Step: Upload Quadlet and Config Files ---
-      - name: Sync infrastructure files to server
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 23
+          cache: pnpm
+
+      - name: Install workspace deps
+        run: pnpm install --frozen-lockfile
+
+      # Keep this if your dashboard depends on generated contracts
+      - name: Build contracts package
+        run: pnpm run generate
+
+      - name: Build dashboard
+        working-directory: apps/dashboard
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm run build
+
+      # Make dist available to the deploy job
+      - name: Upload dashboard artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dashboard-dist
+          path: apps/dashboard/dist
+          if-no-files-found: error
+          retention-days: 3
+
+  deploy:
+    name: Deploy
+    needs: [detect-changes, build-api, build-dashboard]
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: https://api.orbitcheck.io  # update if different
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Pull down the built dashboard only when needed
+      - name: Download dashboard artifact
+        if: needs.detect-changes.outputs.dashboard == 'true'
+        uses: actions/download-artifact@v4
+        with:
+          name: dashboard-dist
+          path: apps/dashboard/dist
+
+      # Upload infra files if they changed
+      - name: Upload infra to server
+        if: needs.detect-changes.outputs.infra == 'true'
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.HETZNER_HOST }}
+          username: adminuser
+          key: ${{ secrets.HETZNER_SSH_KEY }}
+          source: "infra/**"
+          target: "/tmp/ci/infra"
+
+      # Upload dashboard dist only if it was rebuilt
+      - name: Upload dashboard dist to server
+        if: needs.detect-changes.outputs.dashboard == 'true'
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.HETZNER_HOST }}
+          username: adminuser
+          key: ${{ secrets.HETZNER_SSH_KEY }}
+          source: "apps/dashboard/dist/**"
+          target: "/tmp/ci/dashboard-dist"
+
+      - name: Place files and reload services (remote)
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.HETZNER_HOST }}
           username: adminuser
           key: ${{ secrets.HETZNER_SSH_KEY }}
           script: |
-            # Create a temporary directory for the upload
-            TMP_DIR=$(mktemp -d)
-            # Securely copy the infra files to the temp directory on the server
-            scp -r ./infra/* $TMP_DIR
+            set -euo pipefail
 
-            # Use sudo to move files into place as podmanuser and set permissions
+            # Prepare as podmanuser for quadlet/systemd files
             sudo -n -u podmanuser bash <<'EOF'
-            # Ensure the target directory exists
+            set -euo pipefail
             mkdir -p ~/.config/containers/systemd
-            # Copy the quadlet files
-            cp /tmp/infra/*.{pod,container,volume} ~/.config/containers/systemd/
+            if [ -d /tmp/ci/infra ]; then
+              cp /tmp/ci/infra/*.{pod,container,volume} ~/.config/containers/systemd/ 2>/dev/null || true
+              # Caddyfile (adjust path if yours differs)
+              mkdir -p /srv/myapp/caddy
+              if [ -f /tmp/ci/infra/compose/Caddyfile ]; then
+                cp /tmp/ci/infra/compose/Caddyfile /srv/myapp/caddy/Caddyfile
+              fi
+            fi
 
-            # Ensure Caddyfile directory exists
-            mkdir -p /srv/myapp/caddy
-            # Copy the Caddyfile
-            cp /tmp/infra/compose/Caddyfile /srv/myapp/caddy/Caddyfile
+            # Dashboard static files into a named volume directory used by Caddy
+            if [ -d /tmp/ci/dashboard-dist ]; then
+              mkdir -p /var/lib/containers/volumes/caddy-dashboard/_data
+              rsync -a --delete /tmp/ci/dashboard-dist/ /var/lib/containers/volumes/caddy-dashboard/_data/
+            fi
 
-            # Copy dashboard static files
-            mkdir -p /var/lib/containers/volumes/caddy-dashboard/_data
-            cp -r /tmp/apps/dashboard/dist/* /var/lib/containers/volumes/caddy-dashboard/_data/
+            # Reload user daemon to pick up quadlet changes
+            systemctl --user daemon-reload
             EOF
-
-            # Clean up the temporary directory
-            rm -rf $TMP_DIR
-
-            # Reload systemd to pick up any changes to the unit files
-            echo "Reloading systemd user daemon..."
-            sudo -n -u podmanuser systemctl --user daemon-reload
 
       - name: Trigger remote auto-update
         uses: appleboy/ssh-action@v1.0.3
@@ -134,19 +220,17 @@ jobs:
           username: adminuser
           key: ${{ secrets.HETZNER_SSH_KEY }}
           script: |
+            set -euo pipefail
             echo "Triggering Podman auto-update..."
             sudo -n -u podmanuser systemctl --user start podman-auto-update.service
-
-            # Wait a moment for the service to start its work
             sleep 5
-
             echo "Checking update status..."
             sudo -n -u podmanuser systemctl --user --no-pager status podman-auto-update.service || true
 
       - name: Wait for Health Check
         run: |
           for i in {1..30}; do
-            if curl -fsS https://your-domain.com/api/health >/dev/null; then # Adjust health check URL
+            if curl -fsS https://your-domain.com/api/health >/dev/null; then
               echo "✅ Application is healthy!"
               exit 0
             fi
