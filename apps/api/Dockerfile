@@ -20,7 +20,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     pkg-config \
     && rm -rf /var/lib/apt/lists/*
 
-# Build libpostal from source (pin to a tag/commit for reproducible builds)
+# Build libpostal from source
 ARG LIBPOSTAL_REF=v1.1
 RUN git clone --depth 1 --branch ${LIBPOSTAL_REF} https://github.com/openvenues/libpostal.git . \
     && ./bootstrap.sh \
@@ -29,65 +29,68 @@ RUN git clone --depth 1 --branch ${LIBPOSTAL_REF} https://github.com/openvenues/
     && make install \
     && ldconfig
 
-# Download trained models and install the CLI for convenience
-RUN /opt/libpostal/src/libpostal_data download all /opt/libpostal/data \
-    && cp /opt/libpostal/src/.libs/address_parser /usr/local/bin/
+# Build address_parser and rename it to match your Node app's expectation
+RUN cd /opt/libpostal/src \
+    && make address_parser
 
+# Download trained models and install the CLI with correct name
+RUN /opt/libpostal/src/libpostal_data download all /opt/libpostal/data \
+    && cp /opt/libpostal/src/.libs/address_parser /usr/local/bin/parse-address \
+    && chmod +x /usr/local/bin/parse-address
 
 ############################
-# 2) Build Node app with pnpm (monorepo-aware)
+# 2) Build Node app with pnpm
 ############################
 FROM node:20-bookworm-slim AS builder
 
+# Install build deps for native modules (if using node-postal)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    python3 \
+    && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /workspace
 
-# Enable pnpm via corepack and pin version to match package.json
+# Enable pnpm via corepack
 RUN corepack enable && corepack prepare pnpm@9.12.1 --activate
 
-# Prime install cache with workspace metadata and package manifests
+# Copy package files
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
-# Add any internal workspace packages your app depends on
 COPY apps/api/package.json apps/api/package.json
 COPY packages/contracts/package.json packages/contracts/package.json
 
-# Install all deps (including dev) according to lockfile
+# Install all deps
 RUN pnpm install --frozen-lockfile
 
-# Copy sources to build
+# Copy sources and build
 COPY apps apps
 COPY packages packages
-# If you have a root tsconfig/base config, copy it as well
-# COPY tsconfig.json ./
-
-# Build all packages that define a build script (ensures contracts is built before api)
 RUN pnpm -r build
 
-# Create a prod-only bundle for the API (includes node_modules) to /app
+# Create prod bundle
 RUN pnpm deploy --filter @orbitcheck/api --prod /app
 
-
 ############################
-# 3) Minimal runtime image
+# 3) Runtime image
 ############################
 FROM node:20-bookworm-slim AS runner
 
 ENV NODE_ENV=production
 ENV NODE_OPTIONS=--enable-source-maps
-# Ensure libpostal knows where the models are
 ENV LIBPOSTAL_DATA_DIR=/opt/libpostal/data
 
-# Tiny init for proper signal handling + curl for healthcheck
+# Runtime deps
 RUN apt-get update && apt-get install -y --no-install-recommends \
     tini \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Bring libpostal runtime bits
+# Copy libpostal runtime bits and the CLI
 COPY --from=libpostal-builder /usr/local/ /usr/local/
 COPY --from=libpostal-builder /opt/libpostal/data /opt/libpostal/data
 RUN ldconfig
 
-# App files from pnpm deploy
+# App files
 WORKDIR /app
 COPY --from=builder /app /app
 
@@ -97,7 +100,6 @@ USER node
 
 EXPOSE 8080
 
-# Optional health check (adjust path if your service differs)
 HEALTHCHECK --interval=30s --timeout=3s --start-period=30s --retries=3 \
     CMD curl -fsS http://localhost:8080/health || exit 1
 

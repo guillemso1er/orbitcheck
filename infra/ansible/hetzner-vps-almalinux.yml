@@ -158,6 +158,9 @@
       - python-dotenv
       - acl
       - checkpolicy
+      - jq         
+      - curl       
+      - ca-certificates 
 
   pre_tasks:
 
@@ -526,6 +529,20 @@
         - { key: "ClientAliveCountMax", value: "2" }
       notify: Restart SSH
       when: ansible_connection == 'ssh'
+      
+    - name: Allow adminuser to trigger podman-user auto-update service
+      ansible.builtin.copy:
+        dest: /etc/sudoers.d/myapp-deploy
+        content: |
+          # Allow adminuser to drive podman-user systemd for auto-update only
+          Cmnd_Alias MYAPP_UCMDS=/usr/bin/systemctl --user start podman-auto-update.service, \
+                                 /usr/bin/systemctl --user status podman-auto-update.service, \
+                                 /usr/bin/systemctl --user daemon-reload
+          adminuser ALL=(podmanuser) NOPASSWD: MYAPP_UCMDS
+        mode: '0440'
+        owner: 'root'
+        group: 'root'
+        validate: /usr/sbin/visudo -cf %s
 
     - name: Flush handlers to apply any pending SSH changes
       ansible.builtin.meta: flush_handlers

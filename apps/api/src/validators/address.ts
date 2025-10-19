@@ -1,6 +1,4 @@
-import { execFile } from "node:child_process";
-import { promisify } from "node:util";
-const exec = promisify(execFile);
+import postal from 'node-postal';
 
 import crypto from "node:crypto";
 
@@ -69,10 +67,13 @@ export async function normalizeAddress(addr: { line1: string; line2?: string; ci
     const joined = components.join(", ");
 
     try {
-        const { stdout } = await exec("/usr/local/bin/parse-address", [joined]);
+        const parsed = postal.parser.parse_address(joined);
         const parts: Record<string, string> = {};
-        for (const line of stdout.split("\n")) {
-            const [k, v] = line.split(":").map(s => s?.trim());
+        for (const line of parsed.split("\n")) {
+            const colonIndex = line.indexOf(":");
+            if (colonIndex === -1) continue;
+            const k = line.slice(0, colonIndex).trim();
+            const v = line.slice(colonIndex + 1).trim();
             if (k && v) parts[k] = v;
         }
         return {
