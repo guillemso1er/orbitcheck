@@ -1,55 +1,26 @@
 # syntax=docker/dockerfile:1.7
 
-############################
-# 1) Build & install libpostal
-############################
-FROM debian:bookworm-slim AS libpostal-builder
-
-ENV DEBIAN_FRONTEND=noninteractive
-WORKDIR /opt/libpostal
-
-# Install build toolchain and deps
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    ca-certificates \
-    curl \
-    git \
-    build-essential \
-    autoconf \
-    automake \
-    libtool \
-    pkg-config \
-    && rm -rf /var/lib/apt/lists/*
-
-# Build libpostal from source
-ARG LIBPOSTAL_REF=v1.1
-RUN git clone --depth 1 --branch ${LIBPOSTAL_REF} https://github.com/openvenues/libpostal.git . \
-    && ./bootstrap.sh \
-    && ./configure --datadir=/opt/libpostal/data \
-    && make -j"$(nproc)" \
-    && make install \
-    && ldconfig
-
-# Build address_parser and rename it to match your Node app's expectation
-RUN cd /opt/libpostal/src \
-    && make address_parser
-
-# Download trained models and install the CLI with correct name
-RUN /opt/libpostal/src/libpostal_data download all /opt/libpostal/data \
-    && cp /opt/libpostal/src/.libs/address_parser /usr/local/bin/parse-address \
-    && chmod +x /usr/local/bin/parse-address
+# Pull in prebuilt libpostal (libs + models)
+# Replace with your image/tag built once in CI
+FROM ghcr.io/guillemso1er/libpostal-runtime:1.1-2025-10-19 AS libpostal
 
 ############################
-# 2) Build Node app with pnpm
+# 1) Build Node app with pnpm
 ############################
 FROM node:20-bookworm-slim AS builder
 
-# Install build deps for native modules (if using node-postal)
+# Build deps for native modules (node-postal)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     python3 \
+    pkg-config \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /workspace
+
+# Bring in libpostal headers/libs so node-postal can compile
+COPY --from=libpostal /usr/local/ /usr/local/
+RUN ldconfig
 
 # Enable pnpm via corepack
 RUN corepack enable && corepack prepare pnpm@9.12.1 --activate
@@ -59,7 +30,7 @@ COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
 COPY apps/api/package.json apps/api/package.json
 COPY packages/contracts/package.json packages/contracts/package.json
 
-# Install all deps
+# Install all deps (node-postal will compile here)
 RUN pnpm install --frozen-lockfile
 
 # Copy sources and build
@@ -71,7 +42,7 @@ RUN pnpm -r build
 RUN pnpm deploy --filter @orbitcheck/api --prod /app
 
 ############################
-# 3) Runtime image
+# 2) Runtime image
 ############################
 FROM node:20-bookworm-slim AS runner
 
@@ -85,9 +56,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy libpostal runtime bits and the CLI
-COPY --from=libpostal-builder /usr/local/ /usr/local/
-COPY --from=libpostal-builder /opt/libpostal/data /opt/libpostal/data
+# Libpostal runtime (libs + models); no CLI needed for node-postal
+COPY --from=libpostal /usr/local/ /usr/local/
+COPY --from=libpostal /opt/libpostal/data /opt/libpostal/data
 RUN ldconfig
 
 # App files

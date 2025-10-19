@@ -26,7 +26,7 @@ async function downloadAndImport() {
         if (!response.ok) {
             throw new Error(`Download failed: ${response.status}`);
         }
-        const buffer = await response.buffer();
+        const buffer = Buffer.from(await response.arrayBuffer());
         fs.writeFileSync(zipPath, buffer);
 
         console.log('Extracting ZIP...');

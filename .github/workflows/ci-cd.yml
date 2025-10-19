@@ -1,4 +1,4 @@
-name: ci-cd
+name: Build, Sync, and Deploy
 
 on:
   push:
@@ -8,80 +8,113 @@ on:
 permissions:
   contents: read
   packages: write
-  id-token: write   # for cosign keyless
+  id-token: write   # Required for Cosign keyless signing
   attestations: write
 
 env:
   REGISTRY: ghcr.io
   IMAGE_OWNER: ${{ github.repository_owner }}
+  API_IMAGE_NAME: api
+  FRONTEND_IMAGE_NAME: frontend
 
 jobs:
-  build-api:
+  build-and-push:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
-      - name: Set up Buildx
+      - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Login to GHCR
+      - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
         with:
-          registry: ghcr.io
-          username: ${{ github.repository_owner }}
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build & push API
-      # Build from your monorepo context and Dockerfile
+      # --- Build and Push API Image ---
+      - name: Build and push API image
         uses: docker/build-push-action@v6
         with:
           context: .
-          file: apps/api/Dockerfile
-          platforms: linux/amd64
+          file: apps/api/Dockerfile # Adjust path to your API's Dockerfile
           push: true
           tags: |
-            ghcr.io/${{ env.IMAGE_OWNER }}/api:prod
-            ghcr.io/${{ env.IMAGE_OWNER }}/api:sha-${{ github.sha }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/${{ env.API_IMAGE_NAME }}:prod
+            ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/${{ env.API_IMAGE_NAME }}:sha-${{ github.sha }}
           labels: |
             org.opencontainers.image.source=${{ github.repository }}
             org.opencontainers.image.revision=${{ github.sha }}
 
-      - name: Generate SBOM (CycloneDX)
-        uses: anchore/sbom-action@v0
+      # --- Build and Push Frontend Image ---
+      - name: Build and push Frontend image
+        uses: docker/build-push-action@v6
         with:
-          image: ghcr.io/${{ env.IMAGE_OWNER }}/api:sha-${{ github.sha }}
-          format: cyclonedx-json
-          artifact-name: sbom-api-${{ github.sha }}.cdx.json
-
-      - name: Security scan
-        uses: aquasecurity/trivy-action@0.24.0
-        with:
-          image-ref: ghcr.io/${{ env.IMAGE_OWNER }}/api:sha-${{ github.sha }}
-          format: table
-          vuln-type: 'os,library'
-          severity: CRITICAL,HIGH
-          ignore-unfixed: true
+          context: .
+          file: apps/frontend/Dockerfile # Adjust path to your Frontend's Dockerfile
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/${{ env.FRONTEND_IMAGE_NAME }}:prod
+            ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/${{ env.FRONTEND_IMAGE_NAME }}:sha-${{ github.sha }}
+          labels: |
+            org.opencontainers.image.source=${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
 
       - name: Install Cosign
         uses: sigstore/cosign-installer@v3.7.0
 
-      - name: Sign images (keyless)
+      - name: Sign images with Cosign (Keyless)
         env:
           COSIGN_EXPERIMENTAL: "true"
         run: |
-          cosign sign --yes ghcr.io/${{ env.IMAGE_OWNER }}/api:sha-${{ github.sha }}
-          # Also sign the prod tag (cosign resolves to digest)
-          cosign sign --yes ghcr.io/${{ env.IMAGE_OWNER }}/api:prod
+          cosign sign --yes ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/${{ env.API_IMAGE_NAME }}:prod
+          cosign sign --yes ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/${{ env.FRONTEND_IMAGE_NAME }}:prod
 
   deploy:
-    needs: [build-api]
+    needs: [build-and-push]
     runs-on: ubuntu-latest
     environment:
       name: production
-      url: https://example.com/healthz
+      url: https://your-domain.com # Change this to your actual domain
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # --- New Step: Upload Quadlet and Config Files ---
+      - name: Sync infrastructure files to server
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.HETZNER_HOST }}
+          username: adminuser
+          key: ${{ secrets.HETZNER_SSH_KEY }}
+          script: |
+            # Create a temporary directory for the upload
+            TMP_DIR=$(mktemp -d)
+            # Securely copy the infra files to the temp directory on the server
+            scp -r ./infra/* $TMP_DIR
+            
+            # Use sudo to move files into place as podmanuser and set permissions
+            sudo -n -u podmanuser bash <<'EOF'
+            # Ensure the target directory exists
+            mkdir -p ~/.config/containers/systemd
+            # Copy the quadlet files
+            cp /path/to/tmp/dir/*.{pod,container,volume} ~/.config/containers/systemd/
+            
+            # Ensure Caddyfile directory exists
+            mkdir -p /srv/myapp/caddy
+            # Copy the Caddyfile
+            cp /path/to/tmp/dir/Caddyfile /srv/myapp/caddy/Caddyfile
+            EOF
+            
+            # Clean up the temporary directory
+            rm -rf $TMP_DIR
+            
+            # Reload systemd to pick up any changes to the unit files
+            echo "Reloading systemd user daemon..."
+            sudo -n -u podmanuser systemctl --user daemon-reload
+
       - name: Trigger remote auto-update
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -89,19 +122,24 @@ jobs:
           username: adminuser
           key: ${{ secrets.HETZNER_SSH_KEY }}
           script: |
-            # start podman auto-update as podmanuser
+            echo "Triggering Podman auto-update..."
             sudo -n -u podmanuser systemctl --user start podman-auto-update.service
-            # Show status
+            
+            # Wait a moment for the service to start its work
+            sleep 5
+            
+            echo "Checking update status..."
             sudo -n -u podmanuser systemctl --user --no-pager status podman-auto-update.service || true
 
-      - name: Wait for health
+      - name: Wait for Health Check
         run: |
           for i in {1..30}; do
-            if curl -fsS https://example.com/healthz >/dev/null; then
-              echo "App healthy"
+            if curl -fsS https://your-domain.com/api/health >/dev/null; then # Adjust health check URL
+              echo "✅ Application is healthy!"
               exit 0
             fi
-            sleep 2
+            echo "Waiting for application to become healthy... ($i/30)"
+            sleep 3
           done
-          echo "Health check failed"
+          echo "❌ Health check failed."
           exit 1
