@@ -1,7 +1,5 @@
 # syntax=docker/dockerfile:1.7
 
-# Pull in prebuilt libpostal (libs + models)
-# Replace with your image/tag built once in CI
 FROM ghcr.io/guillemso1er/libpostal-runtime:1.1-2025-10-19 AS libpostal
 
 ############################
@@ -9,7 +7,6 @@ FROM ghcr.io/guillemso1er/libpostal-runtime:1.1-2025-10-19 AS libpostal
 ############################
 FROM node:20-bookworm-slim AS builder
 
-# Build deps for native modules (node-postal)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     python3 \
@@ -18,29 +15,32 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /workspace
 
-# Bring in libpostal headers/libs so node-postal can compile
 COPY --from=libpostal /usr/local/ /usr/local/
 RUN ldconfig
 
-# Enable pnpm via corepack
 RUN corepack enable && corepack prepare pnpm@9.12.1 --activate
 
-# Copy package files
+# Copy all package.json files first
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
-COPY apps/api/package.json apps/api/package.json
-COPY packages/contracts/package.json packages/contracts/package.json
-COPY apps/dashboard/package.json apps/dashboard/package.json
+COPY apps/api/package.json apps/api/
+COPY packages/contracts/package.json packages/contracts/
+COPY apps/dashboard/package.json apps/dashboard/
 
-# Install all deps (node-postal will compile here)
+# Install all dependencies
 RUN pnpm install --frozen-lockfile
 
-# Copy sources and build
+# Copy source files
 COPY apps apps
 COPY packages packages
-RUN pnpm -r build
+
+# Build contracts first explicitly, then everything else
+RUN pnpm --filter @orbitcheck/contracts build && \
+    pnpm --filter @orbitcheck/dashboard build && \
+    pnpm --filter @orbitcheck/api build
 
 # Create prod bundle
 RUN pnpm deploy --filter @orbitcheck/api --prod /app
+
 
 ############################
 # 2) Runtime image
