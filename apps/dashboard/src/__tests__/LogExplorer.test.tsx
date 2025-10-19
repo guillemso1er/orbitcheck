@@ -225,15 +225,13 @@ describe('LogExplorer Component', () => {
       renderWithProviders(<LogExplorer />);
       await screen.findByText('/validate/email');
 
-      const prev = getCallCount();
-
       // Status is an input[type="number"], not a select
       const statusInput = screen.getByLabelText(/status/i) as HTMLInputElement;
 
       await userEvent.clear(statusInput);
       await userEvent.type(statusInput, '400');
 
-      await waitForNextCall(prev);
+      await waitForNextCall();
 
       const lastArgs = getLastArgs();
       expect(lastArgs).toEqual(
@@ -248,8 +246,6 @@ describe('LogExplorer Component', () => {
     it('should filter logs by date range', async () => {
       renderWithProviders(<LogExplorer />);
       await screen.findByText('/validate/email');
-
-      const prev = getCallCount();
 
       // Prefer labelled inputs if you have them:
       const from = screen.queryByLabelText(/from/i) ?? screen.getAllByRole('textbox')[0];

@@ -174,8 +174,6 @@ let currentAuthState = {
 
 // Mock the AuthContext
 jest.mock('../AuthContext', () => {
-  const React = require('react');
-
   return {
     useAuth: jest.fn(() => currentAuthState),
     AuthProvider: ({ children }: { children: React.ReactNode }) => {

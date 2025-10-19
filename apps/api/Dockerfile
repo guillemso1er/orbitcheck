@@ -29,6 +29,7 @@ RUN corepack enable && corepack prepare pnpm@9.12.1 --activate
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
 COPY apps/api/package.json apps/api/package.json
 COPY packages/contracts/package.json packages/contracts/package.json
+COPY apps/dashboard/package.json apps/dashboard/package.json
 
 # Install all deps (node-postal will compile here)
 RUN pnpm install --frozen-lockfile

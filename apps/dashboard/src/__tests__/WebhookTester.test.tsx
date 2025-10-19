@@ -271,7 +271,7 @@ describe('WebhookTester Component', () => {
 
     await screen.findByText('404 Not Found');
     const bodyElement = screen.getByText((content, element) =>
-      element.tagName.toLowerCase() === 'pre' && content.includes('{"error": "Not found"}')
+      element?.tagName.toLowerCase() === 'pre' && content.includes('{"error": "Not found"}')
     );
     expect(bodyElement).toBeInTheDocument();
   });

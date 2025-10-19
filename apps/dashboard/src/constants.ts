@@ -106,6 +106,7 @@ export const UI_STRINGS = {
   RULE_TEST_RESULT: 'Rule Test Result',
   INVALID_RULE: 'Invalid rule syntax',
   RULE_SAVED: 'Rule saved successfully',
+  UNEXPECTED_ERROR: 'An unexpected error occurred. Please try again.',
 } as const;
 
 export const API_KEY_STATUS = {

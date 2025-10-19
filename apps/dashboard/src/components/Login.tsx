@@ -97,8 +97,10 @@ const Login: React.FC = () => {
         const token = (data as any).pat_token || data.token;
         if (token) {
           localStorage.setItem(LOCAL_STORAGE_KEYS.AUTH_TOKEN, token);
+        } else {
+          throw new Error('No authentication token received');
         }
-        login(user);
+        login(token, user);
         navigate('/api-keys');
       } else {
         throw new Error(ERROR_MESSAGES.INVALID_SERVER_RESPONSE);
