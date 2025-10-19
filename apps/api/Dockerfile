@@ -26,7 +26,7 @@ RUN ldconfig
 RUN corepack enable && corepack prepare pnpm@9.12.1 --activate
 
 # Copy package files
-COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
+COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
 COPY apps/api/package.json apps/api/package.json
 COPY packages/contracts/package.json packages/contracts/package.json
 COPY apps/dashboard/package.json apps/dashboard/package.json
