@@ -15,6 +15,5 @@ export type * from './openapi-types.js';
 
 // Export route constants from src
 export * from '../dist/routes.js';
-export { API_V1_ROUTES, DASHBOARD_ROUTES, MGMT_V1_ROUTES } from '../dist/routes.js';
 
 
