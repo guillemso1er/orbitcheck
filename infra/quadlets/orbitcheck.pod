@@ -1,0 +1,9 @@
+[Unit]
+Description=Orbitcheck Pod (rootless)
+
+[Pod]
+PodName=orbitcheck
+# A dedicated network is auto-made for the pod. In most cases this is fine for rootless.
+
+[Install]
+WantedBy=default.target

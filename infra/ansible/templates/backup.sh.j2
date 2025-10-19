@@ -1,0 +1,62 @@
+#!/bin/bash
+#
+# This script is managed by Ansible and performs automated server backups.
+#
+
+# --- Configuration ---
+export XDG_RUNTIME_DIR=/run/user/{{ podman_user_uid }}
+LOG_FILE="{{ automatic_backup_log_file }}"
+TEMP_BACKUP_DIR="{{ temp_backup_dir }}"
+RCLONE_CONFIG_NAME="{{ rclone_config_name }}"
+RCLONE_REMOTE_PATH="{{ rclone_remote_path }}"
+BACKUP_ITEMS=(
+  {% for item in backup_items %}
+  "{{ item }}"
+  {% endfor %}
+)
+
+# --- Functions ---
+log() {
+  echo "$(date --iso-8601=seconds) - $1" >> "$LOG_FILE"
+}
+
+# --- Main Execution ---
+log "Starting scheduled backup..."
+
+# Ensure temp directory exists
+mkdir -p "$TEMP_BACKUP_DIR"
+if [ $? -ne 0 ]; then
+  log "ERROR: Could not create temporary backup directory: $TEMP_BACKUP_DIR"
+  exit 1
+fi
+
+# Define backup filename and path
+TIMESTAMP=$(date --iso-8601 | sed 's/:/-/g')
+BACKUP_FILENAME="backup-${TIMESTAMP}.tar.gz"
+LOCAL_ARCHIVE_PATH="${TEMP_BACKUP_DIR}/${BACKUP_FILENAME}"
+
+# Create archive
+log "Creating archive: ${LOCAL_ARCHIVE_PATH}"
+/usr/bin/tar -czf "$LOCAL_ARCHIVE_PATH" -C / "${BACKUP_ITEMS[@]}"
+if [ $? -ne 0 ]; then
+  log "ERROR: tar command failed to create the archive."
+  # Clean up partial file if it exists
+  rm -f "$LOCAL_ARCHIVE_PATH"
+  exit 1
+fi
+
+# Upload archive
+log "Uploading archive to ${RCLONE_CONFIG_NAME}:${RCLONE_REMOTE_PATH}/"
+/usr/bin/rclone copy "$LOCAL_ARCHIVE_PATH" "${RCLONE_CONFIG_NAME}:${RCLONE_REMOTE_PATH}/"
+if [ $? -ne 0 ]; then
+  log "ERROR: rclone failed to upload the backup."
+  # Keep local file for manual recovery
+  exit 1
+fi
+
+# Clean up local archive
+log "Upload successful. Cleaning up local file: ${LOCAL_ARCHIVE_PATH}"
+rm -f "$LOCAL_ARCHIVE_PATH"
+
+log "Backup completed successfully."
+exit 0

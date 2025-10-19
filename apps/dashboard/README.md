@@ -1,6 +1,6 @@
-# Orbicheck Dashboard
+# Orbitcheck Dashboard
 
-The Dashboard is a React-based frontend application for managing Orbicheck API projects, API keys, logs, usage, and webhooks. It provides a user interface for authentication, monitoring, and configuration.
+The Dashboard is a React-based frontend application for managing Orbitcheck API projects, API keys, logs, usage, and webhooks. It provides a user interface for authentication, monitoring, and configuration.
 
 ## Tech Stack
 - **Framework**: React 18 with TypeScript
@@ -36,14 +36,14 @@ The Dashboard connects to the API at `http://localhost:8080` by default. Ensure 
 ### Run Development Server
 From the monorepo root:
 ```
-pnpm --filter @orbicheck/dashboard run dev
+pnpm --filter @orbitcheck/dashboard run dev
 ```
 
 Access the Dashboard at http://localhost:5173.
 
 ### Build for Production
 ```
-pnpm --filter @orbicheck/dashboard run build
+pnpm --filter @orbitcheck/dashboard run build
 ```
 
 The build output is in `dist/`. Serve it with a static server (e.g., via Vite preview or nginx).
@@ -53,24 +53,24 @@ The build output is in `dist/`. Serve it with a static server (e.g., via Vite pr
 ### E2E Tests (Playwright)
 Run end-to-end tests to simulate user interactions (login, API keys, log explorer, usage dashboard):
 ```
-pnpm --filter @orbicheck/dashboard exec playwright test
+pnpm --filter @orbitcheck/dashboard exec playwright test
 ```
 
 - Tests are in `e2e/`.
-- Run a specific test: `pnpm --filter @orbicheck/dashboard exec playwright test login.spec.ts`
-- UI mode for visual debugging: `pnpm --filter @orbicheck/dashboard exec playwright test --ui`
+- Run a specific test: `pnpm --filter @orbitcheck/dashboard exec playwright test login.spec.ts`
+- UI mode for visual debugging: `pnpm --filter @orbitcheck/dashboard exec playwright test --ui`
 - Headless mode (default): Uses Chromium; ensure API is running for tests.
 
 ### Unit Tests
 The Dashboard uses Jest for unit testing React components.
 From the monorepo root:
 ```
-pnpm --filter @orbicheck/dashboard run test
+pnpm --filter @orbitcheck/dashboard run test
 ```
 
 Watch mode:
 ```
-pnpm --filter @orbicheck/dashboard run test:watch
+pnpm --filter @orbitcheck/dashboard run test:watch
 ```
 
 Tests are located in `src/__tests__/`.

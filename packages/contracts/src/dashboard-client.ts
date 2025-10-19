@@ -3,8 +3,15 @@
  * A simplified client for the dashboard to use the generated OpenAPI types
  */
 import type {
+  BatchDedupe202,
+  BatchDedupeBody,
+  BatchValidate202,
+  BatchValidateBody,
   CreateApiKey201,
   CreateApiKeyBody,
+  EvaluateOrder200,
+  EvaluateOrderBody,
+  GetJobStatus200,
   GetLogs200,
   GetUsage200,
   ListApiKeys200,
@@ -14,30 +21,23 @@ import type {
   RegisterUserBody,
   RevokeApiKey200,
   TestWebhook200,
-  TestWebhookBody,
-  BatchValidateBody,
-  BatchValidate202,
-  BatchDedupeBody,
-  BatchDedupe202,
-  GetJobStatus200,
-  EvaluateOrderBody,
-  EvaluateOrder200
-} from './api-client/orbiCheckAPI.js';
+  TestWebhookBody
+} from './api-client/orbitCheckAPI.js';
 
 import {
+  batchDedupe,
+  batchValidate,
   createApiKey,
+  evaluateOrder,
+  getJobStatus,
   getLogs,
   getUsage,
   listApiKeys,
   loginUser,
   registerUser,
   revokeApiKey,
-  testWebhook,
-  batchValidate,
-  batchDedupe,
-  getJobStatus,
-  evaluateOrder
-} from './api-client/orbiCheckAPI.js';
+  testWebhook
+} from './api-client/orbitCheckAPI.js';
 
 export interface ApiClientConfig {
   baseURL: string;

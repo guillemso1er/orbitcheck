@@ -1,0 +1,15 @@
+[Unit]
+Description=Infisical Redis
+
+[Container]
+Image=docker.io/library/redis:7.2.5
+ContainerName=infisical-redis
+Pod=myapp
+Volume=/srv/myapp/infisical/redis:/data:Z,U
+ContainerAutoUpdate=registry
+NoNewPrivileges=yes
+
+[Service]
+Restart=always
+[Install]
+WantedBy=default.target

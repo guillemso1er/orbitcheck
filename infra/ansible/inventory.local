@@ -1,0 +1,11 @@
+    [almalinux]
+    almalinux-test ansible_connection=podman ansible_user=root
+
+    [almalinux:vars]
+    admin_password_file_path = "~/.ssh/admin_password.txt"
+    admin_user = "adminuser"
+    podman_user = "podmanuser"
+    admin_password_seed = "admin_password"
+    admin_password = "{{ lookup('ansible.builtin.password', admin_password_file_path , seed=admin_password_seed, encrypt='bcrypt') }}"
+    ansible_become_pass = "{{ admin_password }}"
+    ansible_become_password = "{{ admin_password }}"

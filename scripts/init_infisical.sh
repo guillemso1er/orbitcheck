@@ -9,11 +9,11 @@ ACCESS_TOKEN=""
 # ============================================================================
 readonly SCRIPT_NAME="$(basename "$0")"
 readonly BASE="${INFISICAL_SITE_URL:-http://localhost:8085}"
-readonly ADMIN_EMAIL="${INFISICAL_ADMIN_EMAIL:-admin@orbicheck.local}"
+readonly ADMIN_EMAIL="${INFISICAL_ADMIN_EMAIL:-admin@orbitcheck.local}"
 readonly ADMIN_PASSWORD="${INFISICAL_ADMIN_PASSWORD:-AdminPass123!}"
-readonly ORG_NAME="${INFISICAL_ORG:-orbicheck}"
-readonly PROJECT_NAME="${INFISICAL_PROJECT:-orbicheck}"
-readonly IDENTITY_NAME="${INFISICAL_IDENTITY:-orbicheck-reader}"
+readonly ORG_NAME="${INFISICAL_ORG:-orbitcheck}"
+readonly PROJECT_NAME="${INFISICAL_PROJECT:-orbitcheck}"
+readonly IDENTITY_NAME="${INFISICAL_IDENTITY:-orbitcheck-reader}"
 readonly TOKEN_TTL="${INFISICAL_TOKEN_TTL:-3600}"  # access token TTL (seconds)
 readonly UA_SECRET_TTL="${INFISICAL_UA_SECRET_TTL:-0}" # 0 => non-expiring client secret (if supported)
 readonly MAX_RETRIES=3

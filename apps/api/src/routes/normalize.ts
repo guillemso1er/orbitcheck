@@ -1,4 +1,4 @@
-import { API_V1_ROUTES } from "@orbicheck/contracts";
+import { API_V1_ROUTES } from "@orbitcheck/contracts";
 import type { FastifyInstance } from "fastify";
 import type { Pool } from "pg";
 

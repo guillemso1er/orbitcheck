@@ -28,7 +28,7 @@ export default defineConfig({
   /* Opt out of parallel tests on CI. */
   workers: process.env.CI ? 1 : undefined,
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
-   reporter: [['html', { open: 'never' }]],
+  reporter: [['html', { open: 'never' }]],
 
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
@@ -85,12 +85,12 @@ export default defineConfig({
   /* Run your local dev server before starting the tests */
   webServer: [
     {
-      command: 'pnpm --filter @orbicheck/api dev',
+      command: 'pnpm --filter @orbitcheck/api dev',
       url: 'http://localhost:8080/health',
       reuseExistingServer: true,
     },
     {
-      command: 'pnpm --filter @orbicheck/dashboard dev',
+      command: 'pnpm --filter @orbitcheck/dashboard dev',
       url: 'http://localhost:5173/',
       reuseExistingServer: true,
     }

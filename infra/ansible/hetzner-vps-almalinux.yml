@@ -1,0 +1,1101 @@
+
+# ==============================================================================
+# Play 1: Bootstrap Server as ROOT
+#
+# Connects as the root user to perform initial setup:
+#   1. Creates the primary admin user.
+#   2. Sets up SSH authorized keys for the admin user.
+# This play ensures the server is accessible via the admin user before
+# root login is disabled.
+# ==============================================================================
+- name: Play 1 - Bootstrap Server and Admin User
+  hosts: all
+  remote_user: root
+  gather_facts: no # We don't need extensive facts for this initial step
+
+  vars:
+    # These variables are required for user creation.
+    # Ensure they are defined in your inventory or extra-vars.
+    admin_user: "adminuser" # Example value
+    admin_password_file_path: "~/.ssh/admin_password.txt" # Example value
+    admin_password_seed: "your_seed" # Example value
+
+  pre_tasks:
+    - name: Wait for SSH to come up (on remote hosts only)
+      ansible.builtin.wait_for_connection:
+        timeout: 60
+      when: ansible_connection is not defined or ansible_connection != 'podman'
+
+    - name: Bootstrap - Install Python for Ansible modules (Only local podman)
+      ansible.builtin.raw: "dnf install -y python3 sudo util-linux policycoreutils-python-utils selinux-policy-devel procps-ng cronie"
+      register: python_install_result
+      changed_when: "'Nothing to do' not in python_install_result.stdout"
+      when: ansible_connection == 'podman' # Only run this for the container
+
+    - name: Gather facts for the first time
+      ansible.builtin.setup:
+
+  tasks:
+    - name: Create admin user
+      ansible.builtin.user:
+        name: "{{ admin_user }}"
+        shell: "/bin/bash"
+        create_home: yes
+        groups: wheel
+        append: yes
+        password: "{{ admin_password_hashed }}"
+      vars:
+        # This may be needed depending on the base image's default python
+        # ansible_python_interpreter: "/usr/bin/python3.9"
+      register: admin_user_result
+
+    - name: Configure admin user SSH directory
+      ansible.builtin.file:
+        path: "/home/{{ admin_user }}/.ssh"
+        state: directory
+        owner: "{{ admin_user }}"
+        group: "{{ admin_user }}"
+        mode: "0700"
+
+    - name: Set up admin user SSH authorized keys
+      ansible.builtin.authorized_key:
+        user: "{{ admin_user }}"
+        state: present
+        key: "{{ lookup('file', '~/.ssh/orbitcheck_ed25519.pub') }}"
+
+    - name: Allow 'wheel' group to have passwordless sudo
+      ansible.builtin.lineinfile:
+        path: /etc/sudoers.d/01-admin-wheel #
+        line: '%wheel ALL=(ALL) ALL'          
+        state: present
+        mode: '0440'
+        owner: 'root'
+        group: 'root'
+        create: yes
+        validate: /usr/sbin/visudo -cf %s
+
+    - name: Inform that bootstrap is complete
+      ansible.builtin.debug:
+        msg: "Bootstrap complete. Server is now accessible as '{{ admin_user }}'. Continuing with configuration."
+
+# ==============================================================================
+# Play 2: Configure Server as ADMIN
+#
+# Connects as the admin user and uses 'become' (sudo) to perform all
+# system configuration tasks. This is the main operational play.
+# Run with --tags "configure" to only run this part.
+# ==============================================================================
+- name: Play 2 - Configure Server as Admin User
+  hosts: all
+  remote_user: "{{ admin_user }}" # <-- Connects as the new admin user
+  become: yes                    # <-- Uses sudo for all tasks
+  tags:
+    - configure
+
+  vars_files:
+    - vars/secrets.yml # Load the encrypted variables
+
+  vars:
+    # --- Provider Selection ---
+    rclone_provider: "mega"
+
+    # --- General Variables ---
+    log_file: "/var/log/server-setup.log"
+    container_base_path: "/var/lib/containers"
+    podman_user_uid: "1001"
+    podman_graphroot: "{{ container_base_path }}/storage"
+
+    podman_subuid_start: 165536
+    podman_subuid_count: 65536   
+    # --- Disk Setup Variables ---
+    use_second_data_disk: true
+    data_disk_device: ""
+
+    # --- Rclone & Backup Variables ---
+    temp_backup_dir: "/var/tmp/ansible-backups"
+    rclone_config_name: "CloudStorage"
+    rclone_remote_path: "server-backups/orbitcheck"
+    restore_backup_filename: ""
+
+        # --- Automatic Backup Configuration (NEW) ---
+    automatic_backup_enabled: true
+    automatic_backup_log_file: "/var/log/auto-backup.log"
+    automatic_backup_minute: "0"
+    automatic_backup_hour: "2" # Runs at 2:00 AM
+    automatic_backup_day: "*"
+    automatic_backup_month: "*"
+    automatic_backup_weekday: "*"
+
+    # --- Paths to be included in the backup ---
+    backup_items:
+          - "{{ container_base_path }}/volumes"
+          - "{{ container_base_path }}/compose"
+          - "{{ container_base_path }}/configs"
+          - "/home/{{ podman_user }}/.config"
+          - "/home/{{ podman_user }}/.local/share/containers"
+          - "/etc/fail2ban"
+          - "/etc/firewalld"
+          - "/etc/ssh/sshd_config"
+          - "/etc/sysctl.d/99-rootless-containers.conf"
+          - "/etc/subuid"
+          - "/etc/subgid"
+
+    # --- System Packages ---
+    required_packages:
+      - fail2ban
+      - firewalld
+      - podman
+      - dnf-automatic
+      - policycoreutils-python-utils
+      - aardvark-dns
+      - crun
+      - dbus
+      - systemd-container
+      - podman-compose
+      - unzip
+      - tar
+      - nano
+      - python-dotenv
+      - acl
+      - checkpolicy
+
+  pre_tasks:
+
+    - name: Fail if podman_user is not defined
+      ansible.builtin.fail:
+        msg: "The 'podman_user' variable must be defined. Please set it in vars/secrets.yml."
+      when: podman_user is not defined or podman_user == ""
+
+    # 1. Check if the user exists to ensure idempotency.
+    - name: Check if podman user exists
+      ansible.builtin.getent:
+        database: passwd
+        key: "{{ podman_user }}"
+      register: podman_user_check
+      failed_when: false
+      changed_when: false
+
+    # 2. This block ONLY runs if the user was NOT found.
+    - name: Create podman user and initial configuration
+      when: podman_user not in podman_user_check.get('getent_passwd', {})
+      block:
+        - name: Create the Podman user because they do not exist
+          ansible.builtin.user:
+            name: "{{ podman_user }}"
+            shell: "/bin/bash"
+            uid: "{{ podman_user_uid }}"
+            create_home: yes
+            system: no
+
+        - name: Configure Podman user mappings for the new user
+          ansible.builtin.lineinfile:
+            path: "{{ item.file }}"
+            line: "{{ podman_user }}:{{ podman_subuid_start }}:{{ podman_subuid_count }}"
+            state: present
+          loop:
+            - { file: "/etc/subuid" }
+            - { file: "/etc/subgid" }
+
+        # This is critical: force a fact refresh so subsequent tasks know about the new user.
+        - name: Re-gather facts to ensure user data is fresh
+          ansible.builtin.setup:
+
+    # 3. Now that the user is guaranteed to exist, create the directories.
+    - name: Create necessary base directories
+      ansible.builtin.file:
+        path: "{{ item.path }}"
+        state: directory
+        mode: "{{ item.mode }}"
+        owner: "{{ item.owner }}"
+        group: "{{ item.group }}"
+      loop:
+        - { path: "{{ log_file | dirname }}", owner: "root", group: "root", mode: "0755" }
+        - { path: "{{ temp_backup_dir }}", owner: "{{ podman_user }}", group: "{{ podman_user }}", mode: "0755" }
+
+  tasks:
+    - name: Install EPEL repository
+      ansible.builtin.dnf:
+        name: "epel-release"
+        state: present
+      register: epel_install
+      retries: 3
+      delay: 5
+      until: epel_install is success
+    - name: Install Kitty terminal terminfo for proper display
+      ansible.builtin.get_url:
+        url: https://raw.githubusercontent.com/kovidgoyal/kitty/master/terminfo/x/xterm-kitty
+        dest: /usr/share/terminfo/x/xterm-kitty
+        mode: '0644'
+      become: yes # Ensure we have permissions to write to the directory
+
+    - name: Install required packages
+      ansible.builtin.dnf:
+        name: "{{ required_packages }}"
+        state: present
+        update_cache: yes
+      register: package_install
+      retries: 3
+      delay: 5
+      until: package_install is success
+
+    - name: Enable lingering for Podman user
+      ansible.builtin.command:
+        cmd: "loginctl enable-linger {{ podman_user }}"
+        creates: "/var/lib/systemd/linger/{{ podman_user }}"
+      when: ansible_connection != 'podman'
+
+    - name: Create Ansible temp directory with proper permissions
+      ansible.builtin.file:
+        path: "/home/{{ podman_user }}/.ansible/tmp"
+        state: directory
+        mode: '0755'
+        owner: "{{ podman_user }}"
+        group: "{{ podman_user }}"
+      become: true
+
+    - name: Set XDG_RUNTIME_DIR in user's bashrc
+      ansible.builtin.lineinfile:
+        path: "/home/{{ podman_user }}/.bashrc"
+        line: "export XDG_RUNTIME_DIR=/run/user/$(id -u)"
+        state: present
+      become_user: "{{ podman_user }}"
+
+    - name: Setup second data disk if enabled
+      when: use_second_data_disk | bool and ansible_connection != 'podman'
+      block:
+        # This block only runs if a specific disk is NOT provided.
+        - name: Automatically discover the second data disk
+          when: data_disk_device is not defined or data_disk_device == ""
+          block:
+            - name: Get the device for the root filesystem (e.g., /dev/vda2)
+              ansible.builtin.command: findmnt -n -o SOURCE --target /
+              register: root_partition_info
+              changed_when: false
+              check_mode: no
+
+            - name: Get the parent disk for the root partition (e.g., vda)
+              ansible.builtin.command: "lsblk -no pkname {{ root_partition_info.stdout }}"
+              register: root_disk_info
+              changed_when: false
+              check_mode: no
+            
+            - name: Find all physical disks using lsblk
+              ansible.builtin.command: lsblk -J -o NAME,TYPE
+              register: lsblk_output
+              changed_when: false
+              check_mode: no
+
+            - name: Parse lsblk output to create a list of all disks
+              ansible.builtin.set_fact:
+                all_physical_disks: "{{ lsblk_output.stdout | from_json | json_query('blockdevices[?type==`disk`].name') }}"
+
+            # Now, we create a new list of potential data disks by removing the root disk.
+            - name: Create a list of potential data disks
+              ansible.builtin.set_fact:
+                potential_data_disks: "{{ all_physical_disks | difference([root_disk_info.stdout.strip()]) }}"
+
+            - name: Fail if no candidate data disk could be found
+              ansible.builtin.fail:
+                msg: |
+                  Automatic disk discovery failed.
+                  - The root disk was identified as '{{ root_disk_info.stdout.strip() }}'.
+                  - All physical disks found by lsblk: {{ all_physical_disks }}.
+                  - No other devices of type 'disk' were found.
+                  - Please verify the server has a second disk attached or set 'use_second_data_disk: false'.
+              when: potential_data_disks | length == 0
+
+            - name: Fail if multiple candidate data disks are found (to prevent data loss)
+              ansible.builtin.fail:
+                msg: |
+                  Automatic disk discovery failed because it is ambiguous.
+                  - The root disk is '{{ root_disk_info.stdout.strip() }}'.
+                  - All physical disks found by lsblk: {{ all_physical_disks }}.
+                  - Multiple other candidate disks were found: {{ potential_data_disks }}.
+                  - To prevent accidental formatting of the wrong disk, please specify the target device
+                    manually by setting the 'data_disk_device' variable (e.g., data_disk_device: /dev/sdb).
+              when: potential_data_disks | length > 1
+
+            # If we passed the checks, there is exactly one disk in the list.
+            - name: Set data_disk_device fact from the single discovered disk
+              ansible.builtin.set_fact:
+                data_disk_device: "/dev/{{ potential_data_disks[0] }}"
+
+            - name: Announce which disk was found
+              ansible.builtin.debug:
+                msg: "Successfully discovered '{{ data_disk_device }}' as the second data disk."
+        
+        - name: Create a partition on the data disk
+          community.general.parted:
+            device: "{{ data_disk_device }}"
+            number: 1
+            state: present
+            fs_type: xfs
+            label: gpt
+
+        - name: Create a filesystem on the partition
+          ansible.builtin.filesystem:
+            fstype: xfs
+            dev: "{{ data_disk_device }}1" # Assumes partition 1
+
+        - name: Create mount point for container data
+          ansible.builtin.file:
+            path: "{{ container_base_path }}"
+            state: directory
+            mode: "0755"
+
+        - name: Mount the data disk
+          ansible.builtin.mount:
+            path: "{{ container_base_path }}"
+            src: "{{ data_disk_device }}1" # Assumes partition 1
+            fstype: xfs
+            state: mounted
+
+        - name: Set ownership of the container data mount point
+          ansible.builtin.file:
+            path: "{{ container_base_path }}"
+            state: directory
+            owner: "{{ podman_user }}"
+            group: "{{ podman_user }}"
+            mode: "0755"
+
+    - name: Ensure dbus service is enabled and running
+      ansible.builtin.systemd:
+        name: dbus
+        enabled: yes
+        state: started
+      when: ansible_service_mgr == 'systemd'
+
+    - name: Set SELinux booleans for containers
+      ansible.builtin.seboolean:
+        name: "{{ item }}"
+        state: yes
+        persistent: yes
+      loop:
+        - container_manage_cgroup
+        - container_use_devices
+      when: ansible_selinux.status == 'enabled'
+    
+    - name: Create a temporary directory for SELinux module compilation
+      ansible.builtin.tempfile:
+        state: directory
+        suffix: selinux
+      register: selinux_temp_dir
+      become: yes
+
+    - name: Copy our custom SELinux policy module source
+      ansible.builtin.copy:
+        src: files/selinux/podman_libc_read.te
+        dest: "{{ selinux_temp_dir.path }}/podman_libc_read.te"
+      become: yes
+
+    - name: Compile and install the custom SELinux policy module
+      ansible.builtin.shell:
+        cmd: |
+          checkmodule -M -m -o podman_libc_read.mod podman_libc_read.te
+          semodule_package -o podman_libc_read.pp -m podman_libc_read.mod
+          semodule -i podman_libc_read.pp
+        chdir: "{{ selinux_temp_dir.path }}"
+      args:
+        # This makes the task idempotent. It will not run if the module is already installed.
+        creates: /etc/selinux/targeted/policy/modules/100/podman_libc_read
+      become: yes
+
+    - name: Clean up temporary compilation directory
+      ansible.builtin.file:
+        path: "{{ selinux_temp_dir.path }}"
+        state: absent
+      when: selinux_temp_dir.path is defined
+      become: yes
+
+    - name: Create Podman config directories
+      ansible.builtin.file:
+        path: "/home/{{ podman_user }}/{{ item }}"
+        state: directory
+        owner: "{{ podman_user }}"
+        group: "{{ podman_user }}"
+        mode: "0700"
+      loop:
+        - .config/containers
+        - .config/systemd/user
+        - .local/share/containers
+
+    - name: Configure Podman containers.conf for SELinux compatibility
+      ansible.builtin.copy:
+        content: |
+          [containers]
+          runtime = "crun"
+          
+          [engine]
+          runtime_supports_json = ["crun"]
+          selinux = true
+          
+          [engine.runtimes]
+          crun = [
+            "--annotation=io.kubernetes.cri.untrusted-workload=true",
+            "--annotation=run.oci.keep_original_groups=1",
+          ]
+        dest: "/home/{{ podman_user }}/.config/containers/containers.conf"
+        owner: "{{ podman_user }}"
+        group: "{{ podman_user }}"
+        mode: "0644"
+
+    - name: Create Podman storage configuration
+      ansible.builtin.copy:
+        content: |
+          [storage]
+          driver = "overlay"
+          runroot = "/run/user/{{ podman_user_uid }}/containers"
+          # Point graphroot to the mounted data disk for image and container storage
+          graphroot = "{{ podman_graphroot }}" 
+        dest: "/home/{{ podman_user }}/.config/containers/storage.conf"
+        owner: "{{ podman_user }}"
+        group: "{{ podman_user }}"
+        mode: "0644"
+
+    - name: Create user socket service for Podman
+      ansible.builtin.copy:
+        dest: "/home/{{ podman_user }}/.config/systemd/user/podman.socket"
+        content: |
+          [Unit]
+          Description=Podman User API Socket
+          
+          [Socket]
+          ListenStream=%t/podman/podman.sock
+          SocketMode=0660
+          
+          [Install]
+          WantedBy=sockets.target
+        owner: "{{ podman_user }}"
+        group: "{{ podman_user }}"
+        mode: "0644"
+
+    - name: Create user API service for Podman
+      ansible.builtin.copy:
+        dest: "/home/{{ podman_user }}/.config/systemd/user/podman.service"
+        content: |
+          [Unit]
+          Description=Podman API Service
+          Requires=podman.socket
+          After=podman.socket
+          
+          [Service]
+          ExecStart=/usr/bin/podman system service --timeout=0 unix://%t/podman/podman.sock
+          KillMode=process
+          
+          [Install]
+          WantedBy=default.target
+        owner: "{{ podman_user }}"
+        group: "{{ podman_user }}"
+        mode: "0644"
+
+    - name: Reload systemd manager configuration for the user
+      ansible.builtin.shell:
+        # The '-l' or '--login' flag is critical. It creates a full login shell,
+        # which properly initializes the D-Bus environment needed by systemctl.
+        cmd: "su -l {{ podman_user }} -c 'systemctl --user daemon-reload'"
+      changed_when: false
+      when: ansible_service_mgr == 'systemd'
+      
+    - name: Enable and start user socket in systemd
+      ansible.builtin.shell:
+        cmd: "su -l {{ podman_user }} -c 'systemctl --user enable --now podman.socket'"
+        # This 'creates' check is the key to making this task idempotent. The task will not
+        # run if the symlink created by 'enable' already exists.
+        creates: "/home/{{ podman_user }}/.config/systemd/user/sockets.target.wants/podman.socket"
+      when: ansible_service_mgr == 'systemd'
+
+    - name: Remove Anaconda installer override for root login
+      ansible.builtin.file:
+        path: /etc/ssh/sshd_config.d/01-permitrootlogin.conf
+        state: absent
+      notify: Restart SSH
+
+    - name: Harden SSH configuration
+      ansible.builtin.lineinfile:
+        path: "/etc/ssh/sshd_config"
+        regexp: "^#?{{ item.key }}"
+        line: "{{ item.key }} {{ item.value }}"
+        backup: yes
+        validate: "sshd -t -f %s"
+      loop:
+        - { key: "PasswordAuthentication", value: "no" }
+        - { key: "PermitRootLogin", value: "no" }
+        - { key: "X11Forwarding", value: "no" }
+        - { key: "AllowTcpForwarding", value: "no" }
+        - { key: "ClientAliveInterval", value: "300" }
+        - { key: "ClientAliveCountMax", value: "2" }
+      notify: Restart SSH
+      when: ansible_connection == 'ssh'
+
+    - name: Flush handlers to apply any pending SSH changes
+      ansible.builtin.meta: flush_handlers
+
+    - name: Configure Fail2ban
+      block:
+        - name: Deploy custom Fail2ban filters
+          ansible.builtin.copy:
+            src: "files/fail2ban/filter.d/{{ item }}"
+            dest: "/etc/fail2ban/filter.d/{{ item }}"
+            mode: "0644"
+            owner: root
+            group: root
+          loop:
+            - podman-auth.conf
+            - podman-restart.conf
+            - http-auth.conf
+
+        - name: Deploy Fail2ban jail configuration
+          ansible.builtin.template:
+            src: "templates/jail.local.j2"
+            dest: "/etc/fail2ban/jail.local"
+            mode: "0644"
+            owner: root
+            group: root
+          notify: Restart fail2ban
+
+    - name: Configure Firewall
+      when: ansible_service_mgr == 'systemd'
+      block:
+        - name: Enable and start firewalld service
+          ansible.builtin.service:
+            name: firewalld
+            state: started
+            enabled: yes
+
+        - name: Configure firewalld services
+          ansible.builtin.firewalld:
+            service: "{{ item }}"
+            permanent: yes
+            immediate: yes
+            state: enabled
+          loop:
+            - ssh
+            - http
+            - https
+
+        - name: Configure additional firewall ports
+          ansible.builtin.firewalld:
+            port: "9091/tcp"
+            permanent: yes
+            immediate: yes
+            state: enabled
+
+        - name: Block risky ports
+          ansible.builtin.firewalld:
+            rich_rule: "{{ item }}"
+            permanent: yes
+            immediate: yes
+            state: enabled
+          loop:
+            - 'rule family="ipv4" source address="0.0.0.0/0" port port="3389" protocol="tcp" reject'
+            - 'rule family="ipv4" source address="0.0.0.0/0" port port="5900-5910" protocol="tcp" reject'
+
+    - name: Configure automatic security updates
+      ansible.builtin.lineinfile:
+        path: "/etc/dnf/automatic.conf"
+        regexp: "^{{ item.key }}"
+        line: "{{ item.key }} = {{ item.value }}"
+      loop:
+        - { key: "apply_updates", value: "yes" }
+        - { key: "upgrade_type", value: "security" }
+      notify: Enable dnf-automatic
+
+    - name: Enforce SELinux policy
+      ansible.builtin.selinux:
+        policy: targeted
+        state: enforcing
+      register: selinux_result
+      failed_when: selinux_result is failed and 'already in' not in selinux_result.msg
+
+    - name: Ensure sysctl configuration directory exists
+      ansible.builtin.file:
+        path: /etc/sysctl.d
+        state: directory
+        mode: '0755'
+        owner: 'root'
+        group: 'root'
+      become: yes
+
+    - name: Allow unprivileged ports for rootless containers
+      ansible.builtin.sysctl:
+        name: net.ipv4.ip_unprivileged_port_start
+        value: '80'
+        state: present
+        reload: yes
+        sysctl_file: /etc/sysctl.d/99-rootless-containers.conf
+      become: yes 
+
+    - name: Create and secure the rootless storage location ahead of validation
+      block:
+        - name: Create the main storage directory for the rootless user
+          ansible.builtin.file:
+            path: "{{ podman_graphroot }}" 
+            state: directory
+            owner: "{{ podman_user }}"
+            group: "{{ podman_user }}"
+            mode: "0755"
+
+        - name: Set correct SELinux context for rootless storage
+          community.general.sefcontext:
+            target: "{{ podman_graphroot }}(/.*)?"
+            setype: "container_home_t"
+            state: present
+          when: ansible_selinux.status == 'enabled'
+          
+        - name: Apply new SELinux context to the storage directory
+          ansible.builtin.command: "restorecon -Rv {{ podman_graphroot }}"
+          when: ansible_selinux.status == 'enabled'
+          changed_when: false
+      become: yes
+
+    - name: Manually create XDG_RUNTIME_DIR for container environment
+      ansible.builtin.file:
+        path: "/run/user/{{ podman_user_uid }}"
+        state: directory
+        owner: "{{ podman_user }}"
+        group: "{{ podman_user }}"
+        mode: '0700'
+      become: yes
+      when: ansible_service_mgr != 'systemd'
+
+    - name: Validate rootless Podman setup
+      ansible.builtin.command:
+        cmd: "podman info" # 'info' is a more comprehensive test than 'version'
+      become_user: "{{ podman_user }}"
+      environment:
+        XDG_RUNTIME_DIR: "/run/user/{{ podman_user_uid }}"
+        CONTAINERS_CONF: "/home/{{ podman_user }}/.config/containers/containers.conf"
+        CONTAINERS_STORAGE_CONF: "/home/{{ podman_user }}/.config/containers/storage.conf"
+      register: podman_info_test
+      changed_when: false
+      failed_when: podman_info_test.rc != 0
+      when: ansible_connection != 'podman'
+    
+    
+    - name: Configure Container Directories and SELinux Contexts
+      block:
+        - name: Setup container directories with proper permissions
+          ansible.builtin.file:
+            path: "{{ container_base_path }}/{{ item }}"
+            owner: "{{ podman_user }}"
+            mode: "0755"
+            state: directory
+            group: "{{ podman_user }}"
+            recurse: yes
+          loop:
+            - "images"
+            - "volumes"
+            - "compose"
+            - "configs"
+            - "logs"
+          become: yes
+
+        - name: Set proper SELinux context on compose and volumes directories
+          community.general.sefcontext:
+            target: "{{ container_base_path }}/{{ item }}(/.*)?"
+            setype: container_var_lib_t
+            state: present
+          loop:
+            - compose
+            - volumes
+            - logs
+            - configs
+          when: ansible_selinux.status == 'enabled'
+          
+        - name: Apply new SELinux context to folders
+          ansible.builtin.command: "restorecon -Rv {{ item }}"
+          loop:
+            - "{{ container_base_path }}/compose"
+            - "{{ container_base_path }}/volumes"
+            - "{{ container_base_path }}/logs"
+            - "{{ container_base_path }}/configs"
+          when: ansible_selinux.status == 'enabled'
+          changed_when: false
+      
+        - name: Set inheritable execute permissions for the podman_user
+          ansible.builtin.command: "setfacl -R -m d:u:{{ podman_user }}:rwx,u:{{ podman_user }}:rwx {{ container_base_path }}/{{ item }}/"
+          loop:
+            - compose
+            - volumes
+            - logs
+            - configs
+          become: yes
+          changed_when: true 
+
+    - name: Enable and Start Core Services
+      ansible.builtin.systemd:
+        name: "{{ item }}"
+        enabled: yes
+        state: started
+      loop:
+        - firewalld
+        - fail2ban
+        - sshd
+      when: ansible_service_mgr == 'systemd'
+
+    # ==============================================================================
+    #                      RCLONE, BACKUP & RESTORE TASKS
+    # ==============================================================================
+    - name: Install and Configure Rclone for Backup and Restore
+      tags: ["backup", "restore"]
+      block:
+        - name: Check if rclone is already installed
+          ansible.builtin.stat:
+            path: /usr/bin/rclone
+          register: rclone_stat
+
+        - name: Install rclone if not present
+          when: not rclone_stat.stat.exists
+          block:
+            - name: Download rclone install script
+              ansible.builtin.get_url:
+                url: https://rclone.org/install.sh
+                dest: /tmp/install-rclone.sh
+                mode: '0755'
+              register: rclone_script
+              until: rclone_script is success
+              retries: 3
+              delay: 5
+
+            - name: Execute rclone install script
+              ansible.builtin.command:
+                cmd: /tmp/install-rclone.sh
+              changed_when: true
+
+        - name: Ensure rclone config directory exists for podman_user
+          ansible.builtin.file:
+            path: "/home/{{ podman_user }}/.config/rclone"
+            state: directory
+            owner: "{{ podman_user }}"
+            group: "{{ podman_user }}"
+            mode: "0700"
+
+        - name: Deploy rclone configuration from secure template
+          ansible.builtin.template:
+            src: templates/rclone.conf.j2
+            dest: "/home/{{ podman_user }}/.config/rclone/rclone.conf"
+            owner: "{{ podman_user }}"
+            group: "{{ podman_user }}"
+            mode: "0600"
+          no_log: true # IMPORTANT: Prevents secrets from being logged.
+
+    - name: Create system backup and upload to cloud storage
+      tags: ["backup"]
+      when: (perform_backup | default(false) | bool) or ('backup' in ansible_run_tags)
+      block:
+        - name: Gather facts to get timestamp for backup
+          ansible.builtin.setup:
+
+        - name: Define backup filename and local path
+          ansible.builtin.set_fact:
+            backup_filename: "backup-{{ ansible_date_time.iso8601 | replace(':', '-') }}.tar.gz"
+            local_archive_path: "{{ temp_backup_dir }}/backup-{{ ansible_date_time.iso8601 | replace(':', '-') }}.tar.gz"
+
+        - name: Archive critical data paths to a local temporary file
+          ansible.builtin.archive:
+            path: "{{ backup_items }}"
+            dest: "{{ local_archive_path }}"
+            format: gz
+            owner: root
+            group: root
+            mode: "0644"
+            
+        - name: Upload backup to cloud storage using rclone
+          ansible.builtin.command:
+            cmd: "rclone copy {{ local_archive_path }} {{ rclone_config_name }}:{{ rclone_remote_path }}/"
+          become_user: "{{ podman_user }}"
+          environment:
+            XDG_RUNTIME_DIR: "/run/user/{{ podman_user_uid }}"
+
+        - name: Clean up local backup archive after upload
+          ansible.builtin.file:
+            path: "{{ local_archive_path }}"
+            state: absent
+            
+        - name: Display backup completion message
+          ansible.builtin.debug:
+            msg: "Server backup '{{ backup_filename }}' created and uploaded to {{ rclone_config_name }}:{{ rclone_remote_path }}"
+
+    - name: Configure automatic scheduled backups
+      tags: ["backup", "autobackup"]
+      when: automatic_backup_enabled | bool
+      block:
+        - name: Ensure log file for automatic backups exists
+          ansible.builtin.file:
+            path: "{{ automatic_backup_log_file }}"
+            state: touch
+            owner: "{{ podman_user }}"
+            group: "{{ podman_user }}"
+            mode: "0644"
+
+        - name: Create backup script from template
+          ansible.builtin.template:
+            src: templates/backup.sh.j2
+            dest: /usr/local/bin/automatic-backup.sh
+            owner: root
+            group: root
+            mode: "0755"
+
+        - name: Set up cron job for the podman user
+          ansible.builtin.cron:
+            name: "Automatic Server Backup"
+            user: "{{ podman_user }}"
+            minute: "{{ automatic_backup_minute }}"
+            hour: "{{ automatic_backup_hour }}"
+            day: "{{ automatic_backup_day }}"
+            month: "{{ automatic_backup_month }}"
+            weekday: "{{ automatic_backup_weekday }}"
+            job: "/usr/local/bin/automatic-backup.sh"
+            cron_file: "ansible_automatic_backup"
+          when: ansible_service_mgr == 'systemd'
+
+        - name: Display automatic backup status
+          ansible.builtin.debug:
+            msg: "Automatic backup configured to run daily at {{ automatic_backup_hour }}:{{ automatic_backup_minute }}."
+            
+    - name: Restore system from cloud backup
+      tags: ["restore"]
+      when: restore_backup_filename is defined and restore_backup_filename != ""
+      block:
+        - name: (Restore) Ensure base directories exist before proceeding
+          ansible.builtin.file:
+            path: "{{ item }}"
+            state: directory
+            owner: "{{ podman_user }}"
+            group: "{{ podman_user }}"
+            mode: "0755"
+          loop:
+            - "{{ container_base_path }}"
+            - "{{ temp_backup_dir }}"
+
+        - name: (Restore) Ensure systemd user session is active for podman_user
+          ansible.builtin.shell:
+            # Using 'su -l' creates a full login shell, which properly initializes the D-Bus environment
+            # required for systemctl --user to function correctly.
+            cmd: "su -l {{ podman_user }} -c 'systemctl --user start podman.socket'"
+          changed_when: false # This command's output isn't reliable for change 
+
+
+        - name: Gather facts to get user info for restore
+          ansible.builtin.setup:
+
+        - name: Define local path for the downloaded backup
+          ansible.builtin.set_fact:
+            local_restore_archive: "{{ temp_backup_dir }}/{{ restore_backup_filename }}"
+
+        - name: Download backup from cloud storage using rclone
+          ansible.builtin.command:
+            cmd: "rclone copyto {{ rclone_config_name }}:{{ rclone_remote_path }}/{{ restore_backup_filename }} {{ local_restore_archive }}"
+          become_user: "{{ podman_user }}"
+          environment:
+            XDG_RUNTIME_DIR: "/run/user/{{ podman_user_uid }}"
+            
+        - name: Stop services before restoring data
+          block:
+            - name: Stop system-level services (fail2ban)
+              ansible.builtin.systemd:
+                name: fail2ban
+                state: stopped
+              become: yes # Run as root
+
+            - name: Stop user-level services (podman.socket)
+              ansible.builtin.shell:
+                # Using 'su -l' creates a login shell, which properly initializes the D-Bus environment.
+                cmd: "su -l {{ podman_user }} -c 'systemctl --user stop podman.socket'"
+              become: yes
+              ignore_errors: true
+              changed_when: false
+
+        - name: Clean the Podman storage directory for a clean restore
+          ansible.builtin.file:
+            path: "{{ podman_graphroot }}/" # Trailing slash ensures we clean contents
+            state: absent
+          become: yes
+
+        - name: Re-create the main storage directory
+          ansible.builtin.file:
+            path: "{{ podman_graphroot }}"
+            state: directory
+            owner: "root" # Temporarily own by root, will be changed later
+            group: "root"
+            mode: "0755"
+          become: yes
+
+
+        - name: Restore data from downloaded archive
+          ansible.builtin.unarchive:
+            src: "{{ local_restore_archive }}"
+            dest: "/"
+            remote_src: yes
+            owner: root
+            group: root
+          notify:
+            - Restart SSH
+            - Restart fail2ban
+
+
+        - name: Re-apply correct ownership to all restored user-owned paths
+          ansible.builtin.file:
+            path: "{{ item }}"
+            owner: "{{ podman_user }}"
+            group: "{{ podman_user }}"
+            state: directory # Assumes all are directories, adjust if files are at the root
+            recurse: yes
+          loop:
+            - "{{ container_base_path }}/volumes"
+            - "{{ container_base_path }}/compose"
+            - "{{ container_base_path }}/configs"
+            - "{{ container_base_path }}/logs"
+            - "{{ podman_graphroot }}"
+            - "/home/{{ podman_user }}/.config"
+            - "/home/{{ podman_user }}/.local"
+          become: yes
+        
+        - name: Re-apply correct SELinux contexts to ALL restored paths
+          ansible.builtin.command: "restorecon -Rv {{ item }}"
+          ### This is the most critical fix. It ensures every file restored from the
+          ### backup gets its proper SELinux label before any service tries to use it.
+          loop: "{{ backup_items }}"
+          when: ansible_selinux.status == 'enabled'
+          changed_when: false # restorecon doesn't produce parsable changed status
+          become: yes
+
+        - name: Re-apply correct SELinux contexts after restore
+          when: ansible_selinux.status == 'enabled'
+          block:
+            - name: Ensure SELinux context for compose and volumes is defined
+              community.general.sefcontext:
+                target: "{{ container_base_path }}/{{ item }}(/.*)?"
+                setype: container_var_lib_t
+                state: present
+              loop:
+                - compose
+                - volumes
+
+            - name: Ensure SELinux context for rootless storage is defined
+              community.general.sefcontext:
+                target: "{{ podman_graphroot }}(/.*)?"
+                setype: "container_home_t"
+                state: present
+
+            - name: Apply new SELinux context to restored files
+              ansible.builtin.command: "restorecon -Rv {{ item }}"
+              loop:
+                - "{{ container_base_path }}/compose"
+                - "{{ container_base_path }}/volumes"
+                - "{{ podman_graphroot }}"
+              changed_when: false
+
+
+        - name: Clean up downloaded backup archive
+          ansible.builtin.file:
+            path: "{{ local_restore_archive }}"
+            state: absent
+
+        - name: Find all Podman Compose files in the compose directory
+          ansible.builtin.find:
+            paths: "{{ container_base_path }}/compose/"
+            patterns:
+              - '*.yml'
+              - '*.yaml'
+            file_type: file
+            recurse: yes # Set to 'no' if you don't want to search subdirectories
+          register: compose_files
+          become_user: "{{ podman_user }}"
+
+        - name: Start services from found Podman Compose files
+          ansible.builtin.command:
+            # Use 'up -d' to start in detached mode.
+            # chdir ensures relative paths in compose files work correctly.
+            cmd: "podman-compose -f {{ item.path }} up -d"
+            chdir: "{{ item.path | dirname }}"
+          loop: "{{ compose_files.files }}"
+          loop_control:
+            label: "{{ item.path }}"
+          become_user: "{{ podman_user }}"
+          environment:
+            XDG_RUNTIME_DIR: "/run/user/{{ podman_user_uid }}"
+          when: compose_files.files | length > 0
+          register: compose_up_result
+          ignore_errors: true 
+
+        - name: Check for critical Podman setup failures
+          ansible.builtin.fail:
+            msg: |
+              A critical Podman setup error occurred while processing '{{ item.item.path }}'.
+              This is likely a configuration or permissions issue, not an error in the compose file itself.
+              Return Code: {{ item.rc }}
+              Error:
+              {{ item.stderr }}
+          # We loop over the 'results' list that was registered in the previous task.
+          loop: "{{ compose_up_result.results }}"
+          loop_control:
+            # This provides clearer output, showing which file's result is being checked.
+            label: "Checking result for {{ item.item.path }}"
+          # This is the conditional logic to decide what is a critical failure.
+          when:
+            # Condition 1: The command must have failed (non-zero return code).
+            - item.rc != 0
+            # Condition 2: The error message must contain one of our keywords.
+            # I've added 'permission denied' based on your new error log.
+            - (
+                'ModuleNotFoundError' in item.stderr or
+                'permission denied' in item.stderr or
+                'XDG_RUNTIME_DIR' in item.stderr or
+                'user not found' in item.stderr or
+                'not writable' in item.stderr
+              )
+            
+        - name: Restore correct SELinux contexts on restored files
+          ansible.builtin.command: "restorecon -Rv {{ item }}"
+          loop: "{{ backup_items }}"
+          when: ansible_selinux.status == 'enabled'
+          changed_when: false
+
+        - name: Force restart of SSH service after restoring config
+          ansible.builtin.systemd:
+            name: sshd
+            state: restarted
+
+        - name: Display completion message
+          ansible.builtin.debug:
+            msg: "Restore completed from {{ restore_backup_filename }}. Handlers will now restart services."
+
+  handlers:
+    - name: Restart SSH
+      ansible.builtin.systemd:
+        name: sshd
+        state: restarted
+
+    - name: Restart fail2ban
+      ansible.builtin.systemd:
+        name: fail2ban
+        state: restarted
+
+    - name: Enable dnf-automatic
+      ansible.builtin.systemd:
+        name: dnf-automatic.timer
+        enabled: yes
+        state: started
+
+  post_tasks:
+    - name: Reboot server if required by SELinux change
+      ansible.builtin.reboot:
+        msg: "Rebooting to apply SELinux state change"
+        connect_timeout: 5
+        reboot_timeout: 300
+        pre_reboot_delay: 0
+        post_reboot_delay: 30
+        test_command: uptime
+      when:
+        - selinux_result.reboot_required | default(false)
+        - ansible_service_mgr == 'systemd'  
+      
+    - name: Log completion
+      ansible.builtin.lineinfile:
+        path: "{{ log_file }}"
+        line: "{{ ansible_date_time.iso8601 }} [INFO] Playbook completed successfully on host {{ inventory_hostname }}"
+        create: yes
+        mode: "0644"
+        owner: root
+        group: root

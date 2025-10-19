@@ -1,7 +1,6 @@
 import { once } from 'node:events';
 
-import { config } from 'dotenv';
-config({ path: '../../.env' });
+import '@dotenvx/dotenvx/config';
 
 import cookie from "@fastify/cookie";
 import secureSession from '@fastify/secure-session';
@@ -86,7 +85,7 @@ export async function build(pool: Pool, redis: IORedisType): Promise<FastifyInst
     // This provides encrypted, stateless sessions
     await app.register(secureSession, {
         sessionName: 'session',
-        cookieName: 'orbicheck_session', // More specific cookie name
+        cookieName: 'orbitcheck_session', // More specific cookie name
         key: Buffer.from(environment.SESSION_SECRET, 'hex'), // Should be 32 bytes hex string
         cookie: {
             path: '/',
@@ -257,16 +256,16 @@ export async function start(): Promise<void> {
 
         // --- Step 3: Start Listening ---
         await app.listen({ port: environment.PORT, host: "0.0.0.0" });
-        app.log.info(`Orbicheck API server listening on http://0.0.0.0:${environment.PORT}`);
+        app.log.info(`Orbitcheck API server listening on http://0.0.0.0:${environment.PORT}`);
 
         // Run initial refresh job in the background now that everything is running
         void disposableQueue.add('refresh', {});
 
     } catch (error) {
         if (app?.log) {
-            app.log.error({ err: error }, 'Failed to start Orbicheck API');
+            app.log.error({ err: error }, 'Failed to start Orbitcheck API');
         } else {
-            console.error('Failed to start Orbicheck API:', error);
+            console.error('Failed to start Orbitcheck API:', error);
         }
 
         if (environment.SENTRY_DSN) {

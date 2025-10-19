@@ -1,4 +1,4 @@
-import { createApiClient } from '@orbicheck/contracts';
+import { createApiClient } from '@orbitcheck/contracts';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { API_BASE, UI_STRINGS } from '../constants';
 import { FiltersSection, type FiltersState } from './FiltersSection';
@@ -175,7 +175,7 @@ const LogExplorer: React.FC = () => {
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `orbicheck-logs-${new Date().toISOString().split('T')[0]}.csv`;
+    a.download = `orbitcheck-logs-${new Date().toISOString().split('T')[0]}.csv`;
     a.click();
     window.URL.revokeObjectURL(url);
   };

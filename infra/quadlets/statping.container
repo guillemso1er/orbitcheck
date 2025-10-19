@@ -1,0 +1,16 @@
+[Unit]
+Description=Statping-NG
+
+[Container]
+Image=docker.io/statping-ng/statping-ng:v0.90.80
+ContainerName=statping
+Pod=myapp
+Volume=/srv/myapp/statping/data:/app:/app:Z,U
+EnvironmentFile=/srv/myapp/statping/env/statping.env
+ContainerAutoUpdate=registry
+NoNewPrivileges=yes
+
+[Service]
+Restart=always
+[Install]
+WantedBy=default.target

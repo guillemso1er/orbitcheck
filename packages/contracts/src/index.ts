@@ -4,7 +4,7 @@
 export { createApiClient } from './dashboard-client.js';
 
 // Export the generated API client
-export * from './api-client/orbiCheckAPI.js';
+export * from './api-client/orbitCheckAPI.js';
 
 // Export the hooks
 export { afterResponse } from './hooks/afterResponse.js';

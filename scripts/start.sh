@@ -378,7 +378,7 @@ main() {
         log_success "All containers are running successfully"
     fi
 
-    log_success "Orbicheck startup completed successfully"
+    log_success "Orbitcheck startup completed successfully"
 }
 
 # Run main function

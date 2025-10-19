@@ -1,6 +1,6 @@
-# Contributing to Orbicheck
+# Contributing to Orbitcheck
 
-Thank you for your interest in contributing to Orbicheck! We welcome contributions that improve the codebase, documentation, or features. This guide outlines how to get started, submit changes, and best practices.
+Thank you for your interest in contributing to Orbitcheck! We welcome contributions that improve the codebase, documentation, or features. This guide outlines how to get started, submit changes, and best practices.
 
 ## Code of Conduct
 
@@ -31,7 +31,7 @@ Follow the [Quick Start](README.md#quick-start) in the root README.md to set up 
 
 If using an AI tool (e.g., in VS Code with Code mode):
 - **Exploration:** Start with root README.md and apps/api/README.md for setup. Use `list_files` on `.` for structure, `list_code_definition_names` on `apps/api/src/` for functions/routes (e.g., validateEmail in validators/email.ts).
-- **File Handling:** Always `read_file` before edits (e.g., multiple: server.ts, web.ts, routes/rules.ts). Paths relative to /home/bastiat/Repositories/orbicheck.
+- **File Handling:** Always `read_file` before edits (e.g., multiple: server.ts, web.ts, routes/rules.ts). Paths relative to /home/bastiat/Repositories/orbitcheck.
 
 - **Planning:** Use Architect mode to design changes before coding.
 - **Code Changes:** Read files with `read_file` first. Use `apply_diff` for targeted edits (e.g., updating a route in `apps/api/src/routes/rules.ts`). Add JSDoc comments like:

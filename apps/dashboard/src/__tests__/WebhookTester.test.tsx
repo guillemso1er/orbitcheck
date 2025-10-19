@@ -35,7 +35,7 @@ const mockApiClient = {
   testWebhook: jest.fn(),
   loginUser: jest.fn().mockResolvedValue({ token: 'test-token', user: { id: 'user-id', email: 'test@example.com' } }),
 };
-jest.mock('@orbicheck/contracts', () => ({
+jest.mock('@orbitcheck/contracts', () => ({
   createApiClient: jest.fn(() => mockApiClient),
 }));
 const mockNavigate = jest.fn();

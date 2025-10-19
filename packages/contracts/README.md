@@ -65,7 +65,7 @@ await openapiValidation(app);
 ### In the Dashboard
 
 ```typescript
-import { createApiClient } from '@orbicheck/contracts';
+import { createApiClient } from '@orbitcheck/contracts';
 
 const apiClient = createApiClient({
   baseURL: '/api', // or full URL
@@ -82,7 +82,7 @@ const apiKeys = await apiClient.listApiKeys();
 The generated types provide full TypeScript support:
 
 ```typescript
-import type { GetUsage200, ApiKey } from '@orbicheck/contracts';
+import type { GetUsage200, ApiKey } from '@orbitcheck/contracts';
 
 function processUsage(data: GetUsage200) {
   // TypeScript will provide full autocomplete and type checking

@@ -1,17 +1,16 @@
 import { check as k6check, sleep } from 'k6';
-import http from 'k6/http';
-import { testRegister, testLogin, testListApiKeys, testCreateApiKey, testListApiKeysAfterCreate, testRevokeApiKey, testListApiKeysAfterRevoke, testLogout, testHmacAuth } from './auth.js';
-import { testValidateEmail, testBatchValidate, testGetValidateJobStatus } from './email.js';
-import { testValidatePhoneSimple, testVerifyPhone } from './phone.js';
-import { testValidateAddress, testNormalizeAddress } from './address.js';
-import { testValidateTaxid, testValidateName } from './taxid.js';
+import { testNormalizeAddress, testValidateAddress } from './address.js';
+import { testCreateApiKey, testHmacAuth, testListApiKeys, testListApiKeysAfterCreate, testListApiKeysAfterRevoke, testLogin, testLogout, testRegister, testRevokeApiKey } from './auth.js';
+import { testBatchDedupe, testDedupeAddressSimple, testDedupeCustomer, testDedupeMergeCustomer, testGetDedupeJobStatus } from './dedupe.js';
+import { testBatchValidate, testGetValidateJobStatus, testValidateEmail } from './email.js';
+import { testDeleteLog, testEraseData, testGetLogs, testGetLogsForDelete } from './logs.js';
 import { testEvaluateOrder } from './order.js';
-import { testGetRulesFirst, testGetRulesCatalog, testRegisterRules, testGetRulesErrorCodes, testTestRules } from './rules.js';
-import { testGetLogs, testGetLogsForDelete, testDeleteLog, testEraseData } from './logs.js';
-import { testGetUsage } from './usage.js';
+import { testValidatePhoneSimple, testVerifyPhone } from './phone.js';
+import { testGetRulesCatalog, testGetRulesErrorCodes, testGetRulesFirst, testRegisterRules, testTestRules } from './rules.js';
 import { testGetSettings, testUpdateSettings } from './settings.js';
-import { testDedupeCustomer, testDedupeMergeCustomer, testBatchDedupe, testGetDedupeJobStatus, testDedupeAddressSimple } from './dedupe.js';
-import { testListWebhooks, testCreateWebhook, testListWebhooksAfterCreate, testDeleteWebhook, testTestWebhook, testListWebhooksAfterDelete } from './webhook.js';
+import { testValidateName, testValidateTaxid } from './taxid.js';
+import { testGetUsage } from './usage.js';
+import { testCreateWebhook, testDeleteWebhook, testListWebhooks, testListWebhooksAfterCreate, testListWebhooksAfterDelete, testTestWebhook } from './webhook.js';
 
 export const options = {
     vus: 1,
@@ -43,7 +42,7 @@ export default function () {
     const { res: resLogin } = testLogin(userEmail, check);
 
     // Extract session cookie for dashboard requests (if needed)
-    const sessionCookie = resLogin.cookies['orbicheck_session'] || [];
+    const sessionCookie = resLogin.cookies['orbitcheck_session'] || [];
 
     // Management API headers with PAT
     const mgmtHeaders = Object.assign({}, HEADERS, {
@@ -59,7 +58,7 @@ export default function () {
 
     // Dashboard requests would use session cookie (not used in this test)
     const dashboardHeaders = Object.assign({}, HEADERS, {
-        'Cookie': sessionCookie.length > 0 ? `orbicheck_session=${sessionCookie[0]}` : ''
+        'Cookie': sessionCookie.length > 0 ? `orbitcheck_session=${sessionCookie[0]}` : ''
     });
 
     // Step 3: List API keys (Management API - use PAT)

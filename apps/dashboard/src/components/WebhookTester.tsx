@@ -1,4 +1,4 @@
-import { createApiClient } from '@orbicheck/contracts';
+import { createApiClient } from '@orbitcheck/contracts';
 import React, { useState } from 'react';
 import { API_BASE, UI_STRINGS } from '../constants';
 

@@ -31,7 +31,7 @@ jest.mock('react-chartjs-2', () => ({
   Pie: () => <div data-testid="pie-chart">Mock Pie Chart</div>,
 }));
 
-// Mock the API client from @orbicheck/contracts
+// Mock the API client from @orbitcheck/contracts
 const mockApiClient = {
   getUsage: jest.fn(),
   getLogs: jest.fn(),
@@ -43,7 +43,7 @@ const mockApiClient = {
   loginUser: jest.fn(),
 };
 
-jest.mock('@orbicheck/contracts', () => ({
+jest.mock('@orbitcheck/contracts', () => ({
   createApiClient: jest.fn(() => mockApiClient)
 }));
 

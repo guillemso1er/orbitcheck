@@ -1,16 +1,16 @@
 {
-  "name": "orbicheck-monorepo",
+  "name": "orbitcheck-monorepo",
   "private": true,
   "scripts": {
-    "api": "pnpm --filter @orbicheck/api dev",
-    "dashboard": "pnpm --filter @orbicheck/dashboard dev",
-    "migrate": "pnpm --filter @orbicheck/api run migrate",
+    "api": "pnpm --filter @orbitcheck/api dev",
+    "dashboard": "pnpm --filter @orbitcheck/dashboard dev",
+    "migrate": "pnpm --filter @orbitcheck/api run migrate",
     "all": "concurrently \"pnpm api\" \"pnpm dashboard\"",
     "k6": "k6 run -e KEY=ok_test_a450e23f007460bc2a01e5ec715a12a76952 --vus 1 --iterations 1 tests/k6/main.js",
     "k6:fulljourney": "k6 run  tests/k6/fulljourney.js",
     "k6:all": "k6 run -e KEY=ok_test_a450e23f007460bc2a01e5ec715a12a76952  tests/k6/main.js",
-    "generate": "pnpm --filter @orbicheck/contracts run build",
-    "infra" : "podman compose -f infra/compose/local.compose.yml up -d"
+    "generate": "pnpm --filter @orbitcheck/contracts run build",
+    "infra": "podman compose -f infra/compose/local.compose.yml up -d"
   },
   "devDependencies": {
     "@types/adm-zip": "^0.5.7",

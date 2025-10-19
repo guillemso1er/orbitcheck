@@ -89,5 +89,6 @@ packages/contracts/dist
 .pnpm-store/
 infra/compose/tmp
 infra/compose/tmp/infisical-credentials.json
-scripts/.orbicheck-reader.ua.env
-apps/setup/.orbicheck-reader.ua.env
+scripts/.orbitcheck-reader.ua.env
+apps/setup/.orbitcheck-reader.ua.env
+infra/ansible/vars/secrets.txt

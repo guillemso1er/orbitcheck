@@ -1,4 +1,4 @@
-import { MGMT_V1_ROUTES } from '@orbicheck/contracts';
+import { MGMT_V1_ROUTES } from '@orbitcheck/contracts';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import type { Pool } from 'pg';
 

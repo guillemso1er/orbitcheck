@@ -1,0 +1,19 @@
+[Unit]
+Description=Glitchtip
+After=postgres.service valkey.service
+Wants=postgres.service valkey.service
+
+[Container]
+Image=docker.io/glitchtip/glitchtip:latest
+ContainerName=glitchtip
+Pod=myapp
+EnvironmentFile=/srv/myapp/glitchtip/env/glitchtip.env
+Volume=/srv/myapp/glitchtip/data:/data:Z,U
+ContainerAutoUpdate=registry
+NoNewPrivileges=yes
+
+[Service]
+Restart=always
+
+[Install]
+WantedBy=default.target

@@ -153,7 +153,7 @@ jest.mock('node:fs', () => ({
 }));
 
 // Mock contracts
-jest.mock('@orbicheck/contracts', () => ({
+jest.mock('@orbitcheck/contracts', () => ({
   DASHBOARD_ROUTES: {
     REGISTER_NEW_USER: '/auth/register',
     USER_LOGIN: '/auth/login',

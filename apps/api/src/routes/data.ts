@@ -1,12 +1,12 @@
-import { MGMT_V1_ROUTES } from "@orbicheck/contracts";
+import { MGMT_V1_ROUTES } from "@orbitcheck/contracts";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import type { Pool } from "pg";
 
-import { CACHE_HIT_PLACEHOLDER, COMPLIANCE_REASONS, LOGS_DEFAULT_LIMIT, LOGS_MAX_LIMIT, MESSAGES,TOP_REASONS_LIMIT, USAGE_DAYS, USAGE_PERIOD } from "../config.js";
-import { ERROR_CODES,HTTP_STATUS } from "../errors.js";
+import { CACHE_HIT_PLACEHOLDER, COMPLIANCE_REASONS, LOGS_DEFAULT_LIMIT, LOGS_MAX_LIMIT, MESSAGES, TOP_REASONS_LIMIT, USAGE_DAYS, USAGE_PERIOD } from "../config.js";
+import { ERROR_CODES, HTTP_STATUS } from "../errors.js";
 import { errorSchema, generateRequestId, rateLimitResponse, securityHeader, sendError, sendServerError, unauthorizedResponse } from "./utils.js";
 // Import route constants from contracts package
-// TODO: Update to use @orbicheck/contracts export once build issues are resolved
+// TODO: Update to use @orbitcheck/contracts export once build issues are resolved
 const ROUTES = {
     LOGS: MGMT_V1_ROUTES.DATA.GET_EVENT_LOGS,
     USAGE: MGMT_V1_ROUTES.DATA.GET_USAGE_STATISTICS,

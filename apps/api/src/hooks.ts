@@ -2,7 +2,6 @@ import crypto from "node:crypto";
 
 import type { FastifyReply, FastifyRequest } from "fastify";
 import { type Redis as IORedisType } from 'ioredis';
-import fetch from "node-fetch";
 import type { Pool } from "pg";
 
 import { API_KEY_PREFIX_LENGTH, CONTENT_TYPES, HASH_ALGORITHM, HMAC_VALIDITY_MINUTES, IDEMPOTENCY_TTL_SECONDS, RATE_LIMIT_TTL_SECONDS, STATUS, USER_AGENT_WEBHOOK } from "./config.js";

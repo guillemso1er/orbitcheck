@@ -1,0 +1,60 @@
+# Fail2ban configuration for Alma Linux ARM64 server with Podman containers
+
+[DEFAULT]
+bantime = 3600
+findtime = 600
+maxretry = 5
+banaction = firewallcmd-ipset
+action = %(banaction)s
+loglevel = INFO
+logtarget = /var/log/fail2ban.log
+dbfile = /var/lib/fail2ban/fail2ban.sqlite3
+dbpurgeage = 604800
+
+[sshd]
+enabled = true
+port = ssh
+filter = sshd
+logpath = /var/log/secure
+maxretry = 5
+bantime = 86400
+findtime = 600
+
+[http-podman]
+enabled = true
+port = 80,443
+filter = apache-auth
+logpath = /var/log/containers/*.log
+maxretry = 5
+bantime = 3600
+findtime = 600
+ignoreip = 127.0.0.1/8 10.0.0.0/8 172.16.0.0/12 192.168.0.0/16
+
+[podman-9091]
+enabled = true
+port = 9091
+filter = podman-auth
+logpath = /var/log/containers/*.log
+maxretry = 5
+bantime = 3600
+findtime = 600
+ignoreip = 127.0.0.1/8
+
+[podman-restart-loop]
+enabled = true
+filter = podman-restart
+logpath = /var/log/containers/*.log
+maxretry = 10
+bantime = 7200
+findtime = 1800
+ignoreip = 127.0.0.1/8
+
+[http-auth]
+enabled = true
+port = 80,443
+filter = http-auth
+logpath = /var/log/containers/*.log
+maxretry = 5
+bantime = 3600
+findtime = 600
+ignoreip = 127.0.0.1/8

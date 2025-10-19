@@ -5,7 +5,6 @@ const exec = promisify(execFile);
 import crypto from "node:crypto";
 
 import type { Redis } from "ioredis";
-import fetch from "node-fetch";
 import type { Pool } from "pg";
 
 import { environment } from "../environment.js";
@@ -190,7 +189,7 @@ export async function validateAddress(
 
         if (environment.LOCATIONIQ_KEY) {
             const url = `https://us1.locationiq.com/search.php?key=${environment.LOCATIONIQ_KEY}&q=${q}&format=json&addressdetails=1`;
-            const r = await fetch(url, { headers: { "User-Agent": "Orbicheck/0.1" } });
+            const r = await fetch(url, { headers: { "User-Agent": "Orbitcheck/0.1" } });
             if (r.ok) {
                 const data = await r.json();
                 if (Array.isArray(data) && data[0]) {
@@ -201,7 +200,7 @@ export async function validateAddress(
             }
         } else {
             const url = `${environment.NOMINATIM_URL}/search?format=json&limit=1&q=${q}`;
-            const r = await fetch(url, { headers: { "User-Agent": "Orbicheck/0.1" } });
+            const r = await fetch(url, { headers: { "User-Agent": "Orbitcheck/0.1" } });
             if (r.ok) {
                 const data = await r.json();
                 if (Array.isArray(data) && data[0]) {
@@ -215,7 +214,7 @@ export async function validateAddress(
         // Google fallback if primary failed and enabled
         if (!primarySuccess && environment.USE_GOOGLE_FALLBACK && environment.GOOGLE_GEOCODING_KEY) {
             const googleUrl = `https://maps.googleapis.com/maps/api/geocode/json?address=${q}&key=${environment.GOOGLE_GEOCODING_KEY}`;
-            const gr = await fetch(googleUrl, { headers: { "User-Agent": "Orbicheck/0.1" } });
+            const gr = await fetch(googleUrl, { headers: { "User-Agent": "Orbitcheck/0.1" } });
             if (gr.ok) {
                 const gj: GoogleGeocodeResponse = await gr.json();
                 if (gj.status === 'OK' && gj.results && gj.results[0]) {

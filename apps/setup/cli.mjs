@@ -1,8 +1,8 @@
 #!/usr/bin/env zx
 
-import { SCRIPT_CONFIG } from './config.mjs';
-import { log, isCommandAvailable, fileExists, loadEnvFile, parseEnvFile } from './utils.mjs';
 import { join, resolve } from 'path';
+import { SCRIPT_CONFIG } from './config.mjs';
+import { fileExists, isCommandAvailable, loadEnvFile, log, parseEnvFile } from './utils.mjs';
 
 // ============================================================================
 // CLI Argument Parsing
@@ -183,7 +183,7 @@ export async function startContainers(composeFile, useInfisical, token, infisica
         log.success('All containers are running successfully');
     }
 
-    log.success('Orbicheck startup completed successfully');
+    log.success('Orbitcheck startup completed successfully');
 }
 
 // ============================================================================

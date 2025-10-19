@@ -1,4 +1,4 @@
-import { DASHBOARD_ROUTES } from "@orbicheck/contracts";
+import { DASHBOARD_ROUTES } from "@orbitcheck/contracts";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { type Redis as IORedisType } from 'ioredis';
 import type { Pool } from "pg";

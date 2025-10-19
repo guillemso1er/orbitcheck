@@ -8,7 +8,7 @@ import Login from '../components/Login';
 // Mock the AuthContext
 jest.mock('../AuthContext');
 
-// Mock createApiClient from @orbicheck/contracts
+// Mock createApiClient from @orbitcheck/contracts
 const mockApiClient = {
   getUsage: jest.fn(),
   getLogs: jest.fn(),
@@ -19,8 +19,8 @@ const mockApiClient = {
   })
 };
 
-// Mock the entire @orbicheck/contracts module
-jest.mock('@orbicheck/contracts', () => ({
+// Mock the entire @orbitcheck/contracts module
+jest.mock('@orbitcheck/contracts', () => ({
   createApiClient: jest.fn(() => mockApiClient),
 }));
 
@@ -165,7 +165,7 @@ describe('Login Component', () => {
     });
 
     // Mock the API client
-    const { createApiClient } = require('@orbicheck/contracts');
+    const { createApiClient } = require('@orbitcheck/contracts');
     const mockApiClient = {
       loginUser: jest.fn().mockResolvedValue({
         token: 'test-token',
@@ -243,7 +243,7 @@ describe('Login Component', () => {
     });
 
     // Mock the API client to throw an error
-    const { createApiClient } = require('@orbicheck/contracts');
+    const { createApiClient } = require('@orbitcheck/contracts');
     const mockApiClient = {
       loginUser: jest.fn().mockRejectedValue(new Error('Invalid credentials'))
     };

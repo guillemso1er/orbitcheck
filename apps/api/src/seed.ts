@@ -6,7 +6,6 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 import AdmZip from 'adm-zip';
-import fetch from 'node-fetch';
 import { Pool } from "pg";
 
 import { BATCH_SIZE_GEONAMES, GEO_NAMES_BASE_URL, SEED_API_KEY_PREFIX, SEED_PROJECT_NAME } from "./config.js";
@@ -30,7 +29,8 @@ async function processCountry(country: string, temporaryDirectory: string, geona
         console.warn(`Download failed for ${country}: ${response.status}. Skipping.`);
         return 0;
     }
-    const buffer = await response.buffer();
+    const arrayBuffer = await response.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
     await fs.writeFile(zipPath, buffer);
 
     console.warn(`Extracting ZIP for ${country}...`);
@@ -76,8 +76,6 @@ async function processCountry(country: string, temporaryDirectory: string, geona
 
     // Process batches in parallel
     await Promise.all(allBatches.map(batch => insertBatch(pool, batch)));
-    console.warn(`Successfully imported ${countryCount} postal code records for ${country}.`);
-
     console.warn(`Successfully imported ${countryCount} postal code records for ${country}.`);
 
     // Cleanup in parallel

@@ -1,6 +1,5 @@
 import type { Job } from "bullmq";
 import { Redis } from 'ioredis';
-import fetch from "node-fetch";
 
 import { BATCH_SIZE_DISPOSABLE_UPDATE } from "../config.js";
 import { environment } from "../environment.js";

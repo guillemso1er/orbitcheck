@@ -1,6 +1,6 @@
-# Orbicheck
+# Orbitcheck
 
-Orbicheck is a validation and risk assessment platform for e-commerce and business operations. It provides comprehensive validation for emails, phones, addresses, tax IDs, and order risk scoring with deduplication.
+Orbitcheck is a validation and risk assessment platform for e-commerce and business operations. It provides comprehensive validation for emails, phones, addresses, tax IDs, and order risk scoring with deduplication.
 
 ## Technologies
 
@@ -57,7 +57,7 @@ Orbicheck is a validation and risk assessment platform for e-commerce and busine
 - POST /v1/orders/evaluate: Order risk assessment.
 
 ### Authentication
-Orbicheck uses different authentication methods for different APIs:
+Orbitcheck uses different authentication methods for different APIs:
 
 - **Dashboard (session-based)**: For user registration, login, and web dashboard access.
 - **Management API (Bearer token or session)**: For managing API keys, viewing usage, etc. Uses Personal Access Tokens (PATs) or session cookies.
@@ -84,7 +84,7 @@ Orbicheck uses different authentication methods for different APIs:
 
 ## Webhooks
 
-Orbicheck supports webhook testing for integration verification:
+Orbitcheck supports webhook testing for integration verification:
 
 - POST /v1/webhooks/test: Send test payloads (validation, order evaluation, custom) to webhook URLs.
 
@@ -97,7 +97,7 @@ Orbicheck supports webhook testing for integration verification:
 
 ## Observability Services
 
-Orbicheck includes a comprehensive observability stack for monitoring, logging, and alerting:
+Orbitcheck includes a comprehensive observability stack for monitoring, logging, and alerting:
 
 - **Prometheus (localhost:9090)**: Metrics collection from the API service (/metrics endpoint). Provides time-series data for performance monitoring and is connected to Grafana for visualization.
 - **Grafana (localhost:3000)**: Visualization dashboard connected to Prometheus and Loki. Default login: admin/admin. Displays metrics and logs from the API and other services.
@@ -116,7 +116,7 @@ Automatic connections: Prometheus scrapes API metrics, Promtail ships logs to Lo
 
 ## Setup and Running the App
 
-Orbicheck is a monorepo with multiple applications: the API (backend server), the Dashboard (React frontend), the Site (static marketing site), and shared Contracts package.
+Orbitcheck is a monorepo with multiple applications: the API (backend server), the Dashboard (React frontend), the Site (static marketing site), and shared Contracts package.
 
 ### Prerequisites
 - Node.js (v20+ recommended)
@@ -134,7 +134,7 @@ pnpm install
 ### 2. Environment Configuration
 Copy `.env.example` to `.env` (if available) or create `.env` in the root with the following (adjust as needed):
 ```
-DATABASE_URL=postgresql://postgres:postgres@localhost:5432/orbicheck
+DATABASE_URL=postgresql://postgres:postgres@localhost:5432/orbitcheck
 REDIS_URL=redis://localhost:6379
 PORT=8080
 LOG_LEVEL=info
@@ -147,7 +147,7 @@ RATE_LIMIT_COUNT=30000 (for development)
 S3_ENDPOINT=http://localhost:9000 (if using MinIO)
 S3_ACCESS_KEY=minioadmin
 S3_SECRET_KEY=minioadmin
-S3_BUCKET=orbicheck
+S3_BUCKET=orbitcheck
 ```
 
 Ensure your PostgreSQL and Redis servers are running locally or update the URLs accordingly.
@@ -155,12 +155,12 @@ Ensure your PostgreSQL and Redis servers are running locally or update the URLs 
 ### 3. Database Setup
 Run migrations for the API:
 ```
-pnpm --filter @orbicheck/api run migrate
+pnpm --filter @orbitcheck/api run migrate
 ```
 
 Seed initial data (creates a dev project and API key):
 ```
-pnpm --filter @orbicheck/api exec ts-node --require dotenv/config src/seed.ts
+pnpm --filter @orbitcheck/api exec ts-node --require dotenv/config src/seed.ts
 ```
 Note the output PROJECT_ID and API_KEY for authentication.
 
@@ -169,26 +169,26 @@ Alternatively, register a new user via the dashboard at http://localhost:5173 to
 ### 4. Running the API (Backend)
 In one terminal, from the root:
 ```
-pnpm --filter @orbicheck/api run dev
+pnpm --filter @orbitcheck/api run dev
 ```
 The API will start on http://localhost:8080. Access Swagger docs at http://localhost:8080/documentation.
 
 For production build:
 ```
-pnpm --filter @orbicheck/api run build
-pnpm --filter @orbicheck/api run start
+pnpm --filter @orbitcheck/api run build
+pnpm --filter @orbitcheck/api run start
 ```
 
 ### 5. Running the Dashboard (Frontend)
 In another terminal, from the root:
 ```
-pnpm --filter @orbicheck/dashboard run dev
+pnpm --filter @orbitcheck/dashboard run dev
 ```
 The dashboard will start on http://localhost:5173. Use the seeded API key to log in.
 
 For production build:
 ```
-pnpm --filter @orbicheck/dashboard run build
+pnpm --filter @orbitcheck/dashboard run build
 ```
 
 ### Containerized Setup (Development)
@@ -276,40 +276,40 @@ LOCATIONIQ_KEY=your_locationiq_api_key
 The API uses Jest for unit and integration tests.
 From the root:
 ```
-pnpm --filter @orbicheck/api run test
+pnpm --filter @orbitcheck/api run test
 ```
 This runs tests in `apps/api/src/__tests__/`. Coverage reports are generated if configured.
 
 Watch mode:
 ```
-pnpm --filter @orbicheck/api run test:watch
+pnpm --filter @orbitcheck/api run test:watch
 ```
 
 ### E2E Tests (Dashboard)
 The Dashboard uses Playwright for end-to-end tests.
 From the root (or apps/dashboard):
 ```
-pnpm --filter @orbicheck/dashboard exec playwright test
+pnpm --filter @orbitcheck/dashboard exec playwright test
 ```
 Tests are in `apps/dashboard/e2e/`. Run specific tests:
 ```
-pnpm --filter @orbicheck/dashboard exec playwright test apiKeys.spec.ts
+pnpm --filter @orbitcheck/dashboard exec playwright test apiKeys.spec.ts
 ```
 For UI mode (visual debugging):
 ```
-pnpm --filter @orbicheck/dashboard exec playwright test --ui
+pnpm --filter @orbitcheck/dashboard exec playwright test --ui
 ```
 
 ### Unit Tests (Dashboard)
 The Dashboard has unit tests using Jest for component testing.
 From the root:
 ```
-pnpm --filter @orbicheck/dashboard run test
+pnpm --filter @orbitcheck/dashboard run test
 ```
 
 Watch mode:
 ```
-pnpm --filter @orbicheck/dashboard run test:watch
+pnpm --filter @orbitcheck/dashboard run test:watch
 ```
 
 ### Load Testing

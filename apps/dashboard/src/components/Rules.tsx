@@ -1,6 +1,5 @@
-import { createApiClient } from '@orbicheck/contracts';
-import React, { useState, useEffect } from 'react';
-import { API_BASE, API_ENDPOINTS, UI_STRINGS, ORDER_ACTIONS } from '../constants';
+import React, { useState } from 'react';
+import { API_BASE, API_ENDPOINTS, UI_STRINGS } from '../constants';
 
 interface Rule {
   id: string;

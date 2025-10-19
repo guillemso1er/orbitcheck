@@ -1,0 +1,24 @@
+version: '3.8'
+services:
+  webapp:
+    image: nginx:latest
+    container_name: webapp
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - type: bind
+        source: "{{ container_base_path }}/volumes/webapp"
+        target: "/usr/share/nginx/html"
+        selinux: z
+      - type: bind
+        source: "{{ container_base_path }}/compose/webapp/nginx.conf"
+        target: "/etc/nginx/nginx.conf"
+        read_only: true
+        selinux: z
+      - type: bind
+        source: "{{ container_base_path }}/compose/webapp/ssl"
+        target: "/etc/nginx/ssl"
+        read_only: true
+        selinux: z
+    restart: unless-stopped

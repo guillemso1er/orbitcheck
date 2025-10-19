@@ -81,7 +81,7 @@ const getBooleanSecret = async (key: string, fallback: boolean): Promise<boolean
 
 export const environment = {
   PORT: await getNumberSecret("API_PORT", 8080),
-  DATABASE_URL: await getSecret("API_DATABASE_URL", "postgres://postgres:postgres@localhost:5432/orbicheck"),
+  DATABASE_URL: await getSecret("API_DATABASE_URL", "postgres://postgres:postgres@localhost:5432/orbitcheck"),
   REDIS_URL: await getSecret("API_REDIS_URL", "redis://localhost:6379"),
   LOG_LEVEL: await getSecret("API_LOG_LEVEL", "info"),
   NOMINATIM_URL: await getSecret("API_NOMINATIM_URL", "https://nominatim.openstreetmap.org"),
@@ -99,7 +99,7 @@ export const environment = {
   S3_ENDPOINT: await getSecret("API_S3_ENDPOINT", "http://localhost:9000"),
   S3_ACCESS_KEY: await getSecret("API_S3_ACCESS_KEY", "minioadmin"),
   S3_SECRET_KEY: await getSecret("API_S3_SECRET_KEY", "minioadmin"),
-  S3_BUCKET: await getSecret("API_S3_BUCKET", "orbicheck"),
+  S3_BUCKET: await getSecret("API_S3_BUCKET", "orbitcheck"),
   GOOGLE_GEOCODING_KEY: await getSecret("API_GOOGLE_GEOCODING_KEY", ""),
   USE_GOOGLE_FALLBACK: await getBooleanSecret("API_USE_GOOGLE_FALLBACK", false),
   JWT_SECRET: await getSecret("API_JWT_SECRET", "dummy_jwt_secret_for_local_dev"),

@@ -25,11 +25,11 @@ export const SCRIPT_CONFIG = {
 // ============================================================================
 export const config = {
     BASE: process.env.INFISICAL_SITE_URL || 'http://localhost:8085',
-    ADMIN_EMAIL: process.env.INFISICAL_ADMIN_EMAIL || 'admin@orbicheck.local',
+    ADMIN_EMAIL: process.env.INFISICAL_ADMIN_EMAIL || 'admin@orbitcheck.local',
     ADMIN_PASSWORD: process.env.INFISICAL_ADMIN_PASSWORD || 'AdminPass123!',
-    ORG_NAME: process.env.INFISICAL_ORG || 'orbicheck',
-    PROJECT_NAME: process.env.INFISICAL_PROJECT || 'orbicheck',
-    IDENTITY_NAME: process.env.INFISICAL_IDENTITY || 'orbicheck-reader',
+    ORG_NAME: process.env.INFISICAL_ORG || 'orbitcheck',
+    PROJECT_NAME: process.env.INFISICAL_PROJECT || 'orbitcheck',
+    IDENTITY_NAME: process.env.INFISICAL_IDENTITY || 'orbitcheck-reader',
     TOKEN_TTL: parseInt(process.env.INFISICAL_TOKEN_TTL || '3600'),
     UA_SECRET_TTL: parseInt(process.env.INFISICAL_UA_SECRET_TTL || '0'),
     MAX_RETRIES: 3,

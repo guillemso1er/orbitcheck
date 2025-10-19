@@ -1,5 +1,5 @@
-import { createApiClient } from '@orbicheck/contracts';
-import React, { useCallback, useState, useRef, useEffect } from 'react';
+import { createApiClient } from '@orbitcheck/contracts';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { API_BASE, UI_STRINGS } from '../constants';
 
 interface JobStatus {

@@ -7,7 +7,7 @@ export default defineConfig({
   plugins: [react()],
   resolve: {
     alias: {
-      '@orbicheck/contracts': path.resolve(__dirname, '../../packages/contracts/src'),
+      '@orbitcheck/contracts': path.resolve(__dirname, '../../packages/contracts/src'),
     },
   },
   server: {

@@ -1,13 +1,13 @@
 import crypto from "node:crypto";
 
-import { DASHBOARD_ROUTES } from "@orbicheck/contracts";
+import { DASHBOARD_ROUTES } from "@orbitcheck/contracts";
 import bcrypt from 'bcryptjs';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import type { Pool } from "pg";
 
-import { API_KEY_NAMES, API_KEY_PREFIX, API_KEY_PREFIX_LENGTH, AUDIT_ACTION_PAT_USED, AUDIT_RESOURCE_API, AUTHORIZATION_HEADER, BCRYPT_ROUNDS, BEARER_PREFIX, CRYPTO_IV_BYTES, CRYPTO_KEY_BYTES, DEFAULT_PAT_NAME, HASH_ALGORITHM, LOGOUT_MESSAGE,PAT_PREFIX, PAT_SCOPES_ALL, PG_UNIQUE_VIOLATION, PLAN_TYPES, PROJECT_NAMES, RANDOM_BYTES_FOR_API_KEY, STATUS } from "../config.js";
+import { API_KEY_NAMES, API_KEY_PREFIX, API_KEY_PREFIX_LENGTH, AUDIT_ACTION_PAT_USED, AUDIT_RESOURCE_API, AUTHORIZATION_HEADER, BCRYPT_ROUNDS, BEARER_PREFIX, CRYPTO_IV_BYTES, CRYPTO_KEY_BYTES, DEFAULT_PAT_NAME, HASH_ALGORITHM, LOGOUT_MESSAGE, PAT_PREFIX, PAT_SCOPES_ALL, PG_UNIQUE_VIOLATION, PLAN_TYPES, PROJECT_NAMES, RANDOM_BYTES_FOR_API_KEY, STATUS } from "../config.js";
 import { environment } from "../environment.js";
-import { ERROR_CODES, ERROR_MESSAGES,HTTP_STATUS } from "../errors.js";
+import { ERROR_CODES, ERROR_MESSAGES, HTTP_STATUS } from "../errors.js";
 import { errorSchema, generateRequestId, getDefaultProjectId, sendError, sendServerError } from "./utils.js";
 
 /**

@@ -1,5 +1,5 @@
 
-import { API_V1_ROUTES } from "@orbicheck/contracts";
+import { API_V1_ROUTES } from "@orbitcheck/contracts";
 import type { FastifyInstance } from "fastify";
 import { type Redis as IORedisType } from 'ioredis';
 import type { Pool } from "pg";
@@ -8,7 +8,7 @@ import twilio from 'twilio';
 import { TWILIO_CHANNEL_SMS } from "../config.js";
 // Import route constants from contracts package
 import { environment } from "../environment.js";
-import { ERROR_CODES, ERROR_MESSAGES,HTTP_STATUS } from "../errors.js";
+import { ERROR_CODES, ERROR_MESSAGES, HTTP_STATUS } from "../errors.js";
 import { logEvent } from "../hooks.js";
 import { validateAddress } from "../validators/address.js";
 import { validateEmail } from "../validators/email.js";

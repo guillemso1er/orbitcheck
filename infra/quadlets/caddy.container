@@ -1,0 +1,24 @@
+[Unit]
+Description=Caddy reverse proxy
+After=network-online.target
+Wants=network-online.target
+
+[Container]
+Image=docker.io/library/caddy:2.10.2
+ContainerName=caddy
+Pod=myapp
+PublishPort=80:80/tcp
+PublishPort=443:443/tcp
+Volume=/srv/myapp/caddy/Caddyfile:/etc/caddy/Caddyfile:Z
+Volume=/srv/myapp/caddy/data:/data:Z,U
+Volume=/srv/myapp/caddy/config:/config:Z,U
+ContainerAutoUpdate=registry
+NoNewPrivileges=yes
+PidsLimit=500
+Ulimit=nofile=262144:262144
+
+[Service]
+Restart=always
+
+[Install]
+WantedBy=default.target

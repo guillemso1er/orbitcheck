@@ -56,5 +56,5 @@ export async function startContainers(composeFile, useInfisical, token, infisica
     }
 
 
-    log.success('Orbicheck startup completed successfully');
+    log.success('Orbitcheck startup completed successfully');
 }

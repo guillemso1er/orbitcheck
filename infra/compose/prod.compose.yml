@@ -18,7 +18,7 @@ services:
     image: postgres:16.10
     environment:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: orbicheck
+      POSTGRES_DB: orbitcheck
     volumes:
       - "pg_data:/var/lib/postgresql/data"
 
@@ -48,12 +48,12 @@ services:
       dockerfile: apps/api/Dockerfile
     environment:
       PORT: 8080
-      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/orbicheck
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/orbitcheck
       REDIS_URL: redis://valkey:6379
       S3_ENDPOINT: http://minio:9000
       S3_ACCESS_KEY: ${MINIO_ACCESS_KEY}
       S3_SECRET_KEY: ${MINIO_SECRET_KEY}
-      S3_BUCKET: orbicheck
+      S3_BUCKET: orbitcheck
       NOMINATIM_URL: https://nominatim.openstreetmap.org
       LOCATIONIQ_KEY: ${LOCATIONIQ_KEY}
       VIES_WSDL_URL: https://ec.europa.eu/taxation_customs/vies/checkVatService.wsdl

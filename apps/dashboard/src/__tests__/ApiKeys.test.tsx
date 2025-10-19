@@ -2,9 +2,8 @@ import '@testing-library/jest-dom';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import React from 'react';
 import { BrowserRouter } from 'react-router-dom';
-import { AuthProvider, useAuth } from '../AuthContext';
+import { AuthProvider } from '../AuthContext';
 import ApiKeys from '../components/ApiKeys';
-import { UI_STRINGS } from '../constants';
 
 // Mock Chart.js and its components
 jest.mock('chart.js', () => ({
@@ -32,7 +31,7 @@ jest.mock('react-chartjs-2', () => ({
   Pie: () => <div data-testid="pie-chart">Mock Pie Chart</div>,
 }));
 
-// Mock the API client from @orbicheck/contracts
+// Mock the API client from @orbitcheck/contracts
 const mockApiClient = {
   getUsage: jest.fn().mockResolvedValue({
     period: '7d',
@@ -81,7 +80,7 @@ const mockApiClient = {
     user: { id: 'user-id', email: 'test@example.com' }
   })
 };
-jest.mock('@orbicheck/contracts', () => ({
+jest.mock('@orbitcheck/contracts', () => ({
   createApiClient: jest.fn(() => mockApiClient)
 }));
 
@@ -124,9 +123,9 @@ const renderWithAuth = (component: React.ReactElement, token: string = 'test-tok
     isAuthenticated: true,
     isLoading: false,
   };
-  
+
   jest.spyOn(require('../AuthContext'), 'useAuth').mockReturnValue(mockAuth);
-  
+
   return render(
     <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <AuthProvider>{component}</AuthProvider>
@@ -148,21 +147,21 @@ describe('ApiKeys Component', () => {
 
   it('should render API keys page header', () => {
     renderWithAuth(<ApiKeys token="test-token" />);
-    
+
     expect(screen.getByRole('heading', { name: 'API Keys Management' })).toBeInTheDocument();
     expect(screen.getByText('Create New API Key')).toBeInTheDocument();
   });
 
   it('should display loading state initially', () => {
-    mockApiClient.listApiKeys.mockImplementation(() => new Promise(() => {}));
+    mockApiClient.listApiKeys.mockImplementation(() => new Promise(() => { }));
     renderWithAuth(<ApiKeys token="test-token" />);
-    
+
     expect(screen.getByText('Loading API keys...')).toBeInTheDocument();
   });
 
   it('should display API keys table when data is loaded', async () => {
     renderWithAuth(<ApiKeys token="test-token" />);
-    
+
     await waitFor(() => {
       expect(screen.getByText('Test Key')).toBeInTheDocument();
       expect(screen.getByText('test-prefix')).toBeInTheDocument();
@@ -173,7 +172,7 @@ describe('ApiKeys Component', () => {
   it('should show empty state when no API keys exist', async () => {
     mockApiClient.listApiKeys.mockResolvedValue({ data: [] });
     renderWithAuth(<ApiKeys token="test-token" />);
-    
+
     await waitFor(() => {
       expect(screen.getByText('No API keys found.')).toBeInTheDocument();
     });
@@ -181,16 +180,16 @@ describe('ApiKeys Component', () => {
 
   it('should handle API key creation', async () => {
     renderWithAuth(<ApiKeys token="test-token" />);
-    
+
     // Open create modal
     fireEvent.click(screen.getByText('Create New API Key'));
-    
+
     // Fill form and submit
     fireEvent.change(screen.getByLabelText('Name (optional)'), {
       target: { value: 'Test API Key' }
     });
     fireEvent.click(screen.getByText('Create'));
-    
+
     await waitFor(() => {
       expect(mockApiClient.createApiKey).toHaveBeenCalledWith('Test API Key');
     });
@@ -199,13 +198,13 @@ describe('ApiKeys Component', () => {
   it('should handle API key revocation', async () => {
     window.confirm = jest.fn(() => true);
     renderWithAuth(<ApiKeys token="test-token" />);
-    
+
     await waitFor(() => {
       expect(screen.getByText('REVOKE')).toBeInTheDocument();
     });
-    
+
     fireEvent.click(screen.getAllByText('REVOKE')[0]);
-    
+
     expect(window.confirm).toHaveBeenCalledWith(
       expect.stringContaining('Are you sure you want to revoke this API key?')
     );
@@ -215,13 +214,13 @@ describe('ApiKeys Component', () => {
   it('should handle API key rotation', async () => {
     window.confirm = jest.fn(() => true);
     renderWithAuth(<ApiKeys token="test-token" />);
-    
+
     await waitFor(() => {
       expect(screen.getByText('ROTATE')).toBeInTheDocument();
     });
-    
+
     fireEvent.click(screen.getAllByText('ROTATE')[0]);
-    
+
     expect(window.confirm).toHaveBeenCalledWith(
       expect.stringContaining('Rotate this key?')
     );
@@ -231,16 +230,16 @@ describe('ApiKeys Component', () => {
 
   it('should show new key alert after creation', async () => {
     renderWithAuth(<ApiKeys token="test-token" />);
-    
+
     // Open create modal
     fireEvent.click(screen.getByText('Create New API Key'));
-    
+
     // Fill form and submit
     fireEvent.change(screen.getByLabelText('Name (optional)'), {
       target: { value: 'Test API Key' }
     });
     fireEvent.click(screen.getByText('Create'));
-    
+
     await waitFor(() => {
       expect(screen.getByText('New API Key Created')).toBeInTheDocument();
       expect(screen.getByText('new-prefix')).toBeInTheDocument();
@@ -251,29 +250,29 @@ describe('ApiKeys Component', () => {
   it('should handle API errors gracefully', async () => {
     mockApiClient.listApiKeys.mockRejectedValue(new Error('API Error'));
     renderWithAuth(<ApiKeys token="test-token" />);
-    
+
     await waitFor(() => {
       expect(screen.getByText('Error: API Error')).toBeInTheDocument();
     });
   });
 
   it('should disable actions when creating/rotating keys', async () => {
-    mockApiClient.createApiKey.mockImplementation(() => new Promise(() => {}));
+    mockApiClient.createApiKey.mockImplementation(() => new Promise(() => { }));
     renderWithAuth(<ApiKeys token="test-token" />);
-    
+
     // Open create modal
     fireEvent.click(screen.getByText('Create New API Key'));
-    
+
     // Fill form and submit
     fireEvent.change(screen.getByLabelText('Name (optional)'), {
       target: { value: 'Test API Key' }
     });
     fireEvent.click(screen.getByText('Create'));
-    
+
     await waitFor(() => {
       expect(screen.getByText('Creating...')).toBeInTheDocument();
     });
-    
+
     // Check that rotate button is disabled
     expect(screen.getAllByText('ROTATE')[0]).toBeDisabled();
   });

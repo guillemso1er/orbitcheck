@@ -1,0 +1,24 @@
+# inventory.yml
+
+all:
+  hosts:
+    hetzner_server:
+      ansible_host: 49.12.5.180
+      ansible_ssh_private_key_file: ~/.ssh/orbitcheck_ed25519
+      # Using python3 is recommended for modern systems
+      ansible_python_interpreter: /usr/bin/python3
+  vars:
+    admin_password_file_path: "~/.ssh/admin_password.txt"
+    admin_user: "adminuser"
+    podman_user: "podmanuser"
+    admin_password_seed: "admin_password"
+
+    # 1. Read the PLAIN-TEXT password from the file. The 'trim' filter removes any trailing newlines.
+    admin_password_plain: "{{ lookup('ansible.builtin.file', admin_password_file_path) | trim }}"
+
+    # 2. Create a HASHED version of the password for creating the user account.
+    admin_password_hashed: "{{ admin_password_plain | password_hash('bcrypt') }}"
+
+    # 3. Use the PLAIN-TEXT password for privilege escalation (sudo).
+    ansible_become_pass: "{{ admin_password_plain }}"
+    ansible_become_password: "{{ admin_password_plain }}"

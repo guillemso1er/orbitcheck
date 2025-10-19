@@ -1,4 +1,4 @@
-import { MGMT_V1_ROUTES, API_V1_ROUTES } from "@orbicheck/contracts";
+import { API_V1_ROUTES, MGMT_V1_ROUTES } from "@orbitcheck/contracts";
 
 // API_BASE is defined conditionally to avoid import.meta.env issues during testing
 const getApiBase = () => {

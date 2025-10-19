@@ -31,7 +31,7 @@ jest.mock('react-chartjs-2', () => ({
   Pie: () => <div data-testid="pie-chart">Mock Pie Chart</div>,
 }));
 
-// Mock the API client from @orbicheck/contracts
+// Mock the API client from @orbitcheck/contracts
 const mockApiClient = {
   getUsage: jest.fn().mockResolvedValue({
     period: '7d',
@@ -81,7 +81,7 @@ const mockApiClient = {
   })
 };
 
-jest.mock('@orbicheck/contracts', () => ({
+jest.mock('@orbitcheck/contracts', () => ({
   createApiClient: jest.fn(() => mockApiClient)
 }));
 
@@ -175,7 +175,7 @@ let currentAuthState = {
 // Mock the AuthContext
 jest.mock('../AuthContext', () => {
   const React = require('react');
-  
+
   return {
     useAuth: jest.fn(() => currentAuthState),
     AuthProvider: ({ children }: { children: React.ReactNode }) => {
@@ -215,7 +215,7 @@ const createMockAuthContext = (isAuthenticated: boolean, isLoading = false) => {
 // Render with router wrapper - always wrap with BrowserRouter
 const renderWithRouter = (component: React.ReactElement, initialRoute = '/') => {
   window.history.pushState({}, 'Test page', initialRoute);
-  
+
   return render(
     <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       {component}
@@ -247,7 +247,7 @@ describe('Authentication and Page Refresh', () => {
 
   it('should maintain authentication state after a page refresh', async () => {
     setupAuthenticatedState();
-    
+
     const { rerender } = renderWithRouter(<App />);
 
     // Wait for initial loading to complete and show authenticated content
@@ -270,7 +270,7 @@ describe('Authentication and Page Refresh', () => {
 
   it('should redirect to login page when not authenticated', async () => {
     setupUnauthenticatedState();
-    
+
     renderWithRouter(<App />, '/api-keys');
 
     // Should show the login form
@@ -334,7 +334,7 @@ describe('Navigation and Routing', () => {
   it('should handle logout and redirect to the login page', async () => {
     // Setup initial authenticated state
     setupAuthenticatedState();
-    
+
     // Override the logout mock to actually change the auth state
     currentAuthState.logout = jest.fn(() => {
       // Update the current auth state to unauthenticated
@@ -396,9 +396,9 @@ describe('App Component', () => {
       const navLinks = screen.getAllByText(UI_STRINGS.API_KEYS_MANAGEMENT);
       // The first one is likely the nav link, second might be the heading
       const apiKeysLink = navLinks.find(el => el.closest('.nav-link')) || navLinks[0];
-      
+
       fireEvent.click(apiKeysLink);
-      
+
       // Should still show the same page
       await waitFor(() => {
         expect(screen.getByRole('heading', { name: UI_STRINGS.API_KEYS_MANAGEMENT })).toBeInTheDocument();
@@ -417,11 +417,11 @@ describe('App Component', () => {
       setupAuthenticatedState();
 
       renderWithRouter(<App />);
-      
+
       await waitFor(() => {
         expect(screen.getByRole('heading', { name: UI_STRINGS.API_KEYS_MANAGEMENT })).toBeInTheDocument();
       });
-      
+
       // Open the mobile sidebar menu
       const mobileMenuButton = screen.getByRole('button', { name: /toggle navigation menu/i });
       fireEvent.click(mobileMenuButton);
@@ -451,7 +451,7 @@ describe('App Component', () => {
 
     it('should render the authenticated content when the user is logged in', async () => {
       setupAuthenticatedState();
-      
+
       renderWithRouter(<App />);
 
       // Assert that the main application content is visible

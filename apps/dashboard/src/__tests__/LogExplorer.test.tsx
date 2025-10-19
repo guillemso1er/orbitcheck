@@ -6,12 +6,12 @@ import { BrowserRouter } from 'react-router-dom';
 import { AuthProvider } from '../AuthContext';
 import LogExplorer from '../components/LogExplorer';
 
-// Mock the API client from @orbicheck/contracts
+// Mock the API client from @orbitcheck/contracts
 const mockApiClient = {
   getLogs: jest.fn(),
 };
 
-jest.mock('@orbicheck/contracts', () => ({
+jest.mock('@orbitcheck/contracts', () => ({
   createApiClient: jest.fn(() => mockApiClient),
 }));
 

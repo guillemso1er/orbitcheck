@@ -1,0 +1,22 @@
+
+    - name: create_container_with_disk
+      hosts: localhost
+      gather_facts: false
+      vars:
+        container_image: almalinux:10
+        container_name: almalinux-test
+        # Find this with `losetup -a | grep second_disk.img`
+        loop_device_path: "/dev/loop1" # <-- IMPORTANT: CHANGE THIS to your actual loop device
+
+      tasks:
+        - name: Create and start the AlmaLinux container with an attached disk
+          containers.podman.podman_container:
+            name: "{{ container_name }}"
+            image: "{{ container_image }}"
+            state: started
+            # This is the key part:
+            device:
+              - "{{ loop_device_path }}:/dev/sdb" # Maps host device to container device
+            privileged: true # Privileged mode is required for the container to see and manage block devices
+            command: ["/bin/sleep", "infinity"]
+    

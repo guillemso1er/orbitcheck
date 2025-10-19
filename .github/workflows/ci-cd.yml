@@ -1,0 +1,107 @@
+name: ci-cd
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+  id-token: write   # for cosign keyless
+  attestations: write
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_OWNER: ${{ github.repository_owner }}
+
+jobs:
+  build-api:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build & push API
+      # Build from your monorepo context and Dockerfile
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/api/Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ghcr.io/${{ env.IMAGE_OWNER }}/api:prod
+            ghcr.io/${{ env.IMAGE_OWNER }}/api:sha-${{ github.sha }}
+          labels: |
+            org.opencontainers.image.source=${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+
+      - name: Generate SBOM (CycloneDX)
+        uses: anchore/sbom-action@v0
+        with:
+          image: ghcr.io/${{ env.IMAGE_OWNER }}/api:sha-${{ github.sha }}
+          format: cyclonedx-json
+          artifact-name: sbom-api-${{ github.sha }}.cdx.json
+
+      - name: Security scan
+        uses: aquasecurity/trivy-action@0.24.0
+        with:
+          image-ref: ghcr.io/${{ env.IMAGE_OWNER }}/api:sha-${{ github.sha }}
+          format: table
+          vuln-type: 'os,library'
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@v3.7.0
+
+      - name: Sign images (keyless)
+        env:
+          COSIGN_EXPERIMENTAL: "true"
+        run: |
+          cosign sign --yes ghcr.io/${{ env.IMAGE_OWNER }}/api:sha-${{ github.sha }}
+          # Also sign the prod tag (cosign resolves to digest)
+          cosign sign --yes ghcr.io/${{ env.IMAGE_OWNER }}/api:prod
+
+  deploy:
+    needs: [build-api]
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: https://example.com/healthz
+    steps:
+      - name: Trigger remote auto-update
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.HETZNER_HOST }}
+          username: adminuser
+          key: ${{ secrets.HETZNER_SSH_KEY }}
+          script: |
+            # start podman auto-update as podmanuser
+            sudo -n -u podmanuser systemctl --user start podman-auto-update.service
+            # Show status
+            sudo -n -u podmanuser systemctl --user --no-pager status podman-auto-update.service || true
+
+      - name: Wait for health
+        run: |
+          for i in {1..30}; do
+            if curl -fsS https://example.com/healthz >/dev/null; then
+              echo "App healthy"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "Health check failed"
+          exit 1

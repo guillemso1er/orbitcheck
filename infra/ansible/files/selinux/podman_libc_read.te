@@ -1,0 +1,12 @@
+module podman_libc_read 1.0;
+
+require {
+        type container_home_t;
+        type container_t;
+        class file { read };
+}
+
+#============= container_t ==============
+# This allows a container process to read files labeled as container_home_t.
+# This is the specific fix for the libc.so.6 read denial during builds.
+allow container_t container_home_t:file read;

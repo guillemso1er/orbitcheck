@@ -1,4 +1,4 @@
-import { createApiClient } from '@orbicheck/contracts';
+import { createApiClient } from '@orbitcheck/contracts';
 import React, { useCallback, useEffect, useState } from 'react';
 import { API_BASE, UI_STRINGS } from '../constants';
 
@@ -282,9 +282,9 @@ const ApiKeys: React.FC<ApiKeysProps> = () => {
         <p>Use our Postman collection to quickly test the API endpoints with pre-configured requests and examples.</p>
         <div className="postman-buttons">
           <a href="https://www.postman.com/run-collection/your-collection-id-here"
-             className="btn btn-postman"
-             target="_blank"
-             rel="noopener noreferrer">
+            className="btn btn-postman"
+            target="_blank"
+            rel="noopener noreferrer">
             <span className="btn-icon">🚀</span> Run in Postman
           </a>
           <div className="postman-links">

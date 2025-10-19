@@ -1,4 +1,4 @@
-# Orbicheck API - Data Hygiene Guard
+# Orbitcheck API - Data Hygiene Guard
 
 The API is a Fastify-based TypeScript server providing data validation, deduplication, order risk assessment, and batch operations for e-commerce hygiene. It handles validators for emails, phones, addresses, names, and tax IDs; fuzzy/deterministic dedupe for customers and addresses; order evaluation with configurable rules (P.O. box block, COD risk, fraud scoring); batch processing for high-volume operations; and comprehensive observability (logs, metrics, webhooks). It also provides management endpoints for authentication, API key management, data access, rules configuration, settings management, billing integration, and webhook testing.
 
@@ -11,7 +11,7 @@ Install from monorepo root: `pnpm install`.
 
 ### Environment (.env)
 ```
-DATABASE_URL=postgres://postgres:postgres@localhost:5432/orbicheck
+DATABASE_URL=postgres://postgres:postgres@localhost:5432/orbitcheck
 REDIS_URL=redis://localhost:6379
 PORT=8080
 LOG_LEVEL=info
@@ -36,7 +36,7 @@ TWILIO_PHONE_NUMBER=
   **AI Tip:** If Redis error on local, confirm REDIS_URL=redis://localhost:6379. Use `execute_command` for `pnpm run dev`; logs show startup and disposable refresh.
 - Container (with compose): API auto-starts in `podman compose up -d`; accesses via localhost:8080 (direct) or 8081 (edge proxy). Env uses service names (postgres:5432, valkey:6379).
   **Common Issue:** Proxy 502—API binds 0.0.0.0 but logs 127.0.0.1; accessible via network. Test direct: `curl http://localhost:8080/health`.
-- Prod Build: `pnpm run build && node dist/server.js` (or Docker: `podman build -t orbicheck-api . && podman run -p 8080:8080 --env-file .env orbicheck-api`).
+- Prod Build: `pnpm run build && node dist/server.js` (or Docker: `podman build -t orbitcheck-api . && podman run -p 8080:8080 --env-file .env orbitcheck-api`).
   **AI Tip:** For rebuild after code changes, `podman compose restart api` (no full up needed). Verify with `podman logs compose-api-1`.
 
 ### Swagger Docs
@@ -72,21 +72,21 @@ All API errors follow the format:
 
 **Common Error Codes:**
 
-| Code | HTTP Status | Category | Description |
-|------|-------------|----------|-------------|
-| `invalid_url` | 400 | validation | Valid HTTPS/HTTP URL required |
-| `missing_payload` | 400 | validation | Custom payload required for custom type |
-| `invalid_type` | 400 | validation | Invalid webhook payload_type |
-| `invalid_ids` | 400 | validation | Invalid or mismatched IDs |
-| `not_found` | 404 | resource | Requested resource not found |
-| `unauthorized` | 401 | auth | Authentication required but not provided |
-| `invalid_token` | 401 | auth | Provided authentication token is invalid or expired |
-| `no_project` | 403 | auth | No default project configured for user |
-| `user_exists` | 409 | auth | User with provided credentials already exists |
-| `invalid_credentials` | 401 | auth | Invalid login credentials provided |
-| `server_error` | 500 | server | Internal server error occurred |
-| `webhook_send_failed` | 502 | webhook | Failed to deliver webhook to configured endpoint |
-| `rate_limited` | 429 | rate_limit | Request rate limit exceeded |
+| Code                  | HTTP Status | Category   | Description                                         |
+|-----------------------|-------------|------------|-----------------------------------------------------|
+| `invalid_url`         | 400         | validation | Valid HTTPS/HTTP URL required                       |
+| `missing_payload`     | 400         | validation | Custom payload required for custom type             |
+| `invalid_type`        | 400         | validation | Invalid webhook payload_type                        |
+| `invalid_ids`         | 400         | validation | Invalid or mismatched IDs                           |
+| `not_found`           | 404         | resource   | Requested resource not found                        |
+| `unauthorized`        | 401         | auth       | Authentication required but not provided            |
+| `invalid_token`       | 401         | auth       | Provided authentication token is invalid or expired |
+| `no_project`          | 403         | auth       | No default project configured for user              |
+| `user_exists`         | 409         | auth       | User with provided credentials already exists       |
+| `invalid_credentials` | 401         | auth       | Invalid login credentials provided                  |
+| `server_error`        | 500         | server     | Internal server error occurred                      |
+| `webhook_send_failed` | 502         | webhook    | Failed to deliver webhook to configured endpoint    |
+| `rate_limited`        | 429         | rate_limit | Request rate limit exceeded                         |
 
 For a complete list of error codes with categories and severity levels, see the [Error Code Catalog API](#get-v1ruleserror-codes).
 

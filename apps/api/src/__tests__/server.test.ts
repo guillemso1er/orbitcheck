@@ -11,7 +11,7 @@ jest.mock('validator', () => ({
   // Add any other validator functions you use in your hooks if needed
 }));
 // Tell Jest to use the manual mock we created in src/mocks/environment.ts
-jest.mock('@orbicheck/contracts', () => ({
+jest.mock('@orbitcheck/contracts', () => ({
   DASHBOARD_ROUTES: {
     REGISTER_NEW_USER: '/auth/register',
     USER_LOGIN: '/auth/login',
@@ -267,7 +267,7 @@ describe('Server Startup', () => {
     expect(Worker).toHaveBeenCalledWith('disposable', expect.any(Function), { connection: mockRedis });
     expect(cron.schedule).toHaveBeenCalledWith('0 0 * * *', expect.any(Function));
     expect(mockApp.listen).toHaveBeenCalledWith({ port: 3000, host: '0.0.0.0' });
-    expect(mockApp.log.info).toHaveBeenCalledWith(`Orbicheck API server listening on http://0.0.0.0:${environment.PORT}`);
+    expect(mockApp.log.info).toHaveBeenCalledWith(`Orbitcheck API server listening on http://0.0.0.0:${environment.PORT}`);
   });
 
   it('should handle startup errors', async () => {

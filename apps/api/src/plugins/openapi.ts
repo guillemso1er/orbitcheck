@@ -1,4 +1,4 @@
-import { openapiYaml } from '@orbicheck/contracts/node';
+import { openapiYaml } from '@orbitcheck/contracts/node';
 import type { FastifyInstance, FastifyRequest } from "fastify";
 import yaml from 'js-yaml';
 

@@ -1,8 +1,7 @@
 import crypto from "node:crypto";
 
-import { MGMT_V1_ROUTES } from "@orbicheck/contracts";
+import { MGMT_V1_ROUTES } from "@orbitcheck/contracts";
 import type { FastifyInstance } from "fastify";
-import fetch from "node-fetch";
 import type { Pool } from "pg";
 import Stripe from 'stripe';
 

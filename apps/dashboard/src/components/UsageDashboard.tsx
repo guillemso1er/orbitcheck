@@ -1,4 +1,4 @@
-import { createApiClient } from '@orbicheck/contracts';
+import { createApiClient } from '@orbitcheck/contracts';
 import {
   ArcElement,
   BarElement,

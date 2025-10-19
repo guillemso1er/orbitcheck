@@ -1,0 +1,16 @@
+[Unit]
+Description=Infisical DB
+
+[Container]
+Image=docker.io/library/postgres:14-alpine
+ContainerName=infisical-db
+Pod=myapp
+Volume=/srv/myapp/infisical/data:/var/lib/postgresql/data:Z,U
+EnvironmentFile=/srv/myapp/infisical/env/db.env
+ContainerAutoUpdate=registry
+NoNewPrivileges=yes
+
+[Service]
+Restart=always
+[Install]
+WantedBy=default.target

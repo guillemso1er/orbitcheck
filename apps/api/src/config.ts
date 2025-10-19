@@ -138,7 +138,7 @@ export const USER_AGENT_WEBHOOK_TESTER = 'OrbiCheck-Webhook-Tester/1.0' as const
 
 export const USER_AGENT_WEBHOOK = 'OrbiCheck-Webhook/1.0' as const;
 
-export const USER_AGENT_ADDRESS_VALIDATION = 'Orbicheck/0.1' as const;
+export const USER_AGENT_ADDRESS_VALIDATION = 'Orbitcheck/0.1' as const;
 
 export const SEED_PROJECT_NAME = 'Dev Project' as const;
 

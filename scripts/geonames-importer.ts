@@ -1,13 +1,13 @@
-import fetch from 'node-fetch';
 import AdmZip from 'adm-zip';
-import { Pool } from 'pg';
-import * as fs from 'fs';
-import * as path from 'path';
 import * as dotenv from 'dotenv';
+import * as fs from 'fs';
+import fetch from 'node-fetch';
+import * as path from 'path';
+import { Pool } from 'pg';
 
 dotenv.config();
 
-const DATABASE_URL = process.env.DATABASE_URL || 'postgres://postgres:postgres@localhost:5432/orbicheck';
+const DATABASE_URL = process.env.DATABASE_URL || 'postgres://postgres:postgres@localhost:5432/orbitcheck';
 const GEONAMES_POSTAL_URL = 'http://download.geonames.org/export/dump/postalCodeTSV.zip';
 
 async function downloadAndImport() {

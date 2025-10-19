@@ -24,7 +24,7 @@ if echo "$BOOTSTRAP_CHECK" | jq -e '.initialized == true' > /dev/null 2>&1; then
   # Login with existing admin credentials
   LOGIN_RESPONSE=$(curl -s -X POST "$BASE/api/v1/auth/login1" \
     -H "Content-Type: application/json" \
-    -d '{"email":"admin@orbicheck.local","clientPublicKey":""}')
+    -d '{"email":"admin@orbitcheck.local","clientPublicKey":""}')
   
   SERVER_PUB_KEY=$(echo "$LOGIN_RESPONSE" | jq -r '.serverPublicKey')
   SALT=$(echo "$LOGIN_RESPONSE" | jq -r '.salt')
@@ -33,7 +33,7 @@ if echo "$BOOTSTRAP_CHECK" | jq -e '.initialized == true' > /dev/null 2>&1; then
   # Otherwise, you'd need to implement SRP here
   LOGIN_RESPONSE=$(curl -s -X POST "$BASE/api/v1/auth/login2" \
     -H "Content-Type: application/json" \
-    -d '{"email":"admin@orbicheck.local","password":"AdminPass123!"}' 2>/dev/null || echo '{}')
+    -d '{"email":"admin@orbitcheck.local","password":"AdminPass123!"}' 2>/dev/null || echo '{}')
   
   if echo "$LOGIN_RESPONSE" | jq -e '.token' > /dev/null 2>&1; then
     ADMIN_TOKEN=$(echo "$LOGIN_RESPONSE" | jq -r '.token')
@@ -43,7 +43,7 @@ if echo "$BOOTSTRAP_CHECK" | jq -e '.initialized == true' > /dev/null 2>&1; then
     # Create a new admin token via bootstrap if possible
     BOOTSTRAP_RESPONSE=$(curl -s -X POST "$BASE/api/v1/admin/bootstrap" \
       -H "Content-Type: application/json" \
-      -d '{"email":"admin@orbicheck.local","password":"AdminPass123!","organization":"orbicheck"}' 2>/dev/null || echo '{}')
+      -d '{"email":"admin@orbitcheck.local","password":"AdminPass123!","organization":"orbitcheck"}' 2>/dev/null || echo '{}')
     
     if echo "$BOOTSTRAP_RESPONSE" | jq -e '.identity.credentials.token' > /dev/null 2>&1; then
       ADMIN_TOKEN=$(echo "$BOOTSTRAP_RESPONSE" | jq -r '.identity.credentials.token')
@@ -57,13 +57,13 @@ if echo "$BOOTSTRAP_CHECK" | jq -e '.initialized == true' > /dev/null 2>&1; then
   # Get organization ID if not already set
   if [ -z "$ORG_ID" ]; then
     ORG_RESPONSE=$(curl -s -H "Authorization: Bearer $ADMIN_TOKEN" "$BASE/api/v1/organizations")
-    ORG_ID=$(echo "$ORG_RESPONSE" | jq -r '.organizations[] | select(.name=="orbicheck") | .id' | head -n1)
+    ORG_ID=$(echo "$ORG_RESPONSE" | jq -r '.organizations[] | select(.name=="orbitcheck") | .id' | head -n1)
   fi
 else
   echo "Bootstrapping Infisical instance..."
   BOOTSTRAP_RESPONSE=$(curl -s -X POST "$BASE/api/v1/admin/bootstrap" \
     -H "Content-Type: application/json" \
-    -d '{"email":"admin@orbicheck.local","password":"AdminPass123!","organization":"orbicheck"}')
+    -d '{"email":"admin@orbitcheck.local","password":"AdminPass123!","organization":"orbitcheck"}')
   
   echo "$BOOTSTRAP_RESPONSE" > bootstrap.json
   
@@ -83,13 +83,13 @@ echo "Admin token acquired: ${ADMIN_TOKEN:0:20}..."
 # Check if project already exists
 echo "Checking for existing project..."
 PROJECTS_RESPONSE=$(curl -s -H "Authorization: Bearer $ADMIN_TOKEN" "$BASE/api/v1/projects")
-PROJECT_ID=$(echo "$PROJECTS_RESPONSE" | jq -r '.projects[] | select(.name=="orbicheck-api") | .id' | head -n1)
+PROJECT_ID=$(echo "$PROJECTS_RESPONSE" | jq -r '.projects[] | select(.name=="orbitcheck-api") | .id' | head -n1)
 
 if [ -z "$PROJECT_ID" ]; then
   echo "Creating project..."
   PROJECT_RESPONSE=$(curl -s -X POST "$BASE/api/v1/projects" \
     -H "Authorization: Bearer $ADMIN_TOKEN" -H "Content-Type: application/json" \
-    -d '{"projectName":"orbicheck-api","projectDescription":"OrbiCheck API service","shouldCreateDefaultEnvs":true}')
+    -d '{"projectName":"orbitcheck-api","projectDescription":"OrbiCheck API service","shouldCreateDefaultEnvs":true}')
   
   if ! echo "$PROJECT_RESPONSE" | jq -e '.project' > /dev/null 2>&1; then
     echo "Project creation failed! Response:"
@@ -106,13 +106,13 @@ fi
 # Check if machine identity already exists
 echo "Checking for existing machine identity..."
 IDENTITIES_RESPONSE=$(curl -s -H "Authorization: Bearer $ADMIN_TOKEN" "$BASE/api/v1/identities?organizationId=$ORG_ID")
-IDENTITY_ID=$(echo "$IDENTITIES_RESPONSE" | jq -r '.identities[] | select(.name=="orbicheck-api") | .id' | head -n1)
+IDENTITY_ID=$(echo "$IDENTITIES_RESPONSE" | jq -r '.identities[] | select(.name=="orbitcheck-api") | .id' | head -n1)
 
 if [ -z "$IDENTITY_ID" ]; then
   echo "Creating machine identity..."
   IDENTITY_RESPONSE=$(curl -s -X POST "$BASE/api/v1/identities" \
     -H "Authorization: Bearer $ADMIN_TOKEN" -H "Content-Type: application/json" \
-    -d "{\"name\":\"orbicheck-api\",\"organizationId\":\"$ORG_ID\",\"role\":\"no-access\"}")
+    -d "{\"name\":\"orbitcheck-api\",\"organizationId\":\"$ORG_ID\",\"role\":\"no-access\"}")
   
   if ! echo "$IDENTITY_RESPONSE" | jq -e '.identity' > /dev/null 2>&1; then
     echo "Identity creation failed! Response:"
@@ -168,13 +168,13 @@ if echo "$UA_CHECK" | jq -e '.identityUniversalAuth.clientId' > /dev/null 2>&1; 
   SECRETS_RESPONSE=$(curl -s "$BASE/api/v1/auth/universal-auth/identities/$IDENTITY_ID/client-secrets" \
     -H "Authorization: Bearer $ADMIN_TOKEN")
   
-  EXISTING_SECRET=$(echo "$SECRETS_RESPONSE" | jq -r '.clientSecretData[] | select(.description=="orbicheck-api bootstrap") | .id' | head -n1)
+  EXISTING_SECRET=$(echo "$SECRETS_RESPONSE" | jq -r '.clientSecretData[] | select(.description=="orbitcheck-api bootstrap") | .id' | head -n1)
   
   if [ -z "$EXISTING_SECRET" ]; then
     echo "Creating new Universal Auth client secret..."
     SECRET_RESPONSE=$(curl -s -X POST "$BASE/api/v1/auth/universal-auth/identities/$IDENTITY_ID/client-secrets" \
       -H "Authorization: Bearer $ADMIN_TOKEN" -H "Content-Type: application/json" \
-      -d '{"description":"orbicheck-api bootstrap","numUsesLimit":0,"ttl":0}')
+      -d '{"description":"orbitcheck-api bootstrap","numUsesLimit":0,"ttl":0}')
     CLIENT_SECRET=$(echo "$SECRET_RESPONSE" | jq -r '.clientSecret')
   else
     echo "Client secret already exists. Please retrieve it manually if needed."
@@ -189,7 +189,7 @@ else
   echo "Issuing Universal Auth client secret..."
   SECRET_RESPONSE=$(curl -s -X POST "$BASE/api/v1/auth/universal-auth/identities/$IDENTITY_ID/client-secrets" \
     -H "Authorization: Bearer $ADMIN_TOKEN" -H "Content-Type: application/json" \
-    -d '{"description":"orbicheck-api bootstrap","numUsesLimit":0,"ttl":0}')
+    -d '{"description":"orbitcheck-api bootstrap","numUsesLimit":0,"ttl":0}')
   CLIENT_SECRET=$(echo "$SECRET_RESPONSE" | jq -r '.clientSecret')
   
   echo "Retrieving Universal Auth client ID..."

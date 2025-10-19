@@ -17,7 +17,7 @@ Object.defineProperty(globalThis, 'import', {
 
 // Mock the contracts module to avoid import.meta issues
 // We need to mock the entire module including the routes
-jest.mock('@orbicheck/contracts', () => ({
+jest.mock('@orbitcheck/contracts', () => ({
   MGMT_V1_ROUTES: {
     API_KEYS: {
       LIST_API_KEYS: '/v1/api-keys',

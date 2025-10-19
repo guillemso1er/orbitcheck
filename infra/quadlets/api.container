@@ -1,0 +1,26 @@
+[Unit]
+Description=My API
+After=postgres.service valkey.service
+Wants=postgres.service valkey.service
+
+[Container]
+Image=ghcr.io/OWNER/api:prod
+ContainerName=api
+Pod=myapp
+EnvironmentFile=/srv/myapp/api/env/api.env
+# Example static files or uploads mount
+Volume=/srv/myapp/api/data:/app/data:Z,U
+ContainerAutoUpdate=registry
+NoNewPrivileges=yes
+ReadOnly=true
+Tmpfs=/tmp:size=64M
+# Health checks if your image has curl/wget:
+# HealthCmd=/bin/sh -c 'wget -q -O - http://127.0.0.1:3000/health || exit 1'
+# HealthInterval=30s
+
+[Service]
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=default.target

@@ -3,7 +3,7 @@ import fastifySwaggerUi from '@fastify/swagger-ui'
 import ScalarApiReference from '@scalar/fastify-api-reference'
 import type { FastifyInstance } from 'fastify'
 
-import { API_VERSION,ROUTES } from '../config.js'
+import { API_VERSION, ROUTES } from '../config.js'
 import { environment } from '../environment.js'
 
 export async function setupDocumentation(app: FastifyInstance): Promise<void> {
@@ -29,7 +29,7 @@ export async function setupDocumentation(app: FastifyInstance): Promise<void> {
     await app.register(fastifySwagger, {
         openapi: {
             info: {
-                title: 'Orbicheck API',
+                title: 'Orbitcheck API',
                 description: 'API documentation',
                 version: API_VERSION,
             },
