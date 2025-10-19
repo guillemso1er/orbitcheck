@@ -59,6 +59,9 @@ jobs:
           node-version: 23
           cache: "pnpm"
 
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
       - name: Build contracts package
         run: pnpm run generate
 
