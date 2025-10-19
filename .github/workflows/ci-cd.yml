@@ -2,13 +2,13 @@ name: Build, Sync, and Deploy
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   workflow_dispatch:
 
 permissions:
   contents: read
   packages: write
-  id-token: write   # Required for Cosign keyless signing
+  id-token: write # Required for Cosign keyless signing
   attestations: write
 
 env:
@@ -31,7 +31,7 @@ jobs:
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          password: ${{ secrets.GHCR_PAT }}
 
       # --- Build and Push API Image ---
       - name: Build and push API image
@@ -52,7 +52,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'pnpm'
+          cache: "pnpm"
 
       - name: Install pnpm
         run: npm install -g pnpm
@@ -77,7 +77,7 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: production
-      url: https://your-domain.com # Change this to your actual domain
+      url: https:/api.orbitcheck.io # Change this to your actual domain
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -94,7 +94,7 @@ jobs:
             TMP_DIR=$(mktemp -d)
             # Securely copy the infra files to the temp directory on the server
             scp -r ./infra/* $TMP_DIR
-            
+
             # Use sudo to move files into place as podmanuser and set permissions
             sudo -n -u podmanuser bash <<'EOF'
             # Ensure the target directory exists
@@ -111,10 +111,10 @@ jobs:
             mkdir -p /var/lib/containers/volumes/caddy-dashboard/_data
             cp -r /tmp/apps/dashboard/dist/* /var/lib/containers/volumes/caddy-dashboard/_data/
             EOF
-            
+
             # Clean up the temporary directory
             rm -rf $TMP_DIR
-            
+
             # Reload systemd to pick up any changes to the unit files
             echo "Reloading systemd user daemon..."
             sudo -n -u podmanuser systemctl --user daemon-reload
@@ -128,10 +128,10 @@ jobs:
           script: |
             echo "Triggering Podman auto-update..."
             sudo -n -u podmanuser systemctl --user start podman-auto-update.service
-            
+
             # Wait a moment for the service to start its work
             sleep 5
-            
+
             echo "Checking update status..."
             sudo -n -u podmanuser systemctl --user --no-pager status podman-auto-update.service || true
 
