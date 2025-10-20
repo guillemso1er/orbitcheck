@@ -215,10 +215,9 @@ jobs:
           script: |
             set -euo pipefail
 
-            # Section 1: Root-level file operations (remains the same)
+            # Section 1: Root-level file operations (No changes)
             echo "--- Running file tasks as root (via sudo) ---"
             if [[ "${{ needs.detect-changes.outputs.infra }}" == "true" && -d /tmp/ci/infra/compose ]]; then
-              echo "Infra changes detected. Updating Caddyfile."
               sudo mkdir -p /srv/myapp/caddy
               if [ -f /tmp/ci/infra/compose/Caddyfile ]; then
                 sudo cp /tmp/ci/infra/compose/Caddyfile /srv/myapp/caddy/Caddyfile
@@ -226,37 +225,45 @@ jobs:
               fi
             fi
             if [[ "${{ needs.detect-changes.outputs.dashboard }}" == "true" && -d /tmp/ci/dashboard-dist ]]; then
-              echo "Dashboard changes detected. Syncing distribution files."
               sudo mkdir -p /var/lib/containers/volumes/caddy-dashboard/_data
               sudo rsync -a --delete /tmp/ci/dashboard-dist/ /var/lib/containers/volumes/caddy-dashboard/_data/
               sudo chown -R podmanuser:podmanuser /var/lib/containers/volumes/caddy-dashboard/_data
             fi
 
-            # Section 2: Podmanuser-level operations (with the fix)
+            # Section 2: Podmanuser-level operations (with the final fix)
             echo "--- Running systemd tasks as podmanuser ---"
             sudo -iu podmanuser bash <<'EOF'
               set -euo pipefail
               
+              # Copy new Quadlet files if infra changed
               if [[ "${{ needs.detect-changes.outputs.infra }}" == "true" && -d /tmp/ci/infra ]]; then
                 echo "Copying new Quadlet files..."
                 mkdir -p ~/.config/containers/systemd
                 find /tmp/ci/infra -type f \( -name "*.pod" -o -name "*.container" -o -name "*.volume" -o -name "*.network" \) -exec cp {} ~/.config/containers/systemd/ \;
               fi
 
-              echo "--- Forcing systemd user manager to re-execute to run generators ---"
-              # This is more robust than daemon-reload for ensuring generators run
-              systemctl --user daemon-reexec
-              echo "Re-execute complete. Waiting 3 seconds for it to settle."
-              sleep 3
+              echo "--- Manually running the Quadlet generator ---"
+              # Define generator paths
+              GENERATOR_PATH="/usr/libexec/podman/quadlet"
+              OUTPUT_DIR="/run/user/$(id -u)/systemd/generator"
+              
+              # Ensure output directory exists
+              mkdir -p "${OUTPUT_DIR}"
+
+              # Execute the generator and direct its output to the correct systemd directory
+              "${GENERATOR_PATH}" --user --no-log "${OUTPUT_DIR}"
+              echo "Quadlet generator executed."
+
+              echo "--- Reloading systemd daemon to recognize manually generated files ---"
+              systemctl --user daemon-reload
+              echo "Daemon reload complete."
 
               echo "--- Verifying that generator created the .service files ---"
-              # This will show us if api.container.service was successfully generated
-              ls -l /run/user/$(id -u)/systemd/generator/ || echo "Generator directory not found or is empty."
+              ls -l "${OUTPUT_DIR}" || echo "Generator directory not found or is empty."
 
-              # Conditional restart logic (remains the same)
+              # Restart logic
               if [[ "${{ needs.detect-changes.outputs.api }}" == "true" || "${{ needs.detect-changes.outputs.infra }}" == "true" || ("${{ github.event_name }}" == "workflow_dispatch" && "${{ inputs.force_restart }}" == "true") ]]; then
                 echo "--- Restarting API service ---"
-                # Use the full service name for clarity and correctness
                 systemctl --user restart api.container.service
               fi
               
@@ -265,17 +272,16 @@ jobs:
                 systemctl --user restart caddy.container.service
               fi
 
-              # Auto-update logic (remains the same)
+              # Auto-update logic
               if [[ "${{ needs.detect-changes.outputs.api }}" == "true" ]]; then
                 echo "--- Triggering Podman auto-update service ---"
                 systemctl --user start podman-auto-update.service
                 sleep 5
-                echo "--- Status of auto-update service ---"
                 systemctl --user --no-pager status podman-auto-update.service || true
               fi
             EOF
 
-            # Section 3: Cleanup (remains the same)
+            # Section 3: Cleanup
             echo "--- Cleaning up temporary files ---"
             sudo rm -rf /tmp/ci
 
