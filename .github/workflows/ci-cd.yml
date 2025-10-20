@@ -230,12 +230,11 @@ jobs:
               sudo chown -R podmanuser:podmanuser /var/lib/containers/volumes/caddy-dashboard/_data
             fi
 
-            # Section 2: Podmanuser-level operations (with the final fix)
+            # Section 2: Podmanuser-level operations (with the argument fix)
             echo "--- Running systemd tasks as podmanuser ---"
             sudo -iu podmanuser bash <<'EOF'
               set -euo pipefail
               
-              # Copy new Quadlet files if infra changed
               if [[ "${{ needs.detect-changes.outputs.infra }}" == "true" && -d /tmp/ci/infra ]]; then
                 echo "Copying new Quadlet files..."
                 mkdir -p ~/.config/containers/systemd
@@ -243,15 +242,13 @@ jobs:
               fi
 
               echo "--- Manually running the Quadlet generator ---"
-              # Define generator paths
               GENERATOR_PATH="/usr/libexec/podman/quadlet"
               OUTPUT_DIR="/run/user/$(id -u)/systemd/generator"
               
-              # Ensure output directory exists
               mkdir -p "${OUTPUT_DIR}"
 
-              # Execute the generator and direct its output to the correct systemd directory
-              "${GENERATOR_PATH}" --user --no-log "${OUTPUT_DIR}"
+              # CORRECTED FLAG: --no-kmsg-log instead of --no-log
+              "${GENERATOR_PATH}" --user --no-kmsg-log "${OUTPUT_DIR}"
               echo "Quadlet generator executed."
 
               echo "--- Reloading systemd daemon to recognize manually generated files ---"
@@ -261,7 +258,6 @@ jobs:
               echo "--- Verifying that generator created the .service files ---"
               ls -l "${OUTPUT_DIR}" || echo "Generator directory not found or is empty."
 
-              # Restart logic
               if [[ "${{ needs.detect-changes.outputs.api }}" == "true" || "${{ needs.detect-changes.outputs.infra }}" == "true" || ("${{ github.event_name }}" == "workflow_dispatch" && "${{ inputs.force_restart }}" == "true") ]]; then
                 echo "--- Restarting API service ---"
                 systemctl --user restart api.container.service
@@ -272,7 +268,6 @@ jobs:
                 systemctl --user restart caddy.container.service
               fi
 
-              # Auto-update logic
               if [[ "${{ needs.detect-changes.outputs.api }}" == "true" ]]; then
                 echo "--- Triggering Podman auto-update service ---"
                 systemctl --user start podman-auto-update.service
