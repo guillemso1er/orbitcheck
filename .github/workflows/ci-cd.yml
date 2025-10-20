@@ -231,19 +231,20 @@ jobs:
             fi
 
             echo "--- Running file tasks as podmanuser ---"
-            # Switch to podmanuser ONLY for file operations in its home directory.
+            # Switch to podmanuser to place files in its home directory.
             sudo -n -u podmanuser bash <<'EOF'
             set -euo pipefail
-            # Copy quadlet files if they exist
+            # Ensure the destination directory exists
+            mkdir -p ~/.config/containers/systemd
+
+            # Use 'find' to locate all Quadlet files in the temp directory,
+            # no matter which subdirectory they are in, and copy them.
             if [ -d /tmp/ci/infra ]; then
-              mkdir -p ~/.config/containers/systemd
-              cp /tmp/ci/infra/*.{pod,container,volume,network} ~/.config/containers/systemd/ 2>/dev/null || true
+              find /tmp/ci/infra -type f \( -name "*.pod" -o -name "*.container" -o -name "*.volume" -o -name "*.network" \) -exec cp {} ~/.config/containers/systemd/ \;
             fi
             EOF
 
-            echo "--- Reloading systemd user daemon as adminuser ---"
-            # Now, back as adminuser, run the privileged command.
-            # This is the correct context for this command.
+            echo "--- Reloading systemd user daemon ---"
             sudo -u podmanuser /bin/bash -lc "systemctl --user daemon-reload"
             echo "Reload complete."
 
