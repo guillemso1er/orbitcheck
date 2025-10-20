@@ -230,7 +230,7 @@ jobs:
               sudo chown -R podmanuser:podmanuser /var/lib/containers/volumes/caddy-dashboard/_data
             fi
 
-            # Section 2: Podmanuser-level operations (with the final fix)
+            # Section 2: Podmanuser-level operations (The final, correct version)
             echo "--- Running systemd tasks as podmanuser ---"
             sudo -iu podmanuser bash <<'EOF'
               set -euo pipefail
@@ -241,9 +241,10 @@ jobs:
                 find /tmp/ci/infra -type f \( -name "*.pod" -o -name "*.container" -o -name "*.volume" -o -name "*.network" \) -exec cp {} ~/.config/containers/systemd/ \;
               fi
 
-              echo "--- Stopping existing pod to resolve state conflict ---"
-              # Use || true so the script doesn't fail if the pod isn't running
-              systemctl --user stop orbitcheck.pod.service || true
+              echo "--- Removing conflicting pod directly to resolve state conflict ---"
+              # This is the key fix: Use podman to remove the pod if it exists.
+              # The || true ensures the script does not fail if the pod doesn't exist.
+              podman pod rm -f orbitcheck || true
 
               echo "--- Manually running the Quadlet generator ---"
               GENERATOR_PATH="/usr/libexec/podman/quadlet"
@@ -260,22 +261,11 @@ jobs:
               echo "--- Verifying that generator created the .service files ---"
               ls -l "${OUTPUT_DIR}" || echo "Generator directory not found or is empty."
 
-              # Restart logic
+              # Restart logic - This should now start the brand new pod service
               if [[ "${{ needs.detect-changes.outputs.api }}" == "true" || "${{ needs.detect-changes.outputs.infra }}" == "true" || ("${{ github.event_name }}" == "workflow_dispatch" && "${{ inputs.force_restart }}" == "true") ]]; then
-                echo "--- Starting/Restarting API service ---"
-                systemctl --user restart api.container.service
-              fi
-              
-              if [[ "${{ needs.detect-changes.outputs.dashboard }}" == "true" || "${{ needs.detect-changes.outputs.infra }}" == "true" || ("${{ github.event_name }}" == "workflow_dispatch" && "${{ inputs.force_restart }}" == "true") ]]; then
-                echo "--- Starting/Restarting Caddy service ---"
-                systemctl --user restart caddy.container.service
-              fi
-
-              if [[ "${{ needs.detect-changes.outputs.api }}" == "true" ]]; then
-                echo "--- Triggering Podman auto-update service ---"
-                systemctl --user start podman-auto-update.service
-                sleep 5
-                systemctl --user --no-pager status podman-auto-update.service || true
+                echo "--- Starting the main pod service ---"
+                # We start the pod service, which will in turn start all the containers.
+                systemctl --user restart orbitcheck.pod.service
               fi
             EOF
 
