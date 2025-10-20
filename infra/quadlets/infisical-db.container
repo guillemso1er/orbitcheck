@@ -7,7 +7,7 @@ ContainerName=infisical-db
 Pod=orbitcheck
 Volume=/var/lib/containers/volumes/infisical-db-data:/var/lib/postgresql/data:Z,U
 EnvironmentFile=/srv/myapp/infisical/env/db.env
-ContainerAutoUpdate=registry
+Label="io.containers.autoupdate=image"
 NoNewPrivileges=yes
 
 [Service]

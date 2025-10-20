@@ -13,7 +13,7 @@ Volume=/var/lib/containers/volumes/caddy-caddyfile:/etc/caddy/Caddyfile:Z
 Volume=/var/lib/containers/volumes/caddy-data:/data:Z,U
 Volume=/var/lib/containers/volumes/caddy-config:/config:Z,U
 Volume=/var/lib/containers/volumes/caddy-dashboard:/srv/dashboard:Z
-ContainerAutoUpdate=registry
+Label="io.containers.autoupdate=image"
 NoNewPrivileges=yes
 PidsLimit=500
 Ulimit=nofile=262144:262144

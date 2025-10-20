@@ -10,7 +10,7 @@ Pod=orbitcheck
 EnvironmentFile=/srv/myapp/api/env/api.env
 # Example static files or uploads mount
 Volume=/var/lib/containers/volumes/api-data:/app/data:Z,U
-ContainerAutoUpdate=registry
+Label="io.containers.autoupdate=image"
 NoNewPrivileges=yes
 ReadOnly=true
 Tmpfs=/tmp:size=64M

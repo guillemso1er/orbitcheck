@@ -7,7 +7,7 @@ ContainerName=statping
 Pod=orbitcheck
 Volume=/var/lib/containers/volumes/statping-data:/app:Z,U
 EnvironmentFile=/srv/myapp/statping/env/statping.env
-ContainerAutoUpdate=registry
+Label="io.containers.autoupdate=image"
 NoNewPrivileges=yes
 
 [Service]

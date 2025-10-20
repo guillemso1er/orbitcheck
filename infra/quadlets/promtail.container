@@ -11,7 +11,7 @@ Volume=/var/lib/containers/volumes/promtail-config:/etc/promtail:Z
 # For rootless, scrape container logs from $XDG_RUNTIME_DIR/containers or JSON logs
 # Mount the containers storage if needed:
 # Volume=/home/podmanuser/.local/share/containers:/containers:ro
-ContainerAutoUpdate=registry
+Label="io.containers.autoupdate=image"
 NoNewPrivileges=yes
 Command=-config.file=/etc/promtail/promtail.yml
 

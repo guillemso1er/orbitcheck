@@ -9,7 +9,7 @@ ContainerName=postgres
 Pod=orbitcheck
 EnvironmentFile=/srv/myapp/postgres/env/postgres.env
 Volume=/var/lib/containers/volumes/postgres-data:/var/lib/postgresql/data:Z,U
-ContainerAutoUpdate=registry
+Label="io.containers.autoupdate=image"
 NoNewPrivileges=yes
 # Optional resource controls:
 # Memory=2G

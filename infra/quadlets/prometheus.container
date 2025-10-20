@@ -9,7 +9,7 @@ ContainerName=prometheus
 Pod=orbitcheck
 Volume=/var/lib/containers/volumes/prometheus-config:/etc/prometheus:Z
 Volume=/var/lib/containers/volumes/prometheus-data:/prometheus:Z,U
-ContainerAutoUpdate=registry
+Label="io.containers.autoupdate=image"
 NoNewPrivileges=yes
 
 [Service]

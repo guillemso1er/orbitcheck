@@ -6,7 +6,7 @@ Image=docker.io/library/redis:7.2.5
 ContainerName=infisical-redis
 Pod=orbitcheck
 Volume=/var/lib/containers/volumes/infisical-redis-data:/data:Z,U
-ContainerAutoUpdate=registry
+Label="io.containers.autoupdate=image"
 NoNewPrivileges=yes
 
 [Service]

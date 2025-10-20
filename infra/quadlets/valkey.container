@@ -8,7 +8,7 @@ Image=docker.io/valkey/valkey:7.2.11
 ContainerName=valkey
 Pod=orbitcheck
 Volume=/var/lib/containers/volumes/valkey-data:/data:Z,U
-ContainerAutoUpdate=registry
+Label="io.containers.autoupdate=image"
 NoNewPrivileges=yes
 ReadOnly=false
 

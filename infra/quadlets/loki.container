@@ -9,7 +9,7 @@ ContainerName=loki
 Pod=orbitcheck
 Volume=/var/lib/containers/volumes/loki-config:/etc/loki:Z
 Volume=/var/lib/containers/volumes/loki-data:/loki:Z,U
-ContainerAutoUpdate=registry
+Label="io.containers.autoupdate=image"
 NoNewPrivileges=yes
 
 [Service]

@@ -10,7 +10,7 @@ Pod=orbitcheck
 Volume=/var/lib/containers/volumes/grafana-data:/var/lib/grafana:Z,U
 Volume=/var/lib/containers/volumes/grafana-provisioning:/etc/grafana/provisioning:Z
 EnvironmentFile=/srv/myapp/grafana/env/grafana.env
-ContainerAutoUpdate=registry
+Label="io.containers.autoupdate=image"
 NoNewPrivileges=yes
 
 [Service]

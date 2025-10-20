@@ -6,7 +6,7 @@ Image=docker.io/louislam/uptime-kuma:1.23.13
 ContainerName=uptime-kuma
 Pod=orbitcheck
 Volume=/var/lib/containers/volumes/uptime-kuma-data:/app/data:Z,U
-ContainerAutoUpdate=registry
+Label="io.containers.autoupdate=image"
 NoNewPrivileges=yes
 
 [Service]

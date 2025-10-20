@@ -11,8 +11,8 @@ EnvironmentFile=/srv/myapp/minio/env/minio.env
 Volume=/var/lib/containers/volumes/minio-data:/data:Z,U
 # Console on 9001, S3 on 9000; expose only via Caddy unless you want public S3 ports
 # Access internally within the Pod via service name "minio:9000"
-Command=server /data --console-address :9001
-ContainerAutoUpdate=registry
+Exec=server /data --console-address :9001
+Label="io.containers.autoupdate=image"
 NoNewPrivileges=yes
 
 [Service]

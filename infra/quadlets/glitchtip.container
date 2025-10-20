@@ -9,7 +9,7 @@ ContainerName=glitchtip
 Pod=orbitcheck
 EnvironmentFile=/srv/myapp/glitchtip/env/glitchtip.env
 Volume=/var/lib/containers/volumes/glitchtip-data:/data:Z,U
-ContainerAutoUpdate=registry
+Label="io.containers.autoupdate=image"
 NoNewPrivileges=yes
 
 [Service]
