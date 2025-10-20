@@ -4,7 +4,7 @@ Description=Infisical Redis
 [Container]
 Image=docker.io/library/redis:7.2.5
 ContainerName=infisical-redis
-Pod=orbitcheck
+od=orbitcheck.pod
 Volume=/var/lib/containers/volumes/infisical-redis-data:/data:Z,U
 Label="io.containers.autoupdate=image"
 NoNewPrivileges=yes

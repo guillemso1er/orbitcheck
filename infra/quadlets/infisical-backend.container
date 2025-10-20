@@ -6,7 +6,7 @@ Wants=infisical-db.service infisical-redis.service
 [Container]
 Image=docker.io/infisical/infisical:v0.150.0
 ContainerName=infisical-backend
-Pod=orbitcheck
+od=orbitcheck.pod
 EnvironmentFile=/srv/myapp/infisical/env/backend.env
 Label="io.containers.autoupdate=image"
 NoNewPrivileges=yes

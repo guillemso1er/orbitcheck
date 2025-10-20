@@ -6,7 +6,7 @@ Wants=network-online.target
 [Container]
 Image=docker.io/library/caddy:2.10.2
 ContainerName=caddy
-Pod=orbitcheck
+od=orbitcheck.pod
 PublishPort=80:80/tcp
 PublishPort=443:443/tcp
 Volume=/var/lib/containers/volumes/caddy-caddyfile:/etc/caddy/Caddyfile:Z

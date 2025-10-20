@@ -6,7 +6,7 @@ Wants=network-online.target
 [Container]
 Image=docker.io/grafana/loki:2.9.8
 ContainerName=loki
-Pod=orbitcheck
+od=orbitcheck.pod
 Volume=/var/lib/containers/volumes/loki-config:/etc/loki:Z
 Volume=/var/lib/containers/volumes/loki-data:/loki:Z,U
 Label="io.containers.autoupdate=image"

@@ -230,55 +230,44 @@ jobs:
               sudo chown -R podmanuser:podmanuser /var/lib/containers/volumes/caddy-dashboard/_data
             fi
 
-            # Section 2: Podmanuser-level operations (Definitive Reset Sequence)
+            # Section 2: Podmanuser-level operations (Final Version)
             echo "--- Running systemd tasks as podmanuser ---"
             sudo -iu podmanuser bash <<'EOF'
               set -euo pipefail
               
-              # STEP 1: Stop all services to release file locks and running containers.
-              echo "--- Stopping all user services to ensure a clean state ---"
-              # Use a wildcard to stop all generated services. || true prevents errors if none exist.
-              systemctl --user stop '*.service' || true
-              
-              # STEP 2: Forcefully remove the pod from Podman's state.
-              echo "--- Removing conflicting pod directly from Podman ---"
-              podman pod rm -f orbitcheck || true
-
-              # STEP 3: Copy the new unit files onto the now-quiet system.
+              # STEP 1: Copy the new, corrected unit files.
               if [[ "${{ needs.detect-changes.outputs.infra }}" == "true" && -d /tmp/ci/infra ]]; then
                 echo "Copying new Quadlet files..."
                 mkdir -p ~/.config/containers/systemd
                 find /tmp/ci/infra -type f \( -name "*.pod" -o -name "*.container" -o -name "*.volume" -o -name "*.network" \) -exec cp {} ~/.config/containers/systemd/ \;
               fi
 
-              # STEP 4: Reset the systemd user manager itself to forget all old states.
-              echo "--- Forcing systemd user manager to re-execute ---"
-              systemctl --user daemon-reexec
-              echo "Re-execute complete. Waiting 3 seconds..."
-              sleep 3
-
-              # STEP 5: Manually run the generator in a guaranteed clean environment.
+              # STEP 2: Manually run the generator. With the corrected filenames, this will now succeed.
               echo "--- Manually running the Quadlet generator ---"
               GENERATOR_PATH="/usr/libexec/podman/quadlet"
               OUTPUT_DIR="/run/user/$(id -u)/systemd/generator"
+              
+              # Clean the output directory to ensure no old files remain
+              rm -rf "${OUTPUT_DIR}"/*
               mkdir -p "${OUTPUT_DIR}"
+              
               "${GENERATOR_PATH}" --user --no-kmsg-log "${OUTPUT_DIR}"
               echo "Quadlet generator executed."
 
-              # STEP 6: Reload the daemon to make it aware of the brand new files.
-              echo "--- Reloading systemd daemon to recognize newly generated files ---"
+              # STEP 3: Reload the daemon to read the newly generated files.
+              echo "--- Reloading systemd daemon ---"
               systemctl --user daemon-reload
               echo "Daemon reload complete."
 
-              echo "--- Verifying that generator created the .service files ---"
+              echo "--- Verifying that generator created all .service files ---"
               ls -l "${OUTPUT_DIR}" || echo "Generator directory not found or is empty."
 
-              # STEP 7: Start the main pod service, which will pull in all containers.
-              echo "--- Starting the main pod service ---"
-              systemctl --user start orbitcheck.pod.service
-              echo "--- Pod service started. Checking status ---"
-              # Give it a few seconds to pull images and start up
-              sleep 10
+              # STEP 4: Restart the main pod service. This will stop the old pod and start the new one.
+              echo "--- Restarting the main pod service ---"
+              systemctl --user restart orbitcheck.pod.service
+              
+              echo "--- Deployment complete. Checking status in 15 seconds... ---"
+              sleep 15
               systemctl --user --no-pager status orbitcheck.pod.service
             EOF
 
