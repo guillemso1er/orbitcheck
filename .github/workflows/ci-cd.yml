@@ -244,7 +244,7 @@ jobs:
             echo "--- Reloading systemd user daemon as adminuser ---"
             # Now, back as adminuser, run the privileged command.
             # This is the correct context for this command.
-            sudo machinectl shell podmanuser@.host /usr/bin/systemctl --user daemon-reload
+            sudo -u podmanuser /bin/bash -lc "systemctl --user daemon-reload"
             echo "Reload complete."
 
             echo "--- Cleaning up temporary files ---"
@@ -274,7 +274,7 @@ jobs:
           script: |
             sudo -u podmanuser /bin/bash -lc "systemctl --user restart api.container" || true
             sudo -u podmanuser /bin/bash -lc "systemctl --user restart caddy.container" || true
-            
+
       - name: Wait for Health Check
         run: |
           for i in {1..30}; do
