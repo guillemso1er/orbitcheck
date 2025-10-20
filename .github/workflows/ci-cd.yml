@@ -234,11 +234,15 @@ jobs:
             # Switch to podmanuser to place files in its home directory.
             sudo -n -u podmanuser bash <<'EOF'
             set -euo pipefail
+
+            # CRITICAL: Change to the user's home directory to prevent
+            # permission errors from the inherited working directory (/home/adminuser).
+            cd ~
+
             # Ensure the destination directory exists
             mkdir -p ~/.config/containers/systemd
 
-            # Use 'find' to locate all Quadlet files in the temp directory,
-            # no matter which subdirectory they are in, and copy them.
+            # Use 'find' to locate all Quadlet files in the temp directory and copy them.
             if [ -d /tmp/ci/infra ]; then
               find /tmp/ci/infra -type f \( -name "*.pod" -o -name "*.container" -o -name "*.volume" -o -name "*.network" \) -exec cp {} ~/.config/containers/systemd/ \;
             fi
