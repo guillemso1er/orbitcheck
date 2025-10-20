@@ -213,25 +213,20 @@ jobs:
           username: adminuser
           key: ${{ secrets.HETZNER_SSH_KEY }}
           script: |
-            set -euo pipefail # Fail the script on any error
+            set -euo pipefail
 
             # =================================================================
             # SECTION 1: ROOT-LEVEL FILE OPERATIONS
             # =================================================================
             echo "--- Running file tasks as root (via sudo) ---"
-
-            # Only perform infra/Caddyfile operations if infra was updated
             if [[ "${{ needs.detect-changes.outputs.infra }}" == "true" && -d /tmp/ci/infra/compose ]]; then
               echo "Infra changes detected. Updating Caddyfile."
               sudo mkdir -p /srv/myapp/caddy
               if [ -f /tmp/ci/infra/compose/Caddyfile ]; then
                 sudo cp /tmp/ci/infra/compose/Caddyfile /srv/myapp/caddy/Caddyfile
-                # Ownership is set to the USER, not the UID/GID
                 sudo chown -R podmanuser:podmanuser /srv/myapp
               fi
             fi
-
-            # Only perform dashboard operations if dashboard was updated
             if [[ "${{ needs.detect-changes.outputs.dashboard }}" == "true" && -d /tmp/ci/dashboard-dist ]]; then
               echo "Dashboard changes detected. Syncing distribution files."
               sudo mkdir -p /var/lib/containers/volumes/caddy-dashboard/_data
@@ -241,13 +236,14 @@ jobs:
 
             # =================================================================
             # SECTION 2: PODMANUSER-LEVEL OPERATIONS (CRITICAL PART)
-            # This entire block is executed as the podmanuser in a login shell
             # =================================================================
             echo "--- Running systemd tasks as podmanuser ---"
-            sudo -iu podmanuser bash -c '
+            # Use a Here Document (<<'EOF') for robust multi-line script execution
+            sudo -iu podmanuser bash <<'EOF'
               set -euo pipefail
               
-              # Only copy quadlet files if infra has changed
+              # Note: We use GH Actions context directly here. This works because the runner
+              # substitutes these values before sending the script to the server.
               if [[ "${{ needs.detect-changes.outputs.infra }}" == "true" && -d /tmp/ci/infra ]]; then
                 echo "Copying new Quadlet files..."
                 mkdir -p ~/.config/containers/systemd
@@ -261,28 +257,24 @@ jobs:
               systemctl --user daemon-reload
               echo "Daemon reload complete."
 
-              # Restart services if any relevant changes occurred or if a force restart is requested
-              if [[ "${{ needs.detect-changes.outputs.api }} " == "true" || "${{ needs.detect-changes.outputs.infra }}" == "true" || "${{ github.event_name == 'workflow_dispatch' && inputs.force_restart }}" == "true" ]]; then
+              if [[ "${{ needs.detect-changes.outputs.api }}" == "true" || "${{ needs.detect-changes.outputs.infra }}" == "true" || ("${{ github.event_name }}" == "workflow_dispatch" && "${{ inputs.force_restart }}" == "true") ]]; then
                 echo "--- Restarting API service ---"
-                # Use "|| true" to prevent the workflow from failing if the service was not running
-                systemctl --user restart api.container || true
+                systemctl --user restart api.container
               fi
               
-              if [[ "${{ needs.detect-changes.outputs.dashboard }}" == "true" || "${{ needs.detect-changes.outputs.infra }}" == "true" || "${{ github.event_name == 'workflow_dispatch' && inputs.force_restart }}" == "true" ]]; then
+              if [[ "${{ needs.detect-changes.outputs.dashboard }}" == "true" || "${{ needs.detect-changes.outputs.infra }}" == "true" || ("${{ github.event_name }}" == "workflow_dispatch" && "${{ inputs.force_restart }}" == "true") ]]; then
                 echo "--- Restarting Caddy service ---"
-                systemctl --user restart caddy.container || true
+                systemctl --user restart caddy.container
               fi
 
-              # Trigger auto-update for any container images that changed
               if [[ "${{ needs.detect-changes.outputs.api }}" == "true" ]]; then
                 echo "--- Triggering Podman auto-update service ---"
                 systemctl --user start podman-auto-update.service
-                sleep 5 # Give it a moment to start
+                sleep 5
                 echo "--- Status of auto-update service ---"
                 systemctl --user --no-pager status podman-auto-update.service || true
               fi
-            '
-            # End of sudo -iu podmanuser block
+            EOF
 
             # =================================================================
             # SECTION 3: CLEANUP
