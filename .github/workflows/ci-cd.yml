@@ -230,43 +230,56 @@ jobs:
               sudo chown -R podmanuser:podmanuser /var/lib/containers/volumes/caddy-dashboard/_data
             fi
 
-            # Section 2: Podmanuser-level operations (The final, correct version)
+            # Section 2: Podmanuser-level operations (Definitive Reset Sequence)
             echo "--- Running systemd tasks as podmanuser ---"
             sudo -iu podmanuser bash <<'EOF'
               set -euo pipefail
               
+              # STEP 1: Stop all services to release file locks and running containers.
+              echo "--- Stopping all user services to ensure a clean state ---"
+              # Use a wildcard to stop all generated services. || true prevents errors if none exist.
+              systemctl --user stop '*.service' || true
+              
+              # STEP 2: Forcefully remove the pod from Podman's state.
+              echo "--- Removing conflicting pod directly from Podman ---"
+              podman pod rm -f orbitcheck || true
+
+              # STEP 3: Copy the new unit files onto the now-quiet system.
               if [[ "${{ needs.detect-changes.outputs.infra }}" == "true" && -d /tmp/ci/infra ]]; then
                 echo "Copying new Quadlet files..."
                 mkdir -p ~/.config/containers/systemd
                 find /tmp/ci/infra -type f \( -name "*.pod" -o -name "*.container" -o -name "*.volume" -o -name "*.network" \) -exec cp {} ~/.config/containers/systemd/ \;
               fi
 
-              echo "--- Removing conflicting pod directly to resolve state conflict ---"
-              # This is the key fix: Use podman to remove the pod if it exists.
-              # The || true ensures the script does not fail if the pod doesn't exist.
-              podman pod rm -f orbitcheck || true
+              # STEP 4: Reset the systemd user manager itself to forget all old states.
+              echo "--- Forcing systemd user manager to re-execute ---"
+              systemctl --user daemon-reexec
+              echo "Re-execute complete. Waiting 3 seconds..."
+              sleep 3
 
+              # STEP 5: Manually run the generator in a guaranteed clean environment.
               echo "--- Manually running the Quadlet generator ---"
               GENERATOR_PATH="/usr/libexec/podman/quadlet"
               OUTPUT_DIR="/run/user/$(id -u)/systemd/generator"
-              
               mkdir -p "${OUTPUT_DIR}"
               "${GENERATOR_PATH}" --user --no-kmsg-log "${OUTPUT_DIR}"
               echo "Quadlet generator executed."
 
-              echo "--- Reloading systemd daemon to recognize generated files ---"
+              # STEP 6: Reload the daemon to make it aware of the brand new files.
+              echo "--- Reloading systemd daemon to recognize newly generated files ---"
               systemctl --user daemon-reload
               echo "Daemon reload complete."
 
               echo "--- Verifying that generator created the .service files ---"
               ls -l "${OUTPUT_DIR}" || echo "Generator directory not found or is empty."
 
-              # Restart logic - This should now start the brand new pod service
-              if [[ "${{ needs.detect-changes.outputs.api }}" == "true" || "${{ needs.detect-changes.outputs.infra }}" == "true" || ("${{ github.event_name }}" == "workflow_dispatch" && "${{ inputs.force_restart }}" == "true") ]]; then
-                echo "--- Starting the main pod service ---"
-                # We start the pod service, which will in turn start all the containers.
-                systemctl --user restart orbitcheck.pod.service
-              fi
+              # STEP 7: Start the main pod service, which will pull in all containers.
+              echo "--- Starting the main pod service ---"
+              systemctl --user start orbitcheck.pod.service
+              echo "--- Pod service started. Checking status ---"
+              # Give it a few seconds to pull images and start up
+              sleep 10
+              systemctl --user --no-pager status orbitcheck.pod.service
             EOF
 
             # Section 3: Cleanup

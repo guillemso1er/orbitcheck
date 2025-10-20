@@ -13,7 +13,7 @@ Volume=/var/lib/containers/volumes/promtail-config:/etc/promtail:Z
 # Volume=/home/podmanuser/.local/share/containers:/containers:ro
 Label="io.containers.autoupdate=image"
 NoNewPrivileges=yes
-Command=-config.file=/etc/promtail/promtail.yml
+# Command=-config.file=/etc/promtail/promtail.yml
 
 [Service]
 Restart=always
