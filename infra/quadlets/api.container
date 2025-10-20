@@ -6,7 +6,7 @@ Wants=postgres.service valkey.service
 [Container]
 Image=ghcr.io/OWNER/api:prod
 ContainerName=api
-od=orbitcheck.pod
+Pod=orbitcheck.pod
 EnvironmentFile=/srv/myapp/api/env/api.env
 Volume=/var/lib/containers/volumes/api-data:/app/data:Z,U
 Label="io.containers.autoupdate=image"

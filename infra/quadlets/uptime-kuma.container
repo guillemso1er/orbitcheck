@@ -4,7 +4,7 @@ Description=Uptime Kuma
 [Container]
 Image=docker.io/louislam/uptime-kuma:1.23.13
 ContainerName=uptime-kuma
-od=orbitcheck.pod
+Pod=orbitcheck.pod
 Volume=/var/lib/containers/volumes/uptime-kuma-data:/app/data:Z,U
 Label="io.containers.autoupdate=image"
 NoNewPrivileges=yes

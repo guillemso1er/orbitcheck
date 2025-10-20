@@ -4,7 +4,7 @@ Description=Statping-NG
 [Container]
 Image=docker.io/statping-ng/statping-ng:v0.90.80
 ContainerName=statping
-od=orbitcheck.pod
+Pod=orbitcheck.pod
 Volume=/var/lib/containers/volumes/statping-data:/app:Z,U
 EnvironmentFile=/srv/myapp/statping/env/statping.env
 Label="io.containers.autoupdate=image"

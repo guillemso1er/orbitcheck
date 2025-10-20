@@ -4,7 +4,7 @@ Description=Infisical DB
 [Container]
 Image=docker.io/library/postgres:14-alpine
 ContainerName=infisical-db
-od=orbitcheck.pod
+Pod=orbitcheck.pod
 Volume=/var/lib/containers/volumes/infisical-db-data:/var/lib/postgresql/data:Z,U
 EnvironmentFile=/srv/myapp/infisical/env/db.env
 Label="io.containers.autoupdate=image"
