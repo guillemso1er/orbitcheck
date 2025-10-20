@@ -206,79 +206,89 @@ jobs:
           source: "apps/dashboard/dist/**"
           target: "/tmp/ci/dashboard-dist"
 
-      - name: Place files and reload services (remote)
+      - name: Deploy files and restart services
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.HETZNER_HOST }}
           username: adminuser
           key: ${{ secrets.HETZNER_SSH_KEY }}
           script: |
-            set -euo pipefail
-            echo "--- Running tasks as root (via adminuser's sudo) ---"
+            set -euo pipefail # Fail the script on any error
 
-            # Root-level file operations...
-            if [ -d /tmp/ci/infra/compose ]; then
+            # =================================================================
+            # SECTION 1: ROOT-LEVEL FILE OPERATIONS
+            # =================================================================
+            echo "--- Running file tasks as root (via sudo) ---"
+
+            # Only perform infra/Caddyfile operations if infra was updated
+            if [[ "${{ needs.detect-changes.outputs.infra }}" == "true" && -d /tmp/ci/infra/compose ]]; then
+              echo "Infra changes detected. Updating Caddyfile."
               sudo mkdir -p /srv/myapp/caddy
               if [ -f /tmp/ci/infra/compose/Caddyfile ]; then
                 sudo cp /tmp/ci/infra/compose/Caddyfile /srv/myapp/caddy/Caddyfile
+                # Ownership is set to the USER, not the UID/GID
                 sudo chown -R podmanuser:podmanuser /srv/myapp
               fi
             fi
-            if [ -d /tmp/ci/dashboard-dist ]; then
+
+            # Only perform dashboard operations if dashboard was updated
+            if [[ "${{ needs.detect-changes.outputs.dashboard }}" == "true" && -d /tmp/ci/dashboard-dist ]]; then
+              echo "Dashboard changes detected. Syncing distribution files."
               sudo mkdir -p /var/lib/containers/volumes/caddy-dashboard/_data
               sudo rsync -a --delete /tmp/ci/dashboard-dist/ /var/lib/containers/volumes/caddy-dashboard/_data/
               sudo chown -R podmanuser:podmanuser /var/lib/containers/volumes/caddy-dashboard/_data
             fi
 
-            echo "--- Running file tasks as podmanuser ---"
-            # Switch to podmanuser to place files in its home directory.
-            sudo -n -u podmanuser bash <<'EOF'
-            set -euo pipefail
+            # =================================================================
+            # SECTION 2: PODMANUSER-LEVEL OPERATIONS (CRITICAL PART)
+            # This entire block is executed as the podmanuser in a login shell
+            # =================================================================
+            echo "--- Running systemd tasks as podmanuser ---"
+            sudo -iu podmanuser bash -c '
+              set -euo pipefail
+              
+              # Only copy quadlet files if infra has changed
+              if [[ "${{ needs.detect-changes.outputs.infra }}" == "true" && -d /tmp/ci/infra ]]; then
+                echo "Copying new Quadlet files..."
+                mkdir -p ~/.config/containers/systemd
+                find /tmp/ci/infra -type f \( -name "*.pod" -o -name "*.container" -o -name "*.volume" -o -name "*.network" \) -exec cp {} ~/.config/containers/systemd/ \;
+              fi
 
-            # CRITICAL: Change to the user's home directory to prevent
-            # permission errors from the inherited working directory (/home/adminuser).
-            cd ~
+              echo "--- Listing contents of Quadlet directory for verification ---"
+              ls -l ~/.config/containers/systemd/
 
-            # Ensure the destination directory exists
-            mkdir -p ~/.config/containers/systemd
+              echo "--- Reloading systemd user daemon ---"
+              systemctl --user daemon-reload
+              echo "Daemon reload complete."
 
-            # Use 'find' to locate all Quadlet files in the temp directory and copy them.
-            if [ -d /tmp/ci/infra ]; then
-              find /tmp/ci/infra -type f \( -name "*.pod" -o -name "*.container" -o -name "*.volume" -o -name "*.network" \) -exec cp {} ~/.config/containers/systemd/ \;
-            fi
-            EOF
+              # Restart services if any relevant changes occurred or if a force restart is requested
+              if [[ "${{ needs.detect-changes.outputs.api }} " == "true" || "${{ needs.detect-changes.outputs.infra }}" == "true" || "${{ github.event_name == 'workflow_dispatch' && inputs.force_restart }}" == "true" ]]; then
+                echo "--- Restarting API service ---"
+                # Use "|| true" to prevent the workflow from failing if the service was not running
+                systemctl --user restart api.container || true
+              fi
+              
+              if [[ "${{ needs.detect-changes.outputs.dashboard }}" == "true" || "${{ needs.detect-changes.outputs.infra }}" == "true" || "${{ github.event_name == 'workflow_dispatch' && inputs.force_restart }}" == "true" ]]; then
+                echo "--- Restarting Caddy service ---"
+                systemctl --user restart caddy.container || true
+              fi
 
-            echo "--- Reloading systemd user daemon ---"
-            sudo -u podmanuser /bin/bash -lc "systemctl --user daemon-reload"
-            echo "Reload complete."
+              # Trigger auto-update for any container images that changed
+              if [[ "${{ needs.detect-changes.outputs.api }}" == "true" ]]; then
+                echo "--- Triggering Podman auto-update service ---"
+                systemctl --user start podman-auto-update.service
+                sleep 5 # Give it a moment to start
+                echo "--- Status of auto-update service ---"
+                systemctl --user --no-pager status podman-auto-update.service || true
+              fi
+            '
+            # End of sudo -iu podmanuser block
 
+            # =================================================================
+            # SECTION 3: CLEANUP
+            # =================================================================
             echo "--- Cleaning up temporary files ---"
             sudo rm -rf /tmp/ci
-
-      - name: Trigger remote auto-update
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.HETZNER_HOST }}
-          username: adminuser
-          key: ${{ secrets.HETZNER_SSH_KEY }}
-          script: |
-            set -euo pipefail
-            echo "Triggering Podman auto-update..."
-            sudo -u podmanuser /bin/bash -lc "systemctl --user start podman-auto-update.service"
-            sleep 5
-            echo "Checking update status..."
-            sudo -u podmanuser /bin/bash -lc "systemctl --user --no-pager status podman-auto-update.service" || true
-
-      - name: Force restart services
-        if: github.event_name == 'workflow_dispatch' && inputs.force_restart
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.HETZNER_HOST }}
-          username: adminuser
-          key: ${{ secrets.HETZNER_SSH_KEY }}
-          script: |
-            sudo -u podmanuser /bin/bash -lc "systemctl --user restart api.container" || true
-            sudo -u podmanuser /bin/bash -lc "systemctl --user restart caddy.container" || true
 
       - name: Wait for Health Check
         run: |
