@@ -11,5 +11,7 @@ NoNewPrivileges=yes
 
 [Service]
 Restart=always
+ExecStartPre=mkdir -p /var/lib/containers/volumes/infisical-redis-data
+
 [Install]
 WantedBy=default.target

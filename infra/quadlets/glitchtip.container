@@ -14,6 +14,7 @@ NoNewPrivileges=yes
 
 [Service]
 Restart=always
+ExecStartPre=mkdir -p /var/lib/containers/volumes/glitchtip-data
 
 [Install]
 WantedBy=default.target

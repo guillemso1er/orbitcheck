@@ -15,6 +15,8 @@ NoNewPrivileges=yes
 
 [Service]
 Restart=always
+ExecStartPre=mkdir -p /var/lib/containers/volumes/grafana-data
+ExecStartPre=mkdir -p /var/lib/containers/volumes/grafana-provisioning
 
 [Install]
 WantedBy=default.target

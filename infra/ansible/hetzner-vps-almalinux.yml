@@ -778,6 +778,23 @@
         - sshd
       when: ansible_service_mgr == 'systemd'
 
+    - name: Set inheritable execute permissions for the podman_user
+      ansible.builtin.command: "setfacl -R -m d:u:{{ podman_user }}:rwx,u:{{ podman_user }}:rwx {{ container_base_path }}/{{ item }}/"
+      loop:
+        - compose
+        - volumes
+        - logs
+        - configs
+      become: yes
+      changed_when: true
+
+    - name: Restore SELinux context for the systemd journal directory
+      ansible.builtin.command:
+        cmd: "restorecon -vR /var/log/journal/"
+      become: yes
+      changed_when: false # restorecon is verbose, so we don't rely on its output for change status
+      when: ansible_selinux.status == 'enabled'
+
     # ==============================================================================
     #                      RCLONE, BACKUP & RESTORE TASKS
     # ==============================================================================

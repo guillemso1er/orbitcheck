@@ -17,8 +17,9 @@ Tmpfs=/tmp:size=64M
 [Service]
 Restart=always
 RestartSec=3
+ExecStartPre=mkdir -p /var/lib/containers/volumes/api-data
 # CORRECTED: The command is now wrapped in a shell to allow redirection
-ExecStartPre=-/bin/sh -c '/usr/bin/podman login ghcr.io -u your_github_username --password-stdin < /run/secrets/ghcr_token'
+ExecStartPre=-/bin/sh -c '/usr/bin/podman login ghcr.io -u guillemso1er --password-stdin < /run/secrets/ghcr_token'
 
 [Install]
 WantedBy=default.target

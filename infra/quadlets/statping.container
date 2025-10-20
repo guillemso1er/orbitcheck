@@ -12,5 +12,7 @@ NoNewPrivileges=yes
 
 [Service]
 Restart=always
+ExecStartPre=mkdir -p /var/lib/containers/volumes/statping-data
+
 [Install]
 WantedBy=default.target

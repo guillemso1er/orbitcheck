@@ -20,6 +20,10 @@ Ulimit=nofile=262144:262144
 
 [Service]
 Restart=always
+ExecStartPre=mkdir -p /var/lib/containers/volumes/caddy-caddyfile
+ExecStartPre=mkdir -p /var/lib/containers/volumes/caddy-data
+ExecStartPre=mkdir -p /var/lib/containers/volumes/caddy-config
+ExecStartPre=mkdir -p /var/lib/containers/volumes/caddy-dashboard
 
 [Install]
 WantedBy=default.target
