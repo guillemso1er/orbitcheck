@@ -2,7 +2,8 @@
 Description=Infisical Redis
 
 [Container]
-Remove=false
+LogDriver=journald
+LogTag=%N
 Image=docker.io/library/redis:7.2.5
 ContainerName=infisical-redis
 Pod=orbitcheck.pod

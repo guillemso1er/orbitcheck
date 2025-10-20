@@ -4,7 +4,8 @@ After=network-online.target
 Wants=network-online.target
 
 [Container]
-Remove=false
+LogDriver=journald
+LogTag=%N
 Image=docker.io/prom/prometheus:v2.53.0
 ContainerName=prometheus
 Pod=orbitcheck.pod

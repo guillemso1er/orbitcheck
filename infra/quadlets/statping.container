@@ -2,7 +2,8 @@
 Description=Statping-NG
 
 [Container]
-Remove=false
+LogDriver=journald
+LogTag=%N
 Image=docker.io/statping-ng/statping-ng:v0.90.80
 ContainerName=statping
 Pod=orbitcheck.pod

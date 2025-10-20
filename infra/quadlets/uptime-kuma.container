@@ -2,7 +2,8 @@
 Description=Uptime Kuma
 
 [Container]
-Remove=false
+LogDriver=journald
+LogTag=%N
 Image=docker.io/louislam/uptime-kuma:1.23.13
 ContainerName=uptime-kuma
 Pod=orbitcheck.pod

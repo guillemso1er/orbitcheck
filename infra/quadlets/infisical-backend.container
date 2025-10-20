@@ -4,7 +4,8 @@ After=infisical-db.service infisical-redis.service
 Wants=infisical-db.service infisical-redis.service
 
 [Container]
-Remove=false
+LogDriver=journald
+LogTag=%N
 Image=docker.io/infisical/infisical:v0.150.0
 ContainerName=infisical-backend
 Pod=orbitcheck.pod

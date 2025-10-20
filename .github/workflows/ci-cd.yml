@@ -230,11 +230,16 @@ jobs:
               sudo chown -R podmanuser:podmanuser /var/lib/containers/volumes/caddy-dashboard/_data
             fi
 
-            # Section 2: Podmanuser-level operations (The Definitive Sequence)
+            # Section 2: Podmanuser-level operations
             echo "--- Running systemd tasks as podmanuser ---"
             sudo -iu podmanuser bash <<'EOF'
               set -euo pipefail
-              
+
+              POD_UNIT="orbitcheck-pod.service"
+
+              # STEP 0: record the deploy start time so we can query logs later
+              date +%s > "$HOME/.deploy_start_epoch"
+
               # STEP 1: Copy new unit files.
               if [[ "${{ needs.detect-changes.outputs.infra }}" == "true" && -d /tmp/ci/infra ]]; then
                 echo "Copying new Quadlet files..."
@@ -246,30 +251,28 @@ jobs:
               echo "--- Manually running the Quadlet generator ---"
               GENERATOR_PATH="/usr/libexec/podman/quadlet"
               OUTPUT_DIR="/run/user/$(id -u)/systemd/generator"
-              
               rm -rf "${OUTPUT_DIR:?}"/*
               mkdir -p "${OUTPUT_DIR}"
-              
               "${GENERATOR_PATH}" --user --no-kmsg-log "${OUTPUT_DIR}"
               echo "Quadlet generator executed."
 
-              # STEP 3: Explicitly stop the old service to ensure a clean state.
+              # STEP 3: Stop old service (if exists)
               echo "--- Stopping the old pod service (if it exists) ---"
-              # || true prevents an error if the service is not already running.
-              systemctl --user stop orbitcheck-pod.service || true
+              systemctl --user stop "$POD_UNIT" || true
 
-              # STEP 4: Reload the daemon to make it read the new unit files.
+              # STEP 4: Reload daemon
               echo "--- Reloading systemd daemon ---"
               systemctl --user daemon-reload
-              echo "Daemon reload complete."
 
-              # STEP 5: Start the new version of the service.
+              # STEP 5: Start new version
               echo "--- Starting the main pod service ---"
-              systemctl --user start orbitcheck-pod.service
-              
+              systemctl --user start "$POD_UNIT"
+
               echo "--- Deployment complete. Checking status in 15 seconds... ---"
               sleep 15
-              systemctl --user --no-pager status orbitcheck-pod.service
+              echo "::group::Systemd status ($POD_UNIT)"
+              systemctl --user --no-pager status "$POD_UNIT" || true
+              echo "::endgroup::"
             EOF
 
             # Section 3: Cleanup
@@ -288,3 +291,57 @@ jobs:
           done
           echo "❌ Health check failed."
           exit 1
+
+      - name: Dump Quadlet/container logs to Actions
+        if: always()
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.HETZNER_HOST }}
+          username: adminuser
+          key: ${{ secrets.HETZNER_SSH_KEY }}
+          script: |
+            set -euo pipefail
+            sudo -iu podmanuser bash <<'EOF'
+              set -euo pipefail
+
+              POD_UNIT="orbitcheck-pod.service"
+              # If the file doesn't exist (first run), default to 30m ago
+              if [[ -f "$HOME/.deploy_start_epoch" ]]; then
+                since="@$(cat "$HOME/.deploy_start_epoch")"
+              else
+                since="$(date -d '30 minutes ago' +'%Y-%m-%d %H:%M:%S')"
+              fi
+
+              echo "::group::Aggregated container logs since ${since}"
+              # Discover the container units that the pod pulls in
+              mapfile -t container_units < <(
+                systemctl --user show -p Requires -p Wants --value "$POD_UNIT" 2>/dev/null \
+                  | tr ' ' '\n' \
+                  | grep -E '^container-.*\.service$' \
+                  | sort -u
+              )
+
+              # Fallback: take all container units if the above detection fails
+              if [[ ${#container_units[@]} -eq 0 ]]; then
+                mapfile -t container_units < <(
+                  systemctl --user list-units --type=service --all --no-legend \
+                    | awk '/container-.*\.service/ {print $1}' | sort -u
+                )
+              fi
+
+              # If still nothing, just show the pod unit logs
+              if [[ ${#container_units[@]} -eq 0 ]]; then
+                echo "No container-* units detected; showing pod unit logs."
+                journalctl --user --no-pager -o short-iso --since "$since" -u "$POD_UNIT" || true
+              else
+                for u in "${container_units[@]}"; do
+                  name="${u#container-}"; name="${name%.service}"
+                  echo "----- $name -----"
+                  # Preferred: journald driver provides CONTAINER_NAME
+                  journalctl --user --no-pager -o short-iso --since "$since" CONTAINER_NAME="$name" || \
+                  # Fallback to the systemd unit's own logs
+                  journalctl --user --no-pager -o short-iso --since "$since" -u "$u" || true
+                done
+              fi
+              echo "::endgroup::"
+            EOF
