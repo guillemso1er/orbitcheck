@@ -15,12 +15,14 @@ NoNewPrivileges=yes
 ReadOnly=true
 Tmpfs=/tmp:size=64M
 # Health checks if your image has curl/wget:
-# HealthCmd=/bin/sh -c 'wget -q -O - http://127.0.0.1:3000/health || exit 1'
+# HealthCmd=/bin/sh -c 'wget -q -O - http://12-7.0.0.1:3000/health || exit 1'
 # HealthInterval=30s
 
 [Service]
 Restart=always
 RestartSec=3
+# Use ExecStartPre to log in to the private registry before pulling the image
+ExecStartPre=-/usr/bin/podman login ghcr.io -u your_github_username --password-stdin-end < /run/secrets/ghcr_token
 
 [Install]
 WantedBy=default.target

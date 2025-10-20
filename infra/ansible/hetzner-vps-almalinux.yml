@@ -687,7 +687,33 @@
       changed_when: false
       failed_when: podman_info_test.rc != 0
       when: ansible_connection != 'podman'
-    
+
+    - name: Create Podman secret for container registry
+      no_log: true # Prevents the secret value from being displayed in logs
+      block:
+        - name: Check if ghcr_token secret already exists
+          ansible.builtin.command:
+            cmd: "podman secret inspect ghcr_token"
+          become_user: "{{ podman_user }}"
+          environment:
+            XDG_RUNTIME_DIR: "/run/user/{{ podman_user_uid }}"
+          register: ghcr_secret_check
+          changed_when: false
+          failed_when: false # This command is expected to fail if the secret does not exist
+
+        - name: Create ghcr_token secret from secrets file
+          ansible.builtin.command:
+            cmd: "podman secret create ghcr_token -"
+            stdin: "{{ ghcr_token }}" # Pass the secret securely via standard input
+          become_user: "{{ podman_user }}"
+          environment:
+            XDG_RUNTIME_DIR: "/run/user/{{ podman_user_uid }}"
+          # This task only runs if the secret doesn't exist and the variable is defined.
+          when:
+            - ghcr_secret_check.rc != 0
+            - ghcr_token is defined
+            - ghcr_token != ""
+            
     
     - name: Configure Container Directories and SELinux Contexts
       block:

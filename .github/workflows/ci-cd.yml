@@ -4,6 +4,23 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      force_deploy:
+        description: "Run deploy even if nothing changed"
+        type: boolean
+        default: false
+      force_api_build:
+        description: "Rebuild/push API image even if unchanged"
+        type: boolean
+        default: false
+      force_dashboard_build:
+        description: "Rebuild dashboard even if unchanged"
+        type: boolean
+        default: false
+      force_restart:
+        description: "Restart services at the end (even if no updates)"
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -57,7 +74,7 @@ jobs:
   build-api:
     name: Build and push API (only if changed)
     needs: [detect-changes]
-    if: needs.detect-changes.outputs.api == 'true'
+    if: needs.detect-changes.outputs.api == 'true' || (github.event_name == 'workflow_dispatch' && inputs.force_api_build)
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -101,7 +118,7 @@ jobs:
   build-dashboard:
     name: Build dashboard (only if changed)
     needs: [detect-changes]
-    if: needs.detect-changes.outputs.dashboard == 'true'
+    if: needs.detect-changes.outputs.dashboard == 'true' || (github.event_name == 'workflow_dispatch' && inputs.force_dashboard_build)
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -143,10 +160,15 @@ jobs:
   deploy:
     name: Deploy
     needs: [detect-changes, build-api, build-dashboard]
+    if: >
+      (github.event_name == 'workflow_dispatch' && inputs.force_deploy)
+      || needs.detect-changes.outputs.api == 'true'
+      || needs.detect-changes.outputs.dashboard == 'true'
+      || needs.detect-changes.outputs.infra == 'true'
     runs-on: ubuntu-latest
     environment:
       name: production
-      url: https://api.orbitcheck.io  # update if different
+      url: https://api.orbitcheck.io # update if different
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
