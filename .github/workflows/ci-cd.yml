@@ -215,9 +215,7 @@ jobs:
           script: |
             set -euo pipefail
 
-            # =================================================================
-            # SECTION 1: ROOT-LEVEL FILE OPERATIONS
-            # =================================================================
+            # Section 1: Root-level file operations (remains the same)
             echo "--- Running file tasks as root (via sudo) ---"
             if [[ "${{ needs.detect-changes.outputs.infra }}" == "true" && -d /tmp/ci/infra/compose ]]; then
               echo "Infra changes detected. Updating Caddyfile."
@@ -234,39 +232,40 @@ jobs:
               sudo chown -R podmanuser:podmanuser /var/lib/containers/volumes/caddy-dashboard/_data
             fi
 
-            # =================================================================
-            # SECTION 2: PODMANUSER-LEVEL OPERATIONS (CRITICAL PART)
-            # =================================================================
+            # Section 2: Podmanuser-level operations (with the fix)
             echo "--- Running systemd tasks as podmanuser ---"
-            # Use a Here Document (<<'EOF') for robust multi-line script execution
             sudo -iu podmanuser bash <<'EOF'
               set -euo pipefail
               
-              # Note: We use GH Actions context directly here. This works because the runner
-              # substitutes these values before sending the script to the server.
               if [[ "${{ needs.detect-changes.outputs.infra }}" == "true" && -d /tmp/ci/infra ]]; then
                 echo "Copying new Quadlet files..."
                 mkdir -p ~/.config/containers/systemd
                 find /tmp/ci/infra -type f \( -name "*.pod" -o -name "*.container" -o -name "*.volume" -o -name "*.network" \) -exec cp {} ~/.config/containers/systemd/ \;
               fi
 
-              echo "--- Listing contents of Quadlet directory for verification ---"
-              ls -l ~/.config/containers/systemd/
+              echo "--- Forcing systemd user manager to re-execute to run generators ---"
+              # This is more robust than daemon-reload for ensuring generators run
+              systemctl --user daemon-reexec
+              echo "Re-execute complete. Waiting 3 seconds for it to settle."
+              sleep 3
 
-              echo "--- Reloading systemd user daemon ---"
-              systemctl --user daemon-reload
-              echo "Daemon reload complete."
+              echo "--- Verifying that generator created the .service files ---"
+              # This will show us if api.container.service was successfully generated
+              ls -l /run/user/$(id -u)/systemd/generator/ || echo "Generator directory not found or is empty."
 
+              # Conditional restart logic (remains the same)
               if [[ "${{ needs.detect-changes.outputs.api }}" == "true" || "${{ needs.detect-changes.outputs.infra }}" == "true" || ("${{ github.event_name }}" == "workflow_dispatch" && "${{ inputs.force_restart }}" == "true") ]]; then
                 echo "--- Restarting API service ---"
-                systemctl --user restart api.container
+                # Use the full service name for clarity and correctness
+                systemctl --user restart api.container.service
               fi
               
               if [[ "${{ needs.detect-changes.outputs.dashboard }}" == "true" || "${{ needs.detect-changes.outputs.infra }}" == "true" || ("${{ github.event_name }}" == "workflow_dispatch" && "${{ inputs.force_restart }}" == "true") ]]; then
                 echo "--- Restarting Caddy service ---"
-                systemctl --user restart caddy.container
+                systemctl --user restart caddy.container.service
               fi
 
+              # Auto-update logic (remains the same)
               if [[ "${{ needs.detect-changes.outputs.api }}" == "true" ]]; then
                 echo "--- Triggering Podman auto-update service ---"
                 systemctl --user start podman-auto-update.service
@@ -276,9 +275,7 @@ jobs:
               fi
             EOF
 
-            # =================================================================
-            # SECTION 3: CLEANUP
-            # =================================================================
+            # Section 3: Cleanup (remains the same)
             echo "--- Cleaning up temporary files ---"
             sudo rm -rf /tmp/ci
 
