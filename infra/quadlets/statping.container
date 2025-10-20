@@ -2,6 +2,7 @@
 Description=Statping-NG
 
 [Container]
+Remove=false
 Image=docker.io/statping-ng/statping-ng:v0.90.80
 ContainerName=statping
 Pod=orbitcheck.pod

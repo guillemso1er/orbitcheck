@@ -4,6 +4,7 @@ After=postgres.service valkey.service
 Wants=postgres.service valkey.service
 
 [Container]
+Remove=false
 Image=docker.io/glitchtip/glitchtip:latest
 ContainerName=glitchtip
 Pod=orbitcheck.pod

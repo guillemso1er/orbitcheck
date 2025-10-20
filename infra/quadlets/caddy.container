@@ -4,6 +4,7 @@ After=network-online.target
 Wants=network-online.target
 
 [Container]
+Remove=false
 Image=docker.io/library/caddy:2.10.2
 ContainerName=caddy
 Pod=orbitcheck.pod

@@ -4,6 +4,7 @@ After=postgres.service valkey.service
 Wants=postgres.service valkey.service
 
 [Container]
+Remove=false
 Image=ghcr.io/OWNER/api:prod
 ContainerName=api
 Pod=orbitcheck.pod

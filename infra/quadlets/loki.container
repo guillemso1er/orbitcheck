@@ -4,6 +4,7 @@ After=network-online.target
 Wants=network-online.target
 
 [Container]
+Remove=false
 Image=docker.io/grafana/loki:2.9.8
 ContainerName=loki
 Pod=orbitcheck.pod

@@ -4,6 +4,7 @@ After=prometheus.service
 Wants=prometheus.service
 
 [Container]
+Remove=false
 Image=docker.io/grafana/grafana:11.1.0
 ContainerName=grafana
 Pod=orbitcheck.pod

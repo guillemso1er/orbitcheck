@@ -4,6 +4,7 @@ After=network-online.target
 Wants=network-online.target
 
 [Container]
+Remove=false
 Image=docker.io/valkey/valkey:7.2.11
 ContainerName=valkey
 Pod=orbitcheck.pod

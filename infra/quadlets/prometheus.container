@@ -4,6 +4,7 @@ After=network-online.target
 Wants=network-online.target
 
 [Container]
+Remove=false
 Image=docker.io/prom/prometheus:v2.53.0
 ContainerName=prometheus
 Pod=orbitcheck.pod
