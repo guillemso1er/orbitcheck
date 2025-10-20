@@ -5,7 +5,6 @@ Wants=loki.service
 
 [Container]
 LogDriver=journald
-LogTag=%N
 Image=docker.io/grafana/promtail:2.9.8
 ContainerName=promtail
 Pod=orbitcheck.pod

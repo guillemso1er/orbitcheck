@@ -5,7 +5,6 @@ Wants=postgres.service valkey.service
 
 [Container]
 LogDriver=journald
-LogTag=%N
 Image=ghcr.io/OWNER/api:prod
 ContainerName=api
 Pod=orbitcheck.pod

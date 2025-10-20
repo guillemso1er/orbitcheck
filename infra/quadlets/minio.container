@@ -5,7 +5,6 @@ Wants=network-online.target
 
 [Container]
 LogDriver=journald
-LogTag=%N
 Image=docker.io/minio/minio:latest
 ContainerName=minio
 Pod=orbitcheck.pod

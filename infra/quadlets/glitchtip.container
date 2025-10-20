@@ -5,7 +5,6 @@ Wants=postgres.service valkey.service
 
 [Container]
 LogDriver=journald
-LogTag=%N
 Image=docker.io/glitchtip/glitchtip:latest
 ContainerName=glitchtip
 Pod=orbitcheck.pod
