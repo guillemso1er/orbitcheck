@@ -246,9 +246,8 @@ jobs:
 
             # Reload the user's systemd daemon to recognize new/changed unit files
             echo "Reloading systemd user daemon..."
-            systemctl --user daemon-reload
+            sudo machinectl shell podmanuser@.host /usr/bin/systemctl --user daemon-reload
             echo "Reload complete."
-            EOF
 
             # Clean up the temporary CI directory as adminuser
             echo "--- Cleaning up temporary files ---"
@@ -263,10 +262,10 @@ jobs:
           script: |
             set -euo pipefail
             echo "Triggering Podman auto-update..."
-            sudo -n -u podmanuser systemctl --user start podman-auto-update.service
+            sudo machinectl shell podmanuser@.host /usr/bin/systemctl --user start podman-auto-update.service
             sleep 5
             echo "Checking update status..."
-            sudo -n -u podmanuser systemctl --user --no-pager status podman-auto-update.service || true
+            sudo machinectl shell podmanuser@.host /usr/bin/systemctl --user --no-pager status podman-auto-update.service || true
 
       - name: Force restart services
         if: github.event_name == 'workflow_dispatch' && inputs.force_restart
@@ -276,8 +275,8 @@ jobs:
           username: adminuser
           key: ${{ secrets.HETZNER_SSH_KEY }}
           script: |
-            sudo -n -u podmanuser systemctl --user restart api.container || true
-            sudo -n -u podmanuser systemctl --user restart caddy.container || true
+            sudo machinectl shell podmanuser@.host /usr/bin/systemctl --user restart api.container || true
+            sudo machinectl shell podmanuser@.host /usr/bin/systemctl --user restart caddy.container || true
 
       - name: Wait for Health Check
         run: |
