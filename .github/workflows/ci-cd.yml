@@ -103,6 +103,7 @@ jobs:
           labels: |
             org.opencontainers.image.source=${{ github.repository }}
             org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.run_id=${{ github.run_id }}
           cache-from: type=gha,scope=api
           cache-to: type=gha,scope=api,mode=max
 
@@ -248,6 +249,17 @@ jobs:
             sleep 5
             echo "Checking update status..."
             sudo -n -u podmanuser systemctl --user --no-pager status podman-auto-update.service || true
+
+      - name: Force restart services
+        if: github.event_name == 'workflow_dispatch' && inputs.force_restart
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.HETZNER_HOST }}
+          username: adminuser
+          key: ${{ secrets.HETZNER_SSH_KEY }}
+          script: |
+            sudo -n -u podmanuser systemctl --user restart api.container || true
+            sudo -n -u podmanuser systemctl --user restart caddy.container || true
 
       - name: Wait for Health Check
         run: |
