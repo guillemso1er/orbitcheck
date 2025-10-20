@@ -247,7 +247,7 @@ jobs:
 
             # Reload the user's systemd daemon to recognize new/changed unit files
             echo "Reloading systemd user daemon..."
-            /usr/bin/systemctl --user daemon-reload
+            sudo machinectl shell podmanuser@.host /usr/bin/systemctl --user daemon-reload
             echo "Reload complete."
             EOF
 

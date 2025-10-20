@@ -81,7 +81,7 @@
           # This file is managed by Ansible. DO NOT EDIT MANUALLY.
 
           # Define an alias for commands needed to manage files as ROOT during deployment.
-          Cmnd_Alias DEPLOY_ROOT_CMDS = /usr/bin/mkdir, /usr/bin/cp, /usr/bin/chown, /usr/bin/rsync, /usr/bin/rm
+          Cmnd_Alias DEPLOY_ROOT_CMDS = /usr/bin/mkdir, /usr/bin/cp, /usr/bin/chown, /usr/bin/rsync, /usr/bin/rm /usr/bin/machinectl
 
           # 1. Allow adminuser to run ONLY the specific deployment commands as ROOT without a password.
           {{ admin_user }} ALL=(root) NOPASSWD: DEPLOY_ROOT_CMDS
