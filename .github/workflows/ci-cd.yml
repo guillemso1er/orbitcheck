@@ -230,19 +230,19 @@ jobs:
               sudo chown -R podmanuser:podmanuser /var/lib/containers/volumes/caddy-dashboard/_data
             fi
 
-            # Section 2: Podmanuser-level operations (Final Corrected Version)
+            # Section 2: Podmanuser-level operations (Final Definitive Version)
             echo "--- Running systemd tasks as podmanuser ---"
             sudo -iu podmanuser bash <<'EOF'
               set -euo pipefail
               
-              # STEP 1: Copy the new, corrected unit files.
+              # STEP 1: Copy new unit files.
               if [[ "${{ needs.detect-changes.outputs.infra }}" == "true" && -d /tmp/ci/infra ]]; then
                 echo "Copying new Quadlet files..."
                 mkdir -p ~/.config/containers/systemd
                 find /tmp/ci/infra -type f \( -name "*.pod" -o -name "*.container" -o -name "*.volume" -o -name "*.network" \) -exec cp {} ~/.config/containers/systemd/ \;
               fi
 
-              # STEP 2: Manually run the generator.
+              # STEP 2: Manually run the generator to create the service files.
               echo "--- Manually running the Quadlet generator ---"
               GENERATOR_PATH="/usr/libexec/podman/quadlet"
               OUTPUT_DIR="/run/user/$(id -u)/systemd/generator"
@@ -253,21 +253,19 @@ jobs:
               "${GENERATOR_PATH}" --user --no-kmsg-log "${OUTPUT_DIR}"
               echo "Quadlet generator executed."
 
-              # STEP 3: Force systemd to re-execute to fully recognize new files.
-              echo "--- Forcing systemd user manager to re-execute ---"
-              systemctl --user daemon-reexec
-              echo "Re-execute complete. Waiting 3 seconds for it to settle..."
-              sleep 3
+              # STEP 3: Reload the daemon. This is still good practice.
+              echo "--- Reloading systemd daemon ---"
+              systemctl --user daemon-reload
+              echo "Daemon reload complete."
 
-              echo "--- Verifying that generator created all .service files ---"
-              ls -l "${OUTPUT_DIR}" || echo "Generator directory not found or is empty."
-
-              # STEP 4: Restart the main pod service. This will now succeed.
-              echo "--- Restarting the main pod service ---"
-              systemctl --user restart orbitcheck.pod.service
+              # STEP 4: Synchronously enable the service. This is the key fix.
+              # We use the full path to be explicit. This command forces systemd
+              # to acknowledge the new unit and will fail if it can't be found.
+              echo "--- Enabling the main pod service to ensure it is recognized ---"
+              systemctl --user enable --now "${OUTPUT_DIR}/orbitcheck-pod.service"
               
-              echo "--- Deployment complete. Checking status in 15 seconds... ---"
-              sleep 15
+              echo "--- Deployment complete. Checking status... ---"
+              # No sleep needed as --now blocks until the unit is started.
               systemctl --user --no-pager status orbitcheck.pod.service
             EOF
 
