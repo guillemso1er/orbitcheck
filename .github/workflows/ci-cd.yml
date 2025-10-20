@@ -230,7 +230,7 @@ jobs:
               sudo chown -R podmanuser:podmanuser /var/lib/containers/volumes/caddy-dashboard/_data
             fi
 
-            # Section 2: Podmanuser-level operations (Final Definitive Version)
+            # Section 2: Podmanuser-level operations (The Definitive Sequence)
             echo "--- Running systemd tasks as podmanuser ---"
             sudo -iu podmanuser bash <<'EOF'
               set -euo pipefail
@@ -242,30 +242,33 @@ jobs:
                 find /tmp/ci/infra -type f \( -name "*.pod" -o -name "*.container" -o -name "*.volume" -o -name "*.network" \) -exec cp {} ~/.config/containers/systemd/ \;
               fi
 
-              # STEP 2: Manually run the generator to create the service files.
+              # STEP 2: Manually run the generator.
               echo "--- Manually running the Quadlet generator ---"
               GENERATOR_PATH="/usr/libexec/podman/quadlet"
               OUTPUT_DIR="/run/user/$(id -u)/systemd/generator"
               
-              rm -rf "${OUTPUT_DIR}"/*
+              rm -rf "${OUTPUT_DIR:?}"/*
               mkdir -p "${OUTPUT_DIR}"
               
               "${GENERATOR_PATH}" --user --no-kmsg-log "${OUTPUT_DIR}"
               echo "Quadlet generator executed."
 
-              # STEP 3: Reload the daemon. This is still good practice.
+              # STEP 3: Explicitly stop the old service to ensure a clean state.
+              echo "--- Stopping the old pod service (if it exists) ---"
+              # || true prevents an error if the service is not already running.
+              systemctl --user stop orbitcheck.pod.service || true
+
+              # STEP 4: Reload the daemon to make it read the new unit files.
               echo "--- Reloading systemd daemon ---"
               systemctl --user daemon-reload
               echo "Daemon reload complete."
 
-              # STEP 4: Synchronously enable the service. This is the key fix.
-              # We use the full path to be explicit. This command forces systemd
-              # to acknowledge the new unit and will fail if it can't be found.
-              echo "--- Enabling the main pod service to ensure it is recognized ---"
-              systemctl --user enable --now "${OUTPUT_DIR}/orbitcheck-pod.service"
+              # STEP 5: Start the new version of the service.
+              echo "--- Starting the main pod service ---"
+              systemctl --user start orbitcheck.pod.service
               
-              echo "--- Deployment complete. Checking status... ---"
-              # No sleep needed as --now blocks until the unit is started.
+              echo "--- Deployment complete. Checking status in 15 seconds... ---"
+              sleep 15
               systemctl --user --no-pager status orbitcheck.pod.service
             EOF
 
