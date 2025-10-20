@@ -63,9 +63,9 @@
         state: present
         key: "{{ lookup('file', '~/.ssh/orbitcheck_ed25519.pub') }}"
 
-    - name: Configure secure, scoped sudo for the admin user
+    - name: Create a single, consolidated sudo rule for the admin user
       ansible.builtin.blockinfile:
-        path: "/etc/sudoers.d/01-admin-wheel" # Use the same file to replace the old rule
+        path: "/etc/sudoers.d/99-admin-permissions" # A single file to rule them all
         state: present
         mode: '0440'
         owner: 'root'
@@ -73,17 +73,17 @@
         validate: /usr/sbin/visudo -cf %s
         create: yes
         block: |
-          # Define an alias for commands needed to manage files during deployment.
-          # The 'rm' command is included for cleaning up the /tmp/ci directory.
+          # This file is managed by Ansible. DO NOT EDIT MANUALLY.
+
+          # Define an alias for commands needed to manage files as ROOT during deployment.
           Cmnd_Alias DEPLOY_ROOT_CMDS = /usr/bin/mkdir, /usr/bin/cp, /usr/bin/chown, /usr/bin/rsync, /usr/bin/rm
 
           # 1. Allow adminuser to run ONLY the specific deployment commands as ROOT without a password.
           {{ admin_user }} ALL=(root) NOPASSWD: DEPLOY_ROOT_CMDS
 
           # 2. Allow adminuser to run ANY command as the podmanuser without a password.
-          # This is required for the "sudo -u podmanuser bash <<'EOF'" pattern in your CI script.
-          # This is secure because it only grants the ability to act as the less-privileged podmanuser.
-          {{ admin_user }} ALL=({{ podman_user }}) NOPASSWD: A
+          # This single rule covers both the bash script execution AND the podman-auto-update trigger.
+          {{ admin_user }} ALL=({{ podman_user }}) NOPASSWD: ALL
 
     - name: Inform that bootstrap is complete
       ansible.builtin.debug:
@@ -541,20 +541,6 @@
       notify: Restart SSH
       when: ansible_connection == 'ssh'
       
-    - name: Allow adminuser to trigger podman-user auto-update service
-      ansible.builtin.copy:
-        dest: /etc/sudoers.d/myapp-deploy
-        content: |
-          # Allow adminuser to drive podman-user systemd for auto-update only
-          Cmnd_Alias MYAPP_UCMDS=/usr/bin/systemctl --user start podman-auto-update.service, \
-                                 /usr/bin/systemctl --user status podman-auto-update.service, \
-                                 /usr/bin/systemctl --user daemon-reload
-          adminuser ALL=(podmanuser) NOPASSWD: MYAPP_UCMDS
-        mode: '0440'
-        owner: 'root'
-        group: 'root'
-        validate: /usr/sbin/visudo -cf %s
-
     - name: Flush handlers to apply any pending SSH changes
       ansible.builtin.meta: flush_handlers
 
