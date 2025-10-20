@@ -63,16 +63,27 @@
         state: present
         key: "{{ lookup('file', '~/.ssh/orbitcheck_ed25519.pub') }}"
 
-    - name: Allow 'wheel' group to have passwordless sudo
-      ansible.builtin.lineinfile:
-        path: /etc/sudoers.d/01-admin-wheel #
-        line: '%wheel ALL=(ALL) ALL'          
+    - name: Configure secure, scoped sudo for the admin user
+      ansible.builtin.blockinfile:
+        path: "/etc/sudoers.d/01-admin-wheel" # Use the same file to replace the old rule
         state: present
         mode: '0440'
         owner: 'root'
         group: 'root'
-        create: yes
         validate: /usr/sbin/visudo -cf %s
+        create: yes
+        block: |
+          # Define an alias for commands needed to manage files during deployment.
+          # The 'rm' command is included for cleaning up the /tmp/ci directory.
+          Cmnd_Alias DEPLOY_ROOT_CMDS = /usr/bin/mkdir, /usr/bin/cp, /usr/bin/chown, /usr/bin/rsync, /usr/bin/rm
+
+          # 1. Allow adminuser to run ONLY the specific deployment commands as ROOT without a password.
+          {{ admin_user }} ALL=(root) NOPASSWD: DEPLOY_ROOT_CMDS
+
+          # 2. Allow adminuser to run ANY command as the podmanuser without a password.
+          # This is required for the "sudo -u podmanuser bash <<'EOF'" pattern in your CI script.
+          # This is secure because it only grants the ability to act as the less-privileged podmanuser.
+          {{ admin_user }} ALL=({{ podman_user }}) NOPASSWD: A
 
     - name: Inform that bootstrap is complete
       ansible.builtin.debug:
@@ -713,7 +724,7 @@
             - ghcr_secret_check.rc != 0
             - ghcr_token is defined
             - ghcr_token != ""
-            
+
     
     - name: Configure Container Directories and SELinux Contexts
       block:

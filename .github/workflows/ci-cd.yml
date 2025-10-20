@@ -212,29 +212,47 @@ jobs:
           key: ${{ secrets.HETZNER_SSH_KEY }}
           script: |
             set -euo pipefail
+            echo "--- Running tasks as root (via adminuser's sudo) ---"
 
-            # Prepare as podmanuser for quadlet/systemd files
-            sudo -n -u podmanuser bash <<'EOF'
-            set -euo pipefail
-            mkdir -p ~/.config/containers/systemd
-            if [ -d /tmp/ci/infra ]; then
-              cp /tmp/ci/infra/*.{pod,container,volume} ~/.config/containers/systemd/ 2>/dev/null || true
-              # Caddyfile (adjust path if yours differs)
-              mkdir -p /srv/myapp/caddy
+            # Create system-level directories if infra files were synced
+            if [ -d /tmp/ci/infra/compose ]; then
+              sudo mkdir -p /srv/myapp/caddy
               if [ -f /tmp/ci/infra/compose/Caddyfile ]; then
-                cp /tmp/ci/infra/compose/Caddyfile /srv/myapp/caddy/Caddyfile
+                sudo cp /tmp/ci/infra/compose/Caddyfile /srv/myapp/caddy/Caddyfile
+                sudo chown -R podmanuser:podmanuser /srv/myapp
               fi
             fi
 
-            # Dashboard static files into a named volume directory used by Caddy
+            # Create the Caddy volume data directory and set permissions
             if [ -d /tmp/ci/dashboard-dist ]; then
-              mkdir -p /var/lib/containers/volumes/caddy-dashboard/_data
-              rsync -a --delete /tmp/ci/dashboard-dist/ /var/lib/containers/volumes/caddy-dashboard/_data/
+              sudo mkdir -p /var/lib/containers/volumes/caddy-dashboard/_data
+              # Use rsync with sudo to write to the protected location
+              sudo rsync -a --delete /tmp/ci/dashboard-dist/ /var/lib/containers/volumes/caddy-dashboard/_data/
+              # Ensure the podman user owns the files inside the volume
+              sudo chown -R podmanuser:podmanuser /var/lib/containers/volumes/caddy-dashboard/_data
             fi
 
-            # Reload user daemon to pick up quadlet changes
+            echo "--- Running tasks as podmanuser ---"
+            # Now, switch to the podmanuser for user-specific tasks
+            sudo -n -u podmanuser bash <<'EOF'
+            set -euo pipefail
+
+            # Copy quadlet files if they exist
+            if [ -d /tmp/ci/infra ]; then
+              mkdir -p ~/.config/containers/systemd
+              # Copy any new/updated systemd unit files for podman
+              cp /tmp/ci/infra/*.{pod,container,volume,network} ~/.config/containers/systemd/ 2>/dev/null || true
+            fi
+
+            # Reload the user's systemd daemon to recognize new/changed unit files
+            echo "Reloading systemd user daemon..."
             systemctl --user daemon-reload
+            echo "Reload complete."
             EOF
+
+            # Clean up the temporary CI directory as adminuser
+            echo "--- Cleaning up temporary files ---"
+            rm -rf /tmp/ci
 
       - name: Trigger remote auto-update
         uses: appleboy/ssh-action@v1.0.3
