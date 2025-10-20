@@ -256,7 +256,7 @@ jobs:
               # STEP 3: Explicitly stop the old service to ensure a clean state.
               echo "--- Stopping the old pod service (if it exists) ---"
               # || true prevents an error if the service is not already running.
-              systemctl --user stop orbitcheck.pod.service || true
+              systemctl --user stop pod-orbitcheck.service || true
 
               # STEP 4: Reload the daemon to make it read the new unit files.
               echo "--- Reloading systemd daemon ---"
@@ -265,11 +265,11 @@ jobs:
 
               # STEP 5: Start the new version of the service.
               echo "--- Starting the main pod service ---"
-              systemctl --user start orbitcheck.pod.service
+              systemctl --user start pod-orbitcheck.service
               
               echo "--- Deployment complete. Checking status in 15 seconds... ---"
               sleep 15
-              systemctl --user --no-pager status orbitcheck.pod.service
+              systemctl --user --no-pager status pod-orbitcheck.service
             EOF
 
             # Section 3: Cleanup
