@@ -230,7 +230,7 @@ jobs:
               sudo chown -R podmanuser:podmanuser /var/lib/containers/volumes/caddy-dashboard/_data
             fi
 
-            # Section 2: Podmanuser-level operations (Final Version)
+            # Section 2: Podmanuser-level operations (Final Corrected Version)
             echo "--- Running systemd tasks as podmanuser ---"
             sudo -iu podmanuser bash <<'EOF'
               set -euo pipefail
@@ -242,27 +242,27 @@ jobs:
                 find /tmp/ci/infra -type f \( -name "*.pod" -o -name "*.container" -o -name "*.volume" -o -name "*.network" \) -exec cp {} ~/.config/containers/systemd/ \;
               fi
 
-              # STEP 2: Manually run the generator. With the corrected filenames, this will now succeed.
+              # STEP 2: Manually run the generator.
               echo "--- Manually running the Quadlet generator ---"
               GENERATOR_PATH="/usr/libexec/podman/quadlet"
               OUTPUT_DIR="/run/user/$(id -u)/systemd/generator"
               
-              # Clean the output directory to ensure no old files remain
               rm -rf "${OUTPUT_DIR}"/*
               mkdir -p "${OUTPUT_DIR}"
               
               "${GENERATOR_PATH}" --user --no-kmsg-log "${OUTPUT_DIR}"
               echo "Quadlet generator executed."
 
-              # STEP 3: Reload the daemon to read the newly generated files.
-              echo "--- Reloading systemd daemon ---"
-              systemctl --user daemon-reload
-              echo "Daemon reload complete."
+              # STEP 3: Force systemd to re-execute to fully recognize new files.
+              echo "--- Forcing systemd user manager to re-execute ---"
+              systemctl --user daemon-reexec
+              echo "Re-execute complete. Waiting 3 seconds for it to settle..."
+              sleep 3
 
               echo "--- Verifying that generator created all .service files ---"
               ls -l "${OUTPUT_DIR}" || echo "Generator directory not found or is empty."
 
-              # STEP 4: Restart the main pod service. This will stop the old pod and start the new one.
+              # STEP 4: Restart the main pod service. This will now succeed.
               echo "--- Restarting the main pod service ---"
               systemctl --user restart orbitcheck.pod.service
               
