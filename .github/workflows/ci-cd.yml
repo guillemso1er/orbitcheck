@@ -162,10 +162,12 @@ jobs:
     name: Deploy
     needs: [detect-changes, build-api, build-dashboard]
     if: >
-      (github.event_name == 'workflow_dispatch' && inputs.force_deploy)
-      || needs.detect-changes.outputs.api == 'true'
-      || needs.detect-changes.outputs.dashboard == 'true'
-      || needs.detect-changes.outputs.infra == 'true'
+      always() && (
+        (github.event_name == 'workflow_dispatch' && inputs.force_deploy)
+        || needs.detect-changes.outputs.api == 'true'
+        || needs.detect-changes.outputs.dashboard == 'true'
+        || needs.detect-changes.outputs.infra == 'true'
+      )
     runs-on: ubuntu-latest
     environment:
       name: production
