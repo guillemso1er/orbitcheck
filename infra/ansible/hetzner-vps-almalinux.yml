@@ -70,7 +70,7 @@
     
     - name: Create a single, consolidated sudo rule for the admin user
       ansible.builtin.blockinfile:
-        path: "/etc/sudoers.d/99-admin-permissions" # A single file to rule them all
+        path: "/etc/sudoers.d/99-admin-permissions"
         state: present
         mode: '0440'
         owner: 'root'
@@ -80,14 +80,18 @@
         block: |
           # This file is managed by Ansible. DO NOT EDIT MANUALLY.
 
-          # Define an alias for commands needed to manage files as ROOT during deployment.
-          Cmnd_Alias DEPLOY_ROOT_CMDS = /usr/bin/mkdir, /usr/bin/cp, /usr/bin/chown, /usr/bin/rsync, /usr/bin/rm /usr/bin/machinectl
+          # Rule 1: Disable the TTY requirement for this user. This is critical for CI/CD environments.
+          Defaults:{{ admin_user }} !requiretty
 
-          # 1. Allow adminuser to run ONLY the specific deployment commands as ROOT without a password.
+          # Rule 2: Define an alias for all commands needed by the GitHub Actions workflow to run as ROOT.
+          # This includes file operations, system inspection tools, and bash for the script logic.
+          Cmnd_Alias DEPLOY_ROOT_CMDS = /usr/bin/mkdir, /usr/bin/cp, /usr/bin/chown, /usr/bin/rsync, /usr/bin/rm, /usr/bin/machinectl, /usr/bin/journalctl, /usr/bin/cat, /usr/bin/test, /usr/bin/bash, /usr/bin/ls, /usr/bin/xargs, /usr/bin/basename
+
+          # Rule 3: Allow adminuser to run the specific deployment commands as ROOT without a password.
           {{ admin_user }} ALL=(root) NOPASSWD: DEPLOY_ROOT_CMDS
 
-          # 2. Allow adminuser to run ANY command as the podmanuser without a password.
-          # This single rule covers both the bash script execution AND the podman-auto-update trigger.
+          # Rule 4: Allow adminuser to run ANY command as the podmanuser without a password.
+          # This covers the `sudo -iu podmanuser` commands.
           {{ admin_user }} ALL=({{ podman_user }}) NOPASSWD: ALL
 
     - name: Inform that bootstrap is complete
@@ -205,6 +209,13 @@
             uid: "{{ podman_user_uid }}"
             create_home: yes
             system: no
+      
+        - name: Add podman user to the systemd-journal group for log access
+          ansible.builtin.user:
+            name: "{{ podman_user }}"
+            groups: systemd-journal
+            append: yes # Important: Do not remove other groups
+          become: yes
 
         - name: Configure Podman user mappings for the new user
           ansible.builtin.lineinfile:
@@ -282,7 +293,6 @@
     - name: Setup second data disk if enabled
       when: use_second_data_disk | bool and ansible_connection != 'podman'
       block:
-        # This block only runs if a specific disk is NOT provided.
         - name: Automatically discover the second data disk
           when: data_disk_device is not defined or data_disk_device == ""
           block:
@@ -544,10 +554,18 @@
         - { key: "ClientAliveInterval", value: "300" }
         - { key: "ClientAliveCountMax", value: "2" }
       notify: Restart SSH
-      when: ansible_connection == 'ssh'
-      
-    - name: Flush handlers to apply any pending SSH changes
-      ansible.builtin.meta: flush_handlers
+      when: ansible_connection != 'podman' 
+
+    - name: Ensure journald is configured for persistent logging
+      ansible.builtin.lineinfile:
+        path: /etc/systemd/journald.conf
+        regexp: '^#?Storage='
+        line: 'Storage=persistent'
+        owner: root
+        group: root
+        mode: '0644'
+        create: yes
+      notify: Restart systemd-journald
 
     - name: Configure Fail2ban
       block:
@@ -571,6 +589,29 @@
             owner: root
             group: root
           notify: Restart fail2ban
+    
+    - name: Ensure NetworkManager-wait-online service is enabled
+      ansible.builtin.systemd:
+        name: NetworkManager-wait-online.service
+        enabled: yes
+      when: ansible_service_mgr == 'systemd'
+
+    - name: Create systemd drop-in directory for firewalld
+      ansible.builtin.file:
+        path: /etc/systemd/system/firewalld.service.d
+        state: directory
+        mode: '0755'
+      when: ansible_service_mgr == 'systemd'
+
+    - name: Create firewalld drop-in to wait for network-online.target
+      ansible.builtin.copy:
+        dest: /etc/systemd/system/firewalld.service.d/wait-for-network.conf
+        content: |
+          [Unit]
+          After=network-online.target
+        mode: '0644'
+      notify: Reload systemd daemon # We'll add this handler next
+      when: ansible_service_mgr == 'systemd'
 
     - name: Configure Firewall
       when: ansible_service_mgr == 'systemd'
@@ -787,6 +828,13 @@
         - configs
       become: yes
       changed_when: true
+  
+    - name: Ensure /var/log/journal directory exists for SELinux context restoration
+      ansible.builtin.file:
+        path: /var/log/journal
+        state: directory
+        mode: '0755' # Or a more restrictive mode if appropriate
+      become: yes
 
     - name: Restore SELinux context for the systemd journal directory
       ansible.builtin.command:
@@ -1139,19 +1187,79 @@
         name: dnf-automatic.timer
         enabled: yes
         state: started
+    
+    - name: Restart systemd-journald
+      ansible.builtin.systemd:
+        name: systemd-journald.service
+        state: restarted
+  
+    - name: Reload systemd daemon
+      ansible.builtin.systemd:
+        daemon_reload: yes
 
   post_tasks:
-    - name: Reboot server if required by SELinux change
+
+    - name: Flush handlers to apply changes
+      ansible.builtin.meta: flush_handlers
+
+    
+    - name: Pre-reboot safety checks
+      block:
+        - name: Ensure SSH service is enabled for boot
+          ansible.builtin.systemd:
+            name: sshd
+            enabled: yes
+            state: started
+          when: ansible_service_mgr == 'systemd'
+
+        - name: Force save firewall configuration
+          ansible.builtin.command:
+            cmd: firewall-cmd --runtime-to-permanent
+          when: ansible_service_mgr == 'systemd'
+          changed_when: true
+
+        - name: Verify firewall will allow SSH after reboot
+          ansible.builtin.shell:
+            cmd: firewall-cmd --permanent --list-services | grep -q ssh
+          register: ssh_in_firewall
+          failed_when: ssh_in_firewall.rc != 0
+          changed_when: false
+          when: ansible_service_mgr == 'systemd'
+
+        - name: Restore SELinux contexts on SSH directories
+          ansible.builtin.command:
+            cmd: "restorecon -Rv {{ item }}"
+          loop:
+            - "/home/{{ admin_user }}/.ssh"
+            - "/etc/ssh"
+          when: ansible_selinux.status == 'enabled'
+          changed_when: false
+
+        - name: Verify admin user authorized_keys file exists
+          ansible.builtin.stat:
+            path: "/home/{{ admin_user }}/.ssh/authorized_keys"
+          register: admin_keys
+          failed_when: not admin_keys.stat.exists
+
+        - name: Test SSH configuration validity
+          ansible.builtin.command:
+            cmd: sshd -t
+          changed_when: false
+
+        - name: Wait 5 seconds before proceeding to reboot
+          ansible.builtin.pause:
+            seconds: 5
+
+    - name: Reboot server to apply all core configuration changes
       ansible.builtin.reboot:
-        msg: "Rebooting to apply SELinux state change"
+        msg: "Rebooting to apply core system changes (journald, groups, sudoers)"
         connect_timeout: 5
         reboot_timeout: 300
         pre_reboot_delay: 0
         post_reboot_delay: 30
         test_command: uptime
       when:
-        - selinux_result.reboot_required | default(false)
-        - ansible_service_mgr == 'systemd'  
+        - ansible_service_mgr == 'systemd'
       
     - name: Log completion
       ansible.builtin.lineinfile:
