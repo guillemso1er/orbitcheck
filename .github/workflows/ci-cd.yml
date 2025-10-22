@@ -264,9 +264,25 @@ jobs:
               echo "--- Reloading systemd daemon ---"
               systemctl --user daemon-reload
 
-              # STEP 5: Start new version
-              echo "--- Starting the main pod service ---"
+              # STEP 5: Start pod, then (enable and) start containers
+              echo "--- Starting the pod and containers ---"
               systemctl --user start "$POD_UNIT"
+
+              # Discover container units from Quadlet files
+              mapfile -t CONTAINER_UNITS < <(
+                shopt -s nullglob
+                for f in "$HOME/.config/containers/systemd"/*.container; do
+                  b="${f##*/}"
+                  echo "container-${b%.container}.service"
+                done
+              )
+
+              if [[ ${#CONTAINER_UNITS[@]} -gt 0 ]]; then
+                echo "Enabling and starting: ${CONTAINER_UNITS[*]}"
+                systemctl --user enable --now "${CONTAINER_UNITS[@]}"
+              else
+                echo "No .container Quadlets found; only the pod (pause) will run."
+              fi
 
               echo "--- Deployment complete. Checking status in 15 seconds... ---"
               sleep 15
@@ -306,52 +322,61 @@ jobs:
             POD_UNIT="orbitcheck-pod.service"
             UID_NUM="$(id -u "$POD_USER")"
 
-            # Time window: use the timestamp the deploy step wrote, else 30m
-            if sudo test -f "/home/$POD_USER/.deploystartepoch"; then
-                SINCE="@$(sudo cat /home/$POD_USER/.deploystartepoch)"
+            # Use the timestamp written by deploy; else 30m
+            if sudo test -f "/home/$POD_USER/.deploy_start_epoch"; then
+              SINCE="@$(sudo cat /home/$POD_USER/.deploy_start_epoch)"
             else
-                SINCE="$(date -d '30 minutes ago' +'%Y-%m-%d %H:%M:%S')"
+              SINCE="$(date -d '30 minutes ago' +'%Y-%m-%d %H:%M:%S')"
             fi
 
             echo "::group::Pod unit logs ($POD_UNIT, since $SINCE)"
-
-            # Pod unit logs (user unit lives in system journal under _SYSTEMD_USER_UNIT)
             sudo journalctl --no-pager -o short-iso --since "$SINCE" _SYSTEMD_USER_UNIT="$POD_UNIT" _UID="$UID_NUM" || true
             echo "::endgroup::"
 
-            echo "::group::Container logs (since $SINCE)"
-
-            # 1) Derive expected container names from Quadlet files, not from transient generator output
-            #    - Use ContainerName= if present, else fall back to the base filename (without .container)
-            mapfile -t container_names < <(
-                sudo -iu "$POD_USER" bash -lc '
-                    shopt -s nullglob;
-                    dir="$HOME/.config/containers/systemd";
-                    for f in "$dir"/*.container; do
-                        name="$(sed -n "s/^ContainerName=//p" "$f" | head -n 1)";
-                        if [ -z "$name" ]; then
-                            base="${f##*/}";
-                            name="${base%.container}";
-                        fi;
-                        printf "%s\n" "$name";
-                    done | sort -u;
-                ' || true
+            # Names from Quadlets
+            mapfile -t names_quadlet < <(
+              sudo -iu "$POD_USER" bash -lc '
+                shopt -s nullglob
+                dir="$HOME/.config/containers/systemd"
+                for f in "$dir"/*.container; do
+                  name="$(sed -n "s/^ContainerName=//p" "$f" | head -n1)"
+                  if [ -z "$name" ]; then base="${f##*/}"; name="${base%.container}"; fi
+                  printf "%s\n" "$name"
+                done | sort -u
+              ' || true
             )
 
-            if [[ ${#container_names[@]} -eq 0 ]]; then
-                echo "No .container Quadlets found under /home/$POD_USER/.config/containers/systemd"
-                echo "Dumping all container logs for this user since $SINCE (broad fallback)..."
-                # Broad fallback: anything conmon logged for this UID in the window
-                sudo journalctl --no-pager -o short-iso --since "$SINCE" _UID="$UID_NUM" SYSLOG_IDENTIFIER=conmon || true
-            else
-                # 2) For each container name, dump logs written by Podman’s journald driver
-                for name in "${container_names[@]}"; do
-                    echo "----- container: $name -----"
-                    # Prefer logs emitted by conmon (journald driver), filtered by CONTAINER_NAME
-                    sudo journalctl --no-pager -o short-iso --since "$SINCE" _UID="$UID_NUM" SYSLOG_IDENTIFIER=conmon CONTAINER_NAME="$name" || true
-                    # If nothing was found above, try without SYSLOG_IDENTIFIER (some envs differ)
-                    sudo journalctl --no-pager -o short-iso --since "$SINCE" _UID="$UID_NUM" CONTAINER_NAME="$name" || true
-                done
-            fi
+            # Names from generator dir (container-*.service => name)
+            mapfile -t names_gen < <(
+              sudo bash -lc '
+                shopt -s nullglob
+                for f in /run/user/'"$UID_NUM"'/systemd/generator/container-*.service; do
+                  b="${f##*/}"; echo "${b#container-}"; done | sed "s/\.service$//" | sort -u
+              ' || true
+            )
 
+            # Names seen in events during this deploy window
+            mapfile -t names_events < <(
+              sudo -iu "$POD_USER" bash -lc '
+                podman events --since '"$SINCE"' --until "$(date +%s)" 2>/dev/null \
+                | awk '"'"'/^container / { if (match($0, /name=([^, )]+)/, m)) print m[1] }'"'"' \
+                | sort -u
+              ' || true
+            )
+
+            # Merge/dedupe
+            mapfile -t all_names < <(printf "%s\n" "${names_quadlet[@]}" "${names_gen[@]}" "${names_events[@]}" | awk "NF" | sort -u)
+
+            echo "::group::Container logs (since $SINCE)"
+            if [[ ${#all_names[@]} -eq 0 ]]; then
+              echo "No container names discovered; dumping conmon logs for this UID"
+              sudo -iu "$POD_USER" journalctl --user --no-pager -o short-iso --since "$SINCE" SYSLOG_IDENTIFIER=conmon || \
+              sudo journalctl --no-pager -o short-iso --since "$SINCE" _UID="$UID_NUM" SYSLOG_IDENTIFIER=conmon || true
+            else
+              for name in "${all_names[@]}"; do
+                echo "----- container: ${name} -----"
+                sudo -iu "$POD_USER" journalctl --user --no-pager -o short-iso --since "$SINCE" CONTAINER_NAME="$name" || true
+                sudo journalctl --no-pager -o short-iso --since "$SINCE" _UID="$UID_NUM" CONTAINER_NAME="$name" || true
+              done
+            fi
             echo "::endgroup::"
