@@ -176,7 +176,6 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # Pull down the built dashboard only when needed
       - name: Download dashboard artifact
         if: needs.detect-changes.outputs.dashboard == 'true'
         uses: actions/download-artifact@v4
@@ -184,7 +183,6 @@ jobs:
           name: dashboard-dist
           path: apps/dashboard/dist
 
-      # Upload infra files if they changed
       - name: Upload infra to server
         if: needs.detect-changes.outputs.infra == 'true'
         uses: appleboy/scp-action@v0.1.7
@@ -195,7 +193,6 @@ jobs:
           source: "infra/**"
           target: "/tmp/ci/infra"
 
-      # Upload dashboard dist only if it was rebuilt
       - name: Upload dashboard dist to server
         if: needs.detect-changes.outputs.dashboard == 'true'
         uses: appleboy/scp-action@v0.1.7
@@ -247,11 +244,40 @@ jobs:
               # Record deploy start time for the log step
               date +%s > "$HOME/.deploy_start_epoch"
 
-              # Stop existing services first to avoid port conflicts
-              echo "--- Stopping existing services ---"
-              systemctl --user list-units --all '*-pod.service' '*.service' --no-legend | \
-                grep -E '(api|caddy|valkey|grafana|prometheus|loki|minio|glitchtip|infisical|promtail|statping|uptime-kuma|orbitcheck)' | \
-                awk '{print $1}' | xargs -r systemctl --user stop || true
+              # First, copy new Quadlet files so we know what services to manage
+              if [[ -d /tmp/ci/infra ]]; then
+                echo "Copying Quadlet files..."
+                mkdir -p "$HOME/.config/containers/systemd"
+                find /tmp/ci/infra -type f \( -name "*.pod" -o -name "*.container" -o -name "*.volume" -o -name "*.network" \) \
+                  -exec cp {} "$HOME/.config/containers/systemd/" \;
+              fi
+
+              # Discover service names from the quadlet files to create a dynamic grep pattern
+              echo "--- Discovering managed services from Quadlet files ---"
+              shopt -s nullglob
+              MANAGED_SERVICES=()
+              for f in "$HOME/.config/containers/systemd"/*.{pod,container}; do
+                [ -f "$f" ] || continue
+                base="${f##*/}"
+                name="${base%.*}" # Remove .pod or .container extension
+                MANAGED_SERVICES+=("$name")
+              done
+
+              GREP_PATTERN=""
+              if ((${#MANAGED_SERVICES[@]} > 0)); then
+                GREP_PATTERN=$(printf "%s\n" "${MANAGED_SERVICES[@]}" | sort -u | paste -sd '|')
+                echo "Found managed services. Pattern: ($GREP_PATTERN)"
+              else
+                echo "WARNING: No Quadlet files found. No services will be stopped."
+              fi
+
+              # Stop existing services first to avoid port conflicts, only if we found services
+              if [[ -n "$GREP_PATTERN" ]]; then
+                echo "--- Stopping existing services ---"
+                systemctl --user list-units --all --no-legend --plain '*-pod.service' '*.service' | \
+                  grep -E "($GREP_PATTERN)" | \
+                  awk '{print $1}' | xargs -r systemctl --user stop || true
+              fi
               
               # Give containers time to stop
               sleep 2
@@ -260,31 +286,8 @@ jobs:
               podman pod rm -fa || true
               podman rm -fa || true
 
-              # Copy quadlets
-              if [[ -d /tmp/ci/infra ]]; then
-                echo "Copying Quadlet files..."
-                mkdir -p "$HOME/.config/containers/systemd"
-                find /tmp/ci/infra -type f \( -name "*.pod" -o -name "*.container" -o -name "*.volume" -o -name "*.network" \) \
-                  -exec cp {} "$HOME/.config/containers/systemd/" \;
-              fi
-
               echo "--- Quadlet dir now contains ---"
               ls -al "$HOME/.config/containers/systemd" || true
-
-              # Validate Quadlet files syntax
-              echo "--- Validating Quadlet files ---"
-              shopt -s nullglob
-              for file in "$HOME/.config/containers/systemd"/*.pod "$HOME/.config/containers/systemd"/*.container \
-                          "$HOME/.config/containers/systemd"/*.volume "$HOME/.config/containers/systemd"/*.network; do
-                [ -f "$file" ] || continue
-                echo "Checking: $file"
-                # Basic validation - check for required sections
-                if [[ "$file" == *.pod ]]; then
-                  grep -q '^\[Pod\]' "$file" || echo "WARNING: Missing [Pod] section in $file"
-                elif [[ "$file" == *.container ]]; then
-                  grep -q '^\[Container\]' "$file" || echo "WARNING: Missing [Container] section in $file"
-                fi
-              done
 
               # Force regeneration of systemd units
               echo "--- Regenerating systemd units ---"
@@ -296,80 +299,51 @@ jobs:
 
               # Check what units were generated
               echo "--- Generated units ---"
-              ls -la "$XDG_RUNTIME_DIR/systemd/generator/" 2>/dev/null || echo "No generator directory found"
+              ls -la "$XDG_RUNTIME_DIR/systemd/generator/" 2>/null || echo "No generator directory found"
               
-              # List all generated service files
-              echo "--- Available service units ---"
-              systemctl --user list-unit-files '*.service' --all --no-legend | grep -E '(api|caddy|valkey|grafana|prometheus|loki|minio|glitchtip|infisical|promtail|statping|uptime-kuma|orbitcheck)' || true
-
-              # Discover units from generated files
-              # Quadlet generates: <name>-pod.service for .pod files and <name>.service for .container files
+              # Discover and start units from generated files
               shopt -s nullglob
               POD_UNITS=()
               for f in "$HOME/.config/containers/systemd"/*.pod; do
-                [ -f "$f" ] || continue
-                b="${f##*/}"; n="${b%.pod}"
-                # Quadlet generates <name>-pod.service for .pod files
-                unit="${n}-pod.service"
-                if [ -f "$XDG_RUNTIME_DIR/systemd/generator/$unit" ]; then
-                  POD_UNITS+=("$unit")
-                else
-                  echo "WARNING: Expected unit $unit not found for $f"
-                fi
+                b="${f##*/}"; n="${b%.pod}"; unit="${n}-pod.service"
+                if [ -f "$XDG_RUNTIME_DIR/systemd/generator/$unit" ]; then POD_UNITS+=("$unit"); fi
               done
 
               CONTAINER_UNITS=()
               for f in "$HOME/.config/containers/systemd"/*.container; do
-                [ -f "$f" ] || continue
-                b="${f##*/}"; n="${b%.container}"
-                # Quadlet generates <name>.service for .container files
-                unit="${n}.service"
-                if [ -f "$XDG_RUNTIME_DIR/systemd/generator/$unit" ]; then
-                  CONTAINER_UNITS+=("$unit")
-                else
-                  echo "WARNING: Expected unit $unit not found for $f"
-                fi
+                b="${f##*/}"; n="${b%.container}"; unit="${n}.service"
+                if [ -f "$XDG_RUNTIME_DIR/systemd/generator/$unit" ]; then CONTAINER_UNITS+=("$unit"); fi
               done
 
               echo "Pods to start:       ${POD_UNITS[*]:-<none>}"
               echo "Containers to start: ${CONTAINER_UNITS[*]:-<none>}"
 
-              # Enable and start pods first
-              if ((${#POD_UNITS[@]} > 0)); then
-                for unit in "${POD_UNITS[@]}"; do
-                  echo "Starting pod unit: $unit"
+              # Start services
+              ALL_UNITS=("${POD_UNITS[@]}" "${CONTAINER_UNITS[@]}")
+              if ((${#ALL_UNITS[@]} > 0)); then
+                for unit in "${ALL_UNITS[@]}"; do
+                  echo "Starting unit: $unit"
                   systemctl --user enable --now "$unit" || {
-                    echo "Failed to start $unit, checking status:"
+                    echo "ERROR: Failed to start $unit. See logs below."
                     systemctl --user status "$unit" --no-pager || true
                     journalctl --user -u "$unit" --no-pager -n 50 || true
                   }
                 done
               fi
 
-              # Then enable and start containers
-              if ((${#CONTAINER_UNITS[@]} > 0)); then
-                for unit in "${CONTAINER_UNITS[@]}"; do
-                  echo "Starting container unit: $unit"
-                  systemctl --user enable --now "$unit" || {
-                    echo "Failed to start $unit, checking status:"
-                    systemctl --user status "$unit" --no-pager || true
-                    journalctl --user -u "$unit" --no-pager -n 50 || true
-                  }
-                done
+              echo "--- Final status of managed services ---"
+              if [[ -n "$GREP_PATTERN" ]]; then
+                systemctl --user list-units --type=service --all '*-pod.service' '*.service' | \
+                  grep -E "($GREP_PATTERN)|UNIT" || true
+              else
+                echo "No managed services to display."
               fi
-
-              echo "--- Final status ---"
-              systemctl --user list-units --type=service --all '*-pod.service' '*.service' | \
-                grep -E '(api|caddy|valkey|grafana|prometheus|loki|minio|glitchtip|infisical|promtail|statping|uptime-kuma|orbitcheck)' || true
-              
-              # Check for port conflicts
-              echo "--- Port usage ---"
-              ss -tulpn 2>/dev/null | grep -E ':(6379|80|443|3000|5432|9090|3100|9000|8080)' || echo "No matching ports found"
             EOF
 
             # Section 3: Cleanup
             echo "--- Cleaning up temporary files ---"
             sudo rm -rf /tmp/ci
+
       - name: Wait for containers to fully start
         if: always()
         run: sleep 30
@@ -402,14 +376,20 @@ jobs:
             # Names from Quadlets
             mapfile -t names_quadlet < <(
               sudo -iu "$POD_USER" bash -lc '
+                set -euo pipefail
                 shopt -s nullglob
-                dir="$HOME/.config/containers/systemd"
-                for f in "$dir"/*.container; do
-                  name="$(sed -n "s/^ContainerName=//p" "$f" | head -n1)"
-                  if [ -z "$name" ]; then base="${f##*/}"; name="${base%.container}"; fi
-                  printf "%s\n" "$name"
-                done | sort -u
-              ' || true
+                CONFIG_DIR=$(getent passwd $USER | cut -d: -f6)/.config/containers/systemd
+                if [ -d "$CONFIG_DIR" ]; then
+                  for f in "$CONFIG_DIR"/*.container; do
+                    name=$(sed -n "s/^ContainerName=//p" "$f" | head -n1)
+                    if [ -z "$name" ]; then
+                      base="${f##*/}"
+                      name="${base%.container}"
+                    fi
+                    printf "%s\n" "$name"
+                  done
+                fi
+              ' | sort -u
             )
 
             # Names from generator dir (container-*.service => name)
@@ -425,8 +405,8 @@ jobs:
             # Names seen in events during this deploy window
             mapfile -t names_events < <(
               sudo -iu "$POD_USER" bash -lc '
-                podman events --since '"$SINCE"' --until "$(date +%s)" 2>/dev/null \
-                | awk '"'"'/^container / { if (match($0, /name=([^, )]+)/, m)) print m[1] }'"'"' \
+                podman events --since "'"$SINCE"'" --until "$(date +%s)" --no-trunc 2>/dev/null \
+                | awk '\''/^container / { if (match($0, /name=([^, )]+)/, m)) print m[1] }'\'' \
                 | sort -u
               ' || true
             )
