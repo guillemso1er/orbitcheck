@@ -5,10 +5,13 @@ Wants=postgres.service valkey.service
 
 [Container]
 LogDriver=journald
-Image=ghcr.io/OWNER/api:prod
+Image=ghcr.io/guillemso1er/api:prod
 ContainerName=api
 Pod=orbitcheck.pod
+
 EnvironmentFile=/srv/myapp/api/env/api.env
+EnvironmentFile=/srv/myapp/api/env/api.secrets.env
+
 Volume=/var/lib/containers/volumes/api-data:/app/data:Z,U
 Label="io.containers.autoupdate=image"
 NoNewPrivileges=yes
@@ -18,8 +21,28 @@ Tmpfs=/tmp:size=64M
 [Service]
 Restart=always
 RestartSec=3
-ExecStartPre=mkdir -p /var/lib/containers/volumes/api-data
-# CORRECTED: The command is now wrapped in a shell to allow redirection
+
+# Ensure env dir exists
+ExecStartPre=/usr/bin/install -d -m 700 /srv/myapp/api/env
+
+# Fetch secrets just-in-time, atomically, with strict perms
+# Uses the service token from a local file (not shown in process args)
+ExecStartPre=/bin/sh -ceu ' \
+    tok="$(cat /home/podmanuser/.secrets/infisical/api.token)"; \
+    export INFISICAL_TOKEN="$tok"; \
+    /usr/local/bin/infisical export \
+        --domain=https://infiscal.mydomain.com \
+        --path=/api \
+        --env=prod \
+        --format=dotenv \
+        --silent \
+        --include-imports \
+    > /srv/myapp/api/env/.api.secrets.env.tmp; \
+    chmod 600 /srv/myapp/api/env/.api.secrets.env.tmp; \
+    mv /srv/myapp/api/env/.api.secrets.env.tmp /srv/myapp/api/env/api.secrets.env \
+'
+
+# Keep your GHCR login if you need it (unrelated to Infisical)
 ExecStartPre=-/bin/sh -c '/usr/bin/podman login ghcr.io -u guillemso1er --password-stdin < /run/secrets/ghcr_token'
 
 [Install]

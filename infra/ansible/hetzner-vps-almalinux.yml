@@ -181,6 +181,7 @@
       - jq         
       - curl       
       - ca-certificates 
+      - infisical
 
   pre_tasks:
 
@@ -251,12 +252,18 @@
       retries: 3
       delay: 5
       until: epel_install is success
+
     - name: Install Kitty terminal terminfo for proper display
       ansible.builtin.get_url:
         url: https://raw.githubusercontent.com/kovidgoyal/kitty/master/terminfo/x/xterm-kitty
         dest: /usr/share/terminfo/x/xterm-kitty
         mode: '0644'
-      become: yes # Ensure we have permissions to write to the directory
+      become: yes
+
+    - name: Add Infisical repository
+      ansible.builtin.command:
+        cmd: /bin/bash -c "curl -1sLf 'https://dl.cloudsmith.io/public/infisical/infisical-cli/setup.rpm.sh' | sudo -E bash"
+        creates: /etc/yum.repos.d/infisical-infisical-cli.repo
 
     - name: Install required packages
       ansible.builtin.dnf:
