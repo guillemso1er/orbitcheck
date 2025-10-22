@@ -263,13 +263,13 @@ jobs:
               POD_UNITS=()
               for f in "$HOME/.config/containers/systemd"/*.pod; do
                 b="${f##*/}"; n="${b%.pod}"
-                POD_UNITS+=("pod-${n}.service")
+                POD_UNITS+=("${n}.service")
               done
 
               CONTAINER_UNITS=()
               for f in "$HOME/.config/containers/systemd"/*.container; do
                 b="${f##*/}"; n="${b%.container}"
-                CONTAINER_UNITS+=("container-${n}.service")
+                CONTAINER_UNITS+=("${n}.service")
               done
 
               echo "Pods:        ${POD_UNITS[*]:-<none>}"
@@ -286,7 +286,9 @@ jobs:
               fi
 
               echo "--- Loaded units ---"
-              systemctl --user list-units --type=service --all | awk '/^(pod|container)-.*\.service/ {print $1,$4}'
+              if ((${#POD_UNITS[@]} || ${#CONTAINER_UNITS[@]})); then
+                systemctl --user list-units --type=service --all "${POD_UNITS[@]}" "${CONTAINER_UNITS[@]}"
+              fi
             EOF
 
             # Section 3: Cleanup
@@ -317,7 +319,7 @@ jobs:
             set -euo pipefail
 
             POD_USER="podmanuser"
-            POD_UNIT="orbitcheck-pod.service"
+            POD_UNIT="orbitcheck.service"
             UID_NUM="$(id -u "$POD_USER")"
 
             # Use the timestamp written by deploy; else 30m
@@ -348,8 +350,9 @@ jobs:
             mapfile -t names_gen < <(
               sudo bash -lc '
                 shopt -s nullglob
-                for f in /run/user/'"$UID_NUM"'/systemd/generator/container-*.service; do
-                  b="${f##*/}"; echo "${b#container-}"; done | sed "s/\.service$//" | sort -u
+                for f in /run/user/'"$UID_NUM"'/systemd/generator/*.service; do
+                  b="${f##*/}"; n="${b%.service}"; printf "%s\n" "$n"
+                done | sort -u
               ' || true
             )
 
