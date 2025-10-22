@@ -325,16 +325,16 @@ jobs:
             #    - Use ContainerName= if present, else fall back to the base filename (without .container)
             mapfile -t container_names < <(
                 sudo -iu "$POD_USER" bash -lc '
-                    shopt -s nullglob
-                    dir="$HOME/.config/containers/systemd"
+                    shopt -s nullglob;
+                    dir="$HOME/.config/containers/systemd";
                     for f in "$dir"/*.container; do
-                        name="$(sed -n "s/^ContainerName=//p" "$f" | head -n 1)"
+                        name="$(sed -n "s/^ContainerName=//p" "$f" | head -n 1)";
                         if [ -z "$name" ]; then
-                            base="${f##*/}"
-                            name="${base%.container}"
-                        fi
-                        printf "%s\n" "$name"
-                    done | sort -u
+                            base="${f##*/}";
+                            name="${base%.container}";
+                        fi;
+                        printf "%s\n" "$name";
+                    done | sort -u;
                 ' || true
             )
 
