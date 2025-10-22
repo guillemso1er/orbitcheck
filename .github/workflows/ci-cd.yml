@@ -215,7 +215,7 @@ jobs:
           script: |
             set -euo pipefail
 
-            # Section 1: Root-level file operations (No changes)
+            # Section 1: Root-level file operations
             echo "--- Running file tasks as root (via sudo) ---"
             if [[ "${{ needs.detect-changes.outputs.infra }}" == "true" && -d /tmp/ci/infra/compose ]]; then
               sudo mkdir -p /srv/myapp/caddy
@@ -233,8 +233,12 @@ jobs:
             # Section 2: Podmanuser-level operations
             echo "--- Running systemd tasks as podmanuser ---"
 
-            # Ensure Quadlet user generator is installed
-            sudo ls -l /etc/systemd/user-generators/podman-quadlet || true
+            # Verify Quadlet generator is installed
+            if ! sudo test -x /etc/systemd/user-generators/podman-quadlet && \
+              ! sudo test -x /usr/lib/systemd/user-generators/podman-quadlet; then
+              echo "ERROR: Podman Quadlet generator not found!"
+              exit 1
+            fi
 
             sudo -iu podmanuser bash <<'EOF'
               set -euo pipefail
@@ -242,6 +246,18 @@ jobs:
 
               # Record deploy start time for the log step
               date +%s > "$HOME/.deploy_start_epoch"
+
+              # Stop existing services first to avoid port conflicts
+              echo "--- Stopping existing services ---"
+              systemctl --user list-units --all 'container-*.service' 'pod-*.service' --no-legend | \
+                awk '{print $1}' | xargs -r systemctl --user stop || true
+              
+              # Give containers time to stop
+              sleep 2
+              
+              # Clean up any lingering containers
+              podman pod rm -fa || true
+              podman rm -fa || true
 
               # Copy quadlets
               if [[ -d /tmp/ci/infra ]]; then
@@ -254,46 +270,99 @@ jobs:
               echo "--- Quadlet dir now contains ---"
               ls -al "$HOME/.config/containers/systemd" || true
 
-              # Let systemd run the quadlet user generator
-              echo "--- systemd --user daemon-reload ---"
-              systemctl --user daemon-reload
+              # Validate Quadlet files syntax
+              echo "--- Validating Quadlet files ---"
+              for file in "$HOME/.config/containers/systemd"/*.{pod,container,volume,network} 2>/dev/null; do
+                [ -f "$file" ] || continue
+                echo "Checking: $file"
+                # Basic validation - check for required sections
+                if [[ "$file" == *.pod ]]; then
+                  grep -q '^\[Pod\]' "$file" || echo "WARNING: Missing [Pod] section in $file"
+                elif [[ "$file" == *.container ]]; then
+                  grep -q '^\[Container\]' "$file" || echo "WARNING: Missing [Container] section in $file"
+                fi
+              done
 
-              # Discover units from filenames (matches quadlet naming)
+              # Force regeneration of systemd units
+              echo "--- Regenerating systemd units ---"
+              rm -rf "$XDG_RUNTIME_DIR/systemd/generator"
+              systemctl --user daemon-reload
+              
+              # Wait a moment for generator to complete
+              sleep 2
+
+              # Check what units were generated
+              echo "--- Generated units ---"
+              ls -la "$XDG_RUNTIME_DIR/systemd/generator/" 2>/dev/null || echo "No generator directory found"
+              
+              # List all podman-related units
+              echo "--- Available podman units ---"
+              systemctl --user list-unit-files 'pod-*.service' 'container-*.service' --all --no-legend || true
+
+              # Discover units from filenames
               shopt -s nullglob
               POD_UNITS=()
               for f in "$HOME/.config/containers/systemd"/*.pod; do
                 b="${f##*/}"; n="${b%.pod}"
-                POD_UNITS+=("${n}.service")
+                # Quadlet generates pod-<name>.service for .pod files
+                unit="pod-${n}.service"
+                if systemctl --user list-unit-files "$unit" &>/dev/null; then
+                  POD_UNITS+=("$unit")
+                else
+                  echo "WARNING: Expected unit $unit not found for $f"
+                fi
               done
 
               CONTAINER_UNITS=()
               for f in "$HOME/.config/containers/systemd"/*.container; do
                 b="${f##*/}"; n="${b%.container}"
-                CONTAINER_UNITS+=("${n}.service")
+                # Quadlet generates container-<name>.service for .container files
+                unit="container-${n}.service"
+                if systemctl --user list-unit-files "$unit" &>/dev/null; then
+                  CONTAINER_UNITS+=("$unit")
+                else
+                  echo "WARNING: Expected unit $unit not found for $f"
+                fi
               done
 
-              echo "Pods:        ${POD_UNITS[*]:-<none>}"
-              echo "Containers:  ${CONTAINER_UNITS[*]:-<none>}"
+              echo "Pods to start:       ${POD_UNITS[*]:-<none>}"
+              echo "Containers to start: ${CONTAINER_UNITS[*]:-<none>}"
 
-              # Enable/start pods first
+              # Enable and start pods first
               if ((${#POD_UNITS[@]})); then
-                systemctl --user enable --now "${POD_UNITS[@]}"
+                for unit in "${POD_UNITS[@]}"; do
+                  echo "Starting pod unit: $unit"
+                  systemctl --user enable --now "$unit" || {
+                    echo "Failed to start $unit, checking status:"
+                    systemctl --user status "$unit" --no-pager || true
+                    journalctl --user -u "$unit" --no-pager -n 50 || true
+                  }
+                done
               fi
 
-              # Then enable/start containers
+              # Then enable and start containers
               if ((${#CONTAINER_UNITS[@]})); then
-                systemctl --user enable --now "${CONTAINER_UNITS[@]}"
+                for unit in "${CONTAINER_UNITS[@]}"; do
+                  echo "Starting container unit: $unit"
+                  systemctl --user enable --now "$unit" || {
+                    echo "Failed to start $unit, checking status:"
+                    systemctl --user status "$unit" --no-pager || true
+                    journalctl --user -u "$unit" --no-pager -n 50 || true
+                  }
+                done
               fi
 
-              echo "--- Loaded units ---"
-              if ((${#POD_UNITS[@]} || ${#CONTAINER_UNITS[@]})); then
-                systemctl --user list-units --type=service --all "${POD_UNITS[@]}" "${CONTAINER_UNITS[@]}"
-              fi
+              echo "--- Final status ---"
+              systemctl --user list-units --type=service --all 'pod-*.service' 'container-*.service'
+              
+              # Check for port conflicts
+              echo "--- Port usage ---"
+              ss -tulpn 2>/dev/null | grep -E ':(6379|80|443|3000|5432|9090|3100|9000|8080)' || true
             EOF
 
             # Section 3: Cleanup
             echo "--- Cleaning up temporary files ---"
-            sudo rm -rf /tmp/ci
+            sudo rm -rf /tmp/ci-cd
 
       - name: Wait for Health Check
         run: |
@@ -307,7 +376,7 @@ jobs:
           done
           echo "❌ Health check failed."
           exit 1
-          
+
       - name: Wait for containers to fully start
         if: always()
         run: sleep 30
