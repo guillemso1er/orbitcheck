@@ -249,7 +249,8 @@ jobs:
 
               # Stop existing services first to avoid port conflicts
               echo "--- Stopping existing services ---"
-              systemctl --user list-units --all 'container-*.service' 'pod-*.service' --no-legend | \
+              systemctl --user list-units --all '*-pod.service' '*.service' --no-legend | \
+                grep -E '(api|caddy|valkey|grafana|prometheus|loki|minio|glitchtip|infisical|promtail|statping|uptime-kuma|orbitcheck)' | \
                 awk '{print $1}' | xargs -r systemctl --user stop || true
               
               # Give containers time to stop
@@ -297,19 +298,20 @@ jobs:
               echo "--- Generated units ---"
               ls -la "$XDG_RUNTIME_DIR/systemd/generator/" 2>/dev/null || echo "No generator directory found"
               
-              # List all podman-related units
-              echo "--- Available podman units ---"
-              systemctl --user list-unit-files 'pod-*.service' 'container-*.service' --all --no-legend || true
+              # List all generated service files
+              echo "--- Available service units ---"
+              systemctl --user list-unit-files '*.service' --all --no-legend | grep -E '(api|caddy|valkey|grafana|prometheus|loki|minio|glitchtip|infisical|promtail|statping|uptime-kuma|orbitcheck)' || true
 
-              # Discover units from filenames
+              # Discover units from generated files
+              # Quadlet generates: <name>-pod.service for .pod files and <name>.service for .container files
               shopt -s nullglob
               POD_UNITS=()
               for f in "$HOME/.config/containers/systemd"/*.pod; do
                 [ -f "$f" ] || continue
                 b="${f##*/}"; n="${b%.pod}"
-                # Quadlet generates pod-<name>.service for .pod files
-                unit="pod-${n}.service"
-                if systemctl --user list-unit-files "$unit" &>/dev/null; then
+                # Quadlet generates <name>-pod.service for .pod files
+                unit="${n}-pod.service"
+                if [ -f "$XDG_RUNTIME_DIR/systemd/generator/$unit" ]; then
                   POD_UNITS+=("$unit")
                 else
                   echo "WARNING: Expected unit $unit not found for $f"
@@ -320,9 +322,9 @@ jobs:
               for f in "$HOME/.config/containers/systemd"/*.container; do
                 [ -f "$f" ] || continue
                 b="${f##*/}"; n="${b%.container}"
-                # Quadlet generates container-<name>.service for .container files
-                unit="container-${n}.service"
-                if systemctl --user list-unit-files "$unit" &>/dev/null; then
+                # Quadlet generates <name>.service for .container files
+                unit="${n}.service"
+                if [ -f "$XDG_RUNTIME_DIR/systemd/generator/$unit" ]; then
                   CONTAINER_UNITS+=("$unit")
                 else
                   echo "WARNING: Expected unit $unit not found for $f"
@@ -333,7 +335,7 @@ jobs:
               echo "Containers to start: ${CONTAINER_UNITS[*]:-<none>}"
 
               # Enable and start pods first
-              if ((${#POD_UNITS[@]})); then
+              if ((${#POD_UNITS[@]} > 0)); then
                 for unit in "${POD_UNITS[@]}"; do
                   echo "Starting pod unit: $unit"
                   systemctl --user enable --now "$unit" || {
@@ -345,7 +347,7 @@ jobs:
               fi
 
               # Then enable and start containers
-              if ((${#CONTAINER_UNITS[@]})); then
+              if ((${#CONTAINER_UNITS[@]} > 0)); then
                 for unit in "${CONTAINER_UNITS[@]}"; do
                   echo "Starting container unit: $unit"
                   systemctl --user enable --now "$unit" || {
@@ -357,29 +359,17 @@ jobs:
               fi
 
               echo "--- Final status ---"
-              systemctl --user list-units --type=service --all 'pod-*.service' 'container-*.service'
+              systemctl --user list-units --type=service --all '*-pod.service' '*.service' | \
+                grep -E '(api|caddy|valkey|grafana|prometheus|loki|minio|glitchtip|infisical|promtail|statping|uptime-kuma|orbitcheck)' || true
               
               # Check for port conflicts
               echo "--- Port usage ---"
-              ss -tulpn 2>/dev/null | grep -E ':(6379|80|443|3000|5432|9090|3100|9000|8080)' || true
+              ss -tulpn 2>/dev/null | grep -E ':(6379|80|443|3000|5432|9090|3100|9000|8080)' || echo "No matching ports found"
             EOF
 
             # Section 3: Cleanup
             echo "--- Cleaning up temporary files ---"
             sudo rm -rf /tmp/ci
-            - name: Wait for Health Check
-              run: |
-                for i in {1..30}; do
-                  if curl -fsS https://your-domain.com/api/health >/dev/null; then
-                    echo "✅ Application is healthy!"
-                    exit 0
-                  fi
-                  echo "Waiting for application to become healthy... ($i/30)"
-                  sleep 3
-                done
-                echo "❌ Health check failed."
-                exit 1
-
       - name: Wait for containers to fully start
         if: always()
         run: sleep 30
