@@ -307,6 +307,8 @@ jobs:
           done
           echo "❌ Health check failed."
           exit 1
+      - name: Wait for containers to fully start
+        run: sleep 30
 
       - name: Dump Quadlet/container logs to Actions
         if: always()
