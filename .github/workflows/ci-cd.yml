@@ -234,61 +234,55 @@ jobs:
             echo "--- Running systemd tasks as podmanuser ---"
             sudo -iu podmanuser bash <<'EOF'
               set -euo pipefail
+              export XDG_RUNTIME_DIR="/run/user/$(id -u)"
 
-              POD_UNIT="orbitcheck-pod.service"
-
-              # STEP 0: record the deploy start time so we can query logs later
+              # Record deploy start time for the log step
               date +%s > "$HOME/.deploy_start_epoch"
 
-              # STEP 1: Copy new unit files.
-              if [[ "${{ needs.detect-changes.outputs.infra }}" == "true" && -d /tmp/ci/infra ]]; then
-                echo "Copying new Quadlet files..."
-                mkdir -p ~/.config/containers/systemd
-                find /tmp/ci/infra -type f \( -name "*.pod" -o -name "*.container" -o -name "*.volume" -o -name "*.network" \) -exec cp {} ~/.config/containers/systemd/ \;
+              # Copy quadlets
+              if [[ -d /tmp/ci/infra ]]; then
+                echo "Copying Quadlet files..."
+                mkdir -p "$HOME/.config/containers/systemd"
+                find /tmp/ci/infra -type f \( -name "*.pod" -o -name "*.container" -o -name "*.volume" -o -name "*.network" \) \
+                  -exec cp {} "$HOME/.config/containers/systemd/" \;
               fi
 
-              # STEP 2: Manually run the generator.
-              echo "--- Manually running the Quadlet generator ---"
-              GENERATOR_PATH="/usr/libexec/podman/quadlet"
-              OUTPUT_DIR="/run/user/$(id -u)/systemd/generator"
-              rm -rf "${OUTPUT_DIR:?}"/*
-              mkdir -p "${OUTPUT_DIR}"
-              "${GENERATOR_PATH}" --user --no-kmsg-log "${OUTPUT_DIR}"
-              echo "Quadlet generator executed."
+              echo "--- Quadlet dir now contains ---"
+              ls -al "$HOME/.config/containers/systemd" || true
 
-              # STEP 3: Stop old service (if exists)
-              echo "--- Stopping the old pod service (if it exists) ---"
-              systemctl --user stop "$POD_UNIT" || true
-
-              # STEP 4: Reload daemon
-              echo "--- Reloading systemd daemon ---"
+              # Let systemd run the quadlet user generator
+              echo "--- systemd --user daemon-reload ---"
               systemctl --user daemon-reload
 
-              # STEP 5: Start pod, then (enable and) start containers
-              echo "--- Starting the pod and containers ---"
-              systemctl --user start "$POD_UNIT"
+              # Discover units from filenames (matches quadlet naming)
+              shopt -s nullglob
+              POD_UNITS=()
+              for f in "$HOME/.config/containers/systemd"/*.pod; do
+                b="${f##*/}"; n="${b%.pod}"
+                POD_UNITS+=("pod-${n}.service")
+              done
 
-              # Discover container units from Quadlet files
-              mapfile -t CONTAINER_UNITS < <(
-                shopt -s nullglob
-                for f in "$HOME/.config/containers/systemd"/*.container; do
-                  b="${f##*/}"
-                  echo "container-${b%.container}.service"
-                done
-              )
+              CONTAINER_UNITS=()
+              for f in "$HOME/.config/containers/systemd"/*.container; do
+                b="${f##*/}"; n="${b%.container}"
+                CONTAINER_UNITS+=("container-${n}.service")
+              done
 
-              if [[ ${#CONTAINER_UNITS[@]} -gt 0 ]]; then
-                echo "Enabling and starting: ${CONTAINER_UNITS[*]}"
-                systemctl --user enable --now "${CONTAINER_UNITS[@]}"
-              else
-                echo "No .container Quadlets found; only the pod (pause) will run."
+              echo "Pods:        ${POD_UNITS[*]:-<none>}"
+              echo "Containers:  ${CONTAINER_UNITS[*]:-<none>}"
+
+              # Enable/start pods first
+              if ((${#POD_UNITS[@]})); then
+                systemctl --user enable --now "${POD_UNITS[@]}"
               fi
 
-              echo "--- Deployment complete. Checking status in 15 seconds... ---"
-              sleep 15
-              echo "::group::Systemd status ($POD_UNIT)"
-              systemctl --user --no-pager status "$POD_UNIT" || true
-              echo "::endgroup::"
+              # Then enable/start containers
+              if ((${#CONTAINER_UNITS[@]})); then
+                systemctl --user enable --now "${CONTAINER_UNITS[@]}"
+              fi
+
+              echo "--- Loaded units ---"
+              systemctl --user list-units --type=service --all | awk '/^(pod|container)-.*\.service/ {print $1,$4}'
             EOF
 
             # Section 3: Cleanup

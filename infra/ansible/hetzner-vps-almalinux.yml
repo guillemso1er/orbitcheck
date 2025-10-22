@@ -182,6 +182,7 @@
       - curl       
       - ca-certificates 
       - infisical
+      - podman-quadlet
 
   pre_tasks:
 
@@ -274,6 +275,43 @@
       retries: 3
       delay: 5
       until: package_install is success
+
+    - name: Configure Podman Quadlet for systemd user services
+      block:
+        - name: Create systemd user-generators directory
+          ansible.builtin.file:
+            path: /etc/systemd/user-generators
+            state: directory
+            mode: '0755'
+            owner: 'root'
+            group: 'root'
+
+        - name: Symlink Podman Quadlet into user-generators directory
+          ansible.builtin.file:
+            src: /usr/libexec/podman/quadlet
+            dest: /etc/systemd/user-generators/podman-quadlet
+            state: link
+            force: yes # This is equivalent to `ln -sf`
+
+        - name: Regenerate systemd units and list generated files for the podman user
+          ansible.builtin.shell: |
+            set -e # Exit immediately if a command exits with a non-zero status.
+            export XDG_RUNTIME_DIR=/run/user/$(id -u)
+            systemctl --user daemon-reload
+            echo "--- Generated files in $XDG_RUNTIME_DIR/systemd/generator/ ---"
+            ls -1 "$XDG_RUNTIME_DIR"/systemd/generator/{pod,container}-*.service 2>/dev/null || true
+            echo "--- Output from 'systemctl --user list-unit-files' ---"
+            systemctl --user list-unit-files | awk "/^(pod|container)-.*\\.service/ {print}"
+          args:
+            executable: /bin/bash
+            creates: "/run/user/{{ podman_user_uid }}/systemd/generator/container-example.service"
+          become_user: "{{ podman_user }}"
+          register: quadlet_generation_result
+          changed_when: "'Reloading' in quadlet_generation_result.stdout or quadlet_generation_result.rc == 0"
+          
+        - name: Display Quadlet unit generation results
+          ansible.builtin.debug:
+            var: quadlet_generation_result.stdout_lines
 
     - name: Enable lingering for Podman user
       ansible.builtin.command:
