@@ -272,7 +272,9 @@ jobs:
 
               # Validate Quadlet files syntax
               echo "--- Validating Quadlet files ---"
-              for file in "$HOME/.config/containers/systemd"/*.{pod,container,volume,network} 2>/dev/null; do
+              shopt -s nullglob
+              for file in "$HOME/.config/containers/systemd"/*.pod "$HOME/.config/containers/systemd"/*.container \
+                          "$HOME/.config/containers/systemd"/*.volume "$HOME/.config/containers/systemd"/*.network; do
                 [ -f "$file" ] || continue
                 echo "Checking: $file"
                 # Basic validation - check for required sections
@@ -303,6 +305,7 @@ jobs:
               shopt -s nullglob
               POD_UNITS=()
               for f in "$HOME/.config/containers/systemd"/*.pod; do
+                [ -f "$f" ] || continue
                 b="${f##*/}"; n="${b%.pod}"
                 # Quadlet generates pod-<name>.service for .pod files
                 unit="pod-${n}.service"
@@ -315,6 +318,7 @@ jobs:
 
               CONTAINER_UNITS=()
               for f in "$HOME/.config/containers/systemd"/*.container; do
+                [ -f "$f" ] || continue
                 b="${f##*/}"; n="${b%.container}"
                 # Quadlet generates container-<name>.service for .container files
                 unit="container-${n}.service"
@@ -362,20 +366,19 @@ jobs:
 
             # Section 3: Cleanup
             echo "--- Cleaning up temporary files ---"
-            sudo rm -rf /tmp/ci-cd
-
-      - name: Wait for Health Check
-        run: |
-          for i in {1..30}; do
-            if curl -fsS https://your-domain.com/api/health >/dev/null; then
-              echo "✅ Application is healthy!"
-              exit 0
-            fi
-            echo "Waiting for application to become healthy... ($i/30)"
-            sleep 3
-          done
-          echo "❌ Health check failed."
-          exit 1
+            sudo rm -rf /tmp/ci
+            - name: Wait for Health Check
+              run: |
+                for i in {1..30}; do
+                  if curl -fsS https://your-domain.com/api/health >/dev/null; then
+                    echo "✅ Application is healthy!"
+                    exit 0
+                  fi
+                  echo "Waiting for application to become healthy... ($i/30)"
+                  sleep 3
+                done
+                echo "❌ Health check failed."
+                exit 1
 
       - name: Wait for containers to fully start
         if: always()
