@@ -291,7 +291,7 @@
             src: /usr/libexec/podman/quadlet
             dest: /etc/systemd/user-generators/podman-quadlet
             state: link
-            force: yes # This is equivalent to `ln -sf`
+            force: yes 
 
         - name: Regenerate systemd units and list generated files for the podman user
           ansible.builtin.shell: |
