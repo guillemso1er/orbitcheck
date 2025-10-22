@@ -9,8 +9,8 @@ Image=ghcr.io/guillemso1er/api:prod
 ContainerName=api
 Pod=orbitcheck.pod
 
-EnvironmentFile=/srv/myapp/api/env/api.env
-EnvironmentFile=/srv/myapp/api/env/api.secrets.env
+EnvironmentFile=/var/lib/containers/configs/api/env/api.env
+EnvironmentFile=/var/lib/containers/configs/api/env/api.secrets.env
 
 Volume=/var/lib/containers/volumes/api-data:/app/data:Z,U
 Label="io.containers.autoupdate=image"
@@ -23,7 +23,7 @@ Restart=always
 RestartSec=3
 
 # Ensure env dir exists
-ExecStartPre=/usr/bin/install -d -m 700 /srv/myapp/api/env
+ExecStartPre=/usr/bin/install -d -m 700 /var/lib/containers/configs/api/env
 
 # Fetch secrets just-in-time, atomically, with strict perms
 # Uses the service token from a local file (not shown in process args)
@@ -37,9 +37,9 @@ ExecStartPre=/bin/sh -ceu ' \
         --format=dotenv \
         --silent \
         --include-imports \
-    > /srv/myapp/api/env/.api.secrets.env.tmp; \
-    chmod 600 /srv/myapp/api/env/.api.secrets.env.tmp; \
-    mv /srv/myapp/api/env/.api.secrets.env.tmp /srv/myapp/api/env/api.secrets.env \
+    > /var/lib/containers/configs/api/env/.api.secrets.env.tmp; \
+    chmod 600 /var/lib/containers/configs/api/env/.api.secrets.env.tmp; \
+    mv /var/lib/containers/configs/api/env/.api.secrets.env.tmp /var/lib/containers/configs/api/env/api.secrets.env \
 '
 
 # Keep your GHCR login if you need it (unrelated to Infisical)

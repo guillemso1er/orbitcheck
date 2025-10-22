@@ -8,7 +8,7 @@ LogDriver=journald
 Image=docker.io/library/postgres:18.0-alpine3.22
 ContainerName=postgres
 Pod=orbitcheck.pod
-EnvironmentFile=/srv/myapp/postgres/env/postgres.env
+EnvironmentFile=/var/lib/containers/configs/postgres/env/postgres.env
 Volume=/var/lib/containers/volumes/postgres-data:/var/lib/postgresql/data:Z,U
 Label="io.containers.autoupdate=image"
 NoNewPrivileges=yes

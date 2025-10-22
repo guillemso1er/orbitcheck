@@ -216,10 +216,10 @@ jobs:
             # (This section remains unchanged)
             echo "--- Running file tasks as root (via sudo) ---"
             if [[ "${{ needs.detect-changes.outputs.infra }}" == "true" && -d /tmp/ci/infra/compose ]]; then
-              sudo mkdir -p /srv/myapp/caddy
+              sudo mkdir -p /var/lib/containers/configs/caddy
               if [ -f /tmp/ci/infra/compose/Caddyfile ]; then
-                sudo cp /tmp/ci/infra/compose/Caddyfile /srv/myapp/caddy/Caddyfile
-                sudo chown -R podmanuser:podmanuser /srv/myapp
+                sudo cp /tmp/ci/infra/compose/Caddyfile /var/lib/containers/configs/caddy/Caddyfile
+                sudo chown -R podmanuser:podmanuser /var/lib/containers/configs
               fi
             fi
             if [[ "${{ needs.detect-changes.outputs.dashboard }}" == "true" && -d /tmp/ci/dashboard-dist ]]; then
@@ -330,88 +330,88 @@ jobs:
             # Section 3: Cleanup
             echo "--- Cleaning up temporary files ---"
             sudo rm -rf /tmp/ci
-      - name: Wait for containers to fully start
-        if: always()
-        run: sleep 30
+      # - name: Wait for containers to fully start
+      #   if: always()
+      #   run: sleep 30
 
-      - name: Dump Quadlet/container logs to Actions
-        if: always()
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.HETZNER_HOST }}
-          username: adminuser
-          key: ${{ secrets.HETZNER_SSH_KEY }}
-          script: |
-            set -euo pipefail
+      # - name: Dump Quadlet/container logs to Actions
+      #   if: never()
+      #   uses: appleboy/ssh-action@v1.0.3
+      #   with:
+      #     host: ${{ secrets.HETZNER_HOST }}
+      #     username: adminuser
+      #     key: ${{ secrets.HETZNER_SSH_KEY }}
+      #     script: |
+      #       set -euo pipefail
 
-            POD_USER="podmanuser"
-            POD_UNIT="orbitcheck.service"
-            UID_NUM="$(id -u "$POD_USER")"
+      #       POD_USER="podmanuser"
+      #       POD_UNIT="orbitcheck.service"
+      #       UID_NUM="$(id -u "$POD_USER")"
 
-            if sudo test -f "/home/$POD_USER/.deploy_start_epoch"; then
-              SINCE="@$(sudo cat /home/$POD_USER/.deploy_start_epoch)"
-            else
-              SINCE="$(date -d '30 minutes ago' +'%Y-%m-%d %H:%M:%S')"
-            fi
+      #       if sudo test -f "/home/$POD_USER/.deploy_start_epoch"; then
+      #         SINCE="@$(sudo cat /home/$POD_USER/.deploy_start_epoch)"
+      #       else
+      #         SINCE="$(date -d '30 minutes ago' +'%Y-%m-%d %H:%M:%S')"
+      #       fi
 
-            echo "::group::Pod unit logs ($POD_UNIT, since $SINCE)"
-            sudo journalctl --no-pager -o short-iso --since "$SINCE" _SYSTEMD_USER_UNIT="$POD_UNIT" _UID="$UID_NUM" || true
-            echo "::endgroup::"
+      #       echo "::group::Pod unit logs ($POD_UNIT, since $SINCE)"
+      #       sudo journalctl --no-pager -o short-iso --since "$SINCE" _SYSTEMD_USER_UNIT="$POD_UNIT" _UID="$UID_NUM" || true
+      #       echo "::endgroup::"
 
-            # --- SCRIPT CORRECTIONS START HERE ---
+      #       # --- SCRIPT CORRECTIONS START HERE ---
 
-            # Script to find names from .container files
-            read -r -d '' GET_QUADLET_NAMES <<'EOF'
-            set -euo pipefail
-            shopt -s nullglob
-            # Use $HOME which is correctly set by `sudo -iu`
-            CONFIG_DIR="$HOME/.config/containers/systemd"
-            if [[ ! -d "$CONFIG_DIR" ]]; then exit 0; fi
-            for f in "$CONFIG_DIR"/*.container; do
-              # Skip if no files are found
-              [ -f "$f" ] || continue
-              name=$(sed -n 's/^ContainerName=//p' "$f" | head -n1)
-              if [ -z "$name" ]; then
-                base="${f##*/}"; name="${base%.container}"
-              fi
-              printf "%s\n" "$name"
-            done
-            EOF
-            mapfile -t names_quadlet < <(echo "$GET_QUADLET_NAMES" | sudo -iu "$POD_USER" bash | sort -u)
+      #       # Script to find names from .container files
+      #       read -r -d '' GET_QUADLET_NAMES <<'EOF'
+      #       set -euo pipefail
+      #       shopt -s nullglob
+      #       # Use $HOME which is correctly set by `sudo -iu`
+      #       CONFIG_DIR="$HOME/.config/containers/systemd"
+      #       if [[ ! -d "$CONFIG_DIR" ]]; then exit 0; fi
+      #       for f in "$CONFIG_DIR"/*.container; do
+      #         # Skip if no files are found
+      #         [ -f "$f" ] || continue
+      #         name=$(sed -n 's/^ContainerName=//p' "$f" | head -n1)
+      #         if [ -z "$name" ]; then
+      #           base="${f##*/}"; name="${base%.container}"
+      #         fi
+      #         printf "%s\n" "$name"
+      #       done
+      #       EOF
+      #       mapfile -t names_quadlet < <(echo "$GET_QUADLET_NAMES" | sudo -iu "$POD_USER" bash | sort -u)
 
-            # Script to get names from podman events
-            read -r -d '' GET_EVENT_NAMES <<'EOF'
-            podman events --since "%s" --until "$(date +%s)" --no-trunc 2>/dev/null \
-            | awk '/^container / { if (match($0, /name=([^, )]+)/, m)) print m[1] }' \
-            | sort -u
-            EOF
-            # Safely inject the SINCE variable into the script
-            EVENT_SCRIPT=$(printf "$GET_EVENT_NAMES" "$SINCE")
-            mapfile -t names_events < <(echo "$EVENT_SCRIPT" | sudo -iu "$POD_USER" bash)
+      #       # Script to get names from podman events
+      #       read -r -d '' GET_EVENT_NAMES <<'EOF'
+      #       podman events --since "%s" --until "$(date +%s)" --no-trunc 2>/dev/null \
+      #       | awk '/^container / { if (match($0, /name=([^, )]+)/, m)) print m[1] }' \
+      #       | sort -u
+      #       EOF
+      #       # Safely inject the SINCE variable into the script
+      #       EVENT_SCRIPT=$(printf "$GET_EVENT_NAMES" "$SINCE")
+      #       mapfile -t names_events < <(echo "$EVENT_SCRIPT" | sudo -iu "$POD_USER" bash)
 
-            # Names from generator dir (already robust)
-            mapfile -t names_gen < <(
-              sudo bash -lc '
-                shopt -s nullglob
-                for f in /run/user/'"$UID_NUM"'/systemd/generator/container-*.service; do
-                  b="${f##*/}"; n="${b#container-}"; n="${n%.service}"; printf "%s\n" "$n"
-                done | sort -u
-              ' || true
-            )
+      #       # Names from generator dir (already robust)
+      #       mapfile -t names_gen < <(
+      #         sudo bash -lc '
+      #           shopt -s nullglob
+      #           for f in /run/user/'"$UID_NUM"'/systemd/generator/container-*.service; do
+      #             b="${f##*/}"; n="${b#container-}"; n="${n%.service}"; printf "%s\n" "$n"
+      #           done | sort -u
+      #         ' || true
+      #       )
 
-            # Merge/dedupe
-            mapfile -t all_names < <(printf "%s\n" "${names_quadlet[@]}" "${names_gen[@]}" "${names_events[@]}" | awk "NF" | sort -u)
+      #       # Merge/dedupe
+      #       mapfile -t all_names < <(printf "%s\n" "${names_quadlet[@]}" "${names_gen[@]}" "${names_events[@]}" | awk "NF" | sort -u)
 
-            echo "::group::Container logs (since $SINCE)"
-            if [[ ${#all_names[@]} -eq 0 ]]; then
-              echo "No container names discovered; dumping conmon logs for this UID"
-              sudo -iu "$POD_USER" journalctl --user --no-pager -o short-iso --since "$SINCE" SYSLOG_IDENTIFIER=conmon || \
-              sudo journalctl --no-pager -o short-iso --since "$SINCE" _UID="$UID_NUM" SYSLOG_IDENTIFIER=conmon || true
-            else
-              echo "Discovered containers to log: ${all_names[*]}"
-              for name in "${all_names[@]}"; do
-                echo "----- container: ${name} -----"
-                sudo -iu "$POD_USER" journalctl --user --no-pager -o short-iso --since "$SINCE" CONTAINER_NAME="$name" || true
-              done
-            fi
-            echo "::endgroup::"```
+      #       echo "::group::Container logs (since $SINCE)"
+      #       if [[ ${#all_names[@]} -eq 0 ]]; then
+      #         echo "No container names discovered; dumping conmon logs for this UID"
+      #         sudo -iu "$POD_USER" journalctl --user --no-pager -o short-iso --since "$SINCE" SYSLOG_IDENTIFIER=conmon || \
+      #         sudo journalctl --no-pager -o short-iso --since "$SINCE" _UID="$UID_NUM" SYSLOG_IDENTIFIER=conmon || true
+      #       else
+      #         echo "Discovered containers to log: ${all_names[*]}"
+      #         for name in "${all_names[@]}"; do
+      #           echo "----- container: ${name} -----"
+      #           sudo -iu "$POD_USER" journalctl --user --no-pager -o short-iso --since "$SINCE" CONTAINER_NAME="$name" || true
+      #         done
+      #       fi
+      #       echo "::endgroup::"```
