@@ -87,7 +87,7 @@ services:
       - loki
 
   statping:
-    image: ghcr.io/statping-ng/statping-ng:v0.93
+    image: ghcr.io/statping-ng/statping-ng:0.93
     ports:
       - "8082:80"
     volumes:
@@ -105,60 +105,6 @@ services:
     depends_on:
       - caddy
 
-  infisical-backend:
-    container_name: infisical-backend
-    restart: unless-stopped
-    depends_on:
-      infisical-db:
-        condition: service_healthy
-      infisical-redis:
-        condition: service_started
-    image: infisical/infisical:v0.150.0
-    pull_policy: always
-    env_file: .env.infisical
-    ports:
-      - "8085:8080"
-    environment:
-      - NODE_ENV=production
-    networks:
-      - infisical_net
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/api/status"] 
-      interval: 30s
-      timeout: 10s
-      retries: 5
-
-  infisical-redis:
-    image: redis
-    container_name: infisical-redis
-    env_file: .env.infisical
-    restart: always
-    environment:
-      - ALLOW_EMPTY_PASSWORD=yes
-    networks:
-      - infisical_net
-    volumes:
-      - infisical_redis_data:/data
-
-  infisical-db:
-    container_name: infisical-db
-    image: postgres:14-alpine
-    restart: always
-    environment:
-      POSTGRES_PASSWORD: infisical
-      POSTGRES_USER: infisical
-      POSTGRES_DB: infisical
-    volumes:
-      - infisical_pg_data:/var/lib/postgresql/data
-    networks:
-      - infisical_net
-    healthcheck:
-      test: "pg_isready --username=$${POSTGRES_USER} && psql --username=$${POSTGRES_USER} --list"
-      interval: 5s
-      timeout: 10s
-      retries: 10
-
-
 volumes:
   pg_data: {}
   minio_data: {}
@@ -168,10 +114,3 @@ volumes:
   uptime_kuma_data: {}
   caddy_data: {}
   caddy_config: {}
-  infisical_pg_data:
-    driver: local
-  infisical_redis_data:
-    driver: local
-
-networks:
-  infisical_net:

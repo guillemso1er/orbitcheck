@@ -1,5 +1,3 @@
-jest.mock('@orbitcheck/contracts');
-
 import '@testing-library/jest-dom';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -8,12 +6,28 @@ import { BrowserRouter } from 'react-router-dom';
 import { AuthProvider } from '../AuthContext';
 import LogExplorer from '../components/LogExplorer';
 
+// Import these after the module resolution is set up
+import '../constants';
+
 // Mock the API client from @orbitcheck/contracts
 const mockApiClient = {
   getLogs: jest.fn(),
+  getUsage: jest.fn(),
+  getApiKeys: jest.fn(),
+  listApiKeys: jest.fn(),
+  createApiKey: jest.fn(),
+  revokeApiKey: jest.fn(),
+  testWebhook: jest.fn(),
+  batchValidateData: jest.fn(),
+  batchDedupeData: jest.fn(),
+  getJobStatus: jest.fn(),
+  evaluateOrder: jest.fn(),
+  loginUser: jest.fn(),
 };
 
+// Mock the createApiClient to return our mock client
 jest.mock('@orbitcheck/contracts', () => ({
+  ...jest.requireActual('@orbitcheck/contracts'),
   createApiClient: jest.fn(() => mockApiClient),
 }));
 
@@ -51,7 +65,7 @@ global.URL.revokeObjectURL = jest.fn();
 // Helper function to render component with providers
 const renderWithProviders = (component: React.ReactElement) => {
   return render(
-    <BrowserRouter>
+    <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <AuthProvider>
         {component}
       </AuthProvider>
@@ -227,13 +241,15 @@ describe('LogExplorer Component', () => {
       renderWithProviders(<LogExplorer />);
       await screen.findByText('/validate/email');
 
+      const prev = getCallCount();
+
       // Status is an input[type="number"], not a select
       const statusInput = screen.getByLabelText(/status/i) as HTMLInputElement;
 
       await userEvent.clear(statusInput);
       await userEvent.type(statusInput, '400');
 
-      await waitForNextCall();
+      await waitForNextCall(prev);
 
       const lastArgs = getLastArgs();
       expect(lastArgs).toEqual(

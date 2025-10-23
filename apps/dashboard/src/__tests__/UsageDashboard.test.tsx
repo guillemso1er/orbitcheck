@@ -1,12 +1,13 @@
 
-jest.mock('@orbitcheck/contracts');
-
 import '@testing-library/jest-dom';
 import { render, screen, waitFor } from '@testing-library/react';
 import React from 'react';
 import { BrowserRouter } from 'react-router-dom';
 import UsageDashboard from '../components/UsageDashboard';
 import { UI_STRINGS } from '../constants';
+
+// Import these after the module resolution is set up
+import '../constants';
 
 // Mock Chart.js and its components
 jest.mock('chart.js', () => ({
@@ -44,9 +45,16 @@ const mockApiClient = {
   revokeApiKey: jest.fn(),
   rotateApiKey: jest.fn(),
   loginUser: jest.fn(),
+  testWebhook: jest.fn(),
+  batchValidateData: jest.fn(),
+  batchDedupeData: jest.fn(),
+  getJobStatus: jest.fn(),
+  evaluateOrder: jest.fn(),
 };
 
+// Mock the createApiClient to return our mock client
 jest.mock('@orbitcheck/contracts', () => ({
+  ...jest.requireActual('@orbitcheck/contracts'),
   createApiClient: jest.fn(() => mockApiClient)
 }));
 

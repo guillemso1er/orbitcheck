@@ -5,6 +5,9 @@ import { BrowserRouter } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
 import Login from '../components/Login';
 
+// Import these after the module resolution is set up
+import '../constants';
+
 // Mock the AuthContext
 jest.mock('../AuthContext');
 
@@ -13,6 +16,14 @@ const mockApiClient = {
   getUsage: jest.fn(),
   getLogs: jest.fn(),
   getApiKeys: jest.fn(),
+  listApiKeys: jest.fn(),
+  createApiKey: jest.fn(),
+  revokeApiKey: jest.fn(),
+  testWebhook: jest.fn(),
+  batchValidateData: jest.fn(),
+  batchDedupeData: jest.fn(),
+  getJobStatus: jest.fn(),
+  evaluateOrder: jest.fn(),
   loginUser: jest.fn().mockResolvedValue({
     token: 'test-token',
     user: { id: 'user-id', email: 'test@example.com' }
@@ -21,6 +32,7 @@ const mockApiClient = {
 
 // Mock the entire @orbitcheck/contracts module
 jest.mock('@orbitcheck/contracts', () => ({
+  ...jest.requireActual('@orbitcheck/contracts'),
   createApiClient: jest.fn(() => mockApiClient),
 }));
 
