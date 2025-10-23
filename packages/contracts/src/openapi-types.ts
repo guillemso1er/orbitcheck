@@ -960,6 +960,8 @@ export interface operations {
                     email: string;
                     /** @description User password (minimum 8 characters) */
                     password: string;
+                    /** @description Confirm password (must match password) */
+                    confirm_password: string;
                 };
             };
         };

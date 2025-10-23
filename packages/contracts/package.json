@@ -16,6 +16,10 @@
     "./routes": {
       "types": "./dist/routes.d.ts",
       "default": "./dist/routes.js"
+    },
+    "./api-client": {
+      "types": "./dist/api-client/orbitCheckAPI.d.ts",
+      "default": "./dist/api-client/orbitCheckAPI.js"
     }
   },
   "scripts": {

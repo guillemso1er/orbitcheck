@@ -10,11 +10,12 @@ interface User {
 }
 
 /**
- * Login form state interface: Defines structure for email and password fields.
+ * Login form state interface: Defines structure for email, password, and confirm_password fields.
  */
 interface LoginForm {
   email: string;
   password: string;
+  confirm_password: string;
 }
 
 /**
@@ -26,7 +27,7 @@ interface LoginForm {
  * @returns {JSX.Element} Authentication form with inputs, submit button, toggle link, and inline styles.
  */
 const Login: React.FC = () => {
-  const [form, setForm] = useState<LoginForm>({ email: '', password: '' });
+  const [form, setForm] = useState<LoginForm>({ email: '', password: '', confirm_password: '' });
   const [isRegister, setIsRegister] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -35,25 +36,34 @@ const Login: React.FC = () => {
 
   /**
    * Validates form inputs: Checks email format and password length (min 8 for register).
+   * For register mode, also validates confirm_password matches password.
    * Updates error state with specific messages for invalid fields.
    * Clears previous errors on valid input.
    */
-  const validateForm = () => {
-    if (!form.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
-      setError(VALIDATION_MESSAGES.INVALID_EMAIL);
-      return false;
-    }
-    if (form.password.length < 8 && isRegister) {
-      setError(VALIDATION_MESSAGES.PASSWORD_TOO_SHORT);
-      return false;
-    }
-    if (!form.password) {
-      setError(VALIDATION_MESSAGES.PASSWORD_REQUIRED);
-      return false;
-    }
-    setError(null);
-    return true;
-  };
+   const validateForm = () => {
+     if (!form.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
+       setError(VALIDATION_MESSAGES.INVALID_EMAIL);
+       return false;
+     }
+     if (form.password.length < 8 && isRegister) {
+       setError(VALIDATION_MESSAGES.PASSWORD_TOO_SHORT);
+       return false;
+     }
+     if (!form.password) {
+       setError(VALIDATION_MESSAGES.PASSWORD_REQUIRED);
+       return false;
+     }
+     if (isRegister && form.password !== form.confirm_password) {
+       setError('Passwords do not match');
+       return false;
+     }
+     if (isRegister && !form.confirm_password) {
+       setError('Please confirm your password');
+       return false;
+     }
+     setError(null);
+     return true;
+   };
 
   /**
    * Handles form submission: Validates inputs, makes POST request to /auth/login or /auth/register,
@@ -78,6 +88,7 @@ const Login: React.FC = () => {
         data = await apiClient.registerUser({
           email: form.email.trim().toLowerCase(),
           password: form.password,
+          confirm_password: form.confirm_password,
         });
       } else {
         data = await apiClient.loginUser({
@@ -119,7 +130,7 @@ const Login: React.FC = () => {
   const toggleAuthMode = () => {
     setIsRegister(!isRegister);
     setError(null);
-    setForm({ email: '', password: '' }); // Reset form on toggle
+    setForm({ email: '', password: '', confirm_password: '' }); // Reset form on toggle
   };
 
   return (
@@ -157,12 +168,28 @@ const Login: React.FC = () => {
               disabled={loading}
             />
           </div>
+          {isRegister && (
+            <div className="form-group">
+              <label htmlFor="confirm_password">Confirm Password</label>
+              <input
+                id="confirm_password"
+                type="password"
+                value={form.confirm_password}
+                onChange={(e) => setForm({ ...form, confirm_password: e.target.value })}
+                placeholder="Confirm your password"
+                required
+                minLength={8}
+                aria-describedby={error ? "confirm-password-error" : undefined}
+                disabled={loading}
+              />
+            </div>
+          )}
           {error && (
             <div id="auth-error" className="alert alert-danger" role="alert">
               {error}
             </div>
           )}
-          <button type="submit" className="btn btn-primary btn-block" disabled={loading || !form.email || !form.password}>
+          <button type="submit" className="btn btn-primary btn-block" disabled={loading || !form.email || !form.password || (isRegister && !form.confirm_password)}>
             {loading ? 'Processing...' : (isRegister ? 'Create Account' : 'Sign In')}
           </button>
         </form>

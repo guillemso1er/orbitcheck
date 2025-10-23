@@ -36,6 +36,7 @@ paths:
               required:
                 - email
                 - password
+                - confirm_password
               properties:
                 email:
                   type: string
@@ -45,6 +46,10 @@ paths:
                   type: string
                   minLength: 8
                   description: User password (minimum 8 characters)
+                confirm_password:
+                  type: string
+                  minLength: 8
+                  description: Confirm password (must match password)
       responses:
         '201':
           description: User registered successfully
