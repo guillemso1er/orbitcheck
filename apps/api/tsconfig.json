@@ -1,17 +1,17 @@
 {
+    "extends": "../../tsconfig.base.json",
     "compilerOptions": {
+        "lib": ["ES2022", "DOM"],
         "module": "nodenext",
         "target": "es2022",
         "moduleResolution": "NodeNext",
         "outDir": "dist",
         "rootDir": "src",
-        "strict": true,
-        "isolatedModules": true,
-        "esModuleInterop": true,
-        "skipLibCheck": true,
         "types": [
             "node",
             "jest"
         ]
-    }
+    },
+    "include": ["src/**/*"],
+    "exclude": ["node_modules", "dist/**/*"]
 }

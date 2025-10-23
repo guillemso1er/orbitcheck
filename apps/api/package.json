@@ -11,7 +11,7 @@
     "license": "UNLICENSED",
     "packageManager": "pnpm@9.12.1",
     "engines": {
-        "node": ">=20.10 <23"
+        "node": ">=22.0.0"
     },
     "scripts": {
         "dev": "cross-env NODE_ENV=local tsx watch src/server.ts",

@@ -1,6 +1,7 @@
 {
   "name": "orbitcheck-monorepo",
   "private": true,
+  "packageManager": "pnpm@9.12.0",
   "scripts": {
     "api": "pnpm --filter @orbitcheck/api dev",
     "dashboard": "pnpm --filter @orbitcheck/dashboard dev",
@@ -10,7 +11,11 @@
     "k6:fulljourney": "k6 run  tests/k6/fulljourney.js",
     "k6:all": "k6 run -e KEY=ok_test_a450e23f007460bc2a01e5ec715a12a76952  tests/k6/main.js",
     "generate": "pnpm --filter @orbitcheck/contracts run build",
-    "infra": "podman compose -f infra/compose/local.compose.yml up -d"
+    "infra": "podman compose -f infra/compose/local.compose.yml up -d",
+    "typecheck": "pnpm -r typecheck",
+    "lint": "pnpm -r lint",
+    "test": "pnpm -r test",
+    "build": "pnpm -r build"
   },
   "devDependencies": {
     "@types/adm-zip": "^0.5.7",

@@ -19,7 +19,7 @@ export default [
         sourceType: "module",
         parser: tsParser,
         parserOptions: {
-            project: "./tsconfig.json",
+            project: "./tsconfig.base.json",
         },
         globals: {
             Buffer: 'readonly',
@@ -122,7 +122,7 @@ export default [
         // Regex DoS flags
         "regexp/no-super-linear-backtracking": "warn",
 
-        // Fastify-specific “no hidden hangs” guards
+        // Fastify-specific "no hidden hangs" guards
         "no-restricted-syntax": [
             "error",
             // Enforce async hooks (no 'done' callback style)
@@ -256,7 +256,7 @@ export default [
   },
 
   {
-    files: ["src/routes/**"],
+    files: ["apps/api/src/routes/**"],
     rules: {
       "@typescript-eslint/no-unsafe-assignment": "off",
       "@typescript-eslint/no-unsafe-member-access": "off",
@@ -268,7 +268,7 @@ export default [
   },
 
   {
-    files: ["src/hooks.ts", "src/jobs/**", "src/plugins/**", "src/seed.ts", "src/server.ts", "src/startup-guard.ts", "src/types/**", "src/validators/**"],
+    files: ["apps/api/src/hooks.ts", "apps/api/src/jobs/**", "apps/api/src/plugins/**", "apps/api/src/seed.ts", "apps/api/src/server.ts", "apps/api/src/startup-guard.ts", "apps/api/src/types/**", "apps/api/src/validators/**"],
     rules: {
       "@typescript-eslint/no-unsafe-assignment": "off",
       "@typescript-eslint/no-unsafe-member-access": "off",

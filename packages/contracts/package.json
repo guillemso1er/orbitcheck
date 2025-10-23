@@ -20,7 +20,7 @@
   },
   "scripts": {
     "validate": "openapi-typescript openapi.yaml --strict",
-    "lint": "eslint src/ --ext .ts --fix",
+    "lint": "eslint src/",
     "build": "node build.js"
   },
   "dependencies": {
