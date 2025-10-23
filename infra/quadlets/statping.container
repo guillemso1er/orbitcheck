@@ -3,7 +3,7 @@ Description=Statping-NG
 
 [Container]
 LogDriver=journald
-Image=docker.io/statping-ng/statping-ng:v0.90.80
+Image=ghcr.io/statping-ng/statping-ng:v0.93
 ContainerName=statping
 Pod=orbitcheck.pod
 Volume=/var/lib/containers/volumes/statping-data:/app:Z,U

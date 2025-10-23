@@ -13,12 +13,8 @@
   remote_user: root
   gather_facts: no # We don't need extensive facts for this initial step
 
-  vars:
-    # These variables are required for user creation.
-    # Ensure they are defined in your inventory or extra-vars.
-    admin_user: "adminuser" # Example value
-    admin_password_file_path: "~/.ssh/admin_password.txt" # Example value
-    admin_password_seed: "your_seed" # Example value
+  vars_files:
+    - ./vars/secrets.yml  
 
   pre_tasks:
     - name: Wait for SSH to come up (on remote hosts only)
@@ -177,12 +173,12 @@
       - nano
       - python-dotenv
       - acl
-      - checkpolicy
       - jq         
       - curl       
       - ca-certificates 
       - infisical
       - podman-quadlet
+      - dbus-x11 
 
   pre_tasks:
 
@@ -291,27 +287,27 @@
             src: /usr/libexec/podman/quadlet
             dest: /etc/systemd/user-generators/podman-quadlet
             state: link
-            force: yes 
+            force: yes
 
         - name: Regenerate systemd units and list generated files for the podman user
-          ansible.builtin.shell: |
-            set -e # Exit immediately if a command exits with a non-zero status.
-            export XDG_RUNTIME_DIR=/run/user/$(id -u)
-            systemctl --user daemon-reload
-            echo "--- Generated files in $XDG_RUNTIME_DIR/systemd/generator/ ---"
-            ls -1 "$XDG_RUNTIME_DIR"/systemd/generator/{pod,container}-*.service 2>/dev/null || true
-            echo "--- Output from 'systemctl --user list-unit-files' ---"
-            systemctl --user list-unit-files | awk "/^(pod|container)-.*\\.service/ {print}"
+          ansible.builtin.shell:
+            cmd: |
+              set -e
+              echo "--- Regenerating systemd user units ---"
+              systemd-run --user --machine={{ podman_user }}@.host --wait systemctl --user daemon-reload
+
+              echo "--- Generated files in /run/user/{{ podman_user_uid }}/systemd/generator/ ---"
+              ls -1 /run/user/{{ podman_user_uid }}/systemd/generator/{pod,container}-*.service 2>/dev/null || true
+
+              echo "--- Output from 'systemctl --user list-unit-files' ---"
+              systemd-run --user --machine={{ podman_user }}@.host --wait systemctl --user list-unit-files | awk '/^(pod|container)-.*\\.service/ {print}'
           args:
             executable: /bin/bash
-            creates: "/run/user/{{ podman_user_uid }}/systemd/generator/container-example.service"
-          become_user: "{{ podman_user }}"
           register: quadlet_generation_result
-          changed_when: "'Reloading' in quadlet_generation_result.stdout or quadlet_generation_result.rc == 0"
-          
-        - name: Display Quadlet unit generation results
-          ansible.builtin.debug:
-            var: quadlet_generation_result.stdout_lines
+          # A change occurs if the output contains more than just the headers.
+          changed_when: (quadlet_generation_result.stdout_lines | length) > 4
+          become: true # This task must run as root to use systemd-run effectively
+
 
     - name: Enable lingering for Podman user
       ansible.builtin.command:
@@ -420,9 +416,10 @@
         - name: Mount the data disk
           ansible.builtin.mount:
             path: "{{ container_base_path }}"
-            src: "{{ data_disk_device }}1" # Assumes partition 1
+            src: "{{ data_disk_device }}1"
             fstype: xfs
             state: mounted
+            opts: "defaults,nofail,x-systemd.device-timeout=15" 
 
         - name: Set ownership of the container data mount point
           ansible.builtin.file:

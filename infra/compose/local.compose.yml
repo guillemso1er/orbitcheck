@@ -87,7 +87,7 @@ services:
       - loki
 
   statping:
-    image: statping/statping:latest
+    image: ghcr.io/statping-ng/statping-ng:v0.93
     ports:
       - "8082:80"
     volumes:
