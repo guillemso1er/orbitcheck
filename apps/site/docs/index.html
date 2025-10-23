@@ -1,9 +1,10 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>OrbiCheck API Documentation</title>
+    <title>OrbitCheck API Documentation</title>
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
@@ -12,15 +13,18 @@
             background: #f8f9fa;
             color: #333;
         }
+
         .container {
             max-width: 1200px;
             margin: 0 auto;
             padding: 2rem;
         }
+
         .header {
             text-align: center;
             margin-bottom: 3rem;
         }
+
         .header h1 {
             font-size: 2.5rem;
             margin-bottom: 0.5rem;
@@ -29,11 +33,13 @@
             -webkit-text-fill-color: transparent;
             background-clip: text;
         }
+
         .header p {
             font-size: 1.2rem;
             color: #666;
             margin-bottom: 2rem;
         }
+
         .cta-section {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
@@ -43,21 +49,25 @@
             margin: 2rem 0;
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
         }
+
         .cta-section h2 {
             margin: 0 0 1rem 0;
             font-size: 2rem;
         }
+
         .cta-section p {
             margin: 0 0 2rem 0;
             font-size: 1.1rem;
             opacity: 0.9;
         }
+
         .cta-buttons {
             display: flex;
             gap: 1rem;
             justify-content: center;
             flex-wrap: wrap;
         }
+
         .btn {
             display: inline-block;
             padding: 1rem 2rem;
@@ -69,30 +79,36 @@
             border: none;
             cursor: pointer;
         }
+
         .btn-primary {
             background: white;
             color: #667eea;
         }
+
         .btn-primary:hover {
             background: #f8f9fa;
             transform: translateY(-2px);
             box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
         }
+
         .btn-secondary {
             background: rgba(255, 255, 255, 0.1);
             color: white;
             border: 2px solid rgba(255, 255, 255, 0.3);
         }
+
         .btn-secondary:hover {
             background: rgba(255, 255, 255, 0.2);
             border-color: rgba(255, 255, 255, 0.5);
         }
+
         .features {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
             gap: 2rem;
             margin: 3rem 0;
         }
+
         .feature-card {
             background: white;
             padding: 2rem;
@@ -100,18 +116,22 @@
             box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
             text-align: center;
         }
+
         .feature-card .icon {
             font-size: 3rem;
             margin-bottom: 1rem;
         }
+
         .feature-card h3 {
             margin: 0 0 1rem 0;
             color: #333;
         }
+
         .feature-card p {
             color: #666;
             margin: 0;
         }
+
         .code-examples {
             background: #2d3748;
             color: #e2e8f0;
@@ -120,31 +140,38 @@
             margin: 3rem 0;
             overflow-x: auto;
         }
+
         .code-examples h3 {
             margin-top: 0;
             color: #63b3ed;
         }
+
         .code-examples pre {
             background: #1a202c;
             padding: 1rem;
             border-radius: 0.5rem;
             margin: 1rem 0;
         }
+
         .code-examples code {
             font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
             font-size: 0.9rem;
         }
+
         @media (max-width: 768px) {
             .container {
                 padding: 1rem;
             }
+
             .header h1 {
                 font-size: 2rem;
             }
+
             .cta-buttons {
                 flex-direction: column;
                 align-items: center;
             }
+
             .btn {
                 width: 100%;
                 max-width: 300px;
@@ -152,10 +179,11 @@
         }
     </style>
 </head>
+
 <body>
     <div class="container">
         <header class="header">
-            <h1>🚀 OrbiCheck API</h1>
+            <h1>🚀 OrbitCheck API</h1>
             <p>Powerful validation and risk assessment for modern e-commerce</p>
         </header>
 
@@ -164,7 +192,8 @@
             <p>View interactive documentation with examples and test endpoints</p>
             <div class="cta-buttons">
                 <a href="/reference" class="btn btn-primary">📖 View API Documentation</a>
-                <a href="https://dashboard.orbitcheck.io/auth/login" class="btn btn-secondary">⚡ Try Live in Dashboard</a>
+                <a href="https://dashboard.orbitcheck.io/auth/login" class="btn btn-secondary">⚡ Try Live in
+                    Dashboard</a>
             </div>
         </section>
 
@@ -172,12 +201,14 @@
             <div class="feature-card">
                 <div class="icon">🔍</div>
                 <h3>Comprehensive Validation</h3>
-                <p>Validate emails, phone numbers, addresses, and tax IDs with high accuracy and real-time verification.</p>
+                <p>Validate emails, phone numbers, addresses, and tax IDs with high accuracy and real-time verification.
+                </p>
             </div>
             <div class="feature-card">
                 <div class="icon">⚡</div>
                 <h3>Real-time Risk Assessment</h3>
-                <p>Advanced fraud detection with machine learning-powered risk scoring and automated decision making.</p>
+                <p>Advanced fraud detection with machine learning-powered risk scoring and automated decision making.
+                </p>
             </div>
             <div class="feature-card">
                 <div class="icon">🛡️</div>
@@ -241,8 +272,9 @@ curl -X POST "https://api.orbitcheck.io/v1/orders/evaluate" \
         </section>
 
         <footer style="text-align: center; margin-top: 3rem; color: #666;">
-            <p>&copy; 2024 OrbiCheck. Built for developers, trusted by businesses.</p>
+            <p>&copy; 2024 OrbitCheck. Built for developers, trusted by businesses.</p>
         </footer>
     </div>
 </body>
+
 </html>

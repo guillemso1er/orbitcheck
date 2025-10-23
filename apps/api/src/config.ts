@@ -134,9 +134,9 @@ export const WEBHOOK_TEST_LOW_RISK_TAG = 'low_risk' as const;
 
 export const STRIPE_DEFAULT_SECRET_KEY = 'sk_test_dummy' as const;
 
-export const USER_AGENT_WEBHOOK_TESTER = 'OrbiCheck-Webhook-Tester/1.0' as const;
+export const USER_AGENT_WEBHOOK_TESTER = 'OrbitCheck-Webhook-Tester/1.0' as const;
 
-export const USER_AGENT_WEBHOOK = 'OrbiCheck-Webhook/1.0' as const;
+export const USER_AGENT_WEBHOOK = 'OrbitCheck-Webhook/1.0' as const;
 
 export const USER_AGENT_ADDRESS_VALIDATION = 'Orbitcheck/0.1' as const;
 

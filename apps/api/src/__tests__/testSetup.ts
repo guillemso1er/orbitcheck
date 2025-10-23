@@ -137,7 +137,7 @@ jest.mock('js-yaml', () => ({
   load: jest.fn().mockReturnValue({
     openapi: '3.0.3',
     info: {
-      title: 'OrbiCheck API',
+      title: 'OrbitCheck API',
       description: 'API for validation, deduplication, and risk assessment services',
       version: '1.0.0'
     },

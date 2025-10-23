@@ -1,6 +1,6 @@
-# OrbiCheck API Contracts
+# OrbitCheck API Contracts
 
-This package contains the OpenAPI specification and shared types for the OrbiCheck services.
+This package contains the OpenAPI specification and shared types for the OrbitCheck services.
 
 ## Overview
 

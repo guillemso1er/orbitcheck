@@ -79,7 +79,7 @@ function App() {
 
       <aside className={`sidebar ${sidebarOpen ? 'open' : ''}`}>
         <div className="sidebar-header">
-          <h1 className="logo">OrbiCheck</h1>
+          <h1 className="logo">OrbitCheck</h1>
           <button className="sidebar-close" onClick={toggleSidebar} aria-label="Close menu">×</button>
         </div>
         {isAuthenticated ? (

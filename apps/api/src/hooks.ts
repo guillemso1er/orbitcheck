@@ -230,7 +230,7 @@ async function sendWebhooks(project_id: string, event: string, payload: Record<s
                     method: 'POST',
                     headers: {
                         'Content-Type': CONTENT_TYPES.APPLICATION_JSON,
-                        'X-OrbiCheck-Signature': `sha256=${signature}`,
+                        'X-OrbitCheck-Signature': `sha256=${signature}`,
                         'User-Agent': USER_AGENT_WEBHOOK
                     },
                     body: JSON.stringify(payload)

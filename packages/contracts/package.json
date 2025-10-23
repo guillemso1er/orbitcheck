@@ -1,7 +1,7 @@
 {
   "name": "@orbitcheck/contracts",
   "version": "0.1.0",
-  "description": "OpenAPI contracts and shared types for OrbiCheck services",
+  "description": "OpenAPI contracts and shared types for OrbitCheck services",
   "type": "module",
   "main": "dist/index.js",
   "exports": {

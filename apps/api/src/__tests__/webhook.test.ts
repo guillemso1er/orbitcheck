@@ -490,7 +490,7 @@ describe('Webhook Event Sending', () => {
         expect(options.method).toBe('POST');
         expect(options.headers).toBeDefined();
         const headers = options.headers as Record<string, string>;
-        expect(headers['X-OrbiCheck-Signature']).toMatch(/^sha256=[a-f0-9]+$/);
+        expect(headers['X-OrbitCheck-Signature']).toMatch(/^sha256=[a-f0-9]+$/);
 
         const payload = JSON.parse(options.body as string);
         expect(payload).toMatchObject({

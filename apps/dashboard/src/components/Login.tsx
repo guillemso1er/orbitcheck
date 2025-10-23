@@ -127,7 +127,7 @@ const Login: React.FC = () => {
       <div className="auth-card">
         <div className="auth-header">
           <h2>{isRegister ? 'Create Account' : 'Welcome Back'}</h2>
-          <p>{isRegister ? 'Join OrbiCheck to get started with validation tools' : 'Sign in to access your dashboard'}</p>
+          <p>{isRegister ? 'Join OrbitCheck to get started with validation tools' : 'Sign in to access your dashboard'}</p>
         </div>
         <form onSubmit={handleSubmit} className="auth-form" noValidate>
           <div className="form-group">

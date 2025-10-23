@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { expect, test } from '@playwright/test';
 import { v4 as uuidv4 } from 'uuid';
 
 test.describe('Full Application Journey', () => {
@@ -32,7 +32,7 @@ test.describe('Full Application Journey', () => {
 
     // Step 3: Verify redirect to API keys page after registration
     await expect(page).toHaveURL(/.*\/api-keys/);
-    await expect(page.getByRole('heading', { name: 'OrbiCheck' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'OrbitCheck' })).toBeVisible();
 
     // Step 4: View API keys list (verify default key exists)
     await page.waitForLoadState('networkidle');
@@ -220,6 +220,6 @@ test.describe('Full Application Journey', () => {
 
     // Step 36: Verify successful login and dashboard access
     await expect(page).toHaveURL(/.*\/api-keys/);
-    await expect(page.getByRole('heading', { name: 'OrbiCheck' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'OrbitCheck' })).toBeVisible();
   });
 });

@@ -89,7 +89,7 @@ if [ -z "$PROJECT_ID" ]; then
   echo "Creating project..."
   PROJECT_RESPONSE=$(curl -s -X POST "$BASE/api/v1/projects" \
     -H "Authorization: Bearer $ADMIN_TOKEN" -H "Content-Type: application/json" \
-    -d '{"projectName":"orbitcheck-api","projectDescription":"OrbiCheck API service","shouldCreateDefaultEnvs":true}')
+    -d '{"projectName":"orbitcheck-api","projectDescription":"OrbitCheck API service","shouldCreateDefaultEnvs":true}')
   
   if ! echo "$PROJECT_RESPONSE" | jq -e '.project' > /dev/null 2>&1; then
     echo "Project creation failed! Response:"
