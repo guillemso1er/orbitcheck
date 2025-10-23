@@ -25,10 +25,14 @@ test.describe('Full Application Journey', () => {
     await expect(page.getByRole('heading', { name: 'Create Account' })).toBeVisible();
 
     await page.fill('input[type="email"]', testEmail);
-    await page.fill('input[type="password"]', password);
+    await page.fill('#password', password);
+    await page.fill('#confirm_password', password);
 
+    await page.waitForSelector('button.btn-primary:not(:disabled)', { timeout: 5000 });
     await page.getByRole('button', { name: 'Create Account' }).click();
-    await page.waitForResponse(resp => resp.url().includes('/auth/register') && resp.status() === 201);
+    const response = await page.waitForResponse(resp => resp.url().includes('/auth/register'));
+    console.log('Response status:', response.status(), 'body:', await response.text());
+    expect(response.status()).toBe(201);
 
     // Step 3: Verify redirect to API keys page after registration
     await expect(page).toHaveURL(/.*\/api-keys/);

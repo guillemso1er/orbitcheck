@@ -229,6 +229,11 @@ function sanitizeAuthRequest(body: any): any {
         sanitized.password = InputSanitizer.sanitizePassword(body.password);
     }
 
+    if (body.confirm_password !== undefined) {
+        // Confirm password should be treated like password
+        sanitized.confirm_password = InputSanitizer.sanitizePassword(body.confirm_password);
+    }
+
     if (body.name) {
         sanitized.name = InputSanitizer.sanitizeString(body.name);
     }

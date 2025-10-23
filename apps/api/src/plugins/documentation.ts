@@ -89,7 +89,38 @@ export async function setupDocumentation(app: FastifyInstance): Promise<void> {
         routePrefix: '/documentation',
         uiConfig: { docExpansion: 'list', deepLinking: false },
         staticCSP: true,
-        transformStaticCSP: (h) => h,
+        transformStaticCSP: (header) => {
+            // Update CSP to allow Swagger UI to function properly
+            // Allow connect-src to localhost and 127.0.0.1 for API calls
+            const apiOrigins = [
+                `http://localhost:${environment.PORT}`,
+                `http://127.0.0.1:${environment.PORT}`,
+                ...(environment.NODE_ENV === 'production' ? [
+                    'https://dashboard.orbitcheck.io',
+                    'https://api.orbitcheck.io'
+                ] : [])
+            ].join(' ');
+
+            let csp = header || "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:;";
+
+            // Ensure connect-src includes API origins
+            if (csp.includes('connect-src')) {
+                csp = csp.replace(/connect-src [^;]+/, `connect-src 'self' ${apiOrigins}`);
+            } else {
+                csp += ` connect-src 'self' ${apiOrigins};`;
+            }
+
+            // Ensure style-src allows unsafe-inline for Swagger UI
+            if (!csp.includes('style-src') || !csp.includes('unsafe-inline')) {
+                if (csp.includes('style-src')) {
+                    csp = csp.replace(/style-src [^;]+/, "style-src 'self' 'unsafe-inline'");
+                } else {
+                    csp += " style-src 'self' 'unsafe-inline';";
+                }
+            }
+
+            return csp;
+        },
     })
 
 

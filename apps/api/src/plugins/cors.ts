@@ -11,6 +11,7 @@ export async function setupCors(app: FastifyInstance): Promise<void> {
     // Define allowed origins based on environment
     const allowedOrigins = new Set([
         `http://localhost:${environment.PORT}`, // API itself for health/docs
+        `http://127.0.0.1:${environment.PORT}`, // API itself for health/docs
     ]);
 
     // Add production origins from environment variable or defaults

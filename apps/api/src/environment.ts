@@ -103,7 +103,7 @@ export const environment = {
   GOOGLE_GEOCODING_KEY: await getSecret("API_GOOGLE_GEOCODING_KEY", ""),
   USE_GOOGLE_FALLBACK: await getBooleanSecret("API_USE_GOOGLE_FALLBACK", false),
   JWT_SECRET: await getSecret("API_JWT_SECRET", "dummy_jwt_secret_for_local_dev"),
-  ENCRYPTION_KEY: await getSecret("API_ENCRYPTION_KEY", "dummy_encryption_key_32_chars_long"),
+  ENCRYPTION_KEY: await getSecret("API_ENCRYPTION_KEY", "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"),
   SESSION_SECRET: await getSecret("API_SESSION_SECRET", randomBytes(CRYPTO_KEY_BYTES).toString('hex')),
 
   // OIDC configuration (optional)
