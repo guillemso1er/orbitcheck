@@ -255,8 +255,9 @@ export async function start(): Promise<void> {
         });
 
         // --- Step 3: Start Listening ---
-        await app.listen({ port: environment.PORT, host: "0.0.0.0" });
-        app.log.info(`Orbitcheck API server listening on http://0.0.0.0:${environment.PORT}`);
+        const host = process.env.NODE_ENV === 'local' ? 'localhost' : '0.0.0.0';
+        await app.listen({ port: environment.PORT, host });
+        app.log.info(`Orbitcheck API server listening on http://${host}:${environment.PORT}`);
 
         // Run initial refresh job in the background now that everything is running
         void disposableQueue.add('refresh', {});

@@ -44,7 +44,7 @@ export async function setupDocumentation(app: FastifyInstance): Promise<void> {
                     },
                 },
             },
-            servers: [{ url: `http://localhost:${environment.PORT}`, description: 'Development server' }],
+            servers: [{ url: `http://127.0.0.1:${environment.PORT}`, description: 'Development server' }],
         },
         transform: ({ schema, url }: { schema: any; url: string }) => {
             if (
