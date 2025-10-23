@@ -121,6 +121,8 @@ export const environment = {
   FRONTEND_URL: await getSecret("API_FRONTEND_URL", "http://localhost:5173"),
   CORS_ORIGINS: await getSecret("API_CORS_ORIGINS"),
 
+  NODE_ENV: process.env.NODE_ENV || 'production',
+
   // Infisical (for secret management) - don't fetch these from Infisical itself
   INFISICAL_PROJECT_ID: infisicalCreds.PROJECT_ID || process.env.API_INFISICAL_PROJECT_ID || "",
   INFISICAL_ENVIRONMENT: process.env.API_INFISICAL_ENVIRONMENT || "dev",

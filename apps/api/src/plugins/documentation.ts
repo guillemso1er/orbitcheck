@@ -11,7 +11,7 @@ export async function setupDocumentation(app: FastifyInstance): Promise<void> {
     app.addHook('onRoute', (routeOptions) => {
         const url = routeOptions.url || ''
         // Hide any route that contains 'internal' in the URL
-        if (
+        if ((
             url.startsWith(ROUTES.DASHBOARD) ||
             url.startsWith(ROUTES.REFERENCE) ||
             url.startsWith(ROUTES.DOCUMENTATION) ||
@@ -19,10 +19,27 @@ export async function setupDocumentation(app: FastifyInstance): Promise<void> {
             url.startsWith(ROUTES.SETTINGS) ||
             url.startsWith(ROUTES.STATUS) ||
             url.startsWith(ROUTES.HEALTH) ||
+            url.startsWith(ROUTES.READY) ||
+            url.startsWith(ROUTES.REGISTER) ||
+            url.startsWith(ROUTES.LOGIN) ||
+            url.startsWith(ROUTES.LOGOUT) ||
 
-            url.startsWith(ROUTES.READY)) {
+            url.startsWith(ROUTES.READY)) && environment.NODE_ENV !== 'local') {
             routeOptions.schema = routeOptions.schema || {};
             routeOptions.schema.hide = true;
+        }
+
+        // Hide specific endpoints in production
+        if (environment.NODE_ENV !== 'local') {
+            if (
+                url === ROUTES.REGISTER ||
+                url === ROUTES.LOGIN ||
+                url === ROUTES.LOGOUT ||
+                url === '/v1/data/erase'
+            ) {
+                routeOptions.schema = routeOptions.schema || {};
+                routeOptions.schema.hide = true;
+            }
         }
     });
 
@@ -56,7 +73,10 @@ export async function setupDocumentation(app: FastifyInstance): Promise<void> {
                 url.startsWith(ROUTES.SETTINGS) ||
                 url.startsWith(ROUTES.STATUS) ||
                 url.startsWith(ROUTES.HEALTH) ||
-                url.startsWith(ROUTES.READY)
+                url.startsWith(ROUTES.READY) ||
+                url.startsWith(ROUTES.REGISTER) ||
+                url.startsWith(ROUTES.LOGIN) ||
+                url.startsWith(ROUTES.LOGOUT)
             ) {
                 return { schema: null as any, url }
             }
