@@ -1,7 +1,7 @@
 import type { FastifyReply } from 'fastify';
 import Fastify from 'fastify';
 
-import { createApp, mockPool, mockRedisInstance, mockSession, setupBeforeAll } from './testSetup.js';
+import { mockPool, mockRedisInstance, mockSession, setupBeforeAll } from './testSetup.js';
 
 describe('Web Module', () => {
   let verifySession: any;

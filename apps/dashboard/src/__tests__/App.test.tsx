@@ -1,3 +1,6 @@
+
+jest.mock('@orbitcheck/contracts');
+
 import '@testing-library/jest-dom';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import React from 'react';

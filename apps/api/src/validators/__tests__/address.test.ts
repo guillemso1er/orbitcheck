@@ -1,4 +1,3 @@
-import type { ChildProcess } from 'node:child_process';
 import * as cpModule from 'node:child_process';
 import * as postal from 'node-postal';
 

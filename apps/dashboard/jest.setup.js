@@ -1,5 +1,6 @@
 require('@testing-library/jest-dom');
 
+
 // Mock import.meta.env for Jest
 Object.defineProperty(globalThis, 'import', {
   value: {
@@ -15,44 +16,6 @@ Object.defineProperty(globalThis, 'import', {
   writable: true,
 });
 
-// Mock the contracts module to avoid import.meta issues
-// We need to mock the entire module including the routes
-jest.mock('@orbitcheck/contracts', () => ({
-  MGMT_V1_ROUTES: {
-    API_KEYS: {
-      LIST_API_KEYS: '/v1/api-keys',
-    },
-    DATA: {
-      GET_USAGE_STATISTICS: '/v1/data/usage',
-      GET_EVENT_LOGS: '/v1/data/logs',
-    },
-    WEBHOOKS: {
-      TEST_WEBHOOK: '/v1/webhooks/test',
-    },
-    RULES: {
-      GET_AVAILABLE_RULES: '/v1/rules/available',
-      TEST_RULES_AGAINST_PAYLOAD: '/v1/rules/test',
-      REGISTER_CUSTOM_RULES: '/v1/rules/register',
-    },
-  },
-  API_V1_ROUTES: {
-    BATCH: {
-      BATCH_VALIDATE_DATA: '/v1/batch/validate',
-      BATCH_DEDUPLICATE_DATA: '/v1/batch/dedupe',
-    },
-    JOBS: {
-      GET_JOB_STATUS: '/v1/jobs/status',
-    },
-    ORDERS: {
-      EVALUATE_ORDER_FOR_RISK_AND_RULES: '/v1/orders/evaluate',
-    },
-  },
-  createApiClient: jest.fn(() => ({
-    loginUser: jest.fn(),
-    registerUser: jest.fn(),
-  })),
-  openapiYaml: 'mocked-yaml',
-}));
 
 // Mock canvas for Chart.js
 const { Canvas } = require('canvas');

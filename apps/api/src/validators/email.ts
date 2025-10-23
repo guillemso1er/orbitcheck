@@ -21,7 +21,7 @@ async function withTimeout<T>(p: Promise<T>, ms = DNS_TIMEOUT_MS): Promise<T> {
 
     try {
         // The timeout promise
-        const timeoutPromise = new Promise<never>((resolve, reject) => {
+        const timeoutPromise = new Promise<never>((_resolve, reject) => {
             timer = setTimeout(() => reject(new Error('ETIMEDOUT')), ms);
         });
 

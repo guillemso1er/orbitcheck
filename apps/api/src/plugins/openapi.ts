@@ -26,7 +26,7 @@ export async function openapiValidation(app: FastifyInstance): Promise<void> {
     await validateRequest(request);
   });
 
-  app.addHook('preSerialization', async (request, reply, payload) => {
+  app.addHook('preSerialization', async (request, _reply, payload) => {
     // Skip validation for health checks, documentation, and metrics
     if (request.url.startsWith('/health') || request.url.startsWith('/documentation') || request.url.startsWith('/metrics')) {
       return payload;

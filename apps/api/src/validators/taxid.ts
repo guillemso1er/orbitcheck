@@ -19,11 +19,6 @@ function onlyDigits(s: string): string { return (s || "").replaceAll(/\D/g, "");
  * @param weights - Array of weights corresponding to each digit position.
  * @returns {number} Modulus result for check digit computation.
  */
-function _module11Checksum(nums: number[], weights: number[]): number {
-    const sum = nums.reduce((accumulator, n, index) => accumulator + n * weights[index], 0);
-    const module_ = sum % 11;
-    return module_;
-}
 
 /**
  * Validates Brazilian CPF (Cadastro de Pessoas Físicas) using checksum algorithm.

@@ -8,6 +8,9 @@ const config: Config = {
     '^@/(.*)$': '<rootDir>/src/$1',
     '\\.(css|less|sass|scss)$': '<rootDir>/__mocks__/styleMock.js',
     'canvas': '<rootDir>/__mocks__/canvasMock.js',
+    // Mock @orbitcheck/contracts for all tests
+    '^@orbitcheck/contracts$': '<rootDir>/__mocks__/@orbitcheck/contracts.js',
+
   },
   setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
   testPathIgnorePatterns: ['<rootDir>/node_modules/'],
@@ -16,7 +19,13 @@ const config: Config = {
     '!src/**/*.d.ts',
   ],
   transform: {
-    '^.+\\.(ts|tsx)$': ['ts-jest', { useESM: true }],
+    '^.+\\.(ts|tsx)$': ['ts-jest', {
+      useESM: true,
+      tsconfig: {
+        allowImportingTsExtensions: true,
+        moduleResolution: 'bundler',
+      }
+    }],
   },
   extensionsToTreatAsEsm: ['.ts', '.tsx'],
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json'],

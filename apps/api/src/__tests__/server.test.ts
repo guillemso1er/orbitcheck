@@ -181,7 +181,7 @@ describe('Server Build', () => {
 
   it('should configure CORS with async origin function that validates allowed origins', async () => {
     process.env.NODE_ENV = 'production';
-    const app = await build(mockPool, mockRedis);
+    await build(mockPool, mockRedis);
 
     const corsCall = mockApp.register.mock.calls.find(call => call[0] === cors);
     expect(corsCall).toBeDefined();
@@ -209,7 +209,6 @@ describe('Server Build', () => {
 describe('Server Startup', () => {
   let mockPool: jest.Mocked<Pool>;
   let mockRedis: jest.Mocked<IORedisType>;
-  let originalSetTimeout: typeof setTimeout;
   let mockProcessExit: jest.SpyInstance;
 
   beforeEach(() => {
@@ -217,8 +216,6 @@ describe('Server Startup', () => {
     jest.clearAllTimers();
     jest.useFakeTimers();
 
-    // Store original setTimeout before mocking
-    originalSetTimeout = global.setTimeout;
 
     mockPool = {
       query: jest.fn(),
@@ -244,7 +241,7 @@ describe('Server Startup', () => {
     (mockQueue.add).mockResolvedValue({});
 
     // Mock process.exit to prevent actual exit
-    mockProcessExit = jest.spyOn(process, 'exit').mockImplementation(((code?: string | number | null) => {
+    mockProcessExit = jest.spyOn(process, 'exit').mockImplementation(((_code?: string | number | null) => {
       // Do nothing - prevent actual exit
     }) as any);
   });
@@ -298,7 +295,7 @@ describe('Server Startup', () => {
   });
 
   it('should register /v1/status endpoint', async () => {
-    const app = await build(mockPool, mockRedis);
+    await build(mockPool, mockRedis);
 
     // Check that get method was called for /v1/status
     const statusCall = mockApp.get.mock.calls.find(call => call[0] === '/v1/status');

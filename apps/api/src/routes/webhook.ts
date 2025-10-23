@@ -355,9 +355,9 @@ export function registerWebhookRoutes(app: FastifyInstance, pool: Pool): void {
 
             const responseBody = await response.text();
             const responseHeaders: Record<string, string> = {};
-            for (const [key, value] of response.headers.entries()) {
+            response.headers.forEach((value, key) => {
                 responseHeaders[key] = value;
-            }
+            });
 
             const result: any = {
                 sent_to: url,

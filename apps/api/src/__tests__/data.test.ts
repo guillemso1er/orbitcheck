@@ -145,13 +145,3 @@ describe('Data Routes', () => {
     });
   });
 });
-
-// Helper function like in passing tests
-function expectStatus(res: request.Response, expected: number): void {
-  if (res.statusCode !== expected) {
-    console.log('FAILED status:', res.statusCode);
-    console.log('Response body:', res.body);
-    console.log('Response headers:', res.headers);
-  }
-  expect(res.statusCode).toBe(expected);
-}

@@ -4,7 +4,6 @@ import crypto from 'node:crypto';
 
 import type { FastifyInstance } from 'fastify';
 import type { Redis } from 'ioredis';
-import type { CountryCode, ParsedNumber } from 'libphonenumber-js';
 import request from 'supertest';
 
 import { createApp, libphone, mockPool, mockRedisInstance, mockTwilioInstance, mockValidatePhone, setupBeforeAll } from './testSetup.js';
@@ -18,11 +17,6 @@ type ValidatePhoneResult = {
     ttl_seconds?: number;
 };
 
-interface _MockParsedNumber extends ParsedNumber {
-    isValid: () => boolean;
-    number: string;
-    country: CountryCode;
-}
 
 const { validatePhone } = jest.requireActual('../validators/phone');
 

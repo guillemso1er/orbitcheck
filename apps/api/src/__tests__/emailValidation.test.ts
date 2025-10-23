@@ -277,7 +277,7 @@ describe('Email Validation Endpoints', () => {
 
         it('should reject disposable email when Redis finds a match', async () => {
             // Override Redis mock to simulate finding a disposable domain
-            mockRedisInstance.sismember.mockImplementation((setName: string, domain: string) =>
+            mockRedisInstance.sismember.mockImplementation((_setName: string, domain: string) =>
                 Promise.resolve(domain === 'disposable.com' ? 1 : 0)
             );
 

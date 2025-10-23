@@ -4,7 +4,7 @@ import type { Pool } from "pg";
 
 import { generateRequestId, rateLimitResponse, runtimeSecurityHeader as securityHeader, sendServerError, unauthorizedResponse, validationErrorResponse } from "./utils.js";
 
-export function registerNormalizeRoutes(app: FastifyInstance, pool: Pool): void {
+export function registerNormalizeRoutes(app: FastifyInstance, _pool: Pool): void {
     app.post(API_V1_ROUTES.NORMALIZE.NORMALIZE_ADDRESS_CHEAP, {
         schema: {
             summary: 'Normalize Address (Cheap)',

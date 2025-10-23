@@ -5,7 +5,7 @@ import { InputSanitizer } from '../utils/sanitization.js';
 /**
  * Fastify hook to sanitize all incoming request data
  */
-export async function inputSanitizationHook(request: FastifyRequest, reply: FastifyReply): Promise<void> {
+export async function inputSanitizationHook(request: FastifyRequest, _reply: FastifyReply): Promise<void> {
     // Sanitize query parameters
     if (request.query) {
         request.query = InputSanitizer.sanitizeObject(request.query);

@@ -69,7 +69,6 @@ export function registerBillingRoutes(app: FastifyInstance, pool: Pool): void {
 
             // Define pricing IDs (these would be configured in environment)
             const basePlanPriceId = process.env.STRIPE_BASE_PLAN_PRICE_ID!;
-            const usagePriceId = process.env.STRIPE_USAGE_PRICE_ID!;
             const storeAddonPriceId = process.env.STRIPE_STORE_ADDON_PRICE_ID!;
 
             const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = [];

@@ -81,7 +81,7 @@ describe('Auth Routes', () => {
     mockRedisInstance.quit.mockResolvedValue('OK');
 
     // eslint-disable-next-line promise/prefer-await-to-callbacks
-    (crypto.randomBytes as jest.Mock).mockImplementation((size, callback) => {
+    (crypto.randomBytes as jest.Mock).mockImplementation((_size, callback) => {
       // eslint-disable-next-line promise/prefer-await-to-callbacks
       callback(null, Buffer.from('test32bytes' + 'a'.repeat(24)));
     });

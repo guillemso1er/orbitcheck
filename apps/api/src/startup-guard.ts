@@ -212,7 +212,7 @@ function checkMany(name: keyof typeof expectedArity, handlers: any, location?: s
 }
 
 // Event loop monitoring
-function setupEventLoopMonitoring(app: FastifyInstance) {
+function setupEventLoopMonitoring(_app: FastifyInstance) {
     let lastCheck = Date.now();
     const threshold = 50; // ms
 
@@ -235,7 +235,7 @@ function setupEventLoopMonitoring(app: FastifyInstance) {
 }
 
 // Memory monitoring
-function setupMemoryMonitoring(app: FastifyInstance) {
+function setupMemoryMonitoring(_app: FastifyInstance) {
     const checkMemory = () => {
         const heap = v8.getHeapStatistics();
         const heapUsedMB = heap.used_heap_size / 1024 / 1024;
@@ -330,7 +330,7 @@ export default fp(async (app: FastifyInstance) => {
     });
 
     // Monitor unhandled rejections
-    process.on('unhandledRejection', (reason, promise) => {
+    process.on('unhandledRejection', (reason, _promise) => {
         console.error('❌ [startup-guard] Unhandled Promise Rejection:', reason);
         console.error('    Stack:', getStackInfo(10));
     });

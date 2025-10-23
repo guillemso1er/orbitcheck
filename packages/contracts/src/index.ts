@@ -1,7 +1,7 @@
 // packages/contracts/src/index.ts (Updated)
 
 // Export the dashboard client
-export { createApiClient } from './dashboard-client.js';
+export { createApiClient, ApiClient } from './dashboard-client.js';
 
 // Export the generated API client
 export * from './api-client/orbitCheckAPI.js';

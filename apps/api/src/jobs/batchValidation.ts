@@ -24,7 +24,7 @@ export interface ValidationResult {
 export const batchValidationProcessor = async (job: Job<BatchValidationInput & { project_id: string }>, pool: Pool, redis: Redis): Promise<ValidationResult[]> => {
   const { type } = job.data;
 
-  const itemProcessor = async (item: any, project_id: string, pool: Pool, redis?: Redis): Promise<any> => {
+  const itemProcessor = async (item: any, _project_id: string, pool: Pool, redis?: Redis): Promise<any> => {
     switch (type) {
       case 'email':
         return await validateEmail(item, redis!);
