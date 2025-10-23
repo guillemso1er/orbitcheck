@@ -113,8 +113,15 @@ export function registerApiKeysRoutes(app: FastifyInstance, pool: Pool): void {
                 });
             });
             const cipher = crypto.createCipheriv('aes-256-cbc', Buffer.from(environment.ENCRYPTION_KEY, 'hex'), iv);
-            let encrypted = cipher.update(full_key, 'utf8', 'hex');
-            encrypted += cipher.final('hex');
+            let encrypted = await new Promise<string>((resolve, reject) => {
+                try {
+                    const updateResult = cipher.update(full_key, 'utf8', 'hex');
+                    const finalResult = cipher.final('hex');
+                    resolve(updateResult + finalResult);
+                } catch (error) {
+                    reject(error);
+                }
+            });
             const encryptedWithIv = iv.toString('hex') + ':' + encrypted;
 
             const { rows } = await pool.query(

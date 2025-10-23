@@ -12,7 +12,18 @@ export const disposableProcessor = async (job: Job): Promise<void> => {
     try {
         console.warn("Refreshing disposable domains list...");
         const r = await fetch(environment.DISPOSABLE_LIST_URL);
-        const list = await r.json() as string[];
+        if (!r.ok) {
+            throw new Error(`HTTP ${r.status}: ${r.statusText}`);
+        }
+        const text = await r.text();
+        let list: string[];
+        try {
+            list = JSON.parse(text) as string[];
+        } catch (parseError) {
+            console.error("Failed to parse JSON response:", parseError);
+            console.error("Response text (first 200 chars):", text.substring(0, 200));
+            throw parseError;
+        }
 
         const key = "disposable_domains";
         const temporary = `${key}_tmp`;
