@@ -12,6 +12,7 @@ import { default as rulesTest } from './rules.js';
 import { default as settingsTest } from './settings.js';
 import { default as taxidTest } from './taxid.js';
 import { default as usageTest } from './usage.js';
+import { default as webhookTest } from './webhook.js';
 
 export const options = {
     vus: 1,
@@ -87,6 +88,10 @@ export function usageScenario() {
     usageTest(createCheckFor('usage'));
 }
 
+export function webhookScenario() {
+    webhookTest(createCheckFor('webhook'));
+}
+
 // Main function that runs all tests
 export default function () {
     console.log('Starting comprehensive k6 test suite...');
@@ -130,7 +135,10 @@ export default function () {
 
     console.log('Running usage tests...');
     usageTest(createCheckFor('usage'));
-    
+
+    console.log('Running webhook tests...');
+    webhookTest(createCheckFor('webhook'));
+
     console.log('All tests completed successfully!');
 }
 
@@ -147,7 +155,8 @@ export function runSpecificTests(testNames = []) {
         rules: () => rulesTest(createCheckFor('rules')),
         settings: () => settingsTest(createCheckFor('settings')),
         taxid: () => taxidTest(createCheckFor('taxid')),
-        usage: () => usageTest(createCheckFor('usage'))
+        usage: () => usageTest(createCheckFor('usage')),
+        webhook: () => webhookTest(createCheckFor('webhook'))
     };
     
     if (testNames.length === 0) {
