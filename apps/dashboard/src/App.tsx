@@ -145,7 +145,7 @@ function App() {
       >
         {/* Header */}
         <div className="p-6 border-b border-gray-300 dark:border-gray-700 flex justify-between items-center">
-          <h1 className="text-xl font-bold text-gray-900 dark:text-white">OrbitCheck</h1>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">OrbitCheck</h1>
           <div className="flex items-center space-x-2">
             <ThemeToggle />
             <button

@@ -150,7 +150,10 @@ const Rules: React.FC = () => {
   return (
     <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
       <header className="mb-8">
-        <h2 className="text-3xl font-extrabold text-gray-900">{UI_STRINGS.RULES_EDITOR}</h2>
+        <h2 className="text-3xl font-extrabold text-gray-900 dark:text-white">{UI_STRINGS.RULES_EDITOR}</h2>
+        <p className="mt-2 text-gray-600 dark:text-gray-400 text-sm">
+          Configure automated decision rules for order evaluation. Define conditions and actions to approve, hold, or block orders based on validation results.
+        </p>
       </header>
 
       <div className="bg-white dark:bg-gray-800 shadow-lg rounded-lg p-6 mb-8">

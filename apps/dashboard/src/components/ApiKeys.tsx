@@ -515,7 +515,7 @@ const ApiKeys: React.FC<ApiKeysProps> = () => {
   return (
     <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
       <header className="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
-        <h2 className="text-3xl font-extrabold text-gray-900">
+        <h2 className="text-3xl font-extrabold text-gray-900 dark:text-white">
           {UI_STRINGS.API_KEYS_MANAGEMENT}
         </h2>
         <button
@@ -574,9 +574,9 @@ const ApiKeys: React.FC<ApiKeysProps> = () => {
       )}
 
       <div className="mb-12">
-        <h3 className="text-xl font-semibold text-gray-800 mb-4">
-          {UI_STRINGS.YOUR_API_KEYS}
-        </h3>
+        <h3 className="text-xl font-semibold text-gray-800 dark:text-white mb-4">
+             {UI_STRINGS.YOUR_API_KEYS}
+           </h3>
         {loading ? (
           <div className="text-center p-10 text-gray-500">
             <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mb-2"></div>

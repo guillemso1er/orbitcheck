@@ -208,7 +208,10 @@ const WebhookTester: React.FC = () => {
   return (
     <div className="max-w-4xl mx-auto p-4 sm:p-6 lg:p-8">
       <header className="mb-8">
-        <h2 className="text-3xl font-extrabold text-gray-900">{UI_STRINGS.WEBHOOK_TESTER}</h2>
+        <h2 className="text-3xl font-extrabold text-gray-900 dark:text-white">{UI_STRINGS.WEBHOOK_TESTER}</h2>
+        <p className="mt-2 text-gray-600 dark:text-gray-400 text-sm">
+          Test webhook endpoints with validation results or custom payloads. Configure your webhook URLs and send test requests to verify integration.
+        </p>
       </header>
 
       <div className="bg-white dark:bg-gray-800 shadow-md rounded-lg p-6">

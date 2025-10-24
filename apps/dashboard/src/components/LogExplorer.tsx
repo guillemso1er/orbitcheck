@@ -183,9 +183,14 @@ const LogExplorer: React.FC = () => {
   const pageEnd = totalCount === 0 ? 0 : (currentPage - 1) * limit + logs.length;
 
   return (
-    <div id="log-explorer" className="max-w-6xl mx-auto">
+    <div id="log-explorer" className="max-w-6xl mx-auto p-4 sm:p-6 lg:p-8">
       <header className="flex justify-between items-center mb-6 flex-wrap gap-4">
-        <h2 className="text-2xl font-semibold">{UI_STRINGS.LOG_EXPLORER}</h2>
+        <div className="flex-1">
+          <h2 className="text-2xl font-semibold text-gray-900 dark:text-white">{UI_STRINGS.LOG_EXPLORER}</h2>
+          <p className="mt-1 text-gray-600 dark:text-gray-400 text-sm">
+            Browse and filter your API request logs. Use filters to find specific requests and export data for analysis.
+          </p>
+        </div>
         <div className="flex gap-2">
           <button onClick={handleRefresh} className="inline-flex items-center justify-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-gray-600 hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500" aria-label="Refresh">
             <span role="img" aria-label="refresh">🔄</span> Refresh
@@ -196,8 +201,8 @@ const LogExplorer: React.FC = () => {
         </div>
       </header>
 
-      {loading && (
-        <div role="status" className="text-center py-8 text-gray-600">
+      {loading && logs.length === 0 && (
+        <div role="status" className="text-center py-8 text-gray-600 dark:text-gray-400">
           {UI_STRINGS.LOADING} logs...
         </div>
       )}
