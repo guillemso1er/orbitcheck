@@ -167,6 +167,7 @@ function App() {
                 <NavLink
                   key={item.path}
                   to={item.path}
+                  id={`nav-link${item.path.replace('/', '-')}`}
                   className={({ isActive }) => getNavLinkClasses(isActive)}
                   onClick={closeSidebarIfMobile}
                 >
