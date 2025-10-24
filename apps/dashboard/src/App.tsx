@@ -75,59 +75,61 @@ function App() {
   };
 
   return (
-    <div className="app-layout">
+    <div className="flex min-h-screen relative">
       <button
-        className={`mobile-menu-btn ${!sidebarOpen ? '' : 'hidden'}`}
+        id="mobile-menu-btn"
+        className={`fixed top-4 left-4 z-50 md:hidden ${!sidebarOpen ? 'block' : 'hidden'} bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded px-2 py-1 text-lg`}
         onClick={toggleSidebar}
         aria-label="Toggle navigation menu"
       >
         ☰
       </button>
 
-      <aside className={`sidebar ${sidebarOpen ? 'open' : ''}`}>
-        <div className="sidebar-header">
-          <h1 className="logo">OrbitCheck</h1>
-          <button className="sidebar-close" onClick={toggleSidebar} aria-label="Close menu">×</button>
+      <aside id="sidebar" className={`fixed top-0 left-0 h-full w-64 bg-gray-100 dark:bg-gray-800 border-r border-gray-300 dark:border-gray-700 flex flex-col transition-transform duration-300 z-40 transform ${sidebarOpen ? 'translate-x-0 open' : '-translate-x-full'} md:translate-x-0`} style={{ pointerEvents: sidebarOpen ? 'auto' : 'none' }}>
+        <div className="p-6 border-b border-gray-300 dark:border-gray-700 flex justify-between items-center">
+          <h1 className="text-xl font-bold text-gray-900 dark:text-white">OrbitCheck</h1>
+          <button id="sidebar-close" className="hidden md:block text-gray-500 hover:text-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 p-2 rounded transition-colors" onClick={toggleSidebar} aria-label="Close menu">×</button>
         </div>
         {isAuthenticated ? (
           <>
-            <nav className="sidebar-nav" aria-label="Main navigation">
+            <nav className="flex-1 py-4 overflow-y-auto" aria-label="Main navigation">
               {navItems.map((item) => (
                 <NavLink
                   key={item.path}
+                  id={`nav-link-${item.path.replace('/', '')}`}
                   to={item.path}
-                  className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
+                  className={({ isActive }) => `nav-link flex items-center px-6 py-4 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white transition-colors border-l-4 border-transparent hover:border-blue-500 ${isActive ? 'bg-white dark:bg-gray-700 text-blue-600 border-blue-500 font-medium' : ''}`}
                   onClick={handleNavClick}
                 >
-                  <span className="nav-icon" aria-hidden="true">{item.icon}</span>
-                  <span className="nav-label">{item.label}</span>
+                  <span className="mr-4 text-xl" aria-hidden="true">{item.icon}</span>
+                  <span className="font-medium">{item.label}</span>
                 </NavLink>
               ))}
               <a
                 href={`${window.location.origin}/api-reference`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="nav-link"
+                className="flex items-center px-6 py-4 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white transition-colors border-l-4 border-transparent hover:border-blue-500"
                 onClick={handleNavClick}
               >
-                <span className="nav-icon" aria-hidden="true">📖</span>
-                <span className="nav-label">API Docs</span>
+                <span className="mr-4 text-xl" aria-hidden="true">📖</span>
+                <span className="font-medium">API Docs</span>
               </a>
             </nav>
-            <div className="sidebar-footer">
-              <button onClick={handleLogout} className="logout-btn">{UI_STRINGS.LOGOUT}</button>
+            <div className="p-6 border-t border-gray-300 dark:border-gray-700">
+              <button id="logout-btn" onClick={handleLogout} className="w-full justify-start bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white px-4 py-2 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">{UI_STRINGS.LOGOUT}</button>
             </div>
           </>
         ) : (
-          <div className="sidebar-login">
-            <Link to="/login" className="login-link" onClick={handleNavClick}>{UI_STRINGS.LOGIN}</Link>
+          <div className="p-6 border-t border-gray-300 dark:border-gray-700 text-center">
+            <Link to="/login" className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 font-medium" onClick={handleNavClick}>{UI_STRINGS.LOGIN}</Link>
           </div>
         )}
       </aside>
 
-      {isMobile && sidebarOpen && <div className="sidebar-overlay" onClick={() => setSidebarOpen(false)} />}
+      {isMobile && sidebarOpen && <div id="sidebar-overlay" className="fixed inset-0 bg-black bg-opacity-50 z-30 md:hidden" onClick={() => setSidebarOpen(false)} style={{ pointerEvents: 'auto' }} />}
 
-      <main className={`main-content ${sidebarOpen ? 'open' : 'closed'}`}>
+      <main className={`flex-1 ml-0 transition-all duration-300 min-h-screen bg-white dark:bg-gray-900 md:ml-64`}>
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route

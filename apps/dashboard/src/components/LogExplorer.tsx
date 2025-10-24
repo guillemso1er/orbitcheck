@@ -2,7 +2,6 @@ import { createApiClient } from '@orbitcheck/contracts';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { API_BASE, UI_STRINGS } from '../constants';
 import { FiltersSection, type FiltersState } from './FiltersSection';
-import './LogExplorer.css';
 import { LogsTable, type LogEntry } from './LogsTable';
 import { PaginationControls } from './PaginationControls';
 
@@ -184,27 +183,27 @@ const LogExplorer: React.FC = () => {
   const pageEnd = totalCount === 0 ? 0 : (currentPage - 1) * limit + logs.length;
 
   return (
-    <div className="log-explorer">
-      <header className="page-header">
-        <h2>{UI_STRINGS.LOG_EXPLORER}</h2>
-        <div className="header-actions">
-          <button onClick={handleRefresh} className="btn btn-secondary" aria-label="Refresh">
+    <div id="log-explorer" className="max-w-6xl mx-auto">
+      <header className="flex justify-between items-center mb-6 flex-wrap gap-4">
+        <h2 className="text-2xl font-semibold">{UI_STRINGS.LOG_EXPLORER}</h2>
+        <div className="flex gap-2">
+          <button onClick={handleRefresh} className="inline-flex items-center justify-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-gray-600 hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500" aria-label="Refresh">
             <span role="img" aria-label="refresh">🔄</span> Refresh
           </button>
-          <button onClick={exportToCSV} className="btn btn-success">
-            <span className="btn-icon">📊</span> {UI_STRINGS.EXPORT_CSV}
+          <button onClick={exportToCSV} className="inline-flex items-center justify-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
+            <span>📊</span> {UI_STRINGS.EXPORT_CSV}
           </button>
         </div>
       </header>
 
       {loading && (
-        <div role="status" className="loading">
+        <div role="status" className="text-center py-8 text-gray-600">
           {UI_STRINGS.LOADING} logs...
         </div>
       )}
 
       {error && (
-        <div role="alert" className="alert alert-danger">Error: {error}</div>
+        <div role="alert" className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6 text-red-800">Error: {error}</div>
       )}
 
       <FiltersSection
@@ -214,11 +213,11 @@ const LogExplorer: React.FC = () => {
         onClearFilters={handleClearFilters}
       />
 
-      <div className="table-section">
-        <div className="table-header">
-          <div className="table-info">
-            <p>{UI_STRINGS.TOTAL_LOGS}: <strong>{totalCount.toLocaleString()}</strong></p>
-            <p>{pageStart}-{pageEnd} of {totalCount}</p>
+      <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm overflow-hidden">
+        <div className="flex justify-between items-center p-4 bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600 flex-wrap gap-4">
+          <div className="flex flex-col gap-1 text-gray-600 dark:text-gray-400">
+            <p className="text-gray-900 dark:text-white">{UI_STRINGS.TOTAL_LOGS}: <strong className="text-gray-900 dark:text-white">{totalCount.toLocaleString()}</strong></p>
+            <p className="text-gray-900 dark:text-white">{pageStart}-{pageEnd} of {totalCount}</p>
           </div>
           <PaginationControls
             currentPage={currentPage}

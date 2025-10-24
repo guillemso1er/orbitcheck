@@ -1,5 +1,5 @@
 import { createApiClient } from '@orbitcheck/contracts';
-import React, { useState } from 'react';
+import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
 import { API_BASE, ERROR_MESSAGES, LOCAL_STORAGE_KEYS, VALIDATION_MESSAGES } from '../constants';
@@ -27,10 +27,10 @@ interface LoginForm {
  * @returns {JSX.Element} Authentication form with inputs, submit button, toggle link, and inline styles.
  */
 const Login: React.FC = () => {
-  const [form, setForm] = useState<LoginForm>({ email: '', password: '', confirm_password: '' });
-  const [isRegister, setIsRegister] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [form, setForm] = React.useState<LoginForm>({ email: '', password: '', confirm_password: '' });
+  const [isRegister, setIsRegister] = React.useState(false);
+  const [loading, setLoading] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
   const { login } = useAuth();
   const navigate = useNavigate();
 
@@ -40,30 +40,30 @@ const Login: React.FC = () => {
    * Updates error state with specific messages for invalid fields.
    * Clears previous errors on valid input.
    */
-   const validateForm = () => {
-     if (!form.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
-       setError(VALIDATION_MESSAGES.INVALID_EMAIL);
-       return false;
-     }
-     if (form.password.length < 8 && isRegister) {
-       setError(VALIDATION_MESSAGES.PASSWORD_TOO_SHORT);
-       return false;
-     }
-     if (!form.password) {
-       setError(VALIDATION_MESSAGES.PASSWORD_REQUIRED);
-       return false;
-     }
-     if (isRegister && form.password !== form.confirm_password) {
-       setError('Passwords do not match');
-       return false;
-     }
-     if (isRegister && !form.confirm_password) {
-       setError('Please confirm your password');
-       return false;
-     }
-     setError(null);
-     return true;
-   };
+  const validateForm = () => {
+    if (!form.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
+      setError(VALIDATION_MESSAGES.INVALID_EMAIL);
+      return false;
+    }
+    if (form.password.length < 8 && isRegister) {
+      setError(VALIDATION_MESSAGES.PASSWORD_TOO_SHORT);
+      return false;
+    }
+    if (!form.password) {
+      setError(VALIDATION_MESSAGES.PASSWORD_REQUIRED);
+      return false;
+    }
+    if (isRegister && form.password !== form.confirm_password) {
+      setError('Passwords do not match');
+      return false;
+    }
+    if (isRegister && !form.confirm_password) {
+      setError('Please confirm your password');
+      return false;
+    }
+    setError(null);
+    return true;
+  };
 
   /**
    * Handles form submission: Validates inputs, makes POST request to /auth/login or /auth/register,
@@ -134,196 +134,80 @@ const Login: React.FC = () => {
   };
 
   return (
-    <div className="auth-container">
-      <div className="auth-card">
-        <div className="auth-header">
-          <h2>{isRegister ? 'Create Account' : 'Welcome Back'}</h2>
-          <p>{isRegister ? 'Join OrbitCheck to get started with validation tools' : 'Sign in to access your dashboard'}</p>
+    <div className="flex items-center justify-center min-h-screen bg-gray-50 p-4">
+      <div className="w-full max-w-md p-8 space-y-8 bg-white rounded-xl shadow-lg border border-gray-200">
+        <div className="text-center">
+          <h2 className="text-3xl font-extrabold text-gray-900">{isRegister ? 'Create Account' : 'Welcome Back'}</h2>
+          <p className="mt-2 text-sm text-gray-600">{isRegister ? 'Join OrbitCheck to get started with validation tools' : 'Sign in to access your dashboard'}</p>
         </div>
-        <form onSubmit={handleSubmit} className="auth-form" noValidate>
-          <div className="form-group">
-            <label htmlFor="email">Email address</label>
-            <input
-              id="email"
-              type="email"
-              value={form.email}
-              onChange={(e) => setForm({ ...form, email: e.target.value })}
-              placeholder="Enter your email"
-              required
-              aria-describedby={error ? "email-error" : undefined}
-              disabled={loading}
-            />
-          </div>
-          <div className="form-group">
-            <label htmlFor="password">{isRegister ? 'Password (min 8 characters)' : 'Password'}</label>
-            <input
-              id="password"
-              type="password"
-              value={form.password}
-              onChange={(e) => setForm({ ...form, password: e.target.value })}
-              placeholder="Enter your password"
-              required
-              minLength={8}
-              aria-describedby={error ? "password-error" : undefined}
-              disabled={loading}
-            />
-          </div>
-          {isRegister && (
-            <div className="form-group">
-              <label htmlFor="confirm_password">Confirm Password</label>
+        <form onSubmit={handleSubmit} className="mt-8 space-y-6" noValidate>
+          <div className="rounded-md shadow-sm -space-y-px">
+            <div>
+              <label htmlFor="email" className="sr-only">Email address</label>
               <input
-                id="confirm_password"
-                type="password"
-                value={form.confirm_password}
-                onChange={(e) => setForm({ ...form, confirm_password: e.target.value })}
-                placeholder="Confirm your password"
+                id="email"
+                type="email"
+                value={form.email}
+                onChange={(e) => setForm({ ...form, email: e.target.value })}
+                placeholder="Email address"
                 required
-                minLength={8}
-                aria-describedby={error ? "confirm-password-error" : undefined}
                 disabled={loading}
+                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
               />
             </div>
-          )}
+            <div>
+              <label htmlFor="password" className="sr-only">{isRegister ? 'Password (min 8 characters)' : 'Password'}</label>
+              <input
+                id="password"
+                type="password"
+                value={form.password}
+                onChange={(e) => setForm({ ...form, password: e.target.value })}
+                placeholder={isRegister ? 'Password (min 8 characters)' : 'Password'}
+                required
+                minLength={8}
+                disabled={loading}
+                className={`appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 ${isRegister ? '' : 'rounded-b-md'} focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm`}
+              />
+            </div>
+            {isRegister && (
+              <div>
+                <label htmlFor="confirm_password" className="sr-only">Confirm Password</label>
+                <input
+                  id="confirm_password"
+                  type="password"
+                  value={form.confirm_password}
+                  onChange={(e) => setForm({ ...form, confirm_password: e.target.value })}
+                  placeholder="Confirm your password"
+                  required
+                  minLength={8}
+                  disabled={loading}
+                  className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
+                />
+              </div>
+            )}
+          </div>
+
           {error && (
-            <div id="auth-error" className="alert alert-danger" role="alert">
+            <div id="auth-error" className="p-3 bg-red-50 border-l-4 border-red-400 text-red-700 text-sm" role="alert">
               {error}
             </div>
           )}
-          <button type="submit" className="btn btn-primary btn-block" disabled={loading || !form.email || !form.password || (isRegister && !form.confirm_password)}>
-            {loading ? 'Processing...' : (isRegister ? 'Create Account' : 'Sign In')}
-          </button>
+
+          <div>
+            <button id="btn-primary" type="submit" className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:bg-gray-400 disabled:cursor-not-allowed" disabled={loading || !form.email || !form.password || (isRegister && !form.confirm_password)}>
+              {loading ? 'Processing...' : (isRegister ? 'Create Account' : 'Sign In')}
+            </button>
+          </div>
         </form>
-        <div className="auth-toggle">
-          <p>
+        <div className="text-sm text-center">
+          <p className="text-gray-600">
             {isRegister ? 'Already have an account?' : "Don't have an account?"}
+            <button type="button" onClick={toggleAuthMode} className="ml-1 font-medium text-indigo-600 hover:text-indigo-500 underline disabled:text-gray-400 disabled:cursor-not-allowed" disabled={loading}>
+              {isRegister ? 'Sign In' : 'Create Account'}
+            </button>
           </p>
-          <button type="button" onClick={toggleAuthMode} className="toggle-link" disabled={loading}>
-            {isRegister ? 'Sign In' : 'Create Account'}
-          </button>
         </div>
       </div>
-      <style>{`
-        .auth-container {
-          display: flex;
-          justify-content: center;
-          align-items: center;
-          min-height: 100vh;
-          padding: var(--spacing-md);
-          background-color: var(--bg-secondary);
-        }
-        .auth-card {
-          background: var(--bg-primary);
-          padding: var(--spacing-xl);
-          border-radius: var(--border-radius-lg);
-          box-shadow: var(--shadow-md);
-          width: 100%;
-          max-width: 400px;
-          border: 1px solid var(--border-color);
-        }
-        .auth-header {
-          text-align: center;
-          margin-bottom: var(--spacing-lg);
-        }
-        .auth-header h2 {
-          margin-bottom: var(--spacing-sm);
-          color: var(--text-primary);
-        }
-        .auth-header p {
-          color: var(--text-secondary);
-          margin: 0;
-        }
-        .auth-form {
-          margin-bottom: var(--spacing-lg);
-        }
-        .form-group {
-          margin-bottom: var(--spacing-md);
-        }
-        .form-group label {
-          display: block;
-          margin-bottom: var(--spacing-xs);
-          font-weight: 500;
-          color: var(--text-primary);
-        }
-        .form-group input {
-          width: 100%;
-          padding: var(--spacing-sm);
-          border: 1px solid var(--border-color);
-          border-radius: var(--border-radius);
-          font-size: 1rem;
-        }
-        .form-group input:focus {
-          outline: none;
-          border-color: var(--primary-color);
-          box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
-        }
-        .form-group input:disabled {
-          background-color: var(--bg-secondary);
-          cursor: not-allowed;
-        }
-        .alert {
-          padding: var(--spacing-sm) var(--spacing-md);
-          margin-bottom: var(--spacing-md);
-          border: 1px solid transparent;
-          border-radius: var(--border-radius);
-        }
-        .alert-danger {
-          color: #721c24;
-          background-color: #f8d7da;
-          border-color: #f5c6cb;
-        }
-        .btn-block {
-          width: 100%;
-        }
-        .btn {
-          padding: var(--spacing-md);
-          border: none;
-          border-radius: var(--border-radius);
-          cursor: pointer;
-          font-size: 1rem;
-          font-weight: 500;
-          transition: background-color 0.2s ease;
-        }
-        .btn-primary {
-          background-color: var(--primary-color);
-          color: white;
-        }
-        .btn-primary:hover:not(:disabled) {
-          background-color: #0056b3;
-        }
-        .btn-primary:disabled {
-          background-color: var(--bg-secondary);
-          cursor: not-allowed;
-        }
-        .auth-toggle {
-          text-align: center;
-        }
-        .auth-toggle p {
-          margin: 0 0 var(--spacing-sm) 0;
-          color: var(--text-secondary);
-        }
-        .toggle-link {
-          background: none;
-          border: none;
-          color: var(--primary-color);
-          text-decoration: underline;
-          cursor: pointer;
-          font-size: 1rem;
-          padding: 0;
-        }
-        .toggle-link:hover:not(:disabled) {
-          color: #0056b3;
-        }
-        .toggle-link:disabled {
-          color: var(--text-secondary);
-          cursor: not-allowed;
-        }
-        @media (max-width: 480px) {
-          .auth-card {
-            padding: var(--spacing-lg);
-            margin: var(--spacing-sm);
-          }
-        }
-      `}</style>
     </div>
   );
 };

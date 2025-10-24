@@ -125,24 +125,43 @@ const Rules: React.FC = () => {
   };
 
   const handleSaveRules = async () => {
-    // For now, just show success
-    alert(UI_STRINGS.RULE_SAVED);
+    try {
+      const token = localStorage.getItem('auth_token');
+      const response = await fetch(`${API_BASE}/rules`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        credentials: 'include',
+        body: JSON.stringify({ rules }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      alert(UI_STRINGS.RULE_SAVED);
+    } catch (err) {
+      alert(`Failed to save rules: ${err instanceof Error ? err.message : 'Unknown error'}`);
+    }
   };
 
   return (
-    <div className="rules-editor">
-      <header className="page-header">
-        <h2>{UI_STRINGS.RULES_EDITOR}</h2>
+    <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
+      <header className="mb-8">
+        <h2 className="text-3xl font-extrabold text-gray-900">{UI_STRINGS.RULES_EDITOR}</h2>
       </header>
 
-      <div className="editor-section">
-        <h3>{UI_STRINGS.RULE_EDITOR}</h3>
-        <div className="rules-list">
+      <div className="bg-white shadow-lg rounded-lg p-6 mb-8">
+        <h3 className="text-xl font-semibold text-gray-800 mb-6">{UI_STRINGS.RULE_EDITOR}</h3>
+        <div className="space-y-6 mb-6">
           {rules.map((rule, index) => (
-            <div key={rule.id} className="rule-item">
-              <div className="rule-condition">
-                <label>{UI_STRINGS.RULE_CONDITION}</label>
+            <div key={rule.id} className="grid grid-cols-1 md:grid-cols-[2fr_1fr_auto] gap-4 items-end p-4 border border-gray-200 rounded-md bg-gray-50">
+              <div className="flex flex-col">
+                <label className="text-sm font-medium text-gray-700 mb-1">{UI_STRINGS.RULE_CONDITION}</label>
                 <input
+                  id={`rule-condition-${index}`}
                   type="text"
                   value={rule.condition}
                   onChange={(e) => {
@@ -150,10 +169,11 @@ const Rules: React.FC = () => {
                     newRules[index].condition = e.target.value;
                     setRules(newRules);
                   }}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
                 />
               </div>
-              <div className="rule-action">
-                <label>{UI_STRINGS.RULE_ACTION}</label>
+              <div className="flex flex-col">
+                <label className="text-sm font-medium text-gray-700 mb-1">{UI_STRINGS.RULE_ACTION}</label>
                 <select
                   value={rule.action}
                   onChange={(e) => {
@@ -161,14 +181,15 @@ const Rules: React.FC = () => {
                     newRules[index].action = e.target.value as 'approve' | 'hold' | 'block';
                     setRules(newRules);
                   }}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
                 >
                   <option value="approve">Approve</option>
                   <option value="hold">Hold</option>
                   <option value="block">Block</option>
                 </select>
               </div>
-              <div className="rule-enabled">
-                <label>
+              <div className="flex items-center h-10">
+                <label className="flex items-center space-x-2 text-sm text-gray-700">
                   <input
                     type="checkbox"
                     checked={rule.enabled}
@@ -177,49 +198,51 @@ const Rules: React.FC = () => {
                       newRules[index].enabled = e.target.checked;
                       setRules(newRules);
                     }}
+                    className="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-300 focus:ring focus:ring-offset-0 focus:ring-indigo-200 focus:ring-opacity-50"
                   />
-                  Enabled
+                  <span>Enabled</span>
                 </label>
               </div>
             </div>
           ))}
         </div>
-        <button onClick={handleSaveRules} className="btn btn-primary">
+        <button onClick={handleSaveRules} className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
           {UI_STRINGS.SAVE_RULES}
         </button>
       </div>
 
-      <div className="test-harness">
-        <h3>{UI_STRINGS.TEST_HARNESS}</h3>
-        <div className="test-form">
-          <div className="form-group">
-            <label htmlFor="test-payload">{UI_STRINGS.TEST_PAYLOAD} (JSON)</label>
+      <div className="bg-white shadow-lg rounded-lg p-6">
+        <h3 className="text-xl font-semibold text-gray-800 mb-6">{UI_STRINGS.TEST_HARNESS}</h3>
+        <div className="space-y-6">
+          <div>
+            <label htmlFor="test-payload" className="block text-sm font-medium text-gray-700">{UI_STRINGS.TEST_PAYLOAD} (JSON)</label>
             <textarea
               id="test-payload"
               value={testPayload}
               onChange={(e) => setTestPayload(e.target.value)}
               rows={10}
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm font-mono"
             />
           </div>
-          <button onClick={handleTestRule} className="btn btn-primary" disabled={loading}>
+          <button onClick={handleTestRule} className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed" disabled={loading}>
             {loading ? 'Testing...' : UI_STRINGS.TEST_RULE}
           </button>
         </div>
 
         {error && (
-          <div className="alert alert-danger">
+          <div className="mt-6 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-md" role="alert">
             <strong>Error:</strong> {error}
           </div>
         )}
 
         {ruleTestResults.length > 0 && (
-          <div className="test-results">
-            <h4>{UI_STRINGS.RULE_TEST_RESULT}</h4>
-            <div className="results-list">
+          <div className="mt-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
+            <h4 className="text-lg font-medium text-gray-900 mb-4">{UI_STRINGS.RULE_TEST_RESULT}</h4>
+            <div className="space-y-2">
               {ruleTestResults.map((result, index) => (
-                <div key={index} className={`result-item ${result.triggered ? 'triggered' : 'not-triggered'}`}>
+                <div key={index} className={`p-3 rounded-md text-sm ${result.triggered ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>
                   <strong>{result.ruleId}:</strong> {result.details}
-                  {result.triggered && <span className="action"> → {result.action}</span>}
+                  {result.triggered && <span className="font-bold ml-2">→ {result.action}</span>}
                 </div>
               ))}
             </div>
@@ -227,133 +250,12 @@ const Rules: React.FC = () => {
         )}
 
         {testResult && (
-          <div className="validation-results">
-            <h4>Validation Results</h4>
-            <pre>{JSON.stringify(testResult.results, null, 2)}</pre>
+          <div className="mt-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
+            <h4 className="text-lg font-medium text-gray-900 mb-4">Validation Results</h4>
+            <pre className="bg-gray-800 text-white p-4 rounded-md overflow-x-auto text-sm">{JSON.stringify(testResult.results, null, 2)}</pre>
           </div>
         )}
       </div>
-
-      <style>{`
-        .rules-editor {
-          max-width: 1200px;
-          margin: 0 auto;
-          padding: var(--spacing-md);
-        }
-        .page-header {
-          margin-bottom: var(--spacing-xl);
-        }
-        .editor-section, .test-harness {
-          background: var(--bg-secondary);
-          border-radius: var(--border-radius-lg);
-          padding: var(--spacing-lg);
-          margin-bottom: var(--spacing-xl);
-          border: 1px solid var(--border-color);
-        }
-        .rules-list {
-          margin-bottom: var(--spacing-lg);
-        }
-        .rule-item {
-          display: grid;
-          grid-template-columns: 1fr 150px 100px;
-          gap: var(--spacing-md);
-          align-items: end;
-          padding: var(--spacing-md);
-          border: 1px solid var(--border-color);
-          border-radius: var(--border-radius);
-          margin-bottom: var(--spacing-md);
-          background: var(--bg-primary);
-        }
-        .rule-condition, .rule-action, .rule-enabled {
-          display: flex;
-          flex-direction: column;
-        }
-        .rule-condition input {
-          flex: 1;
-        }
-        .form-group {
-          margin-bottom: var(--spacing-md);
-        }
-        .form-group label {
-          display: block;
-          margin-bottom: var(--spacing-xs);
-          font-weight: 500;
-        }
-        .form-group textarea {
-          width: 100%;
-          padding: var(--spacing-sm);
-          border: 1px solid var(--border-color);
-          border-radius: var(--border-radius);
-          font-family: monospace;
-          min-height: 200px;
-        }
-        .btn {
-          padding: var(--spacing-sm) var(--spacing-md);
-          border: none;
-          border-radius: var(--border-radius);
-          cursor: pointer;
-          font-weight: 500;
-        }
-        .btn-primary {
-          background: #007bff;
-          color: white;
-        }
-        .btn-primary:disabled {
-          opacity: 0.6;
-          cursor: not-allowed;
-        }
-        .alert {
-          padding: var(--spacing-md);
-          border-radius: var(--border-radius);
-          margin-top: var(--spacing-md);
-        }
-        .alert-danger {
-          background: #f8d7da;
-          border: 1px solid #f5c6cb;
-          color: #721c24;
-        }
-        .test-results {
-          margin-top: var(--spacing-lg);
-          padding: var(--spacing-md);
-          background: var(--bg-primary);
-          border-radius: var(--border-radius);
-          border: 1px solid var(--border-color);
-        }
-        .results-list {
-          margin-top: var(--spacing-md);
-        }
-        .result-item {
-          padding: var(--spacing-sm);
-          margin-bottom: var(--spacing-xs);
-          border-radius: var(--border-radius);
-        }
-        .result-item.triggered {
-          background: #d4edda;
-          border: 1px solid #c3e6cb;
-          color: #155724;
-        }
-        .result-item.not-triggered {
-          background: #f8f9fa;
-          border: 1px solid var(--border-color);
-        }
-        .action {
-          font-weight: bold;
-          margin-left: var(--spacing-sm);
-        }
-        .validation-results {
-          margin-top: var(--spacing-lg);
-          padding: var(--spacing-md);
-          background: var(--bg-primary);
-          border-radius: var(--border-radius);
-          border: 1px solid var(--border-color);
-        }
-        .validation-results pre {
-          background: var(--bg-tertiary);
-          padding: var(--spacing-md);
-          border-radius: var(--border-radius);
-          overflow-x: auto;
-        }
-      `}</style>
     </div>
   );
 };

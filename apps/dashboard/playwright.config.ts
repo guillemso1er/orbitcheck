@@ -39,7 +39,7 @@ export default defineConfig({
     /* Screenshot on failure */
     screenshot: 'only-on-failure',
     /* Video capture */
-    video: 'retain-on-failure',
+    video: 'on',
     /* Viewport size for Chromium, Firefox and WebKit. */
     ...devices['Desktop Chrome'],
     /* Increase action timeout for slower operations */

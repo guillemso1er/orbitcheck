@@ -11,7 +11,8 @@ import {
   Title,
   Tooltip
 } from 'chart.js';
-import React, { useCallback, useEffect, useState } from 'react';
+
+import React from 'react';
 import { Bar, Line, Pie } from 'react-chartjs-2';
 import { API_BASE, UI_STRINGS } from '../constants';
 
@@ -35,7 +36,6 @@ interface UsageData {
   cache_hit_ratio: number;
   request_id: string;
 }
-
 
 function prepareDailyChartData(data: UsageData) {
   const dailyLabels = data.by_day.map(d => d.date);
@@ -103,33 +103,33 @@ function prepareCacheChartData(data: UsageData) {
 
 const chartOptions = {
   responsive: true,
+  maintainAspectRatio: false,
   plugins: {
     legend: {
       position: 'top' as const
     },
     title: {
-      display: true,
-      text: 'Usage Dashboard'
+      display: false
     }
   }
 };
 
 const StatsGrid: React.FC<{ data: UsageData }> = ({ data }) => (
-  <div className="stats-grid">
-    <div className="stat-card">
-      <div className="stat-icon">📊</div>
-      <h3>{UI_STRINGS.TOTAL_VALIDATIONS}</h3>
-      <p className="stat-value">{data.totals.validations.toLocaleString()}</p>
+  <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+    <div className="bg-white p-6 rounded-lg shadow-md text-center transition-transform transform hover:-translate-y-1">
+      <div className="text-4xl mb-2">📊</div>
+      <h3 className="text-sm font-medium text-gray-500 uppercase">{UI_STRINGS.TOTAL_VALIDATIONS}</h3>
+      <p className="text-3xl font-bold text-indigo-600">{data.totals.validations.toLocaleString()}</p>
     </div>
-    <div className="stat-card">
-      <div className="stat-icon">🛒</div>
-      <h3>{UI_STRINGS.TOTAL_ORDERS}</h3>
-      <p className="stat-value">{data.totals.orders.toLocaleString()}</p>
+    <div className="bg-white p-6 rounded-lg shadow-md text-center transition-transform transform hover:-translate-y-1">
+      <div className="text-4xl mb-2">🛒</div>
+      <h3 className="text-sm font-medium text-gray-500 uppercase">{UI_STRINGS.TOTAL_ORDERS}</h3>
+      <p className="text-3xl font-bold text-indigo-600">{data.totals.orders.toLocaleString()}</p>
     </div>
-    <div className="stat-card">
-      <div className="stat-icon">⚡</div>
-      <h3>{UI_STRINGS.CACHE_HIT_RATIO}</h3>
-      <p className="stat-value">{data.cache_hit_ratio.toFixed(1)}%</p>
+    <div className="bg-white p-6 rounded-lg shadow-md text-center transition-transform transform hover:-translate-y-1">
+      <div className="text-4xl mb-2">⚡</div>
+      <h3 className="text-sm font-medium text-gray-500 uppercase">{UI_STRINGS.CACHE_HIT_RATIO}</h3>
+      <p className="text-3xl font-bold text-indigo-600">{data.cache_hit_ratio.toFixed(1)}%</p>
     </div>
   </div>
 );
@@ -137,9 +137,9 @@ const StatsGrid: React.FC<{ data: UsageData }> = ({ data }) => (
 const DailyUsageChart: React.FC<{ data: UsageData }> = ({ data }) => {
   const chartData = prepareDailyChartData(data);
   return (
-    <div className="chart-card">
-      <h3 className="chart-title">{UI_STRINGS.DAILY_USAGE}</h3>
-      <div className="chart-container">
+    <div className="bg-white p-6 rounded-lg shadow-md flex flex-col h-96">
+      <h3 className="text-lg font-semibold text-gray-800 text-center mb-4">{UI_STRINGS.DAILY_USAGE}</h3>
+      <div className="relative flex-1">
         <Line options={chartOptions} data={chartData} />
       </div>
     </div>
@@ -149,9 +149,9 @@ const DailyUsageChart: React.FC<{ data: UsageData }> = ({ data }) => {
 const TopReasonCodesChart: React.FC<{ data: UsageData }> = ({ data }) => {
   const chartData = prepareReasonChartData(data);
   return (
-    <div className="chart-card">
-      <h3 className="chart-title">{UI_STRINGS.TOP_REASON_CODES}</h3>
-      <div className="chart-container">
+    <div className="bg-white p-6 rounded-lg shadow-md flex flex-col h-96">
+      <h3 className="text-lg font-semibold text-gray-800 text-center mb-4">{UI_STRINGS.TOP_REASON_CODES}</h3>
+      <div className="relative flex-1">
         <Bar options={chartOptions} data={chartData} />
       </div>
     </div>
@@ -161,9 +161,9 @@ const TopReasonCodesChart: React.FC<{ data: UsageData }> = ({ data }) => {
 const CacheHitRatioChart: React.FC<{ data: UsageData }> = ({ data }) => {
   const chartData = prepareCacheChartData(data);
   return (
-    <div className="chart-card">
-      <h3 className="chart-title">{UI_STRINGS.CACHE_HIT_RATIO}</h3>
-      <div className="chart-container">
+    <div className="bg-white p-6 rounded-lg shadow-md flex flex-col h-96">
+      <h3 className="text-lg font-semibold text-gray-800 text-center mb-4">{UI_STRINGS.CACHE_HIT_RATIO}</h3>
+      <div className="relative flex-1 flex items-center justify-center">
         <Pie data={chartData} />
       </div>
     </div>
@@ -171,14 +171,14 @@ const CacheHitRatioChart: React.FC<{ data: UsageData }> = ({ data }) => {
 };
 
 const UsageDashboard: React.FC = () => {
-  const [data, setData] = useState<UsageData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [data, setData] = React.useState<UsageData | null>(null);
+  const [loading, setLoading] = React.useState(true);
+  const [error, setError] = React.useState<string | null>(null);
 
-  const fetchUsage = useCallback(async () => {
+  const fetchUsage = React.useCallback(async () => {
     try {
       setLoading(true);
-      setError(null); // reset any previous error
+      setError(null);
 
       const apiClient = createApiClient({
         baseURL: API_BASE
@@ -186,10 +186,9 @@ const UsageDashboard: React.FC = () => {
 
       const usageData = await apiClient.getUsage();
 
-      // Handle no data case gracefully (null/undefined)
       if (!usageData) {
         setData(null);
-        return; // finally will still run and unset loading
+        return;
       }
 
       setData({
@@ -218,135 +217,33 @@ const UsageDashboard: React.FC = () => {
     }
   }, []);
 
-  useEffect(() => {
+  React.useEffect(() => {
     fetchUsage();
   }, [fetchUsage]);
 
-  if (loading) return <div className="loading">{UI_STRINGS.LOADING} usage dashboard...</div>;
-  if (error) return <div className="alert alert-danger">Error: {error}</div>;
-  if (!data || !data.period) return <div className="empty-state">{UI_STRINGS.NO_DATA}</div>;
+  if (loading) return <div className="text-center p-10 text-gray-500">{UI_STRINGS.LOADING} usage dashboard...</div>;
+  if (error) return <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded m-4" role="alert">Error: {error}</div>;
+  if (!data || !data.period) return <div className="text-center p-10 text-gray-500">{UI_STRINGS.NO_DATA}</div>;
 
   return (
-    <div className="usage-dashboard">
-      <header className="page-header">
-        <h2>{UI_STRINGS.USAGE_DASHBOARD}</h2>
+    <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
+      <header className="mb-8">
+        <h2 className="text-3xl font-extrabold text-gray-900">{UI_STRINGS.USAGE_DASHBOARD}</h2>
       </header>
 
       <StatsGrid data={data} />
 
-      <div className="charts-grid">
-        <DailyUsageChart data={data} />
-        <TopReasonCodesChart data={data} />
-        <CacheHitRatioChart data={data} />
+      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+        <div className="lg:col-span-2 xl:col-span-3">
+          <DailyUsageChart data={data} />
+        </div>
+        <div className="xl:col-span-2">
+          <TopReasonCodesChart data={data} />
+        </div>
+        <div>
+          <CacheHitRatioChart data={data} />
+        </div>
       </div>
-
-      <style>{`
-        .usage-dashboard {
-          max-width: 1200px;
-          margin: 0 auto;
-        }
-        .page-header {
-          margin-bottom: var(--spacing-lg);
-        }
-        .page-header h2 {
-          margin: 0;
-        }
-        .stats-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-          gap: var(--spacing-sm);
-          margin-bottom: var(--spacing-lg);
-        }
-        .stat-card {
-          background: var(--bg-primary);
-          border: 1px solid var(--border-color);
-          border-radius: var(--border-radius);
-          padding: var(--spacing-md);
-          text-align: center;
-          box-shadow: var(--shadow-sm);
-          transition: transform 0.2s ease, box-shadow 0.2s ease;
-        }
-        .stat-card:hover {
-          transform: translateY(-2px);
-          box-shadow: var(--shadow-md);
-        }
-        .stat-icon {
-          font-size: 2.5rem;
-          margin-bottom: var(--spacing-xs);
-        }
-        .stat-card h3 {
-          margin: 0 0 var(--spacing-xs) 0;
-          color: var(--text-primary);
-          font-size: 1rem;
-        }
-        .stat-value {
-          font-size: 2rem;
-          font-weight: 700;
-          color: #007bff;
-          margin: 0;
-          line-height: 1;
-        }
-        .charts-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-          gap: var(--spacing-md);
-        }
-        .chart-card {
-          background: var(--bg-primary);
-          border: 1px solid var(--border-color);
-          border-radius: var(--border-radius);
-          padding: var(--spacing-md);
-          box-shadow: var(--shadow-sm);
-          height: 350px;
-          display: flex;
-          flex-direction: column;
-        }
-        .chart-title {
-          margin: 0 0 var(--spacing-sm) 0;
-          text-align: center;
-          color: var(--text-primary);
-          font-size: 1.125rem;
-        }
-        .chart-container {
-          flex: 1;
-          min-height: 250px;
-        }
-        .loading, .empty-state {
-          text-align: center;
-          padding: var(--spacing-xl);
-          color: var(--text-secondary);
-        }
-        .alert {
-          padding: var(--spacing-md);
-          border-radius: var(--border-radius);
-          border: 1px solid;
-          margin: var(--spacing-lg) 0;
-        }
-        .alert-danger {
-          background-color: #f8d7da;
-          border-color: #f5c6cb;
-          color: #721c24;
-        }
-        @media (max-width: 768px) {
-          .stats-grid {
-            grid-template-columns: 1fr;
-            gap: var(--spacing-sm);
-          }
-          .charts-grid {
-            grid-template-columns: 1fr;
-            gap: var(--spacing-sm);
-          }
-          .chart-card {
-            height: 300px;
-          }
-          .stat-value {
-            font-size: 1.75rem;
-          }
-          .stat-icon {
-            font-size: 2rem;
-          }
-        }
-      `}</style>
     </div>
   );
 };
