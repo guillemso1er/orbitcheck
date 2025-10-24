@@ -153,11 +153,11 @@ const Rules: React.FC = () => {
         <h2 className="text-3xl font-extrabold text-gray-900">{UI_STRINGS.RULES_EDITOR}</h2>
       </header>
 
-      <div className="bg-white shadow-lg rounded-lg p-6 mb-8">
-        <h3 className="text-xl font-semibold text-gray-800 mb-6">{UI_STRINGS.RULE_EDITOR}</h3>
+      <div className="bg-white dark:bg-gray-800 shadow-lg rounded-lg p-6 mb-8">
+        <h3 className="text-xl font-semibold text-gray-800 dark:text-white mb-6">{UI_STRINGS.RULE_EDITOR}</h3>
         <div className="space-y-6 mb-6">
           {rules.map((rule, index) => (
-            <div key={rule.id} className="grid grid-cols-1 md:grid-cols-[2fr_1fr_auto] gap-4 items-end p-4 border border-gray-200 rounded-md bg-gray-50">
+            <div key={rule.id} className="grid grid-cols-1 md:grid-cols-[2fr_1fr_auto] gap-4 items-end p-4 border border-gray-200 dark:border-gray-600 rounded-md bg-gray-50 dark:bg-gray-700">
               <div className="flex flex-col">
                 <label className="text-sm font-medium text-gray-700 mb-1">{UI_STRINGS.RULE_CONDITION}</label>
                 <input
@@ -211,8 +211,8 @@ const Rules: React.FC = () => {
         </button>
       </div>
 
-      <div className="bg-white shadow-lg rounded-lg p-6">
-        <h3 className="text-xl font-semibold text-gray-800 mb-6">{UI_STRINGS.TEST_HARNESS}</h3>
+      <div className="bg-white dark:bg-gray-800 shadow-lg rounded-lg p-6">
+        <h3 className="text-xl font-semibold text-gray-800 dark:text-white mb-6">{UI_STRINGS.TEST_HARNESS}</h3>
         <div className="space-y-6">
           <div>
             <label htmlFor="test-payload" className="block text-sm font-medium text-gray-700">{UI_STRINGS.TEST_PAYLOAD} (JSON)</label>

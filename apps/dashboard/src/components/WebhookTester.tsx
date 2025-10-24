@@ -45,7 +45,7 @@ const TestForm: React.FC<{
           onChange={(e) => onUrlChange(e.target.value)}
           placeholder="https://your-webhook-url.com/endpoint"
           required
-          className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+          className="mt-1 block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
         />
       </div>
 
@@ -72,7 +72,7 @@ const TestForm: React.FC<{
             onChange={(e) => onCustomPayloadChange(e.target.value)}
             placeholder='{"event": "custom", "data": "your data"}'
             rows={6}
-            className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm font-mono"
+            className="mt-1 block w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm font-mono"
           />
         </div>
       )}
@@ -137,8 +137,8 @@ const ResultTabs: React.FC<{
   onTabChange: (tab: 'request' | 'response') => void;
   onClear: () => void;
 }> = ({ result, activeTab, onTabChange, onClear }) => (
-  <div id="result-section" className="mt-8 bg-white shadow-lg rounded-lg overflow-hidden">
-    <div className="px-4 py-5 sm:px-6 flex justify-between items-center border-b border-gray-200">
+  <div id="result-section" className="mt-8 bg-white dark:bg-gray-800 shadow-lg rounded-lg overflow-hidden">
+    <div className="px-4 py-5 sm:px-6 flex justify-between items-center border-b border-gray-200 dark:border-gray-600">
       <h3 className="text-lg leading-6 font-medium text-gray-900">{UI_STRINGS.TEST_RESULT}</h3>
       <button onClick={onClear} className="text-sm font-medium text-indigo-600 hover:text-indigo-500">{UI_STRINGS.CLEAR}</button>
     </div>
@@ -211,7 +211,7 @@ const WebhookTester: React.FC = () => {
         <h2 className="text-3xl font-extrabold text-gray-900">{UI_STRINGS.WEBHOOK_TESTER}</h2>
       </header>
 
-      <div className="bg-white shadow-md rounded-lg p-6">
+      <div className="bg-white dark:bg-gray-800 shadow-md rounded-lg p-6">
         <TestForm
           url={url}
           payloadType={payloadType}

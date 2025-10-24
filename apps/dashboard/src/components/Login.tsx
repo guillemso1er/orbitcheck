@@ -134,8 +134,8 @@ const Login: React.FC = () => {
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-50 p-4">
-      <div className="w-full max-w-md p-8 space-y-8 bg-white rounded-xl shadow-lg border border-gray-200">
+    <div className="flex items-center justify-center min-h-screen bg-gray-50 dark:bg-gray-900 p-4">
+      <div className="w-full max-w-md p-8 space-y-8 bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700">
         <div className="text-center">
           <h2 className="text-3xl font-extrabold text-gray-900">{isRegister ? 'Create Account' : 'Welcome Back'}</h2>
           <p className="mt-2 text-sm text-gray-600">{isRegister ? 'Join OrbitCheck to get started with validation tools' : 'Sign in to access your dashboard'}</p>

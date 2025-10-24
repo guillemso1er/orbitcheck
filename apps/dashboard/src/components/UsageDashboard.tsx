@@ -116,17 +116,17 @@ const chartOptions = {
 
 const StatsGrid: React.FC<{ data: UsageData }> = ({ data }) => (
   <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-    <div className="bg-white p-6 rounded-lg shadow-md text-center transition-transform transform hover:-translate-y-1">
+    <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md text-center transition-transform transform hover:-translate-y-1">
       <div className="text-4xl mb-2">📊</div>
       <h3 className="text-sm font-medium text-gray-500 uppercase">{UI_STRINGS.TOTAL_VALIDATIONS}</h3>
       <p className="text-3xl font-bold text-indigo-600">{data.totals.validations.toLocaleString()}</p>
     </div>
-    <div className="bg-white p-6 rounded-lg shadow-md text-center transition-transform transform hover:-translate-y-1">
+    <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md text-center transition-transform transform hover:-translate-y-1">
       <div className="text-4xl mb-2">🛒</div>
       <h3 className="text-sm font-medium text-gray-500 uppercase">{UI_STRINGS.TOTAL_ORDERS}</h3>
       <p className="text-3xl font-bold text-indigo-600">{data.totals.orders.toLocaleString()}</p>
     </div>
-    <div className="bg-white p-6 rounded-lg shadow-md text-center transition-transform transform hover:-translate-y-1">
+    <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md text-center transition-transform transform hover:-translate-y-1">
       <div className="text-4xl mb-2">⚡</div>
       <h3 className="text-sm font-medium text-gray-500 uppercase">{UI_STRINGS.CACHE_HIT_RATIO}</h3>
       <p className="text-3xl font-bold text-indigo-600">{data.cache_hit_ratio.toFixed(1)}%</p>
@@ -137,8 +137,8 @@ const StatsGrid: React.FC<{ data: UsageData }> = ({ data }) => (
 const DailyUsageChart: React.FC<{ data: UsageData }> = ({ data }) => {
   const chartData = prepareDailyChartData(data);
   return (
-    <div className="bg-white p-6 rounded-lg shadow-md flex flex-col h-96">
-      <h3 className="text-lg font-semibold text-gray-800 text-center mb-4">{UI_STRINGS.DAILY_USAGE}</h3>
+    <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md flex flex-col h-96">
+      <h3 className="text-lg font-semibold text-gray-800 dark:text-white text-center mb-4">{UI_STRINGS.DAILY_USAGE}</h3>
       <div className="relative flex-1">
         <Line options={chartOptions} data={chartData} />
       </div>
@@ -149,8 +149,8 @@ const DailyUsageChart: React.FC<{ data: UsageData }> = ({ data }) => {
 const TopReasonCodesChart: React.FC<{ data: UsageData }> = ({ data }) => {
   const chartData = prepareReasonChartData(data);
   return (
-    <div className="bg-white p-6 rounded-lg shadow-md flex flex-col h-96">
-      <h3 className="text-lg font-semibold text-gray-800 text-center mb-4">{UI_STRINGS.TOP_REASON_CODES}</h3>
+    <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md flex flex-col h-96">
+      <h3 className="text-lg font-semibold text-gray-800 dark:text-white text-center mb-4">{UI_STRINGS.TOP_REASON_CODES}</h3>
       <div className="relative flex-1">
         <Bar options={chartOptions} data={chartData} />
       </div>
@@ -161,8 +161,8 @@ const TopReasonCodesChart: React.FC<{ data: UsageData }> = ({ data }) => {
 const CacheHitRatioChart: React.FC<{ data: UsageData }> = ({ data }) => {
   const chartData = prepareCacheChartData(data);
   return (
-    <div className="bg-white p-6 rounded-lg shadow-md flex flex-col h-96">
-      <h3 className="text-lg font-semibold text-gray-800 text-center mb-4">{UI_STRINGS.CACHE_HIT_RATIO}</h3>
+    <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md flex flex-col h-96">
+      <h3 className="text-lg font-semibold text-gray-800 dark:text-white text-center mb-4">{UI_STRINGS.CACHE_HIT_RATIO}</h3>
       <div className="relative flex-1 flex items-center justify-center">
         <Pie data={chartData} />
       </div>

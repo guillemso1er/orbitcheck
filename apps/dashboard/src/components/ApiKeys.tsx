@@ -79,17 +79,17 @@ const ConfirmDialog: React.FC<{
         aria-labelledby="confirm-dialog-title"
       >
         <div
-          className="bg-white rounded-lg shadow-xl w-full max-w-md m-4 border border-gray-200"
+          className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md m-4 border border-gray-200 dark:border-gray-700"
           onClick={(e) => e.stopPropagation()}
         >
           <div className="p-6">
-            <h3 id="confirm-dialog-title" className="text-lg font-semibold text-gray-900 mb-2">{title}</h3>
-            <p className="text-gray-600 mb-6">{message}</p>
+            <h3 id="confirm-dialog-title" className="text-lg font-semibold text-gray-900 dark:text-white mb-2">{title}</h3>
+            <p className="text-gray-600 dark:text-gray-300 mb-6">{message}</p>
             <div className="flex justify-end gap-3">
               <button
                 type="button"
                 onClick={onCancel}
-                className="py-2 px-4 bg-white text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                className="py-2 px-4 bg-white dark:bg-gray-600 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-500 rounded-md hover:bg-gray-50 dark:hover:bg-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
               >
                 {cancelText}
               </button>
@@ -152,13 +152,13 @@ const CreateApiKeyModal: React.FC<{
       aria-labelledby="create-modal-title"
     >
       <div
-        className="bg-white rounded-lg shadow-xl w-full max-w-md m-4 border border-gray-200"
+        className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md m-4 border border-gray-200 dark:border-gray-700"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex justify-between items-center p-4 border-b border-gray-200">
-          <h3 id="create-modal-title" className="text-lg font-semibold text-gray-800">Create New API Key</h3>
+        <div className="flex justify-between items-center p-4 border-b border-gray-200 dark:border-gray-600">
+          <h3 id="create-modal-title" className="text-lg font-semibold text-gray-800 dark:text-white">Create New API Key</h3>
           <button
-            className="text-gray-500 hover:text-gray-800 text-2xl font-bold leading-none disabled:opacity-50"
+            className="text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-white text-2xl font-bold leading-none disabled:opacity-50"
             onClick={handleClose}
             disabled={creating}
             aria-label="Close modal"
@@ -184,10 +184,10 @@ const CreateApiKeyModal: React.FC<{
               />
             </div>
           </div>
-          <div className="flex justify-end gap-3 p-4 bg-gray-50 border-t border-gray-200 rounded-b-lg">
+          <div className="flex justify-end gap-3 p-4 bg-gray-50 dark:bg-gray-700 border-t border-gray-200 dark:border-gray-600 rounded-b-lg">
             <button
               type="button"
-              className="py-2 px-4 bg-white text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="py-2 px-4 bg-white dark:bg-gray-600 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-500 rounded-md hover:bg-gray-50 dark:hover:bg-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
               onClick={handleClose}
               disabled={creating}
             >
@@ -297,9 +297,9 @@ const ApiKeysTable: React.FC<{
   onRotate: (key: ApiKey) => void;
   loadingStates: Record<string, boolean>;
 }> = ({ keys, onRevoke, onRotate, loadingStates }) => (
-  <div className="overflow-x-auto rounded-lg shadow-md border border-gray-200">
-    <table className="w-full min-w-max text-sm text-left text-gray-600">
-      <thead className="text-xs text-gray-700 uppercase bg-gray-50">
+  <div className="overflow-x-auto rounded-lg shadow-md border border-gray-200 dark:border-gray-600">
+    <table className="w-full min-w-max text-sm text-left text-gray-600 dark:text-gray-300">
+      <thead className="text-xs text-gray-700 dark:text-gray-300 uppercase bg-gray-50 dark:bg-gray-700">
         <tr>
           <th scope="col" className="px-6 py-3">Name</th>
           <th scope="col" className="px-6 py-3">Prefix</th>
@@ -309,11 +309,11 @@ const ApiKeysTable: React.FC<{
           <th scope="col" className="px-6 py-3">Actions</th>
         </tr>
       </thead>
-      <tbody className="divide-y divide-gray-200">
+      <tbody className="divide-y divide-gray-200 dark:divide-gray-600">
         {keys.map((key) => {
           const isLoading = loadingStates[key.id] || false;
           return (
-            <tr key={key.id} className="bg-white hover:bg-gray-50 transition-colors">
+            <tr key={key.id} className="bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
               <td className="px-6 py-4 font-medium text-gray-900 whitespace-nowrap">
                 {key.name || <span className="text-gray-400 italic">Unnamed</span>}
               </td>
