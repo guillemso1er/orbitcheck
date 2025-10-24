@@ -61,9 +61,6 @@ export const CONTENT_TYPES = {
   TEXT_PLAIN: 'text/plain',
 } as const;
 
-export const URL_PATTERNS = {
-  HTTPS_OPTIONAL: /^https?:\/\//,
-} as const;
 
 export const MESSAGES = {
   LOG_ENTRY_NOT_FOUND: 'Log entry not found',

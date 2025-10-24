@@ -68,14 +68,32 @@ export function testDeleteWebhook(headers, check, webhookId) {
 }
 
 export function testTestWebhook(headers, check) {
-    const webhookPayload = JSON.stringify({ url: 'https://httpbin.org/post', payload_type: 'validation' });
+    const webhookPayload = JSON.stringify({
+        url: 'http://httpbin.org/post',
+        payload_type: 'validation'
+    });
     const res = http.post(`${API_V1_URL}/webhooks/test`, webhookPayload, { headers });
     check(res, {
-        '[Test Webhook] status 200 or 400': (r) => r.status === 200 || r.status === 400,
-        '[Test Webhook] success': (r) => true
+        '[Test Webhook] status 200': (r) => r.status === 200,
+        '[Test Webhook] has correct response structure': (r) => {
+            if (r.status !== 200) return false;
+            const body = JSON.parse(r.body);
+            return body.sent_to && body.payload && body.response && typeof body.response.body === 'string';
+        },
+        '[Test Webhook] received a valid response from httpbin': (r) => {
+            if (r.status !== 200) return false;
+            const body = JSON.parse(r.body);
+            // We need to parse the inner body string to check its contents
+            try {
+                const httpbinResponse = JSON.parse(body.response.body);
+                // Check for a property that httpbin is known to return
+                return httpbinResponse.url === 'http://httpbin.org/post';
+            } catch (e) {
+                return false; // Return false if the inner body is not valid JSON
+            }
+        }
     });
 }
-
 export function testListWebhooksAfterDelete(headers, check) {
     const res = http.get(`${API_V1_URL}/webhooks`, { headers });
     check(res, {
@@ -86,7 +104,7 @@ export function testListWebhooksAfterDelete(headers, check) {
 
 export function testCreateWebhookMultipleEvents(headers, check) {
     const payload = JSON.stringify({
-        url: 'https://example.com/webhook2',
+        url: 'http://example.com/webhook2',
         events: ['validation_result', 'order_evaluated']
     });
     const res = http.post(`${API_V1_URL}/webhooks`, payload, { headers });
@@ -119,10 +137,15 @@ export default function (check) {
         testListWebhooksAfterCreate(headers, check);
 
         // Test Case 4: Delete webhook
-        testDeleteWebhook(headers, check, webhookId);
+        testDeleteWebhook(headers, check);
     }
 
-    // Test Case 5: Create webhook with multiple events
+    // Test Case 5: Test webhook endpoint
+    // Generate proper headers for POST request
+    const testWebhookHeaders = getHeaders('POST', '/v1/webhooks/test');
+    testTestWebhook(testWebhookHeaders, check);
+
+    // Test Case 6: Create webhook with multiple events
     testCreateWebhookMultipleEvents(headers, check);
 
     sleep(0.1);

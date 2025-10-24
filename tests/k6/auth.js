@@ -194,7 +194,7 @@ export function testHmacAuth(apiKey, check) {
     const signature = crypto.hmac('sha256', apiKey, message, 'hex');
 
     const hmacHeaders = Object.assign({}, HEADERS, {
-        'Authorization': `HMAC keyId=${apiKey.slice(0, 8)} signature=${signature} ts=${timestamp} nonce=${nonce}`
+        'Authorization': `HMAC keyId=${apiKey.slice(0, 8)}&signature=${signature}&ts=${timestamp}&nonce=${nonce}`
     });
 
     // Test with HMAC - API supports HMAC

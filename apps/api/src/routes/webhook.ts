@@ -5,7 +5,7 @@ import type { FastifyInstance } from "fastify";
 import type { Pool } from "pg";
 import Stripe from 'stripe';
 
-import { CONTENT_TYPES, CRYPTO_KEY_BYTES, MESSAGES, STRIPE_API_VERSION, STRIPE_DEFAULT_SECRET_KEY, URL_PATTERNS, USER_AGENT_WEBHOOK_TESTER, WEBHOOK_TEST_LOW_RISK_TAG, WEBHOOK_TEST_ORDER_ID, WEBHOOK_TEST_RISK_SCORE } from "../config.js";
+import { CONTENT_TYPES, CRYPTO_KEY_BYTES, MESSAGES, STRIPE_API_VERSION, STRIPE_DEFAULT_SECRET_KEY, USER_AGENT_WEBHOOK_TESTER, WEBHOOK_TEST_LOW_RISK_TAG, WEBHOOK_TEST_ORDER_ID, WEBHOOK_TEST_RISK_SCORE } from "../config.js";
 import { ERROR_CODES, ERROR_MESSAGES, HTTP_STATUS } from "../errors.js";
 import { logEvent } from "../hooks.js";
 import { EVENT_TYPES, ORDER_ACTIONS, PAYLOAD_TYPES, REASON_CODES } from "../validation.js";
@@ -100,9 +100,10 @@ export function registerWebhookRoutes(app: FastifyInstance, pool: Pool): void {
                     events: {
                         type: 'array',
                         items: {
-                            type: 'string'
+                            type: 'string',
+                            enum: ['validation_result', 'order_evaluated', 'dedupe_completed', 'job_completed']
                         },
-                        description: 'Events to subscribe to'
+                        description: 'Events to subscribe to. Available events: validation_result (email/phone/address/tax validation), order_evaluated (order risk evaluation), dedupe_completed (deduplication job), job_completed (batch job completion)'
                     }
                 }
             },
@@ -132,7 +133,12 @@ export function registerWebhookRoutes(app: FastifyInstance, pool: Pool): void {
 
         try {
             // Validate URL
-            if (!url || !URL_PATTERNS.HTTPS_OPTIONAL.test(url)) {
+            try {
+                const parsedUrl = new URL(url);
+                if (parsedUrl.protocol !== 'http:' && parsedUrl.protocol !== 'https:') {
+                    throw new Error('Invalid protocol');
+                }
+            } catch {
                 return await sendError(rep, HTTP_STATUS.BAD_REQUEST, ERROR_CODES.INVALID_URL, ERROR_MESSAGES[ERROR_CODES.INVALID_URL], request_id);
             }
 
@@ -293,7 +299,12 @@ export function registerWebhookRoutes(app: FastifyInstance, pool: Pool): void {
         try {
             const request_id = generateRequestId();
 
-            if (!url || !URL_PATTERNS.HTTPS_OPTIONAL.test(url)) {
+            try {
+                const parsedUrl = new URL(url);
+                if (parsedUrl.protocol !== 'http:' && parsedUrl.protocol !== 'https:') {
+                    throw new Error('Invalid protocol');
+                }
+            } catch {
                 return await sendError(rep, HTTP_STATUS.BAD_REQUEST, ERROR_CODES.INVALID_URL, ERROR_MESSAGES[ERROR_CODES.INVALID_URL], request_id);
             }
 
