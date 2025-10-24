@@ -265,6 +265,7 @@ export function registerAuthRoutes(app: FastifyInstance, pool: Pool): void {
                                 email: { type: 'string' }
                             }
                         },
+                        pat_token: { type: 'string', description: 'Personal Access Token for dashboard access' },
                         request_id: { type: 'string' }
                     }
                 },
@@ -285,11 +286,27 @@ export function registerAuthRoutes(app: FastifyInstance, pool: Pool): void {
 
             const user = rows[0];
 
+            // Generate PAT for dashboard access
+            const patBuf = await new Promise<Buffer>((resolve, reject) => {
+                crypto.randomBytes(CRYPTO_KEY_BYTES, (error, buf) => {
+                    if (error) reject(error);
+                    else resolve(buf);
+                });
+            });
+            const patToken = PAT_PREFIX + patBuf.toString('hex');
+            const patHash = crypto.createHash(HASH_ALGORITHM).update(patToken).digest('hex');
+
+            await pool.query(
+                "INSERT INTO personal_access_tokens (user_id, name, token_hash, scopes, expires_at) VALUES ($1, $2, $3, $4, $5)",
+                [user.id, DEFAULT_PAT_NAME, patHash, PAT_SCOPES_ALL, null]
+            );
+
             // Set session cookie for dashboard access
             request.session.user_id = user.id;
 
             const response: any = {
                 user: { id: user.id, email: user.email },
+                pat_token: patToken,
                 request_id
             };
             return rep.send(response);

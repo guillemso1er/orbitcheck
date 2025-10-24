@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Link, Navigate, NavLink, Route, Routes } from 'react-router-dom';
+import { Link, Navigate, NavLink, Route, Routes, useNavigate } from 'react-router-dom';
 import { useAuth } from './AuthContext';
 import ApiKeys from './components/ApiKeys';
 import BulkCsvTool from './components/BulkCsvTool';
@@ -36,6 +36,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
  */
 function App() {
   const { isAuthenticated, logout } = useAuth();
+  const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(() => window.innerWidth > 768);
   const [isMobile, setIsMobile] = useState(() => window.innerWidth <= 768);
 
@@ -65,6 +66,12 @@ function App() {
     if (isMobile) {
       setSidebarOpen(false);
     }
+  };
+
+  const handleLogout = () => {
+    logout();
+    handleNavClick();
+    navigate('/login', { replace: true });
   };
 
   return (
@@ -108,7 +115,7 @@ function App() {
               </a>
             </nav>
             <div className="sidebar-footer">
-              <button onClick={() => { logout(); handleNavClick(); }} className="logout-btn">{UI_STRINGS.LOGOUT}</button>
+              <button onClick={handleLogout} className="logout-btn">{UI_STRINGS.LOGOUT}</button>
             </div>
           </>
         ) : (
