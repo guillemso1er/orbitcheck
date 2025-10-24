@@ -30,9 +30,9 @@ test.describe('Full Application Journey', () => {
 
     await page.waitForSelector('button.btn-primary:not(:disabled)', { timeout: 5000 });
     await page.getByRole('button', { name: 'Create Account' }).click();
-    const response = await page.waitForResponse(resp => resp.url().includes('/auth/register'));
-    console.log('Response status:', response.status(), 'body:', await response.text());
-    expect(response.status()).toBe(201);
+    const registerResponse = await page.waitForResponse(resp => resp.url().includes('/auth/register'));
+    console.log('Response status:', registerResponse.status(), 'body:', await registerResponse.text());
+    expect(registerResponse.status()).toBe(201);
 
     // Step 3: Verify redirect to API keys page after registration
     await expect(page).toHaveURL(/.*\/api-keys/);
@@ -113,7 +113,6 @@ test.describe('Full Application Journey', () => {
     await page.locator('.nav-link').filter({ hasText: 'Webhook Tester' }).click();
     await expect(page).toHaveURL(/.*\/webhooks/);
     await page.waitForLoadState('networkidle');
-
     // Step 18: Fill webhook form and send test with validation payload
     await page.fill('input#webhook-url', 'https://httpbin.org/post');
     await page.selectOption('select#payload-type', 'validation');

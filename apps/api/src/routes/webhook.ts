@@ -350,7 +350,8 @@ export function registerWebhookRoutes(app: FastifyInstance, pool: Pool): void {
                     'Content-Type': CONTENT_TYPES.APPLICATION_JSON,
                     'User-Agent': USER_AGENT_WEBHOOK_TESTER
                 },
-                body: JSON.stringify(payload)
+                body: JSON.stringify(payload),
+                signal: AbortSignal.timeout(5000) // 5 second timeout for webhook test
             });
 
             const responseBody = await response.text();

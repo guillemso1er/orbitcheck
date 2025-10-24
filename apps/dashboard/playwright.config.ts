@@ -42,6 +42,10 @@ export default defineConfig({
     video: 'retain-on-failure',
     /* Viewport size for Chromium, Firefox and WebKit. */
     ...devices['Desktop Chrome'],
+    /* Increase action timeout for slower operations */
+    actionTimeout: 10000,
+    /* Increase navigation timeout */
+    navigationTimeout: 30000,
   },
 
   /* Configure projects for major browsers */
