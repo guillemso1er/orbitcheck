@@ -355,6 +355,7 @@ export function registerWebhookRoutes(app: FastifyInstance, pool: Pool): void {
                 }
             }
 
+    
             const response = await fetch(url, {
                 method: 'POST',
                 headers: {
@@ -392,7 +393,21 @@ export function registerWebhookRoutes(app: FastifyInstance, pool: Pool): void {
             return rep.send(result);
         } catch (error) {
             const request_id = generateRequestId();
-            const errorMessage = error instanceof globalThis.Error ? (error).message : MESSAGES.UNKNOWN_ERROR;
+            const err = error as any;
+            let errorMessage = 'Unknown error';
+
+            if (err?.name === 'AbortError') {
+                errorMessage = 'Webhook request timed out after 5000ms';
+            } else if (err?.code === 'ENOTFOUND') {
+                errorMessage = 'DNS lookup failed for target URL';
+            } else if (err?.code === 'ECONNREFUSED') {
+                errorMessage = 'Connection refused by target URL';
+            } else if (err?.code === 'ECONNRESET') {
+                errorMessage = 'Connection reset by peer';
+            } else if (err instanceof Error) {
+                errorMessage = err.message;
+            }
+
             await logEvent(project_id, 'webhook_test', MGMT_V1_ROUTES.WEBHOOKS.TEST_WEBHOOK, [REASON_CODES.WEBHOOK_SEND_FAILED], HTTP_STATUS.INTERNAL_SERVER_ERROR, {
                 url,
                 payload_type,

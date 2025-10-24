@@ -98,7 +98,7 @@ export class InputSanitizer {
         if (!validator.isURL(trimmed, { require_protocol: false })) {
             return '';
         }
-        return validator.escape(trimmed);
+        return trimmed; // Don't escape URLs to preserve special characters
     }
 
     /**

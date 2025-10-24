@@ -54,10 +54,6 @@ function sanitizeRequestBody(body: any): any {
         return sanitizeWebhookRequest(body);
     }
 
-    if (isAuthRequest(body)) {
-        return sanitizeAuthRequest(body);
-    }
-
     // Default sanitization for unknown structures
     return InputSanitizer.sanitizeObject(body);
 }
@@ -185,7 +181,7 @@ function sanitizeWebhookRequest(body: any): any {
     }
 
     if (body.custom_payload) {
-        sanitized.custom_payload = InputSanitizer.sanitizeObject(body.custom_payload);
+        sanitized.custom_payload = body.custom_payload; // Don't sanitize custom payload
     }
 
     if (body.name) {

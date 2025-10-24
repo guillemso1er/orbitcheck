@@ -73,11 +73,18 @@ export function testTestWebhook(headers, check) {
         payload_type: 'validation'
     });
     const res = http.post(`${API_V1_URL}/webhooks/test`, webhookPayload, { headers });
+
+    // console log the response for debugging body and headers
+    console.log('Test Webhook Response:', res.body);
+    console.log('Test Webhook Headers:', res.headers);
+    console.log('Test Webhook Status:', res.status);
+
     check(res, {
         '[Test Webhook] status 200': (r) => r.status === 200,
         '[Test Webhook] has correct response structure': (r) => {
             if (r.status !== 200) return false;
             const body = JSON.parse(r.body);
+
             return body.sent_to && body.payload && body.response && typeof body.response.body === 'string';
         },
         '[Test Webhook] received a valid response from httpbin': (r) => {
