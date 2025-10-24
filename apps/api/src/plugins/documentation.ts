@@ -56,12 +56,12 @@ export async function setupDocumentation(app: FastifyInstance): Promise<void> {
                     BearerAuth: {
                         type: 'http',
                         scheme: 'bearer',
-                        bearerFormat: 'JWT', // or leave out if you prefer
-                        description: 'Use your API key as a Bearer token: Authorization: Bearer ok_xxx',
+                        bearerFormat: 'PAT or API Key', // or leave out if you prefer
+                        description: 'Use your Personal Access Token (pat_xxx) for management routes or API Key (ok_xxx) for runtime routes as a Bearer token',
                     },
                 },
             },
-            servers: [{ url: `http://127.0.0.1:${environment.PORT}`, description: 'Development server' }],
+            servers: [{ url: `http://localhost:${environment.PORT}`, description: 'Development server' }],
         },
         transform: ({ schema, url }: { schema: any; url: string }) => {
             if (

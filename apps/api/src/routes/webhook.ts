@@ -30,7 +30,7 @@ export function registerWebhookRoutes(app: FastifyInstance, pool: Pool): void {
     app.get(ROUTES.LIST_WEBHOOKS, {
         schema: {
             summary: 'List webhooks',
-            description: 'Retrieves all webhooks for the authenticated project',
+            description: 'Retrieves all webhooks for the authenticated project. Requires Personal Access Token (PAT) authentication.',
             tags: ['Webhooks'],
             security: [{ BearerAuth: [] }],
             response: {
@@ -85,7 +85,7 @@ export function registerWebhookRoutes(app: FastifyInstance, pool: Pool): void {
     app.post(ROUTES.CREATE_WEBHOOK, {
         schema: {
             summary: 'Create webhook',
-            description: 'Creates a new webhook subscription for the authenticated project',
+            description: 'Creates a new webhook subscription for the authenticated project. Requires Personal Access Token (PAT) authentication.',
             tags: ['Webhooks'],
             security: [{ BearerAuth: [] }],
             body: {
@@ -173,7 +173,7 @@ export function registerWebhookRoutes(app: FastifyInstance, pool: Pool): void {
     app.delete(ROUTES.DELETE_WEBHOOK, {
         schema: {
             summary: 'Delete webhook',
-            description: 'Deletes a webhook subscription',
+            description: 'Deletes a webhook subscription. Requires Personal Access Token (PAT) authentication.',
             tags: ['Webhooks'],
             security: [{ BearerAuth: [] }],
             parameters: [

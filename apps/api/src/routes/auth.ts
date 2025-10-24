@@ -21,7 +21,7 @@ import { errorSchema, generateRequestId, getDefaultProjectId, sendError, sendSer
  * @returns {Promise<void>} Resolves on success, sends 401 on failure
  */
 export async function verifySession(request: FastifyRequest, rep: FastifyReply, pool: Pool): Promise<void> {
-    if (!request.session.user_id) {
+    if (!request.session || !request.session.user_id) {
         rep.status(HTTP_STATUS.BAD_REQUEST).send({ error: { code: ERROR_CODES.UNAUTHORIZED, message: ERROR_MESSAGES[ERROR_CODES.UNAUTHORIZED] } });
         return;
     }
