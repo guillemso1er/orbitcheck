@@ -5,6 +5,7 @@ test.describe('Full Application Journey', () => {
   let testEmail: string;
   const password = 'password123';
 
+
   test.beforeEach(async () => {
     testEmail = `testuser${Date.now()}${uuidv4().slice(0, 8)}@example.com`;
   });
@@ -113,8 +114,10 @@ test.describe('Full Application Journey', () => {
     await page.locator('.nav-link').filter({ hasText: 'Webhook Tester' }).click();
     await expect(page).toHaveURL(/.*\/webhooks/);
     await page.waitForLoadState('networkidle');
+
     // Step 18: Fill webhook form and send test with validation payload
-    await page.fill('input#webhook-url', 'https://httpbin.org/post');
+    //MODIFIED LINE
+    await page.fill('input#webhook-url', 'http://localhost:8054/post');
     await page.selectOption('select#payload-type', 'validation');
     await page.getByRole('button', { name: 'Send Test Payload' }).click();
     await expect(page.locator('.result-section')).toBeVisible();

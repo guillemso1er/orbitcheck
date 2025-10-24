@@ -85,7 +85,8 @@ export default defineConfig({
       use: { ...devices['Desktop Google Chrome'], channel: 'chrome' },
     },
   ],
-
+  globalSetup: './e2e/global-setup.ts',
+  globalTeardown: './e2e/global-teardown.ts',
   /* Run your local dev server before starting the tests */
   webServer: [
     {

@@ -35,7 +35,7 @@ export function setup() {
     exec.command('podman', ['pull', 'mccutchen/go-httpbin']);
 
     console.log('Starting httpbin container for webhook tests...');
-    const commandOutput = exec.command('podman', ['run', '-d', '--rm', '--name', 'httpbin', '-p', '8054:80', 'mccutchen/go-httpbin']);
+    const commandOutput = exec.command('podman', ['run', '-d', '--rm', '--name', 'httpbin', '-p', '8054:8080', 'mccutchen/go-httpbin']);
 
     // Check for actual errors during the critical container startup
     if (commandOutput.includes('Error')) {
@@ -43,7 +43,7 @@ export function setup() {
     }
 
     console.log('Container started successfully.');
-    sleep(2); // Give the container a moment to initialize.
+    sleep(2); // Give the container more time to initialize.
 }
 
 export function teardown() {

@@ -104,6 +104,11 @@ export function testTestWebhook(headers, check) {
                 }
                 return false;
             } catch (e) {
+                // If parsing fails, check if it's a fetch failed error
+                const body = JSON.parse(r.body);
+                if (body.error && body.error.code === 'send_failed') {
+                    return false; // This is the expected failure we're seeing
+                }
                 return false;
             }
         }
