@@ -1,6 +1,7 @@
+import { URL } from 'https://jslib.k6.io/url/1.0.0/index.js';
 import { check as k6check, sleep } from 'k6';
-import http from 'k6/http';
 import crypto from 'k6/crypto';
+import http from 'k6/http';
 
 export const options = {
     vus: 10,
@@ -181,29 +182,36 @@ export function testLogout(check) {
     });
 }
 
+
+function toHex(ab) {
+    return Array.from(new Uint8Array(ab)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
 export function testHmacAuth(apiKey, check) {
     if (!apiKey) return;
 
-    const timestamp = Date.now().toString();
-    const nonce = crypto.randomBytes(8).toString('hex');
-
-    // For HMAC, compute the signature client-side using k6's crypto
+    const url = new URL(`${API_V1_URL}/validate/email`);
+    const pathWithQuery = url.pathname + (url.search || '');
     const body = JSON.stringify({ email: 'test@example.com' });
-    // Use the path only, not the full URL (server expects request.url which is the path)
-    const message = 'POST' + '/v1/validate/email' + body + timestamp + nonce;
+
+    const ts = Date.now().toString();
+
+    const nonce_buffer = crypto.randomBytes(16); // This returns an ArrayBuffer
+    const nonce = toHex(nonce_buffer);
+
+    const message = 'POST' + pathWithQuery + ts + nonce;
+
+    // Ensure the output encoding is 'hex' here as well
     const signature = crypto.hmac('sha256', apiKey, message, 'hex');
 
-    const hmacHeaders = Object.assign({}, HEADERS, {
-        'Authorization': `HMAC keyId=${apiKey.slice(0, 8)}&signature=${signature}&ts=${timestamp}&nonce=${nonce}`
+    const headers = Object.assign({}, HEADERS, {
+        'Authorization': `HMAC keyId=${apiKey.slice(0, 6)}&signature=${signature}&ts=${ts}&nonce=${nonce}`
     });
 
-    // Test with HMAC - API supports HMAC
-    const res = http.post(`${API_V1_URL}/validate/email`, JSON.stringify({ email: 'test@example.com' }), { headers: hmacHeaders });
-    check(res, {
-        '[HMAC Auth] status 200': (r) => r.status === 200
-    });
+    const res = http.post(url.toString(), body, { headers });
+    check(res, { '[HMAC Auth] status 200': (r) => r.status === 200 });
     return res;
 }
+
 
 export default function (check) {
     check = check || k6check;

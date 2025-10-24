@@ -62,8 +62,10 @@ export async function auth(request: FastifyRequest, rep: FastifyReply, pool: Poo
     } else if (header.startsWith("HMAC ")) {
         request.log.info('Using HMAC auth for runtime');
         // HMAC auth
-        const hmacParams = header.slice(5).trim();
-        const params = new URLSearchParams(hmacParams);
+        const header = request.headers.authorization || '';
+        if (!header.startsWith('HMAC ')) return;
+
+        const params = new URLSearchParams(header.slice(5).trim());
         const keyId = params.get('keyId');
         const signature = params.get('signature');
         const ts = params.get('ts');
@@ -105,15 +107,21 @@ export async function auth(request: FastifyRequest, rep: FastifyReply, pool: Poo
         decrypted += decipher.final('utf8');
         const fullKey = decrypted;
 
-        // Compute expected signature: HMAC-SHA256 of method + url + body + ts + nonce
-        const body = request.body ? JSON.stringify(request.body) : '';
-        const message = request.method + request.url + body + ts + nonce;
-        const expectedSignature = crypto.createHmac(HASH_ALGORITHM, fullKey).update(message).digest('hex');
+        const message = request.method.toUpperCase() + request.url + ts + nonce;
 
-        if (signature !== expectedSignature) {
+        const expectedSignature = crypto
+            .createHmac('sha256', fullKey)
+            .update(message, 'utf8')
+            .digest('hex');
+
+        // timing-safe compare
+        const ok =
+            signature.length === expectedSignature.length &&
+            crypto.timingSafeEqual(Buffer.from(signature, 'hex'), Buffer.from(expectedSignature, 'hex'));
+
+        if (!ok) {
             request.log.info('HMAC signature mismatch');
-            rep.status(HTTP_STATUS.BAD_REQUEST).send({ error: { code: ERROR_CODES.UNAUTHORIZED, message: ERROR_MESSAGES[ERROR_CODES.UNAUTHORIZED] } });
-            return;
+            return rep.status(400).send({ error: { code: ERROR_CODES.UNAUTHORIZED, message: ERROR_MESSAGES[ERROR_CODES.UNAUTHORIZED] } });
         }
 
         request.log.info('HMAC signature verified');
