@@ -1,5 +1,6 @@
 import { check as k6check, sleep } from 'k6';
 import http from 'k6/http';
+import crypto from 'k6/crypto';
 
 export const options = {
     vus: 10,
@@ -184,7 +185,7 @@ export function testHmacAuth(apiKey, check) {
     if (!apiKey) return;
 
     const timestamp = Date.now().toString();
-    const nonce = Math.random().toString(36).substring(7);
+    const nonce = crypto.randomBytes(8).toString('hex');
 
     // For HMAC, compute the signature client-side using k6's crypto
     const message = 'POST' + '/v1/validate/email' + JSON.stringify({ email: 'test@example.com' }) + timestamp + nonce;
