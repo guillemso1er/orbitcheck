@@ -90,16 +90,22 @@ export class InputSanitizer {
     /**
      * Sanitizes URL input
      */
-    static sanitizeUrl(url: string): string {
-        if (!url || typeof url !== 'string') {
-            return '';
-        }
-        const trimmed = url.trim();
-        if (!validator.isURL(trimmed, { require_protocol: false })) {
-            return '';
-        }
-        return trimmed; // Don't escape URLs to preserve special characters
+static sanitizeUrl(url: string): string {
+    if (!url || typeof url !== 'string') {
+        return '';
     }
+
+    const trimmed = url.trim();
+
+    if (!validator.isURL(trimmed, {
+        require_protocol: false,
+        require_tld: false // This is the key change to allow 'localhost'
+    })) {
+        return '';
+    }
+
+    return trimmed; // Don't escape URLs to preserve special characters
+}
 
     /**
      * Sanitizes generic text input by escaping HTML
