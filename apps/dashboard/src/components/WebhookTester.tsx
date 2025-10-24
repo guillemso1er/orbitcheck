@@ -98,11 +98,11 @@ const TestForm: React.FC<{
 const RequestTab: React.FC<{ result: WebhookTestResult }> = ({ result }) => (
   <div className="p-6 space-y-6">
     <div>
-      <h4 className="text-lg font-medium text-gray-900">{UI_STRINGS.SENT_TO}</h4>
+      <h4 className="text-base font-medium text-gray-900">{UI_STRINGS.SENT_TO}</h4>
       <p className="mt-1 text-sm text-gray-600 break-all"><code>{result.sent_to}</code></p>
     </div>
     <div>
-      <h4 className="text-lg font-medium text-gray-900">{UI_STRINGS.PAYLOAD}</h4>
+      <h4 className="text-base font-medium text-gray-900">{UI_STRINGS.PAYLOAD}</h4>
       <pre className="mt-1 p-3 bg-gray-50 rounded-md text-sm text-gray-800 overflow-x-auto">{JSON.stringify(result.payload, null, 2)}</pre>
     </div>
   </div>
@@ -111,21 +111,21 @@ const RequestTab: React.FC<{ result: WebhookTestResult }> = ({ result }) => (
 const ResponseTab: React.FC<{ result: WebhookTestResult }> = ({ result }) => (
   <div className="p-6 space-y-6">
     <div>
-      <h4 className="text-lg font-medium text-gray-900">{UI_STRINGS.STATUS}</h4>
+      <h4 className="text-base font-medium text-gray-900">{UI_STRINGS.STATUS}</h4>
       <div className={`mt-1 inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${result.response.status >= 200 && result.response.status < 300 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
         {result.response.status} {result.response.status_text}
       </div>
     </div>
     <div>
-      <h4 className="text-lg font-medium text-gray-900">{UI_STRINGS.HEADERS}</h4>
+      <h4 className="text-base font-medium text-gray-900">{UI_STRINGS.HEADERS}</h4>
       <pre className="mt-1 p-3 bg-gray-50 rounded-md text-sm text-gray-800 overflow-x-auto">{JSON.stringify(result.response.headers, null, 2)}</pre>
     </div>
     <div>
-      <h4 className="text-lg font-medium text-gray-900">{UI_STRINGS.BODY}</h4>
+      <h4 className="text-base font-medium text-gray-900">{UI_STRINGS.BODY}</h4>
       <pre className="mt-1 p-3 bg-gray-50 rounded-md text-sm text-gray-800 overflow-x-auto">{result.response.body}</pre>
     </div>
     <div>
-      <h4 className="text-lg font-medium text-gray-900">{UI_STRINGS.REQUEST_ID}</h4>
+      <h4 className="text-base font-medium text-gray-900">{UI_STRINGS.REQUEST_ID}</h4>
       <p className="mt-1 text-sm text-gray-600 break-all"><code>{result.request_id}</code></p>
     </div>
   </div>
@@ -139,7 +139,7 @@ const ResultTabs: React.FC<{
 }> = ({ result, activeTab, onTabChange, onClear }) => (
   <div id="result-section" className="mt-8 bg-white dark:bg-gray-800 shadow-lg rounded-lg overflow-hidden">
     <div className="px-4 py-5 sm:px-6 flex justify-between items-center border-b border-gray-200 dark:border-gray-600">
-      <h3 className="text-lg leading-6 font-medium text-gray-900">{UI_STRINGS.TEST_RESULT}</h3>
+      <h3 className="text-base leading-6 font-medium text-gray-900">{UI_STRINGS.TEST_RESULT}</h3>
       <button onClick={onClear} className="text-sm font-medium text-indigo-600 hover:text-indigo-500">{UI_STRINGS.CLEAR}</button>
     </div>
 
@@ -208,7 +208,7 @@ const WebhookTester: React.FC = () => {
   return (
     <div className="max-w-4xl mx-auto p-4 sm:p-6 lg:p-8">
       <header className="mb-8">
-        <h2 className="text-3xl font-extrabold text-gray-900 dark:text-white">{UI_STRINGS.WEBHOOK_TESTER}</h2>
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">{UI_STRINGS.WEBHOOK_TESTER}</h2>
         <p className="mt-2 text-gray-600 dark:text-gray-400 text-sm">
           Test webhook endpoints with validation results or custom payloads. Configure your webhook URLs and send test requests to verify integration.
         </p>

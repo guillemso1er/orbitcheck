@@ -31,27 +31,20 @@ const LogExplorer: React.FC = () => {
   const [sortBy, setSortBy] = useState<'created_at' | 'status' | 'endpoint'>('created_at');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
 
-  // Avoid state updates after unmount
-  const isMounted = useRef(true);
-  useEffect(() => {
-    return () => {
-      isMounted.current = false;
-    };
-  }, []);
+  const lastRequestIdRef = useRef(0);
 
-  // Single source of fetching; accept an override filters object to avoid stale closure issues
+  // Avoid state updates after unmount
   const fetchLogs = useCallback(
     async (offset: number = 0, page: number = 1, overrideFilters?: FiltersState) => {
+      const requestId = ++lastRequestIdRef.current;
+
       setLoading(true);
       setError(null);
 
       try {
-        const apiClient = createApiClient({
-          baseURL: API_BASE
-        });
+        const apiClient = createApiClient({ baseURL: API_BASE });
 
         const f = overrideFilters ?? appliedFilters;
-
         const params: Record<string, unknown> = { limit, offset };
         if (f.reason_code) params.reason_code = f.reason_code;
         if (f.endpoint) params.endpoint = f.endpoint;
@@ -60,11 +53,21 @@ const LogExplorer: React.FC = () => {
         if (f.date_from) params.date_from = f.date_from;
         if (f.date_to) params.date_to = f.date_to;
 
-        const data = await apiClient.getLogs(params);
+        const timeoutPromise = new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error('Request timeout')), 10000)
+        );
 
-        if (!isMounted.current) return;
+        const response = await Promise.race([apiClient.getLogs(params), timeoutPromise]);
 
-        setLogs((data.data || []).map((log: any) => ({
+        // Only check if this is still the latest request
+        if (requestId !== lastRequestIdRef.current) {
+          return;
+        }
+
+        const data = response.data || response;
+
+        const logsArray = (data as any).data || (Array.isArray(data) ? data : []);
+        setLogs(logsArray.map((log: any) => ({
           ...log,
           id: log.id || '',
           type: log.type || '',
@@ -74,84 +77,95 @@ const LogExplorer: React.FC = () => {
           created_at: log.created_at || '',
           meta: log.meta || {}
         })));
-        setTotalCount(data.total_count || 0);
-        setNextCursor(data.next_cursor || null);
+        setTotalCount((data as any).total_count || 0);
+        setNextCursor((data as any).next_cursor || null);
         setCurrentPage(page);
       } catch (err) {
-        if (!isMounted.current) return;
-        setError(err instanceof Error ? err.message : 'Unknown error');
+        // Only update error state if this is still the latest request
+        if (requestId !== lastRequestIdRef.current) return;
+
+        if (err instanceof Error && err.message === 'Request timeout') {
+          setError('Request timed out. Please try again.');
+        } else {
+          setError(err instanceof Error ? err.message : 'Unknown error');
+        }
       } finally {
-        if (!isMounted.current) return;
-        setLoading(false);
+        // Only set loading to false if this is still the latest request
+        if (requestId === lastRequestIdRef.current) {
+          setLoading(false);
+        }
       }
     },
-    // only depend on limit so the function stays stable; we always pass overrides when needed
-    [limit]
+    [limit, appliedFilters]
   );
 
   // Initial load only
   useEffect(() => {
-    fetchLogs(0, 1, appliedFilters);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    fetchLogs(0, 1, EMPTY_FILTERS);
   }, []);
 
-  const handleFilterChange = (key: keyof FiltersState, value: string) => {
-    const next = { ...filters, [key]: value };
-    setFilters(next);
-    setAppliedFilters(next);
-    // Immediately fetch with the latest values so tests see the filter in the last call
-    fetchLogs(0, 1, next);
-  };
+  const handleFilterChange = useCallback((key: keyof FiltersState, value: string) => {
+    setFilters(prev => {
+      const next = { ...prev, [key]: value };
+      setAppliedFilters(next);
+      fetchLogs(0, 1, next);
+      return next;
+    });
+  }, [fetchLogs]);
 
-  const handleApplyFilters = () => {
-    setAppliedFilters(filters);
-    fetchLogs(0, 1, filters);
-  };
+  const handleApplyFilters = useCallback(() => {
+    setAppliedFilters(prev => {
+      // Use current `filters` snapshot
+      fetchLogs(0, 1, filters);
+      return filters;
+    });
+  }, [filters, fetchLogs]);
 
-  const handleClearFilters = () => {
-    setFilters({ ...EMPTY_FILTERS });
-    setAppliedFilters({ ...EMPTY_FILTERS });
-    fetchLogs(0, 1, EMPTY_FILTERS);
-  };
+  const handleClearFilters = useCallback(() => {
+    const cleared = { ...EMPTY_FILTERS };
+    setFilters(cleared);
+    setAppliedFilters(cleared);
+    fetchLogs(0, 1, cleared);
+  }, [fetchLogs]);
 
-  const handleSort = (column: 'created_at' | 'status' | 'endpoint') => {
-    if (sortBy === column) {
-      setSortDir(sortDir === 'asc' ? 'desc' : 'asc');
-    } else {
-      setSortBy(column);
+  const handleSort = useCallback((column: 'created_at' | 'status' | 'endpoint') => {
+    setSortBy(prev => {
+      if (prev === column) {
+        setSortDir(d => (d === 'asc' ? 'desc' : 'asc'));
+        return prev;
+      }
       setSortDir('desc');
-    }
-    // Re-fetch with current filters, reset to first page
+      return column;
+    });
     fetchLogs(0, 1, appliedFilters);
-  };
+  }, [appliedFilters, fetchLogs]);
 
-  // Real pages based on totalCount
+
   const computedTotalPages = Math.max(1, Math.ceil(totalCount / limit));
-  // If the server gives us a nextCursor, expose at least one extra page so "Next" isn't disabled
   const effectiveTotalPages = nextCursor ? Math.max(computedTotalPages, currentPage + 1) : computedTotalPages;
 
-  const handleNextPage = () => {
+  const handleNextPage = useCallback(() => {
     const offset = currentPage * limit; // 1 -> 50
     fetchLogs(offset, currentPage + 1, appliedFilters);
-  };
+  }, [currentPage, limit, appliedFilters, fetchLogs]);
 
-  const handlePrevPage = () => {
+  const handlePrevPage = useCallback(() => {
     if (currentPage > 1) {
       const offset = Math.max(0, (currentPage - 2) * limit);
       fetchLogs(offset, currentPage - 1, appliedFilters);
     }
-  };
+  }, [currentPage, limit, appliedFilters, fetchLogs]);
 
-  const goToPage = (page: number) => {
+  const goToPage = useCallback((page: number) => {
     if (page >= 1) {
       const offset = (page - 1) * limit;
       fetchLogs(offset, page, appliedFilters);
     }
-  };
+  }, [limit, appliedFilters, fetchLogs]);
 
-  const handleRefresh = () => {
+  const handleRefresh = useCallback(() => {
     fetchLogs(0, 1, appliedFilters);
-  };
+  }, [appliedFilters, fetchLogs]);
 
   const exportToCSV = () => {
     const headers = ['ID', 'Type', 'Endpoint', 'Reason Codes', 'Status', 'Created At', 'Meta'];
@@ -186,7 +200,7 @@ const LogExplorer: React.FC = () => {
     <div id="log-explorer" className="max-w-6xl mx-auto p-4 sm:p-6 lg:p-8">
       <header className="flex justify-between items-center mb-6 flex-wrap gap-4">
         <div className="flex-1">
-          <h2 className="text-2xl font-semibold text-gray-900 dark:text-white">{UI_STRINGS.LOG_EXPLORER}</h2>
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">{UI_STRINGS.LOG_EXPLORER}</h2>
           <p className="mt-1 text-gray-600 dark:text-gray-400 text-sm">
             Browse and filter your API request logs. Use filters to find specific requests and export data for analysis.
           </p>
@@ -201,47 +215,61 @@ const LogExplorer: React.FC = () => {
         </div>
       </header>
 
-      {loading && logs.length === 0 && (
+      {loading && logs.length === 0 && !error && (
         <div role="status" className="text-center py-8 text-gray-600 dark:text-gray-400">
           {UI_STRINGS.LOADING} logs...
         </div>
       )}
 
-      {error && (
-        <div role="alert" className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6 text-red-800">Error: {error}</div>
+      {/* Show no logs message only when not loading and truly no data */}
+      {!loading && logs.length === 0 && !error && (
+        <div role="status" className="text-center py-8 text-gray-600 dark:text-gray-400">
+          No logs found.
+        </div>
       )}
 
-      <FiltersSection
-        filters={filters}
-        onFilterChange={handleFilterChange}
-        onApplyFilters={handleApplyFilters}
-        onClearFilters={handleClearFilters}
-      />
-
-      <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm overflow-hidden">
-        <div className="flex justify-between items-center p-4 bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600 flex-wrap gap-4">
-          <div className="flex flex-col gap-1 text-gray-600 dark:text-gray-400">
-            <p className="text-gray-900 dark:text-white">{UI_STRINGS.TOTAL_LOGS}: <strong className="text-gray-900 dark:text-white">{totalCount.toLocaleString()}</strong></p>
-            <p className="text-gray-900 dark:text-white">{pageStart}-{pageEnd} of {totalCount}</p>
-          </div>
-          <PaginationControls
-            currentPage={currentPage}
-            totalPages={effectiveTotalPages}
-            nextCursor={nextCursor}
-            onPrevPage={handlePrevPage}
-            onNextPage={handleNextPage}
-            onGoToPage={goToPage}
-            limit={limit}
-          />
+      {/* Show error if there's an error */}
+      {error && (
+        <div role="alert" className="text-center py-8 text-red-600 dark:text-red-400">
+          Error: {error}
         </div>
+      )}
 
-        <LogsTable
-          logs={logs}
-          sortBy={sortBy}
-          sortDir={sortDir}
-          onSort={handleSort}
-        />
-      </div>
+      {/* Only show the table when we have data or after initial load */}
+      {(logs.length > 0 || !loading) && (
+        <>
+          <FiltersSection
+            filters={filters}
+            onFilterChange={handleFilterChange}
+            onApplyFilters={handleApplyFilters}
+            onClearFilters={handleClearFilters}
+          />
+          <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm overflow-hidden">
+            <div className="flex justify-between items-center p-4 bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600 flex-wrap gap-4">
+              <div className="flex flex-col gap-1 text-gray-600 dark:text-gray-400">
+                <p className="text-gray-900 dark:text-white">{UI_STRINGS.TOTAL_LOGS}: <strong className="text-gray-900 dark:text-white">{totalCount.toLocaleString()}</strong></p>
+                <p className="text-gray-900 dark:text-white">{pageStart}-{pageEnd} of {totalCount}</p>
+              </div>
+              <PaginationControls
+                currentPage={currentPage}
+                totalPages={effectiveTotalPages}
+                nextCursor={nextCursor}
+                onPrevPage={handlePrevPage}
+                onNextPage={handleNextPage}
+                onGoToPage={goToPage}
+                limit={limit}
+              />
+            </div>
+
+            <LogsTable
+              logs={logs}
+              sortBy={sortBy}
+              sortDir={sortDir}
+              onSort={handleSort}
+            />
+          </div>
+        </>
+      )}
     </div>
   );
 };

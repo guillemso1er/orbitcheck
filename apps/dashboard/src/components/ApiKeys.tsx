@@ -83,7 +83,7 @@ const ConfirmDialog: React.FC<{
           onClick={(e) => e.stopPropagation()}
         >
           <div className="p-6">
-            <h3 id="confirm-dialog-title" className="text-lg font-semibold text-gray-900 dark:text-white mb-2">{title}</h3>
+            <h3 id="confirm-dialog-title" className="text-base font-semibold text-gray-900 dark:text-white mb-2">{title}</h3>
             <p className="text-gray-600 dark:text-gray-300 mb-6">{message}</p>
             <div className="flex justify-end gap-3">
               <button
@@ -156,7 +156,7 @@ const CreateApiKeyModal: React.FC<{
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex justify-between items-center p-4 border-b border-gray-200 dark:border-gray-600">
-          <h3 id="create-modal-title" className="text-lg font-semibold text-gray-800 dark:text-white">Create New API Key</h3>
+          <h3 id="create-modal-title" className="text-base font-semibold text-gray-800 dark:text-white">Create New API Key</h3>
           <button
             className="text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-white text-2xl font-bold leading-none disabled:opacity-50"
             onClick={handleClose}
@@ -224,7 +224,7 @@ const NewKeyAlert: React.FC<{
       role="alert"
       aria-live="polite"
     >
-      <h4 className="font-bold text-lg mb-2">{UI_STRINGS.NEW_KEY_CREATED}</h4>
+      <h4 className="font-bold text-base mb-2">{UI_STRINGS.NEW_KEY_CREATED}</h4>
       <div className="my-2 space-y-3">
         <div>
           <p className="text-sm font-medium mb-1">Prefix:</p>
@@ -515,7 +515,7 @@ const ApiKeys: React.FC<ApiKeysProps> = () => {
   return (
     <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
       <header className="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
-        <h2 className="text-3xl font-extrabold text-gray-900 dark:text-white">
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
           {UI_STRINGS.API_KEYS_MANAGEMENT}
         </h2>
         <button
@@ -574,9 +574,9 @@ const ApiKeys: React.FC<ApiKeysProps> = () => {
       )}
 
       <div className="mb-12">
-        <h3 className="text-xl font-semibold text-gray-800 dark:text-white mb-4">
-             {UI_STRINGS.YOUR_API_KEYS}
-           </h3>
+        <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-4">
+              {UI_STRINGS.YOUR_API_KEYS}
+            </h3>
         {loading ? (
           <div className="text-center p-10 text-gray-500">
             <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mb-2"></div>
@@ -598,7 +598,7 @@ const ApiKeys: React.FC<ApiKeysProps> = () => {
       </div>
 
       <div className="bg-gray-50 p-6 rounded-lg border border-gray-200">
-        <h3 className="text-xl font-semibold text-gray-800 mb-2">Test in Postman</h3>
+        <h3 className="text-lg font-semibold text-gray-800 mb-2">Test in Postman</h3>
         <p className="text-gray-600 mb-4">
           Use our Postman collection to quickly test the API endpoints with pre-configured requests and examples.
         </p>

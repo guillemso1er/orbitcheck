@@ -150,14 +150,14 @@ const Rules: React.FC = () => {
   return (
     <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
       <header className="mb-8">
-        <h2 className="text-3xl font-extrabold text-gray-900 dark:text-white">{UI_STRINGS.RULES_EDITOR}</h2>
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">{UI_STRINGS.RULES_EDITOR}</h2>
         <p className="mt-2 text-gray-600 dark:text-gray-400 text-sm">
           Configure automated decision rules for order evaluation. Define conditions and actions to approve, hold, or block orders based on validation results.
         </p>
       </header>
 
       <div className="bg-white dark:bg-gray-800 shadow-lg rounded-lg p-6 mb-8">
-        <h3 className="text-xl font-semibold text-gray-800 dark:text-white mb-6">{UI_STRINGS.RULE_EDITOR}</h3>
+        <h3 className="text-base font-semibold text-gray-800 dark:text-white mb-6">{UI_STRINGS.RULE_EDITOR}</h3>
         <div className="space-y-6 mb-6">
           {rules.map((rule, index) => (
             <div key={rule.id} className="grid grid-cols-1 md:grid-cols-[2fr_1fr_auto] gap-4 items-end p-4 border border-gray-200 dark:border-gray-600 rounded-md bg-gray-50 dark:bg-gray-700">
@@ -215,7 +215,7 @@ const Rules: React.FC = () => {
       </div>
 
       <div className="bg-white dark:bg-gray-800 shadow-lg rounded-lg p-6">
-        <h3 className="text-xl font-semibold text-gray-800 dark:text-white mb-6">{UI_STRINGS.TEST_HARNESS}</h3>
+        <h3 className="text-base font-semibold text-gray-800 dark:text-white mb-6">{UI_STRINGS.TEST_HARNESS}</h3>
         <div className="space-y-6">
           <div>
             <label htmlFor="test-payload" className="block text-sm font-medium text-gray-700">{UI_STRINGS.TEST_PAYLOAD} (JSON)</label>
@@ -240,7 +240,7 @@ const Rules: React.FC = () => {
 
         {ruleTestResults.length > 0 && (
           <div className="mt-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
-            <h4 className="text-lg font-medium text-gray-900 mb-4">{UI_STRINGS.RULE_TEST_RESULT}</h4>
+            <h4 className="text-base font-medium text-gray-900 mb-4">{UI_STRINGS.RULE_TEST_RESULT}</h4>
             <div className="space-y-2">
               {ruleTestResults.map((result, index) => (
                 <div key={index} className={`p-3 rounded-md text-sm ${result.triggered ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>
@@ -254,7 +254,7 @@ const Rules: React.FC = () => {
 
         {testResult && (
           <div className="mt-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
-            <h4 className="text-lg font-medium text-gray-900 mb-4">Validation Results</h4>
+            <h4 className="text-base font-medium text-gray-900 mb-4">Validation Results</h4>
             <pre className="bg-gray-800 text-white p-4 rounded-md overflow-x-auto text-sm">{JSON.stringify(testResult.results, null, 2)}</pre>
           </div>
         )}

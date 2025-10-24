@@ -257,7 +257,7 @@ const BulkCsvTool: React.FC = () => {
   return (
     <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
       <header className="mb-8">
-        <h2 className="text-3xl font-bold text-gray-900 dark:text-white">{UI_STRINGS.BULK_CSV_TOOL}</h2>
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">{UI_STRINGS.BULK_CSV_TOOL}</h2>
         <p className="mt-2 text-gray-600 dark:text-gray-400 text-sm">
           Upload CSV files to process customer validations or order evaluations in bulk. Select the appropriate CSV type and format your data correctly.
         </p>
@@ -313,7 +313,7 @@ const BulkCsvTool: React.FC = () => {
 
       {jobStatus && (
         <div className="border border-gray-300 dark:border-gray-600 rounded-lg p-6 bg-white dark:bg-gray-800">
-          <h3 className="text-xl font-semibold mb-4 text-gray-900 dark:text-white">Processing Status</h3>
+          <h3 className="text-base font-semibold mb-4 text-gray-900 dark:text-white">Processing Status</h3>
           <div className="space-y-4">
             <p className="text-gray-700 dark:text-gray-300"><strong>Job ID:</strong> {jobStatus.job_id}</p>
             <p className="text-gray-700 dark:text-gray-300"><strong>Status:</strong> {jobStatus.status}</p>

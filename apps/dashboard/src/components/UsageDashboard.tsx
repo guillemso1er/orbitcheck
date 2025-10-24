@@ -138,7 +138,7 @@ const DailyUsageChart: React.FC<{ data: UsageData }> = ({ data }) => {
   const chartData = prepareDailyChartData(data);
   return (
     <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md flex flex-col h-96">
-      <h3 className="text-lg font-semibold text-gray-800 dark:text-white text-center mb-4">{UI_STRINGS.DAILY_USAGE}</h3>
+      <h3 className="text-base font-semibold text-gray-800 dark:text-white text-center mb-4">{UI_STRINGS.DAILY_USAGE}</h3>
       <div className="relative flex-1">
         <Line options={chartOptions} data={chartData} />
       </div>
@@ -150,7 +150,7 @@ const TopReasonCodesChart: React.FC<{ data: UsageData }> = ({ data }) => {
   const chartData = prepareReasonChartData(data);
   return (
     <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md flex flex-col h-96">
-      <h3 className="text-lg font-semibold text-gray-800 dark:text-white text-center mb-4">{UI_STRINGS.TOP_REASON_CODES}</h3>
+      <h3 className="text-base font-semibold text-gray-800 dark:text-white text-center mb-4">{UI_STRINGS.TOP_REASON_CODES}</h3>
       <div className="relative flex-1">
         <Bar options={chartOptions} data={chartData} />
       </div>
@@ -162,7 +162,7 @@ const CacheHitRatioChart: React.FC<{ data: UsageData }> = ({ data }) => {
   const chartData = prepareCacheChartData(data);
   return (
     <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md flex flex-col h-96">
-      <h3 className="text-lg font-semibold text-gray-800 dark:text-white text-center mb-4">{UI_STRINGS.CACHE_HIT_RATIO}</h3>
+      <h3 className="text-base font-semibold text-gray-800 dark:text-white text-center mb-4">{UI_STRINGS.CACHE_HIT_RATIO}</h3>
       <div className="relative flex-1 flex items-center justify-center">
         <Pie data={chartData} />
       </div>
@@ -228,7 +228,7 @@ const UsageDashboard: React.FC = () => {
   return (
     <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
       <header className="mb-8">
-        <h2 className="text-3xl font-extrabold text-gray-900 dark:text-white">{UI_STRINGS.USAGE_DASHBOARD}</h2>
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">{UI_STRINGS.USAGE_DASHBOARD}</h2>
         <p className="mt-2 text-gray-600 dark:text-gray-400 text-sm">
           Monitor your API usage statistics, including validation requests, order evaluations, and system performance metrics.
         </p>
