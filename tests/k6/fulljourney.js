@@ -167,8 +167,8 @@ export default function () {
     testListWebhooksAfterCreate(mgmtHeaders, check);
 
     // Step 35: Delete webhook (Management API - use PAT)
-    if (webhookId) {
-        testDeleteWebhook(mgmtHeaders, check, webhookId);
+    if (webhookId && webhookId.id) {
+        testDeleteWebhook(mgmtHeaders, check, webhookId.id);
     }
 
     // Step 36: List webhooks after delete (Management API - use PAT)
@@ -177,16 +177,16 @@ export default function () {
     // Step 37: Test webhook (Management API - use PAT)
     testTestWebhook(mgmtHeaders, check);
 
-    // Step 38: Revoke API key (Management API - use PAT)
+    // Step 38: Test HMAC authentication (optional) - Runtime API
+    testHmacAuth(newApiKey, check);
+
+    // Step 39: Revoke API key (Management API - use PAT)
     if (keyId) {
         testRevokeApiKey(patToken, keyId, check);
     }
 
-    // Step 39: List API keys to verify revocation (Management API - use PAT)
+    // Step 40: List API keys to verify revocation (Management API - use PAT)
     testListApiKeysAfterRevoke(patToken, check);
-
-    // Step 40: Test HMAC authentication (optional) - Runtime API
-    testHmacAuth(newApiKey, check);
 
     // Step 36: Logout (clears session)
     testLogout(check);

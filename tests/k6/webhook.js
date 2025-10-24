@@ -29,7 +29,7 @@ export function testListWebhooks(headers, check) {
 
 export function testCreateWebhook(headers, check) {
     const createWebhookPayload = JSON.stringify({
-        url: 'https://httpbin.org/post',
+        url: 'http://httpbin.org/post',
         events: ['validation_result', 'order_evaluated']
     });
     const res = http.post(`${API_V1_URL}/webhooks`, createWebhookPayload, { headers });
@@ -37,7 +37,15 @@ export function testCreateWebhook(headers, check) {
         '[Create Webhook] status 200 or 201': (r) => r.status === 200 || r.status === 201,
         '[Create Webhook] has webhook': (r) => true
     });
-    const createWebhookBody = (res.status === 200 || res.status === 201) ? { id: 'dummy-webhook-id' } : { id: null };
+    let createWebhookBody = { id: null };
+    if (res.status === 201) {
+        try {
+            const body = JSON.parse(res.body);
+            createWebhookBody = { id: body.id || null };
+        } catch (e) {
+            createWebhookBody = { id: null };
+        }
+    }
     return createWebhookBody;
 }
 
@@ -52,7 +60,8 @@ export function testListWebhooksAfterCreate(headers, check) {
 export function testDeleteWebhook(headers, check, webhookId) {
     const delHeaders = Object.assign({}, headers);
     delete delHeaders['Content-Type'];
-    const res = http.del(`${API_V1_URL}/webhooks/${webhookId.id}`, null, { headers: delHeaders });
+    const url = `${API_V1_URL}/webhooks/${webhookId}`;
+    const res = http.del(url, null, { headers: delHeaders });
     check(res, {
         '[Delete Webhook] status 200 or 204': (r) => r.status === 200 || r.status === 204
     });

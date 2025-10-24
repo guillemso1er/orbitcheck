@@ -188,17 +188,19 @@ export function testHmacAuth(apiKey, check) {
     const nonce = crypto.randomBytes(8).toString('hex');
 
     // For HMAC, compute the signature client-side using k6's crypto
-    const message = 'POST' + '/v1/validate/email' + JSON.stringify({ email: 'test@example.com' }) + timestamp + nonce;
+    const body = JSON.stringify({ email: 'test@example.com' });
+    // Use the path only, not the full URL (server expects request.url which is the path)
+    const message = 'POST' + '/v1/validate/email' + body + timestamp + nonce;
     const signature = crypto.hmac('sha256', apiKey, message, 'hex');
 
     const hmacHeaders = Object.assign({}, HEADERS, {
         'Authorization': `HMAC keyId=${apiKey.slice(0, 8)} signature=${signature} ts=${timestamp} nonce=${nonce}`
     });
 
-    // Test with HMAC - expect failure since API may not support HMAC yet
+    // Test with HMAC - API supports HMAC
     const res = http.post(`${API_V1_URL}/validate/email`, JSON.stringify({ email: 'test@example.com' }), { headers: hmacHeaders });
     check(res, {
-        '[HMAC Auth] status 200 or 401': (r) => r.status === 200 || r.status === 401
+        '[HMAC Auth] status 200': (r) => r.status === 200
     });
     return res;
 }
