@@ -23,7 +23,7 @@ export const options = {
     }
 };
 
-const BASE_URL = 'http://localhost:8081/v1';
+const BASE_URL = 'http://localhost:8080';
 
 /**
  * Creates a wrapper around the k6 `check` function to prepend a name.

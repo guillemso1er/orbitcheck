@@ -31,6 +31,11 @@ export function testValidateEmail(headers, check) {
     });
 }
 
+export function testValidateEmailWithHeaders(check) {
+    const headers = getHeaders('POST', '/v1/validate/email', JSON.stringify({ email: 'test@example.com' }));
+    return testValidateEmail(headers, check);
+}
+
 export function testBatchValidate(headers, check) {
     const batchValidatePayload = JSON.stringify({
         type: 'email',
@@ -48,6 +53,15 @@ export function testBatchValidate(headers, check) {
     return batchValidateBody.job_id;
 }
 
+export function testBatchValidateWithHeaders(check) {
+    const batchValidatePayload = JSON.stringify({
+        type: 'email',
+        data: ['batch1@example.com', 'batch2@example.com', 'batch3@example.com']
+    });
+    const headers = getHeaders('POST', '/v1/batch/validate', batchValidatePayload);
+    return testBatchValidate(headers, check);
+}
+
 export function testGetValidateJobStatus(jobId, headers, check) {
     if (!jobId) return;
     const res = http.get(`${API_V1_URL}/jobs/${jobId}`, { headers });
@@ -60,19 +74,25 @@ export function testGetValidateJobStatus(jobId, headers, check) {
     });
 }
 
+export function testGetValidateJobStatusWithHeaders(jobId, check) {
+    if (!jobId) return;
+    const headers = getHeaders('GET', `/v1/jobs/${jobId}`);
+    return testGetValidateJobStatus(jobId, headers, check);
+}
+
 export default function (check) {
     // If check is not provided (when running this file directly),
     // use the original k6check as a fallback.
     check = check || k6check;
 
     // Validate email
-    testValidateEmail(check);
+    testValidateEmailWithHeaders(check);
 
     // Batch validate email
-    const validateJobId = testBatchValidate(check);
+    const validateJobId = testBatchValidateWithHeaders(check);
 
     // Get job status
-    testGetValidateJobStatus(validateJobId, check);
+    testGetValidateJobStatusWithHeaders(validateJobId, check);
 
     sleep(0.1);
 }

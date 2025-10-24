@@ -12,7 +12,8 @@ export const options = {
     }
 };
 
-const BASE_URL = 'http://localhost:8080/v1';
+const BASE_URL = 'http://localhost:8080';
+const API_V1_URL = `${BASE_URL}/v1`;
 
 export function testAddressMismatchFirst(check) {
     const payload = JSON.stringify({
@@ -138,7 +139,7 @@ export function testValidateAddress(headers, check) {
             country: 'US'
         }
     });
-    const res = http.post(`${BASE_URL}/validate/address`, addressPayload, { headers });
+    const res = http.post(`${API_V1_URL}/validate/address`, addressPayload, { headers });
     check(res, {
         '[Validate Address] status 200': (r) => r.status === 200,
         '[Validate Address] has result': (r) => {
@@ -146,6 +147,20 @@ export function testValidateAddress(headers, check) {
             return body.valid !== undefined;
         }
     });
+}
+
+export function testValidateAddressWithHeaders(check) {
+    const addressPayload = JSON.stringify({
+        address: {
+            line1: '123 Main St',
+            city: 'Anytown',
+            postal_code: '12345',
+            state: 'CA',
+            country: 'US'
+        }
+    });
+    const headers = getHeaders('POST', '/v1/validate/address', addressPayload);
+    return testValidateAddress(headers, check);
 }
 
 export function testNormalizeAddress(headers, check) {
@@ -158,7 +173,7 @@ export function testNormalizeAddress(headers, check) {
             country: 'us'
         }
     });
-    const res = http.post(`${BASE_URL}/normalize/address`, normalizePayload, { headers });
+    const res = http.post(`${API_V1_URL}/normalize/address`, normalizePayload, { headers });
     check(res, {
         '[Normalize Address] status 200': (r) => r.status === 200,
         '[Normalize Address] has normalized': (r) => {
@@ -168,13 +183,27 @@ export function testNormalizeAddress(headers, check) {
     });
 }
 
+export function testNormalizeAddressWithHeaders(check) {
+    const normalizePayload = JSON.stringify({
+        address: {
+            line1: '123 main st',
+            city: 'anytown',
+            postal_code: '12345',
+            state: 'ca',
+            country: 'us'
+        }
+    });
+    const headers = getHeaders('POST', '/v1/normalize/address', normalizePayload);
+    return testNormalizeAddress(headers, check);
+}
+
 export default function (check) {
     // If check is not provided (when running this file directly),
     // use the original k6check as a fallback.
     check = check || k6check;
 
     // Validate address
-    testValidateAddress(check);
+    testValidateAddressWithHeaders(check);
 
     // Scenario 1: Test an address with a known postal/city mismatch
     testAddressMismatchFirst(check);

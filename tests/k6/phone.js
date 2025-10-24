@@ -11,7 +11,8 @@ export const options = {
     }
 };
 
-const BASE_URL = 'http://localhost:8080/v1';
+const BASE_URL = 'http://localhost:8080';
+const API_V1_URL = `${BASE_URL}/v1`;
 
 export function testValidPhoneFirst(check) {
     const payload = JSON.stringify({ phone: '+16502530000' });
@@ -105,7 +106,7 @@ export function testInvalidPhoneWithCountrySecond(check) {
 
 export function testValidatePhoneSimple(headers, check) {
     const phonePayload = JSON.stringify({ phone: '+1234567890', request_otp: true });
-    const res = http.post(`${BASE_URL}/validate/phone`, phonePayload, { headers });
+    const res = http.post(`${API_V1_URL}/validate/phone`, phonePayload, { headers });
     check(res, {
         '[Validate Phone] status 200': (r) => r.status === 200,
         '[Validate Phone] has result': (r) => {
@@ -115,6 +116,12 @@ export function testValidatePhoneSimple(headers, check) {
     });
     const phoneBody = JSON.parse(res.body);
     return phoneBody.verification_sid;
+}
+
+export function testValidatePhoneSimpleWithHeaders(check) {
+    const phonePayload = JSON.stringify({ phone: '+1234567890', request_otp: true });
+    const headers = getHeaders('POST', '/v1/validate/phone', phonePayload);
+    return testValidatePhoneSimple(headers, check);
 }
 
 export function testVerifyPhone(headers, check, verificationSid) {
@@ -147,7 +154,7 @@ export default function (check) {
     check = check || k6check;
 
     // Validate phone
-    const verificationSid = testValidatePhoneSimple(check);
+    const verificationSid = testValidatePhoneSimpleWithHeaders(check);
 
     // Verify phone
     testVerifyPhone(check, verificationSid);

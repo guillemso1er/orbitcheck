@@ -11,6 +11,8 @@ export const options = {
     }
 };
 
+import { getHeaders } from './auth-utils.js';
+
 const BASE_URL = 'http://localhost:8080';
 const API_V1_URL = `${BASE_URL}/v1`;
 const HEADERS = {
@@ -102,7 +104,7 @@ export default function (check) {
     check = check || k6check;
     sleep(1);
 
-    const headers = getHeaders();
+    const headers = getHeaders('GET', '/v1/webhooks');
 
     // Test Case 1: List webhooks
     testListWebhooks(headers, check);

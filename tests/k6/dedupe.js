@@ -11,7 +11,8 @@ export const options = {
     }
 };
 
-const BASE_URL = 'http://localhost:8080/v1';
+const BASE_URL = 'http://localhost:8080';
+const API_V1_URL = `${BASE_URL}/v1`;
 
 export function testNoMatchFirst(check) {
     const timestamp = Date.now();
@@ -21,7 +22,7 @@ export function testNoMatchFirst(check) {
         last_name: 'Doe',
         phone: '+1234567890'
     });
-    let res = http.post(`${BASE_URL}/dedupe/customer`, payload, { headers: getHeaders() });
+    let res = http.post(`${API_V1_URL}/dedupe/customer`, payload, { headers: getHeaders('POST', '/v1/dedupe/customer', payload) });
     check(res, {
         '[No Match] status 200 (first req)': (r) => r.status === 200,
         '[No Match] matches empty (first req)': (r) => {
@@ -54,7 +55,7 @@ export function testNoMatchSecond(check) {
         phone: '+1234567890'
     });
     // Second request for the same data. THIS MUST be a HIT.
-    const res = http.post(`${BASE_URL}/dedupe/customer`, payload, { headers: getHeaders() });
+    const res = http.post(`${API_V1_URL}/dedupe/customer`, payload, { headers: getHeaders('POST', '/v1/dedupe/customer', payload) });
     check(res, {
         '[No Match] status 200 HIT': (r) => r.status === 200,
         '[No Match] cache HIT': (r) => (r.headers['Cache-Status'] || '').toLowerCase().includes('hit')
@@ -68,7 +69,7 @@ export function testFuzzyMatchFirst(check) {
         first_name: 'Jane',
         last_name: 'Smith'
     });
-    let res = http.post(`${BASE_URL}/dedupe/customer`, payload, { headers: getHeaders() });
+    let res = http.post(`${API_V1_URL}/dedupe/customer`, payload, { headers: getHeaders('POST', '/v1/dedupe/customer', payload) });
     check(res, {
         '[Fuzzy] status 200 (first req)': (r) => r.status === 200,
         '[Fuzzy] response structure (first req)': (r) => {
@@ -105,7 +106,7 @@ export function testExactMatchFirst(check) {
         first_name: 'Existing',
         last_name: 'User'
     });
-    let res = http.post(`${BASE_URL}/dedupe/customer`, payload, { headers: getHeaders() });
+    let res = http.post(`${API_V1_URL}/dedupe/customer`, payload, { headers: getHeaders('POST', '/v1/dedupe/customer', payload) });
     check(res, {
         '[Exact] status 200 (first req)': (r) => r.status === 200,
         '[Exact] matches empty (first req)': (r) => {
@@ -173,7 +174,7 @@ export function testDedupeCustomer(headers, check) {
         first_name: 'John',
         last_name: 'Doe'
     });
-    const res = http.post(`${BASE_URL}/dedupe/customer`, dedupeCustomerPayload, { headers });
+    const res = http.post(`${API_V1_URL}/dedupe/customer`, dedupeCustomerPayload, { headers });
     check(res, {
         '[Dedupe Customer] status 200': (r) => r.status === 200,
         '[Dedupe Customer] has matches': (r) => {
@@ -183,6 +184,17 @@ export function testDedupeCustomer(headers, check) {
     });
     const dedupeCustomerBody = JSON.parse(res.body);
     return dedupeCustomerBody.canonical_id || null;
+}
+
+export function testDedupeCustomerWithHeaders(check) {
+    const dedupeCustomerPayload = JSON.stringify({
+        email: 'customer@example.com',
+        phone: '+1234567890',
+        first_name: 'John',
+        last_name: 'Doe'
+    });
+    const headers = getHeaders('POST', '/v1/dedupe/customer', dedupeCustomerPayload);
+    return testDedupeCustomer(headers, check);
 }
 
 export function testDedupeMergeCustomer(customerId, headers, check) {
@@ -270,7 +282,7 @@ export default function (check) {
     check = check || k6check;
 
     // Dedupe customer
-    const customerId = testDedupeCustomer(check);
+    const customerId = testDedupeCustomerWithHeaders(check);
 
     // Dedupe merge customer
     testDedupeMergeCustomer(customerId, check);
