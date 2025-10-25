@@ -240,9 +240,6 @@ jobs:
               sudo chown -R ${{ env.REMOTE_RUNTIME_USER }}:${{ env.REMOTE_RUNTIME_USER }} ${{ env.REMOTE_DASHBOARD_VOLUME_DIR }}
             fi
 
-            # Ensure user lingering so WantedBy=default.target units start on boot
-            sudo loginctl enable-linger ${{ env.REMOTE_RUNTIME_USER }} || true
-
             # Section 2: Podmanuser-level operations (quadlets + restart)
             echo "--- Running systemd tasks as ${{ env.REMOTE_RUNTIME_USER }} ---"
 
