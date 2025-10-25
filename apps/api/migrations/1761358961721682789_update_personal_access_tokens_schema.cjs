@@ -15,7 +15,6 @@ const up = (pgm) => {
   // Create new personal_access_tokens table according to requirements
   pgm.createTable('personal_access_tokens', {
     id: { type: 'uuid', primaryKey: true, default: pgm.func('gen_random_uuid()') },
-    org_id: { type: 'uuid', notNull: true, references: 'organizations(id)', onDelete: 'CASCADE' },
     user_id: { type: 'uuid', notNull: true, references: 'users(id)', onDelete: 'CASCADE' },
     token_id: { type: 'text', notNull: true, unique: true },
     hashed_secret: { type: 'text', notNull: true },
