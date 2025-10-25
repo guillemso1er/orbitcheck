@@ -17,6 +17,11 @@ jest.mock('ioredis', () => ({
 
 let mockFetch: jest.MockedFunction<typeof fetch> = global.fetch as jest.MockedFunction<typeof fetch>;
 
+// Mock fetch globally before all tests
+beforeAll(() => {
+    mockFetch = global.fetch as jest.MockedFunction<typeof fetch>;
+});
+
 describe('Disposable Domains Refresh Job', () => {
   let mockRedis: jest.Mocked<Redis>;
 
@@ -35,7 +40,8 @@ describe('Disposable Domains Refresh Job', () => {
     MockRedis.mockImplementation(() => mockRedis);
 
     const mockFetchResponse = {
-      json: jest.fn().mockResolvedValue(['disposable1.com', 'disposable2.com']),
+      ok: true,
+      text: jest.fn().mockResolvedValue('["disposable1.com", "disposable2.com"]'),
     } as any;
     mockFetch.mockResolvedValue(mockFetchResponse);
   });
@@ -74,6 +80,25 @@ describe('Disposable Domains Refresh Job', () => {
 
     await expect(disposableProcessor(job)).rejects.toThrow('Network error');
     expect(consoleErrorSpy).toHaveBeenCalledWith("Failed to refresh disposable domains:", mockError);
+    expect(mockRedis.del).not.toHaveBeenCalled();
+
+    consoleErrorSpy.mockRestore();
+  });
+
+  it('should handle fetch response not ok', async () => {
+    const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => { });
+    const mockFetchResponse = {
+      ok: false,
+      status: 404,
+      statusText: 'Not Found',
+    } as any;
+    mockFetch.mockResolvedValueOnce(mockFetchResponse);
+
+    // Cast the job object
+    const job = { data: { redis: mockRedis } } as Job;
+
+    await expect(disposableProcessor(job)).rejects.toThrow('HTTP 404: Not Found');
+    expect(consoleErrorSpy).toHaveBeenCalledWith("Failed to refresh disposable domains:", expect.any(Error));
     expect(mockRedis.del).not.toHaveBeenCalled();
 
     consoleErrorSpy.mockRestore();

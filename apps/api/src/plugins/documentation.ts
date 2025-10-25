@@ -56,8 +56,14 @@ export async function setupDocumentation(app: FastifyInstance): Promise<void> {
                     BearerAuth: {
                         type: 'http',
                         scheme: 'bearer',
-                        bearerFormat: 'PAT or API Key', // or leave out if you prefer
-                        description: 'Use your Personal Access Token (pat_xxx) for management routes or API Key (ok_xxx) for runtime routes as a Bearer token',
+                        bearerFormat: 'PAT', // or leave out if you prefer
+                        description: 'Use your Personal Access Token (pat_xxx) for management routes ',
+                    },
+                    ApiKeyAuth: {
+                        type: 'apiKey',
+                        in: 'header',
+                        name: 'Authorization',
+                        description: 'Use your  API Key (ok_xxx) for runtime routes as an API Key',
                     },
                 },
             },

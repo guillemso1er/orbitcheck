@@ -17,6 +17,13 @@ jest.mock('../routes/auth', () => {
   };
 });
 
+// Mock nodemailer to prevent actual email sending during tests
+jest.mock('nodemailer', () => ({
+  createTransport: jest.fn(() => ({
+    sendMail: jest.fn().mockResolvedValue({}),
+  })),
+}));
+
 const MOCK_JWT = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoidGVzdF91c2VyIn0.ignore';
 
 describe('Data Routes', () => {
@@ -65,7 +72,18 @@ describe('Data Routes', () => {
 
   describe('POST /v1/data/erase', () => {
     it('should erase user data for GDPR compliance', async () => {
-      mockPool.query.mockResolvedValueOnce({ rows: [] }); // DELETE logs
+      // Mock all the queries the new implementation does
+      mockPool.query
+        .mockResolvedValueOnce({ rows: [{ email: 'test@example.com', project_name: 'Test Project' }] }) // user/project query
+        .mockResolvedValueOnce({ rows: [] }) // DELETE logs
+        .mockResolvedValueOnce({ rows: [] }) // DELETE api_keys
+        .mockResolvedValueOnce({ rows: [] }) // DELETE webhooks
+        .mockResolvedValueOnce({ rows: [] }) // DELETE settings
+        .mockResolvedValueOnce({ rows: [] }) // DELETE jobs
+        .mockResolvedValueOnce({ rows: [{ user_id: 'test_user' }] }) // project user_id query
+        .mockResolvedValueOnce({ rows: [] }) // DELETE personal_access_tokens
+        .mockResolvedValueOnce({ rows: [] }) // DELETE audit_logs
+        .mockResolvedValueOnce({ rows: [] }); // UPDATE users
 
       const res = await request(app.server)
         .post('/v1/data/erase')
@@ -78,7 +96,18 @@ describe('Data Routes', () => {
     });
 
     it('should erase user data for CCPA compliance', async () => {
-      mockPool.query.mockResolvedValueOnce({ rows: [] });
+      // Mock all the queries the new implementation does
+      mockPool.query
+        .mockResolvedValueOnce({ rows: [{ email: 'test@example.com', project_name: 'Test Project' }] }) // user/project query
+        .mockResolvedValueOnce({ rows: [] }) // DELETE logs
+        .mockResolvedValueOnce({ rows: [] }) // DELETE api_keys
+        .mockResolvedValueOnce({ rows: [] }) // DELETE webhooks
+        .mockResolvedValueOnce({ rows: [] }) // DELETE settings
+        .mockResolvedValueOnce({ rows: [] }) // DELETE jobs
+        .mockResolvedValueOnce({ rows: [{ user_id: 'test_user' }] }) // project user_id query
+        .mockResolvedValueOnce({ rows: [] }) // DELETE personal_access_tokens
+        .mockResolvedValueOnce({ rows: [] }) // DELETE audit_logs
+        .mockResolvedValueOnce({ rows: [] }); // UPDATE users
 
       const res = await request(app.server)
         .post('/v1/data/erase')
@@ -106,6 +135,53 @@ describe('Data Routes', () => {
         .send({});
 
       expect(res.statusCode).toBe(400);
+    });
+
+    it('should return 404 when project not found', async () => {
+      mockPool.query.mockResolvedValueOnce({ rows: [] }); // No user/project found
+
+      const res = await request(app.server)
+        .post('/v1/data/erase')
+        .set('Authorization', `Bearer ${MOCK_JWT}`)
+        .send({ reason: 'gdpr' });
+
+      expect(res.statusCode).toBe(404);
+      expect(res.body.error.code).toBe('not_found');
+    });
+
+    it('should handle database errors during erasure', async () => {
+      mockPool.query.mockRejectedValueOnce(new Error('DB error')); // First query fails
+
+      const res = await request(app.server)
+        .post('/v1/data/erase')
+        .set('Authorization', `Bearer ${MOCK_JWT}`)
+        .send({ reason: 'gdpr' });
+
+      expect(res.statusCode).toBe(500);
+      expect(res.body.error.code).toBe('server_error');
+    });
+
+    it('should complete erasure even if email sending fails', async () => {
+      // Mock successful DB operations but email failure
+      mockPool.query
+        .mockResolvedValueOnce({ rows: [{ email: 'test@example.com', project_name: 'Test Project' }] })
+        .mockResolvedValueOnce({ rows: [] }) // DELETE logs
+        .mockResolvedValueOnce({ rows: [] }) // DELETE api_keys
+        .mockResolvedValueOnce({ rows: [] }) // DELETE webhooks
+        .mockResolvedValueOnce({ rows: [] }) // DELETE settings
+        .mockResolvedValueOnce({ rows: [] }) // DELETE jobs
+        .mockResolvedValueOnce({ rows: [{ user_id: 'test_user' }] }) // project user_id query
+        .mockResolvedValueOnce({ rows: [] }) // DELETE personal_access_tokens
+        .mockResolvedValueOnce({ rows: [] }) // DELETE audit_logs
+        .mockResolvedValueOnce({ rows: [] }); // UPDATE users
+
+      const res = await request(app.server)
+        .post('/v1/data/erase')
+        .set('Authorization', `Bearer ${MOCK_JWT}`)
+        .send({ reason: 'gdpr' });
+
+      expect(res.statusCode).toBe(202);
+      expect(res.body.message).toContain('Data erasure initiated');
     });
   });
 

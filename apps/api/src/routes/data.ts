@@ -1,6 +1,7 @@
 import { MGMT_V1_ROUTES } from "@orbitcheck/contracts";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import type { Pool } from "pg";
+import nodemailer from "nodemailer";
 
 import { CACHE_HIT_PLACEHOLDER, COMPLIANCE_REASONS, LOGS_DEFAULT_LIMIT, LOGS_MAX_LIMIT, MESSAGES, TOP_REASONS_LIMIT, USAGE_DAYS, USAGE_PERIOD } from "../config.js";
 import { ERROR_CODES, HTTP_STATUS } from "../errors.js";
@@ -22,6 +23,7 @@ export function registerDataRoutes(app: FastifyInstance, pool: Pool): void {
             description: 'Retrieves event logs for the project with optional filters by reason code, endpoint, and status. Supports pagination via limit and offset.',
             tags: ['Data Retrieval'],
             headers: securityHeader,
+            security: [{ BearerAuth: [] }],
             querystring: {
                 type: 'object',
                 properties: {
@@ -134,6 +136,7 @@ export function registerDataRoutes(app: FastifyInstance, pool: Pool): void {
             description: 'Retrieves usage statistics for the last 31 days for the project associated with the API key.',
             tags: ['Data Retrieval'],
             headers: securityHeader,
+            security: [{ BearerAuth: [] }],
             response: {
                 200: {
                     description: 'A summary of usage data.',
@@ -220,7 +223,11 @@ export function registerDataRoutes(app: FastifyInstance, pool: Pool): void {
         }
     });
 
-    app.post(ROUTES.ERASE, async (request: FastifyRequest<{ Body: { reason: string } }>, rep: FastifyReply) => {
+    app.post(ROUTES.ERASE, {
+        schema: {
+            security: [{ BearerAuth: [] }]
+        }
+    }, async (request: FastifyRequest<{ Body: { reason: string } }>, rep: FastifyReply) => {
         try {
             const request_id = generateRequestId();
             const project_id = (request as any).project_id;
@@ -230,19 +237,85 @@ export function registerDataRoutes(app: FastifyInstance, pool: Pool): void {
                 return sendError(rep, HTTP_STATUS.BAD_REQUEST, ERROR_CODES.ERASE_INVALID_REQUEST, MESSAGES.ERASE_INVALID_REQUEST_MESSAGE, request_id);
             }
 
-            // For GDPR/CCPA compliance, we would typically:
-            // 1. Anonymize or delete user data
-            // 2. Delete logs
-            // 3. Delete API keys
-            // 4. Send confirmation email
-            // For now, we'll just delete logs as an example
+            // Get user information for email
+            const { rows: userRows } = await pool.query(
+                'SELECT u.email, p.name as project_name FROM users u JOIN projects p ON p.user_id = u.id WHERE p.id = $1',
+                [project_id]
+            );
+
+            if (userRows.length === 0) {
+                return sendError(rep, HTTP_STATUS.NOT_FOUND, ERROR_CODES.NOT_FOUND, 'Project not found or user not associated', request_id);
+            }
+
+            const { email, project_name } = userRows[0];
 
             // Delete all logs for the project
             await pool.query('DELETE FROM logs WHERE project_id = $1', [project_id]);
 
-            // In a real implementation, we'd also need to delete from other tables
-            // and potentially anonymize data instead of deleting
-            // For now, we don't delete API keys to allow testing revoke functionality
+            // Delete all API keys for the project
+            await pool.query('DELETE FROM api_keys WHERE project_id = $1', [project_id]);
+
+            // Delete webhooks for the project
+            await pool.query('DELETE FROM webhooks WHERE project_id = $1', [project_id]);
+
+            // Delete settings for the project
+            await pool.query('DELETE FROM settings WHERE project_id = $1', [project_id]);
+
+            // Delete async jobs for the project
+            await pool.query('DELETE FROM jobs WHERE project_id = $1', [project_id]);
+
+            // Get user_id for the project to clean up user-related data
+            const { rows: projectRows } = await pool.query('SELECT user_id FROM projects WHERE id = $1', [project_id]);
+            if (projectRows.length > 0) {
+                const user_id = projectRows[0].user_id;
+
+                // Delete personal access tokens for the user
+                await pool.query('DELETE FROM personal_access_tokens WHERE user_id = $1', [user_id]);
+
+                // Delete audit logs for the user
+                await pool.query('DELETE FROM audit_logs WHERE user_id = $1', [user_id]);
+
+                // Anonymize user data (keep account structure but remove personal data)
+                await pool.query(
+                    'UPDATE users SET email = CONCAT(\'deleted-user-\', id, \'@anonymized.orbitcheck\'), password_hash = NULL WHERE id = $1',
+                    [user_id]
+                );
+            }
+
+            // Send confirmation email
+            try {
+                const transporter = nodemailer.createTransport({
+                    host: process.env.SMTP_HOST || 'smtp.gmail.com',
+                    port: parseInt(process.env.SMTP_PORT || '587'),
+                    secure: false,
+                    auth: {
+                        user: process.env.SMTP_USER,
+                        pass: process.env.SMTP_PASS
+                    }
+                });
+
+                const complianceType = reason.toUpperCase();
+                await transporter.sendMail({
+                    from: process.env.SMTP_FROM || 'noreply@orbitcheck.io',
+                    to: email,
+                    subject: `Data Erasure Confirmation - ${complianceType} Compliance`,
+                    html: `
+                        <h2>Data Erasure Completed</h2>
+                        <p>Your data erasure request has been processed successfully.</p>
+                        <p><strong>Compliance Type:</strong> ${complianceType}</p>
+                        <p><strong>Project:</strong> ${project_name}</p>
+                        <p><strong>Request ID:</strong> ${request_id}</p>
+                        <p><strong>Completed At:</strong> ${new Date().toISOString()}</p>
+                        <p>All personal data, logs, API keys, and related information have been permanently deleted from our systems.</p>
+                        <p>If you have any questions, please contact our support team.</p>
+                        <br>
+                        <p>Best regards,<br>The OrbitCheck Team</p>
+                    `
+                });
+            } catch (emailError) {
+                // Log email error but don't fail the erasure
+                console.error('Failed to send confirmation email:', emailError);
+            }
 
             const response = {
                 message: MESSAGES.DATA_ERASURE_INITIATED(reason.toUpperCase()),
@@ -260,6 +333,7 @@ export function registerDataRoutes(app: FastifyInstance, pool: Pool): void {
             description: 'Deletes a specific log entry by ID',
             tags: ['Data Management'],
             headers: securityHeader,
+            security: [{ BearerAuth: [] }],
             params: {
                 type: 'object',
                 required: ['id'],

@@ -15,15 +15,17 @@ security:
 - BearerAuth: []
 - ApiKeyAuth: []
 components:
-  securitySchemes:
-    BearerAuth:
-      type: http
-      scheme: bearer
-      description: Bearer token authentication using API key or Personal Access Token
-    ApiKeyAuth:
-      type: http
-      scheme: bearer
-      description: API key authentication for runtime operations
+    securitySchemes:
+     BearerAuth:
+        type: http
+        scheme: bearer
+        bearerFormat: PAT
+        description: 'Use your Personal Access Token (pat_xxx) for management routes '
+     ApiKeyAuth:
+        type: apiKey
+        in: header
+        name: Authorization
+        description: 'Use your API Key (ok_xxx) for runtime routes as an API Key'
 tags:
 - name: Runtime API
   description: Core operational endpoints for data validation, deduplication, and
@@ -37,6 +39,8 @@ paths:
       description: Performs basic address normalization without geocoding or external
         lookups.
       operationId: normalizeAddress
+      security:
+      - ApiKeyAuth: []
       requestBody:
         required: true
         content:
@@ -158,6 +162,8 @@ paths:
       description: Performs batch validation of emails, phones, addresses, or tax
         IDs asynchronously
       operationId: batchValidate
+      security:
+      - ApiKeyAuth: []
       requestBody:
         required: true
         content:
@@ -247,6 +253,8 @@ paths:
       summary: Batch deduplicate data
       description: Performs batch deduplication of customers or addresses asynchronously
       operationId: batchDedupe
+      security:
+      - ApiKeyAuth: []
       requestBody:
         required: true
         content:
@@ -633,6 +641,8 @@ paths:
       summary: Get job status
       description: Retrieves the status and results of an asynchronous job.
       operationId: getJobStatusById
+      security:
+      - ApiKeyAuth: []
       parameters:
       - name: id
         in: path

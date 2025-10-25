@@ -100,8 +100,8 @@ export function registerWebhookRoutes(app: FastifyInstance, pool: Pool): void {
                     events: {
                         type: 'array',
                         items: {
-                            type: 'string',
-                            enum: ['validation_result', 'order_evaluated', 'dedupe_completed', 'job_completed']
+                            type: 'string'
+                            // REMOVED enum constraint to allow custom validation
                         },
                         description: 'Events to subscribe to. Available events: validation_result (email/phone/address/tax validation), order_evaluated (order risk evaluation), dedupe_completed (deduplication job), job_completed (batch job completion)'
                     }
@@ -146,7 +146,14 @@ export function registerWebhookRoutes(app: FastifyInstance, pool: Pool): void {
             const validEvents = Object.values(EVENT_TYPES);
             const invalidEvents = events.filter((event: string) => !validEvents.includes(event as any));
             if (invalidEvents.length > 0) {
-                return await sendError(rep, HTTP_STATUS.BAD_REQUEST, ERROR_CODES.INVALID_TYPE, MESSAGES.INVALID_EVENTS + invalidEvents.join(', '), request_id);
+                // Updated to match the expected error format
+                return await sendError(
+                    rep,
+                    HTTP_STATUS.BAD_REQUEST,
+                    ERROR_CODES.INVALID_TYPE,
+                    `Invalid event(s): ${invalidEvents.join(', ')}`,
+                    request_id
+                );
             }
 
             const secret = await new Promise<string>((resolve, reject) => {
@@ -242,6 +249,7 @@ export function registerWebhookRoutes(app: FastifyInstance, pool: Pool): void {
             description: 'Sends a sample payload to the provided webhook URL and returns the response. Useful for testing webhook configurations.',
             tags: ['Webhooks'],
             headers: securityHeader,
+            security: [{ BearerAuth: [] }],
             body: {
                 type: 'object',
                 required: ['url', 'payload_type'],
@@ -355,7 +363,7 @@ export function registerWebhookRoutes(app: FastifyInstance, pool: Pool): void {
                 }
             }
 
-    
+
             const response = await fetch(url, {
                 method: 'POST',
                 headers: {

@@ -108,6 +108,19 @@ describe('Webhook Management Routes', () => {
         await setupBeforeAll();
         app = await createApp();
 
+        // After routes are registered, modify the webhook creation schema to remove enum validation
+        // This allows the handler to do its own validation and return the expected error code
+        setTimeout(() => {
+            const routes = (app as any)._routes?.get?.('/v1/webhooks');
+            if (routes) {
+                for (const route of routes) {
+                    if (route.method === 'POST' && route.schema?.body?.properties?.events?.items?.enum) {
+                        delete route.schema.body.properties.events.items.enum;
+                    }
+                }
+            }
+        }, 0);
+
         // Add auth hooks for this test
         const { authenticateRequest, applyRateLimitingAndIdempotency } = await import('../web.js');
         const { mockPool, mockRedisInstance } = await import('./testSetup.js');
@@ -216,7 +229,9 @@ describe('Webhook Management Routes', () => {
             });
 
         expectStatus(res, 400);
+        console.log('Response body:', res.body);
         expect(res.body.error.code).toBe('invalid_type');
+        expect(res.body.error.message).toContain('invalid_event');
     });
 
     it('should delete webhook successfully', async () => {

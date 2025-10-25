@@ -14,12 +14,13 @@ servers:
 security:
   - BearerAuth: []
 components:
-  securitySchemes:
-    BearerAuth:
-      type: http
-      scheme: bearer
-      description: Bearer token authentication using Personal Access Token for management operations
-  schemas:
+   securitySchemes:
+     BearerAuth:
+       type: http
+       scheme: bearer
+       bearerFormat: PAT
+       description: 'Use your Personal Access Token (pat_xxx) for management routes '
+   schemas:
     ApiKey:
       type: object
       properties:

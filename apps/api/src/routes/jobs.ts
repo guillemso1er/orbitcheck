@@ -13,6 +13,7 @@ export function registerJobRoutes(app: FastifyInstance, pool: Pool): void {
             description: 'Retrieves the status and results of an asynchronous job',
             tags: ['Batch Operations'],
             headers: securityHeader,
+            security: [{ ApiKeyAuth: [] }],
             parameters: [
                 {
                     name: 'id',

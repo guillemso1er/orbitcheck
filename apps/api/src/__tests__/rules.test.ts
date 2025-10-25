@@ -116,4 +116,73 @@ describe('Rules Endpoints', () => {
             expect(body.registered_rules).toEqual([]);
         });
     });
+    describe('POST /v1/rules/test', () => {
+        it('should test rules against payload and return results', async () => {
+            const testPayload = {
+                email: 'test@example.com',
+                name: 'John Doe',
+                address: {
+                    line1: '123 Main St',
+                    city: 'Anytown',
+                    postal_code: '12345',
+                    country: 'US'
+                },
+                phone: '+1-555-123-4567',
+                tax_id: '123-45-6789'
+            };
+
+            const response = await request(app.server)
+                .post('/v1/rules/test')
+                .set('Authorization', 'Bearer valid_key')
+                .send(testPayload);
+
+            expect(response.status).toBe(200);
+            const body = response.body as { results: any; request_id: string };
+            expect(body.results).toBeDefined();
+            expect(typeof body.results).toBe('object');
+            expect(body.request_id).toBeDefined();
+        });
+
+        it('should handle empty payload', async () => {
+            const response = await request(app.server)
+                .post('/v1/rules/test')
+                .set('Authorization', 'Bearer valid_key')
+                .send({});
+
+            expect(response.status).toBe(200);
+            const body = response.body as { results: any; request_id: string };
+            expect(body.results).toBeDefined();
+            expect(typeof body.results).toBe('object');
+        });
+
+        it('should handle partial payload', async () => {
+            const partialPayload = {
+                email: 'test@example.com'
+            };
+
+            const response = await request(app.server)
+                .post('/v1/rules/test')
+                .set('Authorization', 'Bearer valid_key')
+                .send(partialPayload);
+
+            expect(response.status).toBe(200);
+            const body = response.body as { results: any; request_id: string };
+            expect(body.results).toBeDefined();
+            expect(typeof body.results).toBe('object');
+        });
+    });
+
+    describe('GET /v1/rules/error-codes', () => {
+        it('should return error code catalog', async () => {
+            const response = await request(app.server)
+                .get('/v1/rules/error-codes')
+                .set('Authorization', 'Bearer valid_key');
+
+            expect(response.status).toBe(200);
+            const body = response.body as { error_codes: any[]; request_id: string };
+            expect(body.error_codes).toBeDefined();
+            expect(Array.isArray(body.error_codes)).toBe(true);
+            expect(body.request_id).toBeDefined();
+        });
+    });
 });

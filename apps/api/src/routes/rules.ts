@@ -147,6 +147,7 @@ export function registerRulesRoutes(app: FastifyInstance, pool: Pool, redis?: an
       description: 'Returns a list of all available validation and risk assessment rules.',
       tags: ['Rules'],
       headers: securityHeader,
+      security: [{ BearerAuth: [] }],
       response: {
         200: {
           description: 'List of rules',
@@ -190,6 +191,7 @@ export function registerRulesRoutes(app: FastifyInstance, pool: Pool, redis?: an
       description: 'Returns a comprehensive list of all possible reason codes with descriptions and severity levels.',
       tags: ['Rules'],
       headers: securityHeader,
+      security: [{ BearerAuth: [] }],
       response: {
         200: {
           description: 'List of reason codes',
@@ -232,6 +234,7 @@ export function registerRulesRoutes(app: FastifyInstance, pool: Pool, redis?: an
       description: 'Returns a comprehensive list of all possible error codes with descriptions and severity levels.',
       tags: ['Rules'],
       headers: securityHeader,
+      security: [{ BearerAuth: [] }],
       response: {
         200: {
           description: 'List of error codes',
@@ -274,6 +277,7 @@ export function registerRulesRoutes(app: FastifyInstance, pool: Pool, redis?: an
       description: 'Performs a dry-run evaluation of a payload against all enabled validation rules.',
       tags: ['Rules'],
       headers: securityHeader,
+      security: [{ BearerAuth: [] }],
       body: {
         type: 'object',
         properties: {
@@ -355,6 +359,7 @@ export function registerRulesRoutes(app: FastifyInstance, pool: Pool, redis?: an
       description: 'Registers custom business rules for the project.',
       tags: ['Rules'],
       headers: securityHeader,
+      security: [{ BearerAuth: [] }],
       body: {
         type: 'object',
         properties: {

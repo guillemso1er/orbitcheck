@@ -17,6 +17,7 @@ export function registerApiKeysRoutes(app: FastifyInstance, pool: Pool): void {
             description: 'Retrieves a list of API keys for the authenticated project, showing only the prefix (first 6 characters) for security.',
             tags: ['API Keys'],
             headers: securityHeader,
+            security: [{ ApiKeyAuth: [] }],
             response: {
                 200: {
                     description: 'List of API keys',
@@ -63,6 +64,7 @@ export function registerApiKeysRoutes(app: FastifyInstance, pool: Pool): void {
             description: 'Generates a new API key for the authenticated project.',
             tags: ['API Keys'],
             headers: securityHeader,
+            security: [{ BearerAuth: [] }],
             body: {
                 type: 'object',
                 properties: {
@@ -156,6 +158,7 @@ export function registerApiKeysRoutes(app: FastifyInstance, pool: Pool): void {
             description: 'Revokes an API key by setting its status to revoked. Cannot be undone.',
             tags: ['API Keys'],
             headers: securityHeader,
+            security: [{ BearerAuth: [] }],
             params: {
                 type: 'object',
                 properties: {

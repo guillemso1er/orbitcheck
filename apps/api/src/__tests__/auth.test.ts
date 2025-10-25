@@ -126,7 +126,7 @@ describe('Auth Routes', () => {
     const response = await app.inject({
       method: 'POST',
       url: '/auth/register',
-      payload: { email: 'test@example.com', password: 'password123' }
+      payload: { email: 'test@example.com', password: 'password123', confirm_password: 'password123' }
     });
 
     expect(response.statusCode).toBe(201);
