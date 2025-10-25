@@ -55,6 +55,7 @@
         "@sinclair/typebox": "^0.34.41",
         "@types/nodemailer": "^7.0.3",
         "ajv": "^8.17.1",
+        "argon2": "^0.44.0",
         "bcryptjs": "3.0.2",
         "bullmq": "^5.58.9",
         "dotenv": "^17.2.2",

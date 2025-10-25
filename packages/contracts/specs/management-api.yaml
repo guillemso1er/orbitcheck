@@ -1,18 +1,18 @@
 openapi: 3.0.3
 info:
-  title: OrbitCheck API
-  description: API for validation, deduplication, and risk assessment services
-  version: 1.0.0
-  contact:
-    name: OrbitCheck Team
-    email: support@orbitcheck.io
+   title: OrbitCheck API
+   description: API for validation, deduplication, and risk assessment services
+   version: 1.0.0
+   contact:
+     name: OrbitCheck Team
+     email: support@orbitcheck.io
 servers:
   - url: https://api.orbitcheck.io/v1
     description: Production server
   - url: https://dev-api.orbitcheck.io/v1
-    description: Development server
+    description: Development server```
 security:
-  - BearerAuth: []
+   - BearerAuth: []
 components:
    securitySchemes:
      BearerAuth:
@@ -21,1355 +21,1230 @@ components:
        bearerFormat: PAT
        description: 'Use your Personal Access Token (pat_xxx) for management routes '
    schemas:
-    ApiKey:
-      type: object
-      properties:
-        id:
-          type: string
-          description: API key ID
-        prefix:
-          type: string
-          description: API key prefix (first 6 characters)
-        status:
-          type: string
-          enum: [active, revoked]
-          description: API key status
-        name:
-          type: string
-          nullable: true
-          description: Optional name for the API key
-        created_at:
-          type: string
-          format: date-time
-          description: Creation timestamp
-        last_used_at:
-          type: string
-          format: date-time
-          nullable: true
-          description: Last usage timestamp
-    Error:
-      type: object
-      properties:
-        code:
-          type: string
-          description: Error code
-        message:
-          type: string
-          description: Error message
-        request_id:
-          type: string
-          description: Request identifier
+     ApiKey:
+       type: object
+       properties:
+         id:
+           type: string
+           description: API key ID
+         prefix:
+           type: string
+           description: API key prefix (first 6 characters)
+         status:
+           type: string
+           enum: [active, revoked]
+           description: API key status
+         name:
+           type: string
+           nullable: true
+           description: Optional name for the API key
+         created_at:
+           type: string
+           format: date-time
+           description: Creation timestamp
+         last_used_at:
+           type: string
+           format: date-time
+           nullable: true
+           description: Last usage timestamp
+     Error:
+       type: object
+       properties:
+         code:
+           type: string
+           description: Error code
+         message:
+           type: string
+           description: Error message
+         request_id:
+           type: string
+           description: Request identifier
+     LogEntry:
+       type: object
+       properties:
+         id:
+           type: string
 tags:
-  - name: Management API
-    description: Endpoints for managing your account, data, API keys, and configurations.
+   - name: Management API
+     description: Endpoints for managing your account, data, API keys, and configurations.
 paths:
-  /v1/api-keys:
-    get:
-      tags:
-        - Management API
-      summary: List API keys
-      description: Retrieves API keys for the authenticated project
-      operationId: listApiKeys
-      responses:
-        '200':
-          description: List of API keys
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  data:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/ApiKey'
-                  request_id:
-                    type: string
-        '401':
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-    post:
-      tags:
-        - Management API
-      summary: Create API key
-      description: Generates a new API key for the authenticated project
-      operationId: createApiKey
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                name:
-                  type: string
-                  description: Optional name for the API key
-      responses:
-        '201':
-          description: API key created successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  id:
-                    type: string
-                    description: API key ID
-                  prefix:
-                    type: string
-                    description: API key prefix (first 6 characters)
-                  full_key:
-                    type: string
-                    description: The full API key (shown only once)
-                  status:
-                    type: string
-                    description: API key status
-                  created_at:
-                    type: string
-                    format: date-time
-                    description: Creation timestamp
-                  request_id:
-                    type: string
-        '401':
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-  /v1/api-keys/{id}:
-    delete:
-      tags:
-        - Management API
-      summary: Revoke API key
-      description: Revokes an API key by setting its status to revoked
-      operationId: revokeApiKey
-      parameters:
-        - name: id
-          in: path
-          required: true
-          description: ID of the API key to revoke
-          schema:
-            type: string
-      responses:
-        '200':
-          description: API key revoked successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  id:
-                    type: string
-                    description: API key ID
-                  status:
-                    type: string
-                    description: API key status
-                  request_id:
-                    type: string
-        '401':
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '404':
-          description: API key not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-  /v1/webhooks:
-    get:
-      tags:
-        - Management API
-      summary: List webhooks
-      description: Retrieves all webhooks for the authenticated project
-      operationId: listWebhooks
-      responses:
-        '200':
-          description: List of webhooks
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  data:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        id:
-                          type: string
-                        url:
-                          type: string
-                          format: uri
-                        events:
-                          type: array
-                          items:
-                            type: string
-                        status:
-                          type: string
-                          enum: [active, inactive, deleted]
-                        created_at:
-                          type: string
-                          format: date-time
-                        last_fired_at:
-                          type: string
-                          format: date-time
-                          nullable: true
-                  request_id:
-                    type: string
-        '401':
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-    post:
-      tags:
-        - Management API
-      summary: Create webhook
-      description: Creates a new webhook subscription for the authenticated project
-      operationId: createWebhook
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - url
-                - events
-              properties:
-                url:
-                  type: string
-                  format: uri
-                  description: The webhook URL to send events to
-                events:
-                  type: array
-                  items:
-                    type: string
-                  description: Events to subscribe to
-      responses:
-        '201':
-          description: Webhook created successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  id:
-                    type: string
-                  url:
-                    type: string
-                    format: uri
-                  events:
-                    type: array
-                    items:
-                      type: string
-                  secret:
-                    type: string
-                  status:
-                    type: string
-                  created_at:
-                    type: string
-                    format: date-time
-                  request_id:
-                    type: string
-        '401':
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-  /v1/webhooks/{id}:
-    delete:
-      tags:
-        - Management API
-      summary: Delete webhook
-      description: Deletes a webhook subscription
-      operationId: deleteWebhook
-      parameters:
-        - name: id
-          in: path
-          required: true
-          description: ID of the webhook to delete
-          schema:
-            type: string
-      responses:
-        '200':
-          description: Webhook deleted successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  id:
-                    type: string
-                  status:
-                    type: string
-                  request_id:
-                    type: string
-        '401':
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '404':
-          description: Webhook not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-  /v1/webhooks/test:
-    post:
-      tags:
-        - Management API
-      summary: Test Webhook
-      description: Sends a sample payload to the provided webhook URL and returns the response. Useful for testing webhook configurations.
-      operationId: testWebhook
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - url
-                - payload_type
-              properties:
-                url:
-                  type: string
-                  description: The webhook URL to send the payload to
-                  format: uri
-                payload_type:
-                  type: string
-                  enum: [validation, order, custom]
-                  description: Type of sample payload to send
-                  default: validation
-                custom_payload:
-                  type: object
-                  description: Custom payload if payload_type is "custom"
-                  additionalProperties: true
-      responses:
-        '200':
-          description: Webhook test result
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  sent_to:
-                    type: string
-                  payload:
-                    type: object
-                    additionalProperties: true
-                  response:
-                    type: object
-                    properties:
-                      status:
-                        type: integer
-                      status_text:
-                        type: string
-                      headers:
-                        type: object
-                      body:
-                        type: string
-                  request_id:
-                    type: string
-        '401':
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '400':
-          description: Invalid URL or payload
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '500':
-          description: Failed to send request
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-  /v1/rules:
-    get:
-      tags:
-        - Management API
-      summary: Get available rules
-      description: Retrieves a list of all available validation rules and their configurations
-      operationId: getAvailableRules
-      responses:
-        '200':
-          description: List of available rules
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  rules:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        id:
-                          type: string
-                          description: Rule identifier
-                        name:
-                          type: string
-                          description: Human-readable rule name
-                        description:
-                          type: string
-                          description: Rule description
-                        category:
-                          type: string
-                          description: Rule category
-                        severity:
-                          type: string
-                          enum: [low, medium, high, critical]
-                          description: Rule severity level
-                        enabled:
-                          type: boolean
-                          description: Whether the rule is enabled
-                        config:
-                          type: object
-                          description: Rule configuration options
-                          additionalProperties: true
-                  request_id:
-                    type: string
-        '401':
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-  /v1/rules/error-codes:
-    get:
-      tags:
-        - Management API
-      summary: Get error code catalog
-      description: Retrieves a catalog of all possible error codes and their descriptions
-      operationId: getErrorCodeCatalog
-      responses:
-        '200':
-          description: Error code catalog
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error_codes:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        code:
-                          type: string
-                          description: Error code
-                        description:
-                          type: string
-                          description: Error description
-                        category:
-                          type: string
-                          description: Error category
-                  request_id:
-                    type: string
-        '401':
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-  /v1/rules/catalog:
-    get:
-      tags:
-        - Management API
-      summary: Get reason code catalog
-      description: Retrieves a catalog of all possible reason codes and their descriptions
-      operationId: getReasonCodeCatalog
-      responses:
-        '200':
-          description: Reason code catalog
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  reason_codes:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        code:
-                          type: string
-                          description: Reason code
-                        description:
-                          type: string
-                          description: Reason description
-                        category:
-                          type: string
-                          description: Reason category
-                        severity:
-                          type: string
-                          enum: [info, warning, error]
-                          description: Reason severity
-                  request_id:
-                    type: string
-        '401':
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-  /v1/rules/test:
-    post:
-      tags:
-        - Management API
-      summary: Test rules against payload
-      description: Tests rules against a sample payload and returns triggered rules
-      operationId: testRulesAgainstPayload
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - payload
-              properties:
-                payload:
-                  type: object
-                  description: Sample payload to test rules against
-                  additionalProperties: true
-                rule_ids:
-                  type: array
-                  items:
-                    type: string
-                  description: Optional list of specific rule IDs to test
-      responses:
-        '200':
-          description: Rule test results
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  triggered_rules:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        rule_id:
-                          type: string
-                          description: ID of triggered rule
-                        rule_name:
-                          type: string
-                          description: Name of triggered rule
-                        severity:
-                          type: string
-                          enum: [low, medium, high, critical]
-                          description: Rule severity
-                        reason_codes:
-                          type: array
-                          items:
-                            type: string
-                          description: Reason codes generated
-                  request_id:
-                    type: string
-        '400':
-          description: Invalid payload
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '401':
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-  /v1/rules/register:
-    post:
-      tags:
-        - Management API
-      summary: Register custom rules
-      description: Registers new custom validation rules for the project
-      operationId: registerCustomRules
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - rules
-              properties:
-                rules:
-                  type: array
-                  items:
-                    type: object
-                    required:
-                      - name
-                      - logic
-                    properties:
-                      name:
-                        type: string
-                        description: Custom rule name
-                      description:
-                        type: string
-                        description: Rule description
-                      logic:
-                        type: string
-                        description: Rule logic expression
-                      severity:
-                        type: string
-                        enum: [low, medium, high, critical]
-                        default: medium
-                        description: Rule severity
-                      enabled:
-                        type: boolean
-                        default: true
-                        description: Whether the rule is enabled
-                  description: Array of custom rules to register
-      responses:
-        '201':
-          description: Custom rules registered successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  registered_rules:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        id:
-                          type: string
-                          description: Registered rule ID
-                        name:
-                          type: string
-                          description: Rule name
-                        status:
-                          type: string
-                          description: Registration status
-                  request_id:
-                    type: string
-        '400':
-          description: Invalid rule definitions
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '401':
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-  /v1/data/logs:
-    get:
-      tags:
-        - Management API
-      summary: Get event logs
-      description: Retrieves event logs for the project with optional filters
-      operationId: getLogs
-      parameters:
-        - name: reason_code
-          in: query
-          description: Filter by exact reason code
-          schema:
-            type: string
-        - name: endpoint
-          in: query
-          description: Filter by exact endpoint
-          schema:
-            type: string
-        - name: status
-          in: query
-          description: Filter by HTTP status code
-          schema:
-            type: integer
-        - name: limit
-          in: query
-          description: Number of logs to return
-          schema:
-            type: integer
-            minimum: 1
-            maximum: 1000
-            default: 100
-        - name: offset
-          in: query
-          description: Offset for pagination
-          schema:
-            type: integer
-            minimum: 0
-            default: 0
-      responses:
-        '200':
-          description: List of log entries
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  data:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/LogEntry'
-                  next_cursor:
-                    type: string
-                    nullable: true
-                    description: Next offset for pagination
-                  total_count:
-                    type: integer
-                    description: Total number of matching logs
-                  request_id:
-                    type: string
-        '401':
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-  /v1/data/usage:
-    get:
-      tags:
-        - Management API
-      summary: Get usage statistics
-      description: Retrieves usage statistics for the project
-      operationId: getUsage
-      responses:
-        '200':
-          description: Usage statistics
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  period:
-                    type: string
-                    example: month
-                    description: Time period
-                  totals:
-                    type: object
-                    properties:
-                      validations:
-                        type: integer
-                        description: Total validations
-                      orders:
-                        type: integer
-                        description: Total orders
-                  by_day:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        date:
-                          type: string
-                          format: date
-                          description: Date
-                        validations:
-                          type: integer
-                          description: Validations for this day
-                        orders:
-                          type: integer
-                          description: Orders for this day
-                  top_reason_codes:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        code:
-                          type: string
-                          description: Reason code
-                        count:
-                          type: integer
-                          description: Count
-                  cache_hit_ratio:
-                    type: number
-                    description: Cache hit ratio percentage
-                  request_id:
-                    type: string
-        '401':
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-  /v1/settings:
-    get:
-      tags:
-        - Management API
-      summary: Get tenant settings
-      description: >-
-        Retrieves tenant settings including country defaults, formatting, and
-        risk thresholds
-      operationId: getSettings
-      responses:
-        '200':
-          description: Tenant settings
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  country_defaults:
-                    type: object
-                    description: Country-specific default settings
-                  formatting:
-                    type: object
-                    description: Formatting preferences
-                  risk_thresholds:
-                    type: object
-                    description: Risk assessment thresholds
-                  request_id:
-                    type: string
-                    description: Request identifier
-        '401':
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-    put:
-      tags:
-        - Management API
-      summary: Update tenant settings
-      description: >-
-        Updates tenant settings including country defaults, formatting, and risk
-        thresholds
-      operationId: updateSettings
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                country_defaults:
-                  type: object
-                  description: Country-specific default settings
-                formatting:
-                  type: object
-                  description: Formatting preferences
-                risk_thresholds:
-                  type: object
-                  description: Risk assessment thresholds
-      responses:
-        '200':
-          description: Settings updated successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  message:
-                    type: string
-                    description: Success message
-                  request_id:
-                    type: string
-                    description: Request identifier
-        '400':
-          description: Invalid input data
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '401':
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-  /v1/data/erase:
-    post:
-      tags:
-        - Management API
-      summary: Erase user data
-      description: Initiates data erasure for GDPR/CCPA compliance
-      operationId: eraseData
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - reason
-              properties:
-                reason:
-                  type: string
-                  description: Reason for data erasure (gdpr/ccpa)
-                  enum:
-                    - gdpr
-                    - ccpa
-      responses:
-        '202':
-          description: Data erasure initiated
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  message:
-                    type: string
-                    description: Confirmation message
-                  request_id:
-                    type: string
-                    description: Request identifier
-        '400':
-          description: Invalid input data
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '401':
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-  /v1/billing/checkout:
-    post:
-      tags:
-        - Management API
-      summary: Create Stripe Checkout session
-      description: Creates a Stripe Checkout session with base plan and usage-based line items
-      operationId: createCheckoutSession
-      responses:
-        '200':
-          description: Checkout session created
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  session_url:
-                    type: string
-                    format: uri
-                  session_id:
-                    type: string
-                  request_id:
-                    type: string
-        '401':
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '429':
-          description: Rate limit exceeded
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-  /v1/billing/portal:
-    post:
-      tags:
-        - Management API
-      summary: Create Stripe Customer Portal session
-      description: Creates a Stripe Customer Portal session for managing billing
-      operationId: createCustomerPortalSession
-      responses:
-        '200':
-          description: Portal session created
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  portal_url:
-                    type: string
-                    format: uri
-                  request_id:
-                    type: string
-        '401':
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '404':
-          description: No billing account found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '429':
-          description: Rate limit exceeded
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-  /v1/logs/{id}:
-    delete:
-      tags:
-        - Management API
-      summary: Delete log entry
-      description: Deletes a specific log entry
-      operationId: deleteLog
-      parameters:
-        - name: id
-          in: path
-          required: true
-          description: ID of the log entry to delete
-          schema:
-            type: string
-      responses:
-        '200':
-          description: Log entry deleted successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  message:
-                    type: string
-                    description: Success message
-                  request_id:
-                    type: string
-                    description: Request identifier
-        '401':
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '404':
-          description: Log entry not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-  components:
-  securitySchemes:
-    BearerAuth:
-      type: http
-      scheme: bearer
-      bearerFormat: JWT
-      description: Personal Access Token (PAT) or session cookie for management API authentication
-  schemas:
-    Error:
-      type: object
-      properties:
-        error:
-          type: object
-          properties:
-            code:
-              type: string
-              description: Error code
-            message:
-              type: string
-              description: Error message
-        request_id:
-          type: string
-          description: Request identifier
-    ApiKey:
-      type: object
-      properties:
-        id:
-          type: string
-          description: API key ID
-        prefix:
-          type: string
-          description: API key prefix (first 6 characters)
-        status:
-          type: string
-          enum:
-            - active
-            - revoked
-          description: API key status
-        created_at:
-          type: string
-          format: date-time
-          description: Creation timestamp
-        last_used_at:
-          type: string
-          format: date-time
-          nullable: true
-          description: Last used timestamp
-    Webhook:
-      type: object
-      properties:
-        id:
-          type: string
-          description: Webhook ID
-        url:
-          type: string
-          format: uri
-          description: Webhook URL
-        events:
-          type: array
-          items:
-            type: string
-          description: Events this webhook is subscribed to
-        status:
-          type: string
-          enum:
-            - active
-            - inactive
-            - deleted
-          description: Webhook status
-        created_at:
-          type: string
-          format: date-time
-          description: Creation timestamp
-        last_fired_at:
-          type: string
-          format: date-time
-          nullable: true
-          description: Last time webhook was fired
-    Address:
-      type: object
-      properties:
-        line1:
-          type: string
-          description: Street address line 1
-        line2:
-          type: string
-          description: Street address line 2
-        city:
-          type: string
-          description: City
-        state:
-          type: string
-          description: State or province
-        postal_code:
-          type: string
-          description: Postal code
-        country:
-          type: string
-          description: Two-letter country code
-        lat:
-          type: number
-          nullable: true
-          description: Latitude
-        lng:
-          type: number
-          nullable: true
-          description: Longitude
-    Customer:
-      type: object
-      properties:
-        email:
-          type: string
-          description: Customer email
-        phone:
-          type: string
-          description: Customer phone
-        first_name:
-          type: string
-          description: Customer first name
-        last_name:
-          type: string
-          description: Customer last name
-    CustomerMatch:
-      type: object
-      properties:
-        id:
-          type: string
-          description: Customer ID
-        similarity_score:
-          type: number
-          description: Similarity score (0-1)
-        match_type:
-          type: string
-          enum:
-            - exact_email
-            - exact_phone
-            - fuzzy_name
-          description: Type of match
-        data:
-          $ref: '#/components/schemas/Customer'
-    AddressMatch:
-      type: object
-      properties:
-        id:
-          type: string
-          description: Address ID
-        similarity_score:
-          type: number
-          description: Similarity score (0-1)
-        match_type:
-          type: string
-          enum:
-            - exact_address
-            - exact_postal
-            - fuzzy_address
-          description: Type of match
-        data:
-          $ref: '#/components/schemas/Address'
-    DedupeResult:
-      type: object
-      properties:
-        matches:
-          type: array
-          items:
-            type: object
-            properties:
-              id:
-                type: string
-              similarity_score:
-                type: number
-              match_type:
-                type: string
-              data:
-                type: object
-        suggested_action:
-          type: string
-          enum:
-            - create_new
-            - merge_with
-            - review
-        canonical_id:
-          type: string
-          nullable: true
-    ValidationResult:
-      type: object
-      properties:
-        valid:
-          type: boolean
-          description: Whether the validation passed
-        reason_codes:
-          type: array
-          items:
-            type: string
-          description: List of reason codes
-        disposable:
-          type: boolean
-          description: Whether the result is disposable (for email)
-    AddressValidationResult:
-      type: object
-      properties:
-        valid:
-          type: boolean
-          description: Whether the address is valid
-        reason_codes:
-          type: array
-          items:
-            type: string
-          description: List of reason codes
-        po_box:
-          type: boolean
-          description: Whether the address is a P.O. Box
-        postal_city_match:
-          type: boolean
-          description: Whether postal code matches city
-        in_bounds:
-          type: boolean
-          description: Whether the address is within bounds
-    LogEntry:
-      type: object
-      properties:
-        id:
-          type: string
-          description: Log entry ID
-        type:
-          type: string
-          description: Log entry type
-        endpoint:
-          type: string
-          description: API endpoint
-        reason_codes:
-          type: array
-          items:
-            type: string
-          description: List of reason codes
-        status:
-          type: integer
-          description: HTTP status code
-        meta:
-          type: object
-          description: Additional metadata
-        created_at:
-          type: string
-          format: date-time
-          description: Creation timestamp
-    Rule:
-      type: object
-      properties:
-        id:
-          type: string
-          description: Rule ID
-        name:
-          type: string
-          description: Rule name
-        description:
-          type: string
-          description: Rule description
-        category:
-          type: string
-          description: Rule category
-        enabled:
-          type: boolean
-          description: Whether the rule is enabled
-    ReasonCode:
-      type: object
-      properties:
-        code:
-          type: string
-          description: Reason code
-        description:
-          type: string
-          description: Description of the reason code
-        category:
-          type: string
-          description: Category of the reason code
-        severity:
-          type: string
-          enum:
-            - low
-            - medium
-            - high
-          description: Severity level
-    ErrorCode:
-      type: object
-      properties:
-        code:
-          type: string
-          description: Error code
-        description:
-          type: string
-          description: Description of the error code
-        category:
-          type: string
-          description: Category of the error code
-        severity:
-          type: string
-          enum:
-            - low
-            - medium
-            - high
-          description: Severity level
-    CustomRule:
-      type: object
-      properties:
-        id:
-          type: string
-          description: Rule ID
-        name:
-          type: string
-          description: Rule name
-        description:
-          type: string
-          description: Rule description
-        reason_code:
-          type: string
-          description: Reason code to trigger
-        severity:
-          type: string
-          enum:
-            - low
-            - medium
-            - high
-          description: Severity level
-        enabled:
-          type: boolean
-          description: Whether the rule is enabled
+   /v1/api-keys:
+     get:
+       tags:
+         - Management API
+       summary: List API keys
+       description: Retrieves API keys for the authenticated project
+       operationId: listApiKeys
+       responses:
+         '200':
+           description: List of API keys
+           content:
+             application/json:
+               schema:
+                 type: object
+                 properties:
+                   data:
+                     type: array
+                     items:
+                       $ref: '#/components/schemas/ApiKey'
+                   request_id:
+                     type: string
+         '401':
+           description: Unauthorized
+           content:
+             application/json:
+               schema:
+                 $ref: '#/components/schemas/Error'
+     post:
+       tags:
+         - Management API
+       summary: Create API key
+       description: Generates a new API key for the authenticated project
+       operationId: createApiKey
+       requestBody:
+         required: true
+         content:
+           application/json:
+             schema:
+               type: object
+               properties:
+                 name:
+                   type: string
+                   description: Optional name for the API key
+       responses:
+         '201':
+           description: API key created successfully
+           content:
+             application/json:
+               schema:
+                 type: object
+                 properties:
+                   id:
+                     type: string
+                     description: API key ID
+                   prefix:
+                     type: string
+                     description: API key prefix (first 6 characters)
+                   full_key:
+                     type: string
+                     description: The full API key (shown only once)
+                   status:
+                     type: string
+                     description: API key status
+                   created_at:
+                     type: string
+                     format: date-time
+                     description: Creation timestamp
+                   request_id:
+                     type: string
+         '401':
+           description: Unauthorized
+           content:
+             application/json:
+               schema:
+                 $ref: '#/components/schemas/Error'
+   /v1/api-keys/{id}:
+     delete:
+       tags:
+         - Management API
+       summary: Revoke API key
+       description: Revokes an API key by setting its status to revoked
+       operationId: revokeApiKey
+       parameters:
+         - name: id
+           in: path
+           required: true
+           description: ID of the API key to revoke
+           schema:
+             type: string
+       responses:
+         '200':
+           description: API key revoked successfully
+           content:
+             application/json:
+               schema:
+                 type: object
+                 properties:
+                   id:
+                     type: string
+                     description: API key ID
+                   status:
+                     type: string
+                     description: API key status
+                   request_id:
+                     type: string
+         '401':
+           description: Unauthorized
+           content:
+             application/json:
+               schema:
+                 $ref: '#/components/schemas/Error'
+         '404':
+           description: API key not found
+           content:
+             application/json:
+               schema:
+                 $ref: '#/components/schemas/Error'
+   /v1/webhooks:
+     get:
+       tags:
+         - Management API
+       summary: List webhooks
+       description: Retrieves all webhooks for the authenticated project
+       operationId: listWebhooks
+       responses:
+         '200':
+           description: List of webhooks
+           content:
+             application/json:
+               schema:
+                 type: object
+                 properties:
+                   data:
+                     type: array
+                     items:
+                       type: object
+                       properties:
+                         id:
+                           type: string
+                         url:
+                           type: string
+                           format: uri
+                         events:
+                           type: array
+                           items:
+                             type: string
+                         status:
+                           type: string
+                           enum: [active, inactive, deleted]
+                         created_at:
+                           type: string
+                           format: date-time
+                         last_fired_at:
+                           type: string
+                           format: date-time
+                           nullable: true
+                   request_id:
+                     type: string
+         '401':
+           description: Unauthorized
+           content:
+             application/json:
+               schema:
+                 $ref: '#/components/schemas/Error'
+     post:
+       tags:
+         - Management API
+       summary: Create webhook
+       description: Creates a new webhook subscription for the authenticated project
+       operationId: createWebhook
+       requestBody:
+         required: true
+         content:
+           application/json:
+             schema:
+               type: object
+               required:
+                 - url
+                 - events
+               properties:
+                 url:
+                   type: string
+                   format: uri
+                   description: The webhook URL to send events to
+                 events:
+                   type: array
+                   items:
+                     type: string
+                   description: Events to subscribe to
+       responses:
+         '201':
+           description: Webhook created successfully
+           content:
+             application/json:
+               schema:
+                 type: object
+                 properties:
+                   id:
+                     type: string
+                   url:
+                     type: string
+                     format: uri
+                   events:
+                     type: array
+                     items:
+                       type: string
+                   secret:
+                     type: string
+                   status:
+                     type: string
+                   created_at:
+                     type: string
+                     format: date-time
+                   request_id:
+                     type: string
+         '401':
+           description: Unauthorized
+           content:
+             application/json:
+               schema:
+                 $ref: '#/components/schemas/Error'
+   /v1/webhooks/{id}:
+     delete:
+       tags:
+         - Management API
+       summary: Delete webhook
+       description: Deletes a webhook subscription
+       operationId: deleteWebhook
+       parameters:
+         - name: id
+           in: path
+           required: true
+           description: ID of the webhook to delete
+           schema:
+             type: string
+       responses:
+         '200':
+           description: Webhook deleted successfully
+           content:
+             application/json:
+               schema:
+                 type: object
+                 properties:
+                   id:
+                     type: string
+                   status:
+                     type: string
+                   request_id:
+                     type: string
+         '401':
+           description: Unauthorized
+           content:
+             application/json:
+               schema:
+                 $ref: '#/components/schemas/Error'
+         '404':
+           description: Webhook not found
+           content:
+             application/json:
+               schema:
+                 $ref: '#/components/schemas/Error'
+   /v1/webhooks/test:
+     post:
+       tags:
+         - Management API
+       summary: Test Webhook
+       description: Sends a sample payload to the provided webhook URL and returns the response. Useful for testing webhook configurations.
+       operationId: testWebhook
+       requestBody:
+         required: true
+         content:
+           application/json:
+             schema:
+               type: object
+               required:
+                 - url
+                 - payload_type
+               properties:
+                 url:
+                   type: string
+                   description: The webhook URL to send the payload to
+                   format: uri
+                 payload_type:
+                   type: string
+                   enum: [validation, order, custom]
+                   description: Type of sample payload to send
+                   default: validation
+                 custom_payload:
+                   type: object
+                   description: Custom payload if payload_type is "custom"
+                   additionalProperties: true
+       responses:
+         '200':
+           description: Webhook test result
+           content:
+             application/json:
+               schema:
+                 type: object
+                 properties:
+                   sent_to:
+                     type: string
+                   payload:
+                     type: object
+                     additionalProperties: true
+                   response:
+                     type: object
+                     properties:
+                       status:
+                         type: integer
+                       status_text:
+                         type: string
+                       headers:
+                         type: object
+                       body:
+                         type: string
+                   request_id:
+                     type: string
+         '401':
+           description: Unauthorized
+           content:
+             application/json:
+               schema:
+                 $ref: '#/components/schemas/Error'
+         '400':
+           description: Invalid URL or payload
+           content:
+             application/json:
+               schema:
+                 $ref: '#/components/schemas/Error'
+         '500':
+           description: Failed to send request
+           content:
+             application/json:
+               schema:
+                 $ref: '#/components/schemas/Error'
+   /v1/rules:
+     get:
+       tags:
+         - Management API
+       summary: Get available rules
+       description: Retrieves a list of all available validation rules and their configurations
+       operationId: getAvailableRules
+       responses:
+         '200':
+           description: List of available rules
+           content:
+             application/json:
+               schema:
+                 type: object
+                 properties:
+                   rules:
+                     type: array
+                     items:
+                       type: object
+                       properties:
+                         id:
+                           type: string
+                           description: Rule identifier
+                         name:
+                           type: string
+                           description: Human-readable rule name
+                         description:
+                           type: string
+                           description: Rule description
+                         category:
+                           type: string
+                           description: Rule category
+                         severity:
+                           type: string
+                           enum: [low, medium, high, critical]
+                           description: Rule severity level
+                         enabled:
+                           type: boolean
+                           description: Whether the rule is enabled
+                         config:
+                           type: object
+                           description: Rule configuration options
+                           additionalProperties: true
+                   request_id:
+                     type: string
+         '401':
+           description: Unauthorized
+           content:
+             application/json:
+               schema:
+                 $ref: '#/components/schemas/Error'
+   /v1/rules/error-codes:
+     get:
+       tags:
+         - Management API
+       summary: Get error code catalog
+       description: Retrieves a catalog of all possible error codes and their descriptions
+       operationId: getErrorCodeCatalog
+       responses:
+         '200':
+           description: Error code catalog
+           content:
+             application/json:
+               schema:
+                 type: object
+                 properties:
+                   error_codes:
+                     type: array
+                     items:
+                       type: object
+                       properties:
+                         code:
+                           type: string
+                           description: Error code
+                         description:
+                           type: string
+                           description: Error description
+                         category:
+                           type: string
+                           description: Error category
+                   request_id:
+                     type: string
+         '401':
+           description: Unauthorized
+           content:
+             application/json:
+               schema:
+                 $ref: '#/components/schemas/Error'
+   /v1/rules/catalog:
+     get:
+       tags:
+         - Management API
+       summary: Get reason code catalog
+       description: Retrieves a catalog of all possible reason codes and their descriptions
+       operationId: getReasonCodeCatalog
+       responses:
+         '200':
+           description: Reason code catalog
+           content:
+             application/json:
+               schema:
+                 type: object
+                 properties:
+                   reason_codes:
+                     type: array
+                     items:
+                       type: object
+                       properties:
+                         code:
+                           type: string
+                           description: Reason code
+                         description:
+                           type: string
+                           description: Reason description
+                         category:
+                           type: string
+                           description: Reason category
+                         severity:
+                           type: string
+                           enum: [info, warning, error]
+                           description: Reason severity
+                   request_id:
+                     type: string
+         '401':
+           description: Unauthorized
+           content:
+             application/json:
+               schema:
+                 $ref: '#/components/schemas/Error'
+   /v1/rules/test:
+     post:
+       tags:
+         - Management API
+       summary: Test rules against payload
+       description: Tests rules against a sample payload and returns triggered rules
+       operationId: testRulesAgainstPayload
+       requestBody:
+         required: true
+         content:
+           application/json:
+             schema:
+               type: object
+               required:
+                 - payload
+               properties:
+                 payload:
+                   type: object
+                   description: Sample payload to test rules against
+                   additionalProperties: true
+                 rule_ids:
+                   type: array
+                   items:
+                     type: string
+                   description: Optional list of specific rule IDs to test
+       responses:
+         '200':
+           description: Rule test results
+           content:
+             application/json:
+               schema:
+                 type: object
+                 properties:
+                   triggered_rules:
+                     type: array
+                     items:
+                       type: object
+                       properties:
+                         rule_id:
+                           type: string
+                           description: ID of triggered rule
+                         rule_name:
+                           type: string
+                           description: Name of triggered rule
+                         severity:
+                           type: string
+                           enum: [low, medium, high, critical]
+                           description: Rule severity
+                         reason_codes:
+                           type: array
+                           items:
+                             type: string
+                           description: Reason codes generated
+                   request_id:
+                     type: string
+         '400':
+           description: Invalid payload
+           content:
+             application/json:
+               schema:
+                 $ref: '#/components/schemas/Error'
+         '401':
+           description: Unauthorized
+           content:
+             application/json:
+               schema:
+                 $ref: '#/components/schemas/Error'
+   /v1/rules/register:
+     post:
+       tags:
+         - Management API
+       summary: Register custom rules
+       description: Registers new custom validation rules for the project
+       operationId: registerCustomRules
+       requestBody:
+         required: true
+         content:
+           application/json:
+             schema:
+               type: object
+               required:
+                 - rules
+               properties:
+                 rules:
+                   type: array
+                   items:
+                     type: object
+                     required:
+                       - name
+                       - logic
+                     properties:
+                       name:
+                         type: string
+                         description: Custom rule name
+                       description:
+                         type: string
+                         description: Rule description
+                       logic:
+                         type: string
+                         description: Rule logic expression
+                       severity:
+                         type: string
+                         enum: [low, medium, high, critical]
+                         default: medium
+                         description: Rule severity
+                       enabled:
+                         type: boolean
+                         default: true
+                         description: Whether the rule is enabled
+                   description: Array of custom rules to register
+       responses:
+         '201':
+           description: Custom rules registered successfully
+           content:
+             application/json:
+               schema:
+                 type: object
+                 properties:
+                   registered_rules:
+                     type: array
+                     items:
+                       type: object
+                       properties:
+                         id:
+                           type: string
+                           description: Registered rule ID
+                         name:
+                           type: string
+                           description: Rule name
+                         status:
+                           type: string
+                           description: Registration status
+                   request_id:
+                     type: string
+         '400':
+           description: Invalid rule definitions
+           content:
+             application/json:
+               schema:
+                 $ref: '#/components/schemas/Error'
+         '401':
+           description: Unauthorized
+           content:
+             application/json:
+               schema:
+                 $ref: '#/components/schemas/Error'
+   /v1/data/logs:
+     get:
+       tags:
+         - Management API
+       summary: Get event logs
+       description: Retrieves event logs for the project with optional filters
+       operationId: getLogs
+       parameters:
+         - name: reason_code
+           in: query
+           description: Filter by exact reason code
+           schema:
+             type: string
+         - name: endpoint
+           in: query
+           description: Filter by exact endpoint
+           schema:
+             type: string
+         - name: status
+           in: query
+           description: Filter by HTTP status code
+           schema:
+             type: integer
+         - name: limit
+           in: query
+           description: Number of logs to return
+           schema:
+             type: integer
+             default: 50
+             maximum: 1000
+         - name: offset
+           in: query
+           description: Number of logs to skip
+           schema:
+             type: integer
+             default: 0
+       responses:
+         '200':
+           description: List of log entries
+           content:
+             application/json:
+               schema:
+                 type: object
+                 properties:
+                   data:
+                     type: array
+                     items:
+                       $ref: '#/components/schemas/LogEntry'
+                   next_cursor:
+                     type: string
+                     nullable: true
+                     description: Next offset for pagination
+                   total_count:
+                     type: integer
+                     description: Total number of matching logs
+                   request_id:
+                     type: string
+         '401':
+           description: Unauthorized
+           content:
+             application/json:
+               schema:
+                 $ref: '#/components/schemas/Error'
+   /v1/pats:
+     get:
+       tags:
+         - Management API
+       summary: List Personal Access Tokens
+       description: Retrieves personal access tokens for the authenticated user
+       operationId: listPersonalAccessTokens
+       responses:
+         '200':
+           description: List of personal access tokens
+           content:
+             application/json:
+               schema:
+                 type: object
+                 properties:
+                   data:
+                     type: array
+                     items:
+                       type: object
+                       properties:
+                         id:
+                           type: string
+                           description: Token ID
+                         token_id:
+                           type: string
+                           description: Public token identifier (last 4 chars shown)
+                         name:
+                           type: string
+                           description: Token name
+                         scopes:
+                           type: array
+                           items:
+                             type: string
+                           description: Access scopes
+                         env:
+                           type: string
+                           enum: [test, live]
+                           description: Environment
+                         last_used_at:
+                           type: string
+                           format: date-time
+                           nullable: true
+                           description: Last usage timestamp
+                         last_used_ip:
+                           type: string
+                           nullable: true
+                           description: Last usage IP
+                         expires_at:
+                           type: string
+                           format: date-time
+                           nullable: true
+                           description: Expiration date
+                         disabled:
+                           type: boolean
+                           description: Whether token is disabled
+                         created_at:
+                           type: string
+                           format: date-time
+                           description: Creation timestamp
+                   request_id:
+                     type: string
+         '401':
+           description: Unauthorized
+           content:
+             application/json:
+               schema:
+                 $ref: '#/components/schemas/Error'
+     post:
+       tags:
+         - Management API
+       summary: Create Personal Access Token
+       description: Creates a new personal access token for management API access
+       operationId: createPersonalAccessToken
+       requestBody:
+         required: true
+         content:
+           application/json:
+             schema:
+               type: object
+               required:
+                 - name
+                 - scopes
+               properties:
+                 name:
+                   type: string
+                   description: Token name
+                 scopes:
+                   type: array
+                   items:
+                     type: string
+                     enum: [keys:read, keys:write, logs:read, usage:read, webhooks:manage, connectors:manage, pats:manage, projects:manage, rules:manage]
+                   description: Access scopes for the token
+                 env:
+                   type: string
+                   enum: [test, live]
+                   default: live
+                   description: Environment for the token
+                 expires_at:
+                   type: string
+                   format: date-time
+                   description: Optional expiration date
+                 ip_allowlist:
+                   type: array
+                   items:
+                     type: string
+                   description: Optional IP allowlist (CIDR notation)
+                 project_id:
+                   type: string
+                   description: Optional project restriction
+       responses:
+         '201':
+           description: Personal access token created successfully
+           content:
+             application/json:
+               schema:
+                 type: object
+                 properties:
+                   token:
+                     type: string
+                     description: The full PAT (shown only once)
+                   token_id:
+                     type: string
+                     description: Token identifier
+                   name:
+                     type: string
+                   scopes:
+                     type: array
+                     items:
+                       type: string
+                   env:
+                     type: string
+                   expires_at:
+                     type: string
+                     format: date-time
+                     nullable: true
+                   created_at:
+                     type: string
+                     format: date-time
+                   request_id:
+                     type: string
+         '400':
+           description: Invalid input
+           content:
+             application/json:
+               schema:
+                 $ref: '#/components/schemas/Error'
+         '401':
+           description: Unauthorized
+           content:
+             application/json:
+               schema:
+                 $ref: '#/components/schemas/Error'
+   /v1/pats/{token_id}:
+     delete:
+       tags:
+         - Management API
+       summary: Revoke Personal Access Token
+       description: Revokes a personal access token by disabling it
+       operationId: revokePersonalAccessToken
+       parameters:
+         - name: token_id
+           in: path
+           required: true
+           description: Token ID to revoke
+           schema:
+             type: string
+       responses:
+         '200':
+           description: Personal access token revoked successfully
+           content:
+             application/json:
+               schema:
+                 type: object
+                 properties:
+                   id:
+                     type: string
+                     description: Token ID
+                   token_id:
+                     type: string
+                     description: Token identifier
+                   disabled:
+                     type: boolean
+                     description: Whether token is disabled
+                   request_id:
+                     type: string
+         '401':
+           description: Unauthorized
+           content:
+             application/json:
+               schema:
+                 $ref: '#/components/schemas/Error'
+         '404':
+           description: Personal access token not found
+           content:
+             application/json:
+               schema:
+                 $ref: '#/components/schemas/Error'
+   /v1/data/usage:
+     get:
+       tags:
+         - Management API
+       summary: Get usage statistics
+       description: Retrieves usage statistics for the project
+       operationId: getUsage
+       responses:
+         '200':
+           description: Usage statistics
+           content:
+             application/json:
+               schema:
+                 type: object
+                 properties:
+                   period:
+                     type: string
+                     example: month
+                     description: Time period
+                   totals:
+                     type: object
+                     properties:
+                       validations:
+                         type: integer
+                         description: Total validations
+                       orders:
+                         type: integer
+                         description: Total orders
+                   by_day:
+                     type: array
+                     items:
+                       type: object
+                       properties:
+                         date:
+                           type: string
+                           format: date
+                           description: Date
+                         validations:
+                           type: integer
+                           description: Validations for this day
+                         orders:
+                           type: integer
+                           description: Orders for this day
+                   top_reason_codes:
+                     type: array
+                     items:
+                       type: object
+                       properties:
+                         code:
+                           type: string
+                           description: Reason code
+                         count:
+                           type: integer
+                           description: Count
+                   cache_hit_ratio:
+                     type: number
+                     description: Cache hit ratio percentage
+                   request_id:
+                     type: string
+         '401':
+           description: Unauthorized
+           content:
+             application/json:
+               schema:
+                 $ref: '#/components/schemas/Error'
+   /v1/settings:
+     get:
+       tags:
+         - Management API
+       summary: Get tenant settings
+       description: >-
+         Retrieves tenant settings including country defaults, formatting, and
+         risk thresholds
+       operationId: getSettings
+       responses:
+         '200':
+           description: Tenant settings
+           content:
+             application/json:
+               schema:
+                 type: object
+                 properties:
+                   country_defaults:
+                     type: object
+                     description: Country-specific default settings
+                   formatting:
+                     type: object
+                     description: Formatting preferences
+                   risk_thresholds:
+                     type: object
+                     description: Risk assessment thresholds
+                   request_id:
+                     type: string
+                     description: Request identifier
+         '401':
+           description: Unauthorized
+           content:
+             application/json:
+               schema:
+                 $ref: '#/components/schemas/Error'
+     put:
+       tags:
+         - Management API
+       summary: Update tenant settings
+       description: >-
+         Updates tenant settings including country defaults, formatting, and risk
+         thresholds
+       operationId: updateSettings
+       requestBody:
+         required: true
+         content:
+           application/json:
+             schema:
+               type: object
+               properties:
+                 country_defaults:
+                   type: object
+                   description: Country-specific default settings
+                 formatting:
+                   type: object
+                   description: Formatting preferences
+                 risk_thresholds:
+                   type: object
+                   description: Risk assessment thresholds
+       responses:
+         '200':
+           description: Settings updated successfully
+           content:
+             application/json:
+               schema:
+                 type: object
+                 properties:
+                   message:
+                     type: string
+                     description: Success message
+                   request_id:
+                     type: string
+                     description: Request identifier
+         '400':
+           description: Invalid input data
+           content:
+             application/json:
+               schema:
+                 $ref: '#/components/schemas/Error'
+         '401':
+           description: Unauthorized
+           content:
+             application/json:
+               schema:
+                 $ref: '#/components/schemas/Error'
+   /v1/data/erase:
+     post:
+       tags:
+         - Management API
+       summary: Erase user data
+       description: Initiates data erasure for GDPR/CCPA compliance
+       operationId: eraseData
+       requestBody:
+         required: true
+         content:
+           application/json:
+             schema:
+               type: object
+               required:
+                 - reason
+               properties:
+                 reason:
+                   type: string
+                   description: Reason for data erasure (gdpr/ccpa)
+                   enum:
+                     - gdpr
+                     - ccpa
+       responses:
+         '202':
+           description: Data erasure initiated
+           content:
+             application/json:
+               schema:
+                 type: object
+                 properties:
+                   message:
+                     type: string
+                     description: Confirmation message
+                   request_id:
+                     type: string
+                     description: Request identifier
+         '400':
+           description: Invalid input data
+           content:
+             application/json:
+               schema:
+                 $ref: '#/components/schemas/Error'
+         '401':
+           description: Unauthorized
+           content:
+             application/json:
+               schema:
+                 $ref: '#/components/schemas/Error'
+   /v1/billing/checkout:
+     post:
+       tags:
+         - Management API
+       summary: Create Stripe Checkout session
+       description: Creates a Stripe Checkout session with base plan and usage-based line items
+       operationId: createCheckoutSession
+       responses:
+         '200':
+           description: Checkout session created
+           content:
+             application/json:
+               schema:
+                 type: object
+                 properties:
+                   session_url:
+                     type: string
+                     format: uri
+                   session_id:
+                     type: string
+                   request_id:
+                     type: string
+         '401':
+           description: Unauthorized
+           content:
+             application/json:
+               schema:
+                 $ref: '#/components/schemas/Error'
+         '429':
+           description: Rate limit exceeded
+           content:
+             application/json:
+               schema:
+                 $ref: '#/components/schemas/Error'
+   /v1/billing/portal:
+     post:
+       tags:
+         - Management API
+       summary: Create Stripe Customer Portal session
+       description: Creates a Stripe Customer Portal session for managing billing
+       operationId: createCustomerPortalSession
+       responses:
+         '200':
+           description: Portal session created
+           content:
+             application/json:
+               schema:
+                 type: object
+                 properties:
+                   portal_url:
+                     type: string
+                     format: uri
+                   request_id:
+                     type: string
+         '401':
+           description: Unauthorized
+           content:
+             application/json:
+               schema:
+                 $ref: '#/components/schemas/Error'
+         '404':
+           description: No billing account found
+           content:
+             application/json:
+               schema:
+                 $ref: '#/components/schemas/Error'
+         '429':
+           description: Rate limit exceeded
+           content:
+             application/json:
+               schema:
+                 $ref: '#/components/schemas/Error'
+   /v1/logs/{id}:
+     delete:
+       tags:
+         - Management API
+       summary: Delete log entry
+       description: Deletes a specific log entry
+       operationId: deleteLog
+       parameters:
+         - name: id
+           in: path
+           required: true
+           description: ID of the log entry to delete
+           schema:
+             type: string
+       responses:
+         '200':
+           description: Log entry deleted successfully
+           content:
+             application/json:
+               schema:
+                 type: object
+                 properties:
+                   message:
+                     type: string
+                     description: Success message
+                   request_id:
+                     type: string
+                     description: Request identifier
+         '401':
+           description: Unauthorized
+           content:
+             application/json:
+               schema:
+                 $ref: '#/components/schemas/Error'
+         '404':
+           description: Log entry not found
+           content:
+             application/json:
+               schema:
+                 $ref: '#/components/schemas/Error'

@@ -693,13 +693,11 @@ endpoint?: string;
 status?: number;
 /**
  * Number of logs to return
- * @minimum 1
  * @maximum 1000
  */
 limit?: number;
 /**
- * Offset for pagination
- * @minimum 0
+ * Number of logs to skip
  */
 offset?: number;
 };
@@ -713,6 +711,122 @@ export type GetLogs200 = {
   next_cursor?: string | null;
   /** Total number of matching logs */
   total_count?: number;
+  request_id?: string;
+};
+
+/**
+ * Environment
+ */
+export type ListPersonalAccessTokens200DataItemEnv = typeof ListPersonalAccessTokens200DataItemEnv[keyof typeof ListPersonalAccessTokens200DataItemEnv];
+
+
+// eslint-disable-next-line @typescript-eslint/no-redeclare
+export const ListPersonalAccessTokens200DataItemEnv = {
+  test: 'test',
+  live: 'live',
+} as const;
+
+export type ListPersonalAccessTokens200DataItem = {
+  /** Token ID */
+  id?: string;
+  /** Public token identifier (last 4 chars shown) */
+  token_id?: string;
+  /** Token name */
+  name?: string;
+  /** Access scopes */
+  scopes?: string[];
+  /** Environment */
+  env?: ListPersonalAccessTokens200DataItemEnv;
+  /**
+   * Last usage timestamp
+   * @nullable
+   */
+  last_used_at?: string | null;
+  /**
+   * Last usage IP
+   * @nullable
+   */
+  last_used_ip?: string | null;
+  /**
+   * Expiration date
+   * @nullable
+   */
+  expires_at?: string | null;
+  /** Whether token is disabled */
+  disabled?: boolean;
+  /** Creation timestamp */
+  created_at?: string;
+};
+
+export type ListPersonalAccessTokens200 = {
+  data?: ListPersonalAccessTokens200DataItem[];
+  request_id?: string;
+};
+
+export type CreatePersonalAccessTokenBodyScopesItem = typeof CreatePersonalAccessTokenBodyScopesItem[keyof typeof CreatePersonalAccessTokenBodyScopesItem];
+
+
+// eslint-disable-next-line @typescript-eslint/no-redeclare
+export const CreatePersonalAccessTokenBodyScopesItem = {
+  'keys:read': 'keys:read',
+  'keys:write': 'keys:write',
+  'logs:read': 'logs:read',
+  'usage:read': 'usage:read',
+  'webhooks:manage': 'webhooks:manage',
+  'connectors:manage': 'connectors:manage',
+  'pats:manage': 'pats:manage',
+  'projects:manage': 'projects:manage',
+  'rules:manage': 'rules:manage',
+} as const;
+
+/**
+ * Environment for the token
+ */
+export type CreatePersonalAccessTokenBodyEnv = typeof CreatePersonalAccessTokenBodyEnv[keyof typeof CreatePersonalAccessTokenBodyEnv];
+
+
+// eslint-disable-next-line @typescript-eslint/no-redeclare
+export const CreatePersonalAccessTokenBodyEnv = {
+  test: 'test',
+  live: 'live',
+} as const;
+
+export type CreatePersonalAccessTokenBody = {
+  /** Token name */
+  name: string;
+  /** Access scopes for the token */
+  scopes: CreatePersonalAccessTokenBodyScopesItem[];
+  /** Environment for the token */
+  env?: CreatePersonalAccessTokenBodyEnv;
+  /** Optional expiration date */
+  expires_at?: string;
+  /** Optional IP allowlist (CIDR notation) */
+  ip_allowlist?: string[];
+  /** Optional project restriction */
+  project_id?: string;
+};
+
+export type CreatePersonalAccessToken201 = {
+  /** The full PAT (shown only once) */
+  token?: string;
+  /** Token identifier */
+  token_id?: string;
+  name?: string;
+  scopes?: string[];
+  env?: string;
+  /** @nullable */
+  expires_at?: string | null;
+  created_at?: string;
+  request_id?: string;
+};
+
+export type RevokePersonalAccessToken200 = {
+  /** Token ID */
+  id?: string;
+  /** Token identifier */
+  token_id?: string;
+  /** Whether token is disabled */
+  disabled?: boolean;
   request_id?: string;
 };
 
@@ -2100,6 +2214,43 @@ export const getLogs = <TData = AxiosResponse<GetLogs200>>(
   }
 
 /**
+ * Retrieves personal access tokens for the authenticated user
+ * @summary List Personal Access Tokens
+ */
+export const listPersonalAccessTokens = <TData = AxiosResponse<ListPersonalAccessTokens200>>(
+     options?: AxiosRequestConfig
+ ): Promise<TData> => {
+    return axios.get(
+      `/v1/pats`,options
+    );
+  }
+
+/**
+ * Creates a new personal access token for management API access
+ * @summary Create Personal Access Token
+ */
+export const createPersonalAccessToken = <TData = AxiosResponse<CreatePersonalAccessToken201>>(
+    createPersonalAccessTokenBody: CreatePersonalAccessTokenBody, options?: AxiosRequestConfig
+ ): Promise<TData> => {
+    return axios.post(
+      `/v1/pats`,
+      createPersonalAccessTokenBody,options
+    );
+  }
+
+/**
+ * Revokes a personal access token by disabling it
+ * @summary Revoke Personal Access Token
+ */
+export const revokePersonalAccessToken = <TData = AxiosResponse<RevokePersonalAccessToken200>>(
+    tokenId: string, options?: AxiosRequestConfig
+ ): Promise<TData> => {
+    return axios.delete(
+      `/v1/pats/${tokenId}`,options
+    );
+  }
+
+/**
  * Retrieves usage statistics for the project
  * @summary Get usage statistics
  */
@@ -2394,6 +2545,9 @@ export type GetReasonCodeCatalogResult = AxiosResponse<GetReasonCodeCatalog200>
 export type TestRulesAgainstPayloadResult = AxiosResponse<TestRulesAgainstPayload200>
 export type RegisterCustomRulesResult = AxiosResponse<RegisterCustomRules201>
 export type GetLogsResult = AxiosResponse<GetLogs200>
+export type ListPersonalAccessTokensResult = AxiosResponse<ListPersonalAccessTokens200>
+export type CreatePersonalAccessTokenResult = AxiosResponse<CreatePersonalAccessToken201>
+export type RevokePersonalAccessTokenResult = AxiosResponse<RevokePersonalAccessToken200>
 export type GetUsageResult = AxiosResponse<GetUsage200>
 export type GetSettingsResult = AxiosResponse<GetSettings200>
 export type UpdateSettingsResult = AxiosResponse<UpdateSettings200>

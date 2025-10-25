@@ -14,6 +14,7 @@ import { registerDedupeRoutes } from './routes/dedupe.js';
 import { registerJobRoutes } from './routes/jobs.js';
 import { registerNormalizeRoutes } from './routes/normalize.js';
 import { registerOrderRoutes } from './routes/orders.js';
+import { registerPatRoutes } from './routes/pats.js';
 import { registerRulesRoutes } from './routes/rules.js';
 import { registerSettingsRoutes } from './routes/settings.js';
 import { registerValidationRoutes } from './routes/validation.js';
@@ -56,7 +57,8 @@ export async function authenticateRequest(request: FastifyRequest, rep: FastifyR
         url.startsWith(ROUTES.LOGS) ||
         url.startsWith(ROUTES.RULES) ||
         url.startsWith(ROUTES.SETTINGS) ||
-        url.startsWith(ROUTES.WEBHOOKS);
+        url.startsWith(ROUTES.WEBHOOKS) ||
+        url.startsWith('/v1/pats');
 
     // Runtime routes - use API key with HMAC
     const isRuntimeRoute = url.startsWith(ROUTES.DEDUPE) ||
@@ -162,4 +164,5 @@ export function registerRoutes(app: FastifyInstance, pool: Pool, redis: IORedisT
     registerRulesRoutes(app, pool, redis);
     registerBatchRoutes(app, pool, redis);
     registerJobRoutes(app, pool);
+    registerPatRoutes(app, pool);
 }

@@ -23,6 +23,8 @@ export const RANDOM_BYTES_FOR_API_KEY = 18 as const;
 
 export const JWT_EXPIRES_IN = '7d' as const;
 
+export const PAT_DEFAULT_EXPIRY_DAYS = 90 as const;
+
 export const PAT_SCOPES = {
   KEYS_READ: 'keys:read',
   KEYS_WRITE: 'keys:write',
@@ -30,6 +32,14 @@ export const PAT_SCOPES = {
   USAGE_READ: 'usage:read',
   WEBHOOKS_MANAGE: 'webhooks:manage',
   CONNECTORS_MANAGE: 'connectors:manage',
+  PATS_MANAGE: 'pats:manage',
+  PROJECTS_MANAGE: 'projects:manage',
+  RULES_MANAGE: 'rules:manage',
+} as const;
+
+export const PAT_ENVIRONMENTS = {
+  TEST: 'test',
+  LIVE: 'live',
 } as const;
 
 export const USER_ROLES = {

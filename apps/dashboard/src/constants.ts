@@ -57,6 +57,7 @@ export const UI_STRINGS = {
   NO_API_KEYS: 'No API keys found. Create one to get started.',
   YOUR_API_KEYS: 'Your API Keys',
   API_KEYS_MANAGEMENT: 'API Keys Management',
+  PERSONAL_ACCESS_TOKENS: 'Personal Access Tokens',
   WEBHOOK_TESTER: 'Webhook Tester',
   SEND_TEST_PAYLOAD: 'Send Test Payload',
   SENDING: 'Sending...',

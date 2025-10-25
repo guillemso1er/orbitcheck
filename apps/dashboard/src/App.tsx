@@ -5,6 +5,7 @@ import ApiKeys from './components/ApiKeys';
 import BulkCsvTool from './components/BulkCsvTool';
 import LogExplorer from './components/LogExplorer';
 import Login from './components/Login';
+import PersonalAccessTokens from './components/PersonalAccessTokens';
 import Rules from './components/Rules';
 import ThemeToggle from './components/ThemeToggle';
 import UsageDashboard from './components/UsageDashboard';
@@ -24,6 +25,7 @@ const MOBILE_BREAKPOINT = 768;
 
 const NAV_ITEMS: NavItem[] = [
   { path: '/api-keys', label: UI_STRINGS.API_KEYS_MANAGEMENT, icon: '🔑', component: ApiKeys },
+  { path: '/personal-access-tokens', label: UI_STRINGS.PERSONAL_ACCESS_TOKENS, icon: '🛡️', component: PersonalAccessTokens },
   { path: '/bulk-csv', label: UI_STRINGS.BULK_CSV_TOOL, icon: '📄', component: BulkCsvTool },
   { path: '/usage', label: UI_STRINGS.USAGE_DASHBOARD, icon: '📊', component: UsageDashboard },
   { path: '/logs', label: UI_STRINGS.LOG_EXPLORER, icon: '📋', component: LogExplorer },

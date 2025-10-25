@@ -9,17 +9,21 @@ import type {
   BatchValidateBody,
   CreateApiKey201,
   CreateApiKeyBody,
+  CreatePersonalAccessToken201,
+  CreatePersonalAccessTokenBody,
   EvaluateOrder200,
   EvaluateOrderBody,
   GetJobStatus200,
   GetLogs200,
   GetUsage200,
   ListApiKeys200,
+  ListPersonalAccessTokens200,
   LoginUser200,
   LoginUserBody,
   RegisterUser201,
   RegisterUserBody,
   RevokeApiKey200,
+  RevokePersonalAccessToken200,
   TestWebhook200,
   TestWebhookBody
 } from './api-client/orbitCheckAPI.js';
@@ -28,14 +32,17 @@ import {
   batchDedupe,
   batchValidate,
   createApiKey,
+  createPersonalAccessToken,
   evaluateOrder,
   getJobStatus,
   getLogs,
   getUsage,
   listApiKeys,
+  listPersonalAccessTokens,
   loginUser,
   registerUser,
   revokeApiKey,
+  revokePersonalAccessToken,
   testWebhook
 } from './api-client/orbitCheckAPI.js';
 
@@ -59,6 +66,34 @@ export class ApiClient {
     return headers;
   }
 
+
+  // Personal Access Tokens API
+  async listPersonalAccessTokens(): Promise<ListPersonalAccessTokens200> {
+    const response = await listPersonalAccessTokens({
+      baseURL: this.baseURL,
+      withCredentials: true,
+      headers: this.getHeaders()
+    });
+    return response.data;
+  }
+
+  async createPersonalAccessToken(body: CreatePersonalAccessTokenBody): Promise<CreatePersonalAccessToken201> {
+    const response = await createPersonalAccessToken(body, {
+      baseURL: this.baseURL,
+      withCredentials: true,
+      headers: this.getHeaders()
+    });
+    return response.data;
+  }
+
+  async revokePersonalAccessToken(tokenId: string): Promise<RevokePersonalAccessToken200> {
+    const response = await revokePersonalAccessToken(tokenId, {
+      baseURL: this.baseURL,
+      withCredentials: true,
+      headers: this.getHeaders()
+    });
+    return response.data;
+  }
 
   // Authentication methods (don't require token)
   async registerUser(body: RegisterUserBody): Promise<RegisterUser201> {

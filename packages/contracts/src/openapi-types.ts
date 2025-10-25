@@ -292,6 +292,50 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/pats": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Personal Access Tokens
+         * @description Retrieves personal access tokens for the authenticated user
+         */
+        get: operations["listPersonalAccessTokens"];
+        put?: never;
+        /**
+         * Create Personal Access Token
+         * @description Creates a new personal access token for management API access
+         */
+        post: operations["createPersonalAccessToken"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/pats/{token_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Revoke Personal Access Token
+         * @description Revokes a personal access token by disabling it
+         */
+        delete: operations["revokePersonalAccessToken"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/data/usage": {
         parameters: {
             query?: never;
@@ -1712,7 +1756,7 @@ export interface operations {
                 status?: number;
                 /** @description Number of logs to return */
                 limit?: number;
-                /** @description Offset for pagination */
+                /** @description Number of logs to skip */
                 offset?: number;
             };
             header?: never;
@@ -1739,6 +1783,195 @@ export interface operations {
             };
             /** @description Unauthorized */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    listPersonalAccessTokens: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description List of personal access tokens */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: {
+                            /** @description Token ID */
+                            id?: string;
+                            /** @description Public token identifier (last 4 chars shown) */
+                            token_id?: string;
+                            /** @description Token name */
+                            name?: string;
+                            /** @description Access scopes */
+                            scopes?: string[];
+                            /**
+                             * @description Environment
+                             * @enum {string}
+                             */
+                            env?: "test" | "live";
+                            /**
+                             * Format: date-time
+                             * @description Last usage timestamp
+                             */
+                            last_used_at?: string | null;
+                            /** @description Last usage IP */
+                            last_used_ip?: string | null;
+                            /**
+                             * Format: date-time
+                             * @description Expiration date
+                             */
+                            expires_at?: string | null;
+                            /** @description Whether token is disabled */
+                            disabled?: boolean;
+                            /**
+                             * Format: date-time
+                             * @description Creation timestamp
+                             */
+                            created_at?: string;
+                        }[];
+                        request_id?: string;
+                    };
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    createPersonalAccessToken: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Token name */
+                    name: string;
+                    /** @description Access scopes for the token */
+                    scopes: ("keys:read" | "keys:write" | "logs:read" | "usage:read" | "webhooks:manage" | "connectors:manage" | "pats:manage" | "projects:manage" | "rules:manage")[];
+                    /**
+                     * @description Environment for the token
+                     * @default live
+                     * @enum {string}
+                     */
+                    env?: "test" | "live";
+                    /**
+                     * Format: date-time
+                     * @description Optional expiration date
+                     */
+                    expires_at?: string;
+                    /** @description Optional IP allowlist (CIDR notation) */
+                    ip_allowlist?: string[];
+                    /** @description Optional project restriction */
+                    project_id?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Personal access token created successfully */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description The full PAT (shown only once) */
+                        token?: string;
+                        /** @description Token identifier */
+                        token_id?: string;
+                        name?: string;
+                        scopes?: string[];
+                        env?: string;
+                        /** Format: date-time */
+                        expires_at?: string | null;
+                        /** Format: date-time */
+                        created_at?: string;
+                        request_id?: string;
+                    };
+                };
+            };
+            /** @description Invalid input */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    revokePersonalAccessToken: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Token ID to revoke */
+                token_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Personal access token revoked successfully */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Token ID */
+                        id?: string;
+                        /** @description Token identifier */
+                        token_id?: string;
+                        /** @description Whether token is disabled */
+                        disabled?: boolean;
+                        request_id?: string;
+                    };
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Personal access token not found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
