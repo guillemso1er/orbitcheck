@@ -1,0 +1,6 @@
+{
+  "service": "postgres",
+  "database": "orbitcheck",
+  "user": "postgres",
+  "port": 5432
+}

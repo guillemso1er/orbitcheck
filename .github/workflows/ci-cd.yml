@@ -33,9 +33,23 @@ concurrency:
   cancel-in-progress: true
 
 env:
+  # General & Docker
   REGISTRY: ghcr.io
   IMAGE_OWNER: ${{ github.repository_owner }}
   API_IMAGE_NAME: api
+  API_DOCKERFILE_PATH: ./apps/api/Dockerfile
+
+  # Dashboard
+  DASHBOARD_ARTIFACT_NAME: dashboard-dist
+  DASHBOARD_DIST_PATH: apps/dashboard/dist
+
+  # Deployment - Remote Server
+  REMOTE_USER: adminuser
+  REMOTE_TARGET_BASE_DIR: /tmp/ci
+  REMOTE_RUNTIME_USER: podmanuser
+  REMOTE_CONFIGS_DIR: /var/lib/containers/configs
+  REMOTE_DASHBOARD_VOLUME_DIR: /var/lib/containers/volumes/caddy-dashboard/_data
+  REMOTE_SYSTEMD_USER_DIR: .config/containers/systemd
 
 jobs:
   detect-changes:
@@ -53,20 +67,15 @@ jobs:
         uses: dorny/paths-filter@v3
         with:
           filters: |
-            # API Docker image build inputs
             api:
               - 'apps/api/**'
               - 'apps/api/Dockerfile'
               - 'pnpm-lock.yaml'
-              - 'packages/**'        # include if API imports from shared packages
-
-            # Dashboard static build inputs
+              - 'packages/**'
             dashboard:
               - 'apps/dashboard/**'
               - 'pnpm-lock.yaml'
-              - 'packages/**'        # include if dashboard imports from shared packages
-
-            # Infra files that should be synced to the server
+              - 'packages/**'
             infra:
               - 'infra/**'
               - '.github/workflows/**'
@@ -90,12 +99,11 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GHCR_PAT }}
 
-      # Build with per-app cache and narrow context to avoid invalidations
       - name: Build and push API image
         uses: docker/build-push-action@v6
         with:
           context: .
-          file: ./apps/api/Dockerfile
+          file: ${{ env.API_DOCKERFILE_PATH }}
           push: true
           tags: |
             ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/${{ env.API_IMAGE_NAME }}:prod
@@ -139,7 +147,6 @@ jobs:
       - name: Install workspace deps
         run: pnpm install --frozen-lockfile
 
-      # Keep this if your dashboard depends on generated contracts
       - name: Build contracts package
         run: pnpm run generate
 
@@ -149,12 +156,11 @@ jobs:
           pnpm install --frozen-lockfile
           pnpm run build
 
-      # Make dist available to the deploy job
       - name: Upload dashboard artifact
         uses: actions/upload-artifact@v4
         with:
-          name: dashboard-dist
-          path: apps/dashboard/dist
+          name: ${{ env.DASHBOARD_ARTIFACT_NAME }}
+          path: ${{ env.DASHBOARD_DIST_PATH }}
           if-no-files-found: error
           retention-days: 3
 
@@ -171,7 +177,7 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: production
-      url: https://api.orbitcheck.io # update if different
+      url: https://api.orbitcheck.io
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -180,58 +186,65 @@ jobs:
         if: needs.detect-changes.outputs.dashboard == 'true'
         uses: actions/download-artifact@v4
         with:
-          name: dashboard-dist
-          path: apps/dashboard/dist
+          name: ${{ env.DASHBOARD_ARTIFACT_NAME }}
+          path: ${{ env.DASHBOARD_DIST_PATH }}
 
       - name: Upload infra to server
         if: needs.detect-changes.outputs.infra == 'true'
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.HETZNER_HOST }}
-          username: adminuser
+          username: ${{ env.REMOTE_USER }}
           key: ${{ secrets.HETZNER_SSH_KEY }}
           source: "infra/**"
-          target: "/tmp/ci/infra"
+          target: "${{ env.REMOTE_TARGET_BASE_DIR }}/infra"
 
       - name: Upload dashboard dist to server
         if: needs.detect-changes.outputs.dashboard == 'true'
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.HETZNER_HOST }}
-          username: adminuser
+          username: ${{ env.REMOTE_USER }}
           key: ${{ secrets.HETZNER_SSH_KEY }}
-          source: "apps/dashboard/dist/**"
-          target: "/tmp/ci/dashboard-dist"
+          source: "${{ env.DASHBOARD_DIST_PATH }}/**"
+          target: "${{ env.REMOTE_TARGET_BASE_DIR }}/dashboard-dist"
 
       - name: Deploy files and restart services
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.HETZNER_HOST }}
-          username: adminuser
+          username: ${{ env.REMOTE_USER }}
           key: ${{ secrets.HETZNER_SSH_KEY }}
           script: |
             set -euo pipefail
 
-            # Section 1: Root-level file operations
+            # Section 1: Root-level file operations (configs + optional static assets)
             echo "--- Running file tasks as root (via sudo) ---"
-            if [[ "${{ needs.detect-changes.outputs.infra }}" == "true" && -d /tmp/ci/infra/compose ]]; then
-              sudo mkdir -p /var/lib/containers/configs/caddy
-              if [ -f /tmp/ci/infra/compose/Caddyfile ]; then
-                sudo cp /tmp/ci/infra/compose/Caddyfile /var/lib/containers/configs/caddy/Caddyfile
-                sudo chown -R podmanuser:podmanuser /var/lib/containers/configs
+            if [[ "${{ needs.detect-changes.outputs.infra }}" == "true" && -d ${{ env.REMOTE_TARGET_BASE_DIR }}/infra ]]; then
+              # Sync ALL infra configs (includes per-service env dirs)
+              if [[ -d ${{ env.REMOTE_TARGET_BASE_DIR }}/infra/config ]]; then
+                sudo mkdir -p ${{ env.REMOTE_CONFIGS_DIR }}
+                sudo rsync -a --delete ${{ env.REMOTE_TARGET_BASE_DIR }}/infra/config/ ${{ env.REMOTE_CONFIGS_DIR }}/
+              fi
+
+              # Ownership for all configs to the runtime user (so user units can read them)
+              if [[ -d ${{ env.REMOTE_CONFIGS_DIR }} ]]; then
+                sudo chown -R ${{ env.REMOTE_RUNTIME_USER }}:${{ env.REMOTE_RUNTIME_USER }} ${{ env.REMOTE_CONFIGS_DIR }}
               fi
             fi
-            if [[ "${{ needs.detect-changes.outputs.dashboard }}" == "true" && -d /tmp/ci/dashboard-dist ]]; then
-              sudo mkdir -p /var/lib/containers/volumes/caddy-dashboard/_data
-              sudo rsync -a --delete /tmp/ci/dashboard-dist/ /var/lib/containers/volumes/caddy-dashboard/_data/
-              sudo chown -R podmanuser:podmanuser /var/lib/containers/volumes/caddy-dashboard/_data
+
+            # Keep dashboard deployment (if you prefer, you can later standardize this under infra/volumes/)
+            if [[ "${{ needs.detect-changes.outputs.dashboard }}" == "true" && -d ${{ env.REMOTE_TARGET_BASE_DIR }}/dashboard-dist ]]; then
+              sudo mkdir -p ${{ env.REMOTE_DASHBOARD_VOLUME_DIR }}
+              sudo rsync -a --delete ${{ env.REMOTE_TARGET_BASE_DIR }}/dashboard-dist/ ${{ env.REMOTE_DASHBOARD_VOLUME_DIR }}/
+              sudo chown -R ${{ env.REMOTE_RUNTIME_USER }}:${{ env.REMOTE_RUNTIME_USER }} ${{ env.REMOTE_DASHBOARD_VOLUME_DIR }}
             fi
 
             # Ensure user lingering so WantedBy=default.target units start on boot
-            sudo loginctl enable-linger podmanuser || true
+            sudo loginctl enable-linger ${{ env.REMOTE_RUNTIME_USER }} || true
 
-            # Section 2: Podmanuser-level operations
-            echo "--- Running systemd tasks as podmanuser ---"
+            # Section 2: Podmanuser-level operations (quadlets + restart)
+            echo "--- Running systemd tasks as ${{ env.REMOTE_RUNTIME_USER }} ---"
 
             # Verify Quadlet generator is installed
             if ! sudo test -x /etc/systemd/user-generators/podman-quadlet && \
@@ -240,19 +253,19 @@ jobs:
               exit 1
             fi
 
-            sudo -iu podmanuser bash <<'EOF'
+            sudo -iu ${{ env.REMOTE_RUNTIME_USER }} bash <<'EOF'
               set -euo pipefail
               export XDG_RUNTIME_DIR="/run/user/$(id -u)"
 
               # Record deploy start time for the log step
               date +%s > "$HOME/.deploy_start_epoch"
 
-              # Copy new Quadlet files first
-              if [[ -d /tmp/ci/infra ]]; then
-                echo "Copying Quadlet files..."
-                mkdir -p "$HOME/.config/containers/systemd"
-                find /tmp/ci/infra -type f \( -name "*.pod" -o -name "*.container" -o -name "*.volume" -o -name "*.network" \) \
-                  -exec cp {} "$HOME/.config/containers/systemd/" \;
+              # Copy Quadlet unit files (generic)
+              if [[ -d ${{ env.REMOTE_TARGET_BASE_DIR }}/infra/quadlets ]]; then
+                echo "Syncing Quadlet unit files..."
+                mkdir -p "$HOME/${{ env.REMOTE_SYSTEMD_USER_DIR }}"
+                find ${{ env.REMOTE_TARGET_BASE_DIR }}/infra/quadlets -type f \( -name "*.pod" -o -name "*.container" -o -name "*.volume" -o -name "*.network" \) \
+                  -exec cp {} "$HOME/${{ env.REMOTE_SYSTEMD_USER_DIR }}/" \;
               fi
 
               # Reload systemd to regenerate quadlet units
@@ -263,7 +276,7 @@ jobs:
               echo "--- Discovering managed services from Quadlet files ---"
               shopt -s nullglob
               MANAGED_SERVICES=()
-              for f in "$HOME/.config/containers/systemd"/*.{pod,container}; do
+              for f in "$HOME/${{ env.REMOTE_SYSTEMD_USER_DIR }}"/*.{pod,container}; do
                 [ -f "$f" ] || continue
                 base="${f##*/}"
                 name="${base%.*}" # Remove .pod or .container extension
@@ -293,19 +306,18 @@ jobs:
               # Discover generated units to start
               shopt -s nullglob
               ALL_UNITS=()
-              for f in "$HOME/.config/containers/systemd"/*.pod; do
+              for f in "$HOME/${{ env.REMOTE_SYSTEMD_USER_DIR }}"/*.pod; do
                 b="${f##*/}"; n="${b%.pod}"; unit="${n}-pod.service"
-                # Units generated by quadlet appear after daemon-reload
                 if systemctl --user list-unit-files --all | grep -q "^$unit"; then ALL_UNITS+=("$unit"); fi
               done
-              for f in "$HOME/.config/containers/systemd"/*.container; do
+              for f in "$HOME/${{ env.REMOTE_SYSTEMD_USER_DIR }}"/*.container; do
                 b="${f##*/}"; n="${b%.container}"; unit="${n}.service"
                 if systemctl --user list-unit-files --all | grep -q "^$unit"; then ALL_UNITS+=("$unit"); fi
               done
 
               echo "Units to start: ${ALL_UNITS[*]:-<none>}"
 
-              # Start units. Do NOT enable here; quadlet applied [Install] already.
+              # Start units
               if ((${#ALL_UNITS[@]} > 0)); then
                 for unit in "${ALL_UNITS[@]}"; do
                   echo "Starting unit: $unit"
@@ -328,4 +340,4 @@ jobs:
 
             # Section 3: Cleanup
             echo "--- Cleaning up temporary files ---"
-            sudo rm -rf /tmp/ci
+            sudo rm -rf ${{ env.REMOTE_TARGET_BASE_DIR }}

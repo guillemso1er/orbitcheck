@@ -186,6 +186,93 @@ export function testLogout(check) {
 function toHex(ab) {
     return Array.from(new Uint8Array(ab)).map(b => b.toString(16).padStart(2, '0')).join('');
 }
+export function testCreatePat(patToken, check) {
+    const mgmtHeaders = Object.assign({}, HEADERS, {
+        'Authorization': `Bearer ${patToken}`,
+        'Cache-Control': 'no-cache'
+    });
+
+    const createPatPayload = JSON.stringify({
+        name: 'k6-test-pat',
+        scopes: ['api-keys:read', 'api-keys:write', 'webhooks:read', 'webhooks:write']
+    });
+
+    const res = http.post(`${API_V1_URL}/pats`, createPatPayload, { headers: mgmtHeaders });
+
+    let patBody = null;
+    if (res.status === 201) {
+        try {
+            patBody = JSON.parse(res.body);
+        } catch (e) {
+            // ignore parse errors
+        }
+    }
+
+    check(res, {
+        '[Create PAT] status 201': (r) => r.status === 201,
+        '[Create PAT] has token': (r) => r.status === 201 && patBody && patBody.token && patBody.token_id
+    });
+
+    return {
+        pat: patBody ? patBody.token : null,
+        tokenId: patBody ? patBody.token_id : null
+    };
+}
+
+export function testListPats(patToken, check) {
+    const mgmtHeaders = Object.assign({}, HEADERS, {
+        'Authorization': `Bearer ${patToken}`,
+        'Cache-Control': 'no-cache'
+    });
+
+    const res = http.get(`${API_V1_URL}/pats`, { headers: mgmtHeaders });
+
+    let pats = [];
+    if (res.status === 200) {
+        try {
+            const body = JSON.parse(res.body);
+            pats = body.data || [];
+        } catch (e) {
+            // ignore parse errors
+        }
+    }
+
+    check(res, {
+        '[List PATs] status 200': (r) => r.status === 200,
+        '[List PATs] is array': (r) => r.status === 200 && Array.isArray(pats)
+    });
+
+    return pats;
+}
+
+export function testRevokePat(patToken, tokenIdToRevoke, check) {
+    if (!tokenIdToRevoke) return;
+
+    const mgmtHeaders = Object.assign({}, HEADERS, {
+        'Authorization': `Bearer ${patToken}`,
+        'Cache-Control': 'no-cache'
+    });
+
+    const res = http.del(`${API_V1_URL}/pats/${tokenIdToRevoke}`, null, { headers: mgmtHeaders });
+
+    check(res, {
+        '[Revoke PAT] status 200': (r) => r.status === 200
+    });
+}
+
+export function testListPatsAfterRevoke(patToken, check) {
+    const mgmtHeaders = Object.assign({}, HEADERS, {
+        'Authorization': `Bearer ${patToken}`,
+        'Cache-Control': 'no-cache'
+    });
+
+    const res = http.get(`${API_V1_URL}/pats`, { headers: mgmtHeaders });
+
+    check(res, {
+        '[List PATs After Revoke] status 200': (r) => r.status === 200
+    });
+}
+
 export function testHmacAuth(apiKey, check) {
     if (!apiKey) return;
 

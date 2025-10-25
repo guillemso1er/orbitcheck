@@ -1,7 +1,7 @@
 import { check as k6check, sleep } from 'k6';
 import exec from 'k6/x/exec'; // Import the exec module for container management
 import { testNormalizeAddress, testValidateAddress } from './address.js';
-import { testCreateApiKey, testHmacAuth, testListApiKeys, testListApiKeysAfterCreate, testListApiKeysAfterRevoke, testLogin, testLogout, testRegister, testRevokeApiKey } from './auth.js';
+import { testCreateApiKey, testCreatePat, testHmacAuth, testListApiKeys, testListApiKeysAfterCreate, testListApiKeysAfterRevoke, testListPats, testListPatsAfterRevoke, testLogin, testLogout, testRegister, testRevokeApiKey, testRevokePat } from './auth.js';
 import { testBatchDedupe, testDedupeAddressSimple, testDedupeCustomer, testDedupeMergeCustomer, testGetDedupeJobStatus } from './dedupe.js';
 import { testBatchValidate, testGetValidateJobStatus, testValidateEmail } from './email.js';
 import { testDeleteLog, testEraseData, testGetLogs, testGetLogsForDelete } from './logs.js';
@@ -88,7 +88,16 @@ export default function () {
     const mgmtHeaders = Object.assign({}, HEADERS, { 'Authorization': `Bearer ${patToken}`, 'Cache-Control': 'no-cache' });
     const runtimeHeaders = Object.assign({}, HEADERS, { 'Authorization': `Bearer ${defaultApiKey}`, 'Cache-Control': 'no-cache' });
 
-    // Step 3: List API keys
+    // Step 3: List PATs
+    testListPats(patToken, check);
+
+    // Step 4: Create a new PAT
+    const { pat: newPat, tokenId: newPatTokenId } = testCreatePat(patToken, check);
+
+    // Step 5: List PATs after creation
+    testListPats(patToken, check);
+
+    // Step 6: List API keys
     testListApiKeys(patToken, check);
 
     // Step 4: Create API key
@@ -175,7 +184,15 @@ export default function () {
     // Step 40: List API keys to verify revocation
     testListApiKeysAfterRevoke(patToken, check);
 
-    // Step 41: Logout
+    // Step 41: Revoke PAT
+    if (newPatTokenId) {
+        testRevokePat(patToken, newPatTokenId, check);
+    }
+
+    // Step 42: List PATs after revocation
+    testListPatsAfterRevoke(patToken, check);
+
+    // Step 43: Logout
     testLogout(check);
 
     console.log('k6 journey test completed successfully!');

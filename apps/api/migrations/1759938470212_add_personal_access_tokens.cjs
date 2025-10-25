@@ -9,40 +9,43 @@ const shorthands = undefined;
  * @returns {Promise<void> | void}
  */
 const up = (pgm) => {
-  pgm.createTable('personal_access_tokens', {
-    id: { type: 'uuid', primaryKey: true, default: pgm.func('gen_random_uuid()') },
-    user_id: { type: 'uuid', notNull: true, references: 'users(id)', onDelete: 'CASCADE' },
-    name: { type: 'text', notNull: true },
-    token_hash: { type: 'text', notNull: true },
-    expires_at: { type: 'timestamptz' },
-    created_at: { type: 'timestamptz', notNull: true, default: pgm.func('now()') },
-    last_used_at: { type: 'timestamptz' },
-  });
-  pgm.createIndex('personal_access_tokens', 'user_id');
-  pgm.createIndex('personal_access_tokens', 'token_hash');
+  pgm.sql(`
+    CREATE TABLE personal_access_tokens (
+      id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+      user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      token_id text NOT NULL UNIQUE,
+      hashed_secret text NOT NULL,
+      name text NOT NULL,
+      scopes text[] NOT NULL,
+      ip_allowlist cidr[] DEFAULT '{}',
+      project_id uuid REFERENCES projects(id) ON DELETE SET NULL,
+      env text NOT NULL CHECK (env IN ('test', 'live')),
+      expires_at timestamptz,
+      last_used_at timestamptz,
+      last_used_ip inet,
+      disabled boolean NOT NULL DEFAULT false,
+      created_at timestamptz NOT NULL DEFAULT now()
+    );
+  `);
+  pgm.sql(`CREATE INDEX ON personal_access_tokens(user_id);`);
+  pgm.sql(`CREATE INDEX ON personal_access_tokens(token_id);`);
+  pgm.sql(`CREATE INDEX ON personal_access_tokens(hashed_secret);`);
 
-  pgm.addColumn('personal_access_tokens', {
-    scopes: { type: 'text[]', default: '{}' }
-  });
+  pgm.sql(`ALTER TABLE users ADD COLUMN role text DEFAULT 'developer';`);
+  pgm.sql(`ALTER TABLE api_keys ADD COLUMN encrypted_key text;`);
 
-  pgm.addColumn('users', {
-    role: { type: 'text', default: 'developer' }
-  });
-
-  pgm.addColumn('api_keys', {
-    encrypted_key: { type: 'text' }
-  });
-
-  pgm.createTable('audit_logs', {
-    id: { type: 'uuid', primaryKey: true, default: pgm.func('gen_random_uuid()') },
-    user_id: { type: 'uuid', notNull: true, references: 'users(id)', onDelete: 'CASCADE' },
-    action: { type: 'text', notNull: true },
-    resource: { type: 'text', notNull: true },
-    details: { type: 'jsonb' },
-    created_at: { type: 'timestamptz', notNull: true, default: pgm.func('now()') },
-  });
-  pgm.createIndex('audit_logs', 'user_id');
-  pgm.createIndex('audit_logs', 'created_at');
+  pgm.sql(`
+    CREATE TABLE audit_logs (
+      id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+      user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      action text NOT NULL,
+      resource text NOT NULL,
+      details jsonb,
+      created_at timestamptz NOT NULL DEFAULT now()
+    );
+  `);
+  pgm.sql(`CREATE INDEX ON audit_logs(user_id);`);
+  pgm.sql(`CREATE INDEX ON audit_logs(created_at);`);
 };
 
 /**
@@ -51,11 +54,10 @@ const up = (pgm) => {
  * @returns {Promise<void> | void}
  */
 const down = (pgm) => {
-  pgm.dropTable('audit_logs');
-  pgm.dropColumn('personal_access_tokens', 'scopes');
-  pgm.dropColumn('users', 'role');
-  pgm.dropColumn('api_keys', 'encrypted_key');
-  pgm.dropTable('personal_access_tokens');
+  pgm.sql(`DROP TABLE audit_logs;`);
+  pgm.sql(`ALTER TABLE users DROP COLUMN role;`);
+  pgm.sql(`ALTER TABLE api_keys DROP COLUMN encrypted_key;`);
+  pgm.sql(`DROP TABLE personal_access_tokens;`);
 };
 
 module.exports = { shorthands, up, down };
