@@ -22,6 +22,7 @@ RUN corepack enable && corepack prepare pnpm@9.12.1 --activate
 
 # Copy all package.json files first
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
+COPY tsconfig.base.json ./
 COPY apps/api/package.json apps/api/
 COPY packages/contracts/package.json packages/contracts/
 COPY apps/dashboard/package.json apps/dashboard/
