@@ -24,7 +24,6 @@ interface NavItem {
 // Constants
 const MOBILE_BREAKPOINT = 768;
 const SIDEBAR_WIDTH = 280;
-const ANIMATION_DURATION = 300;
 
 const NAV_ITEMS: NavItem[] = [
   { path: '/api-keys', label: UI_STRINGS.API_KEYS_MANAGEMENT, icon: '🔑', component: ApiKeys },
@@ -349,7 +348,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
  * Main App component
  */
 function App() {
-  const { isAuthenticated, logout } = useAuth();
+  const { logout } = useAuth();
   const navigate = useNavigate();
 
   const [sidebarOpen, setSidebarOpen] = useState(() =>

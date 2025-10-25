@@ -1,6 +1,6 @@
 import { createApiClient } from '@orbitcheck/contracts';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { API_BASE, UI_STRINGS } from '../constants';
+import { API_BASE } from '../constants';
 
 interface PersonalAccessToken {
   id: string;
@@ -753,7 +753,6 @@ const PersonalAccessTokens: React.FC<PersonalAccessTokensProps> = () => {
   };
 
   const handleRotate = (token: PersonalAccessToken) => {
-    const name = token.name;
     setConfirmDialog({
       show: true,
       title: 'Rotate Personal Access Token',

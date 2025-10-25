@@ -481,7 +481,6 @@ const ApiKeys: React.FC<ApiKeysProps> = () => {
   };
 
   const handleRotate = (key: ApiKey) => {
-    const name = key.name || 'this key';
     setConfirmDialog({
       show: true,
       title: 'Rotate API Key',

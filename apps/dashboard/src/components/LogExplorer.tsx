@@ -114,11 +114,8 @@ const LogExplorer: React.FC = () => {
   }, [fetchLogs]);
 
   const handleApplyFilters = useCallback(() => {
-    setAppliedFilters(prev => {
-      // Use current `filters` snapshot
-      fetchLogs(0, 1, filters);
-      return filters;
-    });
+    setAppliedFilters(filters);
+    fetchLogs(0, 1, filters);
   }, [filters, fetchLogs]);
 
   const handleClearFilters = useCallback(() => {
