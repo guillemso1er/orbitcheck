@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
+import { LOCAL_STORAGE_KEYS } from './constants';
 
 type Theme = 'light' | 'dark';
 
@@ -24,7 +25,7 @@ interface ThemeProviderProps {
 export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
   const [theme, setTheme] = useState<Theme>(() => {
     // Check for saved theme preference or default to system preference
-    const savedTheme = localStorage.getItem('theme') as Theme;
+    const savedTheme = localStorage.getItem(LOCAL_STORAGE_KEYS.THEME) as Theme;
     if (savedTheme) {
       return savedTheme;
     }
@@ -39,7 +40,7 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
       root.classList.add('dark');
     }
     // Save to localStorage
-    localStorage.setItem('theme', theme);
+    localStorage.setItem(LOCAL_STORAGE_KEYS.THEME, theme);
   }, [theme]);
 
   const toggleTheme = () => {

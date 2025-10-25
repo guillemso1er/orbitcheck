@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { API_BASE, API_ENDPOINTS, UI_STRINGS } from '../constants';
+import { API_BASE, API_ENDPOINTS, LOCAL_STORAGE_KEYS, UI_STRINGS } from '../constants';
 
 interface Rule {
   id: string;
@@ -84,7 +84,7 @@ const Rules: React.FC = () => {
         throw new Error(UI_STRINGS.INVALID_JSON);
       }
 
-      const token = localStorage.getItem('auth_token');
+      const token = localStorage.getItem(LOCAL_STORAGE_KEYS.AUTH_TOKEN);
       const response = await fetch(`${API_BASE}${API_ENDPOINTS.TEST_RULES_AGAINST_PAYLOAD}`, {
         method: 'POST',
         headers: {
@@ -126,7 +126,7 @@ const Rules: React.FC = () => {
 
   const handleSaveRules = async () => {
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = localStorage.getItem(LOCAL_STORAGE_KEYS.AUTH_TOKEN);
       const response = await fetch(`${API_BASE}/rules`, {
         method: 'PUT',
         headers: {

@@ -325,8 +325,8 @@ const ApiKeysTable: React.FC<{
               <td className="px-6 py-4">
                 <span
                   className={`inline-block px-2 py-1 text-xs font-semibold rounded-full ${key.status === 'active'
-                      ? 'bg-green-100 text-green-800'
-                      : 'bg-red-100 text-red-800'
+                    ? 'bg-green-100 text-green-800'
+                    : 'bg-red-100 text-red-800'
                     }`}
                   role="status"
                   aria-label={`Status: ${key.status}`}
@@ -575,8 +575,8 @@ const ApiKeys: React.FC<ApiKeysProps> = () => {
 
       <div className="mb-12">
         <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-4">
-              {UI_STRINGS.YOUR_API_KEYS}
-            </h3>
+          {UI_STRINGS.YOUR_API_KEYS}
+        </h3>
         {loading ? (
           <div className="text-center p-10 text-gray-500">
             <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mb-2"></div>
@@ -597,7 +597,7 @@ const ApiKeys: React.FC<ApiKeysProps> = () => {
         )}
       </div>
 
-      <div className="bg-gray-50 p-6 rounded-lg border border-gray-200">
+      {/* <div className="bg-gray-50 p-6 rounded-lg border border-gray-200">
         <h3 className="text-lg font-semibold text-gray-800 mb-2">Test in Postman</h3>
         <p className="text-gray-600 mb-4">
           Use our Postman collection to quickly test the API endpoints with pre-configured requests and examples.
@@ -634,7 +634,7 @@ const ApiKeys: React.FC<ApiKeysProps> = () => {
             </a>
           </div>
         </div>
-      </div>
+      </div> */}
     </div>
   );
 };

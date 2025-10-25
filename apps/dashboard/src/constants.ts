@@ -185,4 +185,6 @@ export const ERROR_MESSAGES = {
 
 export const LOCAL_STORAGE_KEYS = {
   AUTH_TOKEN: 'auth_token',
+  USER: 'user',
+  THEME: 'theme',
 } as const;
