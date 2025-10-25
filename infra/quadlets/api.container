@@ -30,8 +30,8 @@ ExecStartPre=/usr/bin/install -d -m 700 /var/lib/containers/configs/api/env
 ExecStartPre=/bin/sh -ceu ' \
     tok="$(cat /home/podmanuser/.secrets/infisical/api.token)"; \
     export INFISICAL_TOKEN="$tok"; \
-    /usr/local/bin/infisical export \
-        --domain=https://infiscal.mydomain.com \
+    /bin/infisical export \
+        --domain=https://infiscal.bastiat.xyz \
         --path=/api \
         --env=prod \
         --format=dotenv \
