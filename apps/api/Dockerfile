@@ -5,7 +5,7 @@ FROM ghcr.io/guillemso1er/libpostal-runtime:1.1-2025-10-19 AS libpostal
 ############################
 # 1) Build Node app with pnpm
 ############################
-FROM node:20-bookworm-slim AS builder
+FROM node:22-bookworm-slim AS builder
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
@@ -46,7 +46,7 @@ RUN pnpm deploy --filter @orbitcheck/api --prod /app
 ############################
 # 2) Runtime image
 ############################
-FROM node:20-bookworm-slim AS runner
+FROM node:22-bookworm-slim AS runner
 
 ENV NODE_ENV=production
 ENV NODE_OPTIONS=--enable-source-maps

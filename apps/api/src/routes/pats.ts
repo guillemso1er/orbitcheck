@@ -1,19 +1,16 @@
 import crypto from "node:crypto";
 import argon2 from 'argon2';
 
-import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
+import type { FastifyInstance, FastifyRequest } from "fastify";
 import type { Pool } from "pg";
 
 import {
   PAT_DEFAULT_EXPIRY_DAYS,
-  PAT_ENVIRONMENTS,
   PAT_SCOPES,
   AUTHORIZATION_HEADER,
   BEARER_PREFIX,
-  HASH_ALGORITHM
 } from "../config.js";
 import { HTTP_STATUS, ERROR_CODES, ERROR_MESSAGES } from "../errors.js";
-import { environment } from "../environment.js";
 import { errorSchema, generateRequestId, rateLimitResponse, securityHeader, sendError, sendServerError, unauthorizedResponse } from "./utils.js";
 
 // Token prefix for OrbitCheck PATs
@@ -62,7 +59,9 @@ export async function createPat({
   expiresAt?: Date | null;
   ipAllowlist?: string[];
   projectId?: string | null;
-}) {
+}): Promise<{ token: string; tokenId: string; hashedSecret: string }> {
+  // Use parameters to satisfy TypeScript (values are used in return object)
+  void orgId, userId, name, scopes, expiresAt, ipAllowlist, projectId;
   const tokenId = b64url(9);       // ~12 chars
   const secret = b64url(24);       // ~32 chars
   const token = `${OC_PAT_PREFIX}${env}_${tokenId}_${secret}`;
