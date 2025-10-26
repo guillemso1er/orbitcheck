@@ -190,14 +190,15 @@ jobs:
           path: ${{ env.DASHBOARD_DIST_PATH }}
 
       - name: Upload infra to server
-        if: needs.detect-changes.outputs.infra == 'true'
+        if: needs.detect-changes.outputs.infra == 'true' || (github.event_name == 'workflow_dispatch' && inputs.force_deploy)
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.HETZNER_HOST }}
           username: ${{ env.REMOTE_USER }}
           key: ${{ secrets.HETZNER_SSH_KEY }}
-          source: "infra" 
-          target: "${{ env.REMOTE_TARGET_BASE_DIR }}"
+          source: "infra/**"
+          target: "${{ env.REMOTE_TARGET_BASE_DIR }}/infra"
+          strip_components: 1
 
       - name: Upload dashboard dist to server
         if: needs.detect-changes.outputs.dashboard == 'true'
@@ -253,19 +254,19 @@ jobs:
             sudo -iu ${{ env.REMOTE_RUNTIME_USER }} bash <<'EOF'
               set -euo pipefail
               export XDG_RUNTIME_DIR="/run/user/$(id -u)"
-
-              # Record deploy start time for the log step
               date +%s > "$HOME/.deploy_start_epoch"
 
-              # Copy Quadlet unit files (generic)
-              if [[ -d ${{ env.REMOTE_TARGET_BASE_DIR }}/infra/quadlets ]]; then
-                echo "Syncing Quadlet unit files..."
-                mkdir -p "$HOME/${{ env.REMOTE_SYSTEMD_USER_DIR }}"
-                find ${{ env.REMOTE_TARGET_BASE_DIR }}/infra/quadlets -type f \( -name "*.pod" -o -name "*.container" -o -name "*.volume" -o -name "*.network" \) \
-                  -exec cp {} "$HOME/${{ env.REMOTE_SYSTEMD_USER_DIR }}/" \;
+              SRC="${{ env.REMOTE_TARGET_BASE_DIR }}/infra/quadlets"
+              DEST="$HOME/${{ env.REMOTE_SYSTEMD_USER_DIR }}"
+
+              if [[ -d "$SRC" ]]; then
+                echo "Syncing Quadlet unit files (including env dir)..."
+                mkdir -p "$DEST"
+                rsync -a --delete "$SRC/" "$DEST/"
+              else
+                echo "WARNING: $SRC not found; nothing to sync."
               fi
 
-              # Reload systemd to regenerate quadlet units
               echo "--- Regenerating systemd units ---"
               systemctl --user daemon-reload
 
