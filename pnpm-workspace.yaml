@@ -2,7 +2,7 @@ packages:
   - apps/*
   - packages/*
 
-ignoredBuiltDependencies:
+neverBuiltDependencies:
   - node-postal
 
 onlyBuiltDependencies:

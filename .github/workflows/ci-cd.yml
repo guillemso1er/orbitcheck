@@ -70,12 +70,18 @@ jobs:
             api:
               - 'apps/api/**'
               - 'apps/api/Dockerfile'
-              - 'pnpm-lock.yaml'
               - 'packages/**'
+              - 'pnpm-lock.yaml'
+              - 'pnpm-workspace.yaml'
+              - 'package.json'
+              - 'tsconfig.base.json'
             dashboard:
               - 'apps/dashboard/**'
-              - 'pnpm-lock.yaml'
               - 'packages/**'
+              - 'pnpm-lock.yaml'
+              - 'pnpm-workspace.yaml'
+              - 'package.json'
+              - 'tsconfig.base.json'
             infra:
               - 'infra/**'
               - '.github/workflows/**'
@@ -145,17 +151,11 @@ jobs:
           node-version-file: .nvmrc
           cache: pnpm
 
-      - name: Install workspace deps
+      - name: Install deps (workspace)
         run: pnpm install --frozen-lockfile
 
-      - name: Build contracts package
-        run: pnpm run generate
-
-      - name: Build dashboard
-        working-directory: apps/dashboard
-        run: |
-          pnpm install --frozen-lockfile
-          pnpm run build
+      - name: Build dashboard (and its deps)
+        run: pnpm --filter @orbitcheck/dashboard... build
 
       - name: Upload dashboard artifact
         uses: actions/upload-artifact@v4

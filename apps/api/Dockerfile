@@ -15,33 +15,37 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /workspace
 
+# Libpostal libs
 COPY --from=libpostal /usr/local/ /usr/local/
 RUN ldconfig
 
+# pnpm
+ENV PNPM_HOME=/pnpm
+ENV PNPM_STORE_DIR=/pnpm/store
+ENV PATH=$PNPM_HOME:$PATH
 RUN corepack enable && corepack prepare pnpm@9.12.1 --activate
 
-# Copy all package.json files first
-COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
-COPY tsconfig.base.json ./
+# Copy manifests first for better caching
+COPY package.json pnpm-workspace.yaml pnpm-lock.yaml tsconfig.base.json ./
 COPY apps/api/package.json apps/api/
 COPY packages/contracts/package.json packages/contracts/
-COPY apps/dashboard/package.json apps/dashboard/
 
-# Install all dependencies
-RUN pnpm install --frozen-lockfile
+# Pre-fetch only API (and its workspace deps)
+RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store \
+    pnpm fetch --filter @orbitcheck/api...
 
-# Copy source files
-COPY apps apps
-COPY packages packages
+# Copy sources
+COPY . .
 
-# Build contracts first explicitly, then everything else
-RUN pnpm --filter @orbitcheck/contracts build && \
-    pnpm --filter @orbitcheck/dashboard build && \
-    pnpm --filter @orbitcheck/api build
+# Install only what API needs from the store, offline
+RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store \
+    pnpm install --filter @orbitcheck/api... --offline --frozen-lockfile
 
-# Create prod bundle
+# Build API and its deps (contracts, etc.)
+RUN pnpm --filter @orbitcheck/api... build
+
+# Create prod bundle for the API at /app
 RUN pnpm deploy --filter @orbitcheck/api --prod /app
-
 
 ############################
 # 2) Runtime image
@@ -52,18 +56,17 @@ ENV NODE_ENV=production
 ENV NODE_OPTIONS=--enable-source-maps
 ENV LIBPOSTAL_DATA_DIR=/opt/libpostal/data
 
-# Runtime deps
+# Minimal runtime tools
 RUN apt-get update && apt-get install -y --no-install-recommends \
     tini \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Libpostal runtime (libs + models); no CLI needed for node-postal
+# Libpostal runtime
 COPY --from=libpostal /usr/local/ /usr/local/
 COPY --from=libpostal /opt/libpostal/data /opt/libpostal/data
 RUN ldconfig
 
-# App files
 WORKDIR /app
 COPY --from=builder /app /app
 
