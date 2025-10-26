@@ -1,4 +1,3 @@
-
 name: Build, Sync, and Deploy
 
 on:
@@ -330,18 +329,39 @@ jobs:
               podman rm -fa || true
 
               # Discover generated units to start
+              # Discover generated units to start
               shopt -s nullglob
               ALL_UNITS=()
+
+              echo "--- Discovering units to start from Quadlet files ---"
+              # Iterate over the source quadlet files to determine which units to start
               for f in "$DEST_SYS_D"/*.pod; do
-                b="${f##*/}"; n="${b%.pod}"; unit="${n}-pod.service"
-                if systemctl --user list-unit-files --all | grep -q "^$unit"; then ALL_UNITS+=("$unit"); fi
+                  [ -f "$f" ] || continue
+                  base="${f##*/}"
+                  name="${base%.*}"
+                  ALL_UNITS+=("${name}-pod.service")
               done
+
               for f in "$DEST_SYS_D"/*.container; do
-                b="${f##*/}"; n="${b%.container}"; unit="${n}.service"
-                if systemctl --user list-unit-files --all | grep -q "^$unit"; then ALL_UNITS+=("$unit"); fi
+                  [ -f "$f" ] || continue
+                  base="${f##*/}"
+                  name="${base%.*}"
+                  ALL_UNITS+=("${name}.service")
               done
 
               echo "Units to start: ${ALL_UNITS[*]:-<none>}"
+
+              # Start units
+              if ((${#ALL_UNITS[@]} > 0)); then
+                  for unit in "${ALL_UNITS[@]}"; do
+                      echo "Starting unit: $unit"
+                      systemctl --user start "$unit" || {
+                      echo "ERROR: Failed to start $unit. See logs below."
+                      systemctl --user status "$unit" --no-pager || true
+                      journalctl --user -u "$unit" --no-pager -n 50 || true
+                      }
+                  done
+              fi
 
               # Start units
               if ((${#ALL_UNITS[@]} > 0)); then
