@@ -251,137 +251,119 @@ jobs:
             sudo -iu ${{ env.REMOTE_RUNTIME_USER }} bash <<'EOF'
               set -euo pipefail
               export XDG_RUNTIME_DIR="/run/user/$(id -u)"
-              date +%s > "$HOME/.deploy_start_epoch"
 
               SRC="${{ env.REMOTE_TARGET_BASE_DIR }}/infra/quadlets"
-              DEST_SYS_D="$HOME/${{ env.REMOTE_SYSTEMD_USER_DIR }}"
-              DEST_USER_CFG="$HOME/.config"
+              DEST_SYS_D="$HOME/${{ env.REMOTE_SYSTEMD_USER_DIR }}"     # ~/.config/containers/systemd
+              DEST_USER_CFG="$HOME/.config"                             # ~/.config
 
-              # Ensure destination directories exist
+              # Make sure directories exist
               mkdir -p "$DEST_SYS_D" "$DEST_USER_CFG"
 
-              if [[ -d "$SRC" ]]; then
-                echo "Preparing flattened Quadlet unit files (.container/.pod) and envs..."
+              echo "Flattening Quadlet files..."
+              shopt -s nullglob globstar
 
-                # Stage directory to flatten .container/.pod files to top-level systemd dir
-                STAGE_Q=$(mktemp -d)
-                shopt -s nullglob
-                for f in "$SRC"/*/*.container "$SRC"/*/*.pod; do
-                  [ -f "$f" ] || continue
-                  cp -f "$f" "$STAGE_Q/$(basename "$f")"
-                done
-
-                # Sync flattened units into ~/.config/containers/systemd (delete removed)
-                rsync -a --delete "$STAGE_Q"/ "$DEST_SYS_D"/
-
-                # Stage and sync per-service env files to ~/.config/<service>/<service>.env
-                STAGE_CFG=$(mktemp -d)
-                for envf in "$SRC"/*/env/"*.env"; do
-                  [ -f "$envf" ] || continue
-                  svc="$(basename "$(dirname "$(dirname "$envf")")")"  # extract <service> from .../<service>/env/<file>.env
-                  mkdir -p "$STAGE_CFG/$svc"
-                  cp -f "$envf" "$STAGE_CFG/$svc/$svc.env"
-                done
-
-                # Sync envs per service (no delete to avoid removing other user configs)
-                for dir in "$STAGE_CFG"/*; do
-                  [ -d "$dir" ] || continue
-                  svc="$(basename "$dir")"
-                  mkdir -p "$DEST_USER_CFG/$svc"
-                  rsync -a "$dir"/ "$DEST_USER_CFG/$svc"/
-                done
-              else
-                echo "WARNING: $SRC not found; skipping unit/env sync."
-              fi
-
-              echo "--- Regenerating systemd units ---"
-              systemctl --user daemon-reload
-
-              # Discover managed services from quadlet files now in DEST_SYS_D
-              echo "--- Discovering managed services from Quadlet files ---"
-              shopt -s nullglob
-              MANAGED_SERVICES=()
-              for f in "$DEST_SYS_D"/*.{pod,container}; do
+              # Collect ALL .container and .pod (any depth), then copy them flattened to DEST_SYS_D
+              STAGE_Q=$(mktemp -d)
+              for f in "$SRC"/**/*.container "$SRC"/**/*.pod; do
                 [ -f "$f" ] || continue
-                base="${f##*/}"
-                name="${base%.*}" # Remove .pod or .container extension
-                MANAGED_SERVICES+=("$name")
+                cp -f "$f" "$STAGE_Q/$(basename "$f")"
               done
 
-              GREP_PATTERN=""
-              if ((${#MANAGED_SERVICES[@]} > 0)); then
-                GREP_PATTERN=$(printf "%s\n" "${MANAGED_SERVICES[@]}" | sort -u | paste -sd '|')
-                echo "Found managed services. Pattern: ($GREP_PATTERN)"
-              else
-                echo "WARNING: No Quadlet files found. No services will be stopped."
-              fi
+              rsync -a --delete "$STAGE_Q"/ "$DEST_SYS_D"/
 
-              # Stop existing services using the dynamic pattern
-              if [[ -n "$GREP_PATTERN" ]]; then
-                echo "--- Stopping existing services ---"
+              echo "Syncing env files..."
+              STAGE_CFG=$(mktemp -d)
+              # Note: NO quotes around *.env — allow shell to expand
+              for envf in "$SRC"/*/env/*.env; do
+                [ -f "$envf" ] || continue
+                svc="$(basename "$(dirname "$(dirname "$envf")")")" # <service>/env/<file>.env -> service name
+                mkdir -p "$STAGE_CFG/$svc"
+                cp -f "$envf" "$STAGE_CFG/$svc/$svc.env"
+              done
+
+              for dir in "$STAGE_CFG"/*; do
+                [ -d "$dir" ] || continue
+                svc="$(basename "$dir")"
+                mkdir -p "$DEST_USER_CFG/$svc"
+                rsync -a "$dir"/ "$DEST_USER_CFG/$svc"/
+              done
+
+              echo "--- systemd daemon-reload (user) ---"
+              systemctl --user daemon-reload
+
+              echo "Discovering units from Quadlet files we just synced..."
+              POD_UNITS=()
+              CNTR_UNITS=()
+              for f in "$DEST_SYS_D"/*.pod; do
+                [ -f "$f" ] || continue
+                n="$(basename "$f" .pod)"
+                POD_UNITS+=("${n}-pod.service")
+              done
+              for f in "$DEST_SYS_D"/*.container; do
+                [ -f "$f" ] || continue
+                n="$(basename "$f" .container)"
+                CNTR_UNITS+=("${n}.service")
+              done
+
+              echo "Pod units:    ${POD_UNITS[*]:-<none>}"
+              echo "Container units: ${CNTR_UNITS[*]:-<none>}"
+
+              # Optionally stop existing ones that match our names
+              if (( ${#POD_UNITS[@]} + ${#CNTR_UNITS[@]} > 0 )); then
+                echo "--- Stopping existing matching services ---"
+                PATTERN=$(printf "%s\n" "${POD_UNITS[@]}" "${CNTR_UNITS[@]}" | sed 's/\.service$//' | sort -u | paste -sd '|')
                 systemctl --user list-units --all --no-legend --plain '*-pod.service' '*.service' | \
-                  grep -E "($GREP_PATTERN)" | \
-                  awk '{print $1}' | xargs -r systemctl --user stop || true
+                  grep -E "($PATTERN)" | awk '{print $1}' | xargs -r systemctl --user stop || true
               fi
 
-              # Clean up any lingering containers
+              # Clean up old containers/pods
               podman pod rm -fa || true
               podman rm -fa || true
 
-              # Discover generated units to start
-              # Discover generated units to start
-              shopt -s nullglob
-              ALL_UNITS=()
+              # Enable (if possible) and start pod units first, then containers
+              STARTED=()
 
-              echo "--- Discovering units to start from Quadlet files ---"
-              # Iterate over the source quadlet files to determine which units to start
-              for f in "$DEST_SYS_D"/*.pod; do
-                  [ -f "$f" ] || continue
-                  base="${f##*/}"
-                  name="${base%.*}"
-                  ALL_UNITS+=("${name}-pod.service")
-              done
-
-              for f in "$DEST_SYS_D"/*.container; do
-                  [ -f "$f" ] || continue
-                  base="${f##*/}"
-                  name="${base%.*}"
-                  ALL_UNITS+=("${name}.service")
-              done
-
-              echo "Units to start: ${ALL_UNITS[*]:-<none>}"
-
-              # Start units
-              if ((${#ALL_UNITS[@]} > 0)); then
-                  for unit in "${ALL_UNITS[@]}"; do
-                      echo "Starting unit: $unit"
-                      systemctl --user start "$unit" || {
-                      echo "ERROR: Failed to start $unit. See logs below."
-                      systemctl --user status "$unit" --no-pager || true
-                      journalctl --user -u "$unit" --no-pager -n 50 || true
-                      }
-                  done
-              fi
-
-              # Start units
-              if ((${#ALL_UNITS[@]} > 0)); then
-                for unit in "${ALL_UNITS[@]}"; do
-                  echo "Starting unit: $unit"
-                  systemctl --user start "$unit" || {
-                    echo "ERROR: Failed to start $unit. See logs below."
+              if ((${#POD_UNITS[@]} > 0)); then
+                echo "--- Enabling/Starting pods ---"
+                for unit in "${POD_UNITS[@]}"; do
+                  systemctl --user enable "$unit" 2>/dev/null || true
+                  if ! systemctl --user start "$unit"; then
+                    echo "ERROR: Failed to start $unit"
                     systemctl --user status "$unit" --no-pager || true
-                    journalctl --user -u "$unit" --no-pager -n 50 || true
-                  }
+                    journalctl --user -u "$unit" --no-pager -n 100 || true
+                  else
+                    STARTED+=("$unit")
+                  fi
                 done
               fi
 
-              echo "--- Final status of managed services ---"
-              if [[ -n "$GREP_PATTERN" ]]; then
-                systemctl --user list-units --type=service --all '*-pod.service' '*.service' | \
-                  grep -E "($GREP_PATTERN)|UNIT" || true
-              else
-                echo "No managed services to display."
-              fi
+              echo "--- Enabling/Starting containers ---"
+              for unit in "${CNTR_UNITS[@]}"; do
+                systemctl --user enable "$unit" 2>/dev/null || true
+                if ! systemctl --user start "$unit"; then
+                  echo "ERROR: Failed to start $unit"
+                  systemctl --user status "$unit" --no-pager || true
+                  journalctl --user -u "$unit" --no-pager -n 100 || true
+                else
+                  STARTED+=("$unit")
+                fi
+              done
+
+              echo "--- Final status of started units ---"
+              for unit in "${STARTED[@]:-}"; do
+                systemctl --user status "$unit" --no-pager || true
+              done
+
+              echo "Some debugging output for visibility:"
+              echo "Files in $DEST_SYS_D:"
+              ls -al "$DEST_SYS_D" || true
+              echo
+              echo "User unit-files (look for 'generated' entries):"
+              systemctl --user list-unit-files --all | sed -n '1,200p' || true
+              echo
+              echo "Generator outputs:"
+              ls -al "$XDG_RUNTIME_DIR/systemd/" || true
+              ls -al "$XDG_RUNTIME_DIR/systemd"/generator* || true
             EOF
 
             # Section 3: Cleanup
