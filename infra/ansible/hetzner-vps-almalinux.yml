@@ -334,67 +334,46 @@
     - name: Setup second data disk if enabled
       when: use_second_data_disk | bool and ansible_connection != 'podman'
       block:
-        - name: Automatically discover the second data disk
-          when: data_disk_device is not defined or data_disk_device == ""
-          block:
-            - name: Get the device for the root filesystem (e.g., /dev/vda2)
-              ansible.builtin.command: findmnt -n -o SOURCE --target /
-              register: root_partition_info
-              changed_when: false
-              check_mode: no
 
-            - name: Get the parent disk for the root partition (e.g., vda)
-              ansible.builtin.command: "lsblk -no pkname {{ root_partition_info.stdout }}"
-              register: root_disk_info
-              changed_when: false
-              check_mode: no
-            
-            - name: Find all physical disks using lsblk
-              ansible.builtin.command: lsblk -J -o NAME,TYPE
-              register: lsblk_output
-              changed_when: false
-              check_mode: no
+        - name: Ensure raw data disk is not present in fstab before partitioning
+          ansible.builtin.mount:
+            path: "/mnt/HC_Volume_103791816" 
+            state: absent
+ 
+        - name: Get the device for the root filesystem
+          ansible.builtin.command: findmnt -n -o SOURCE --target /
+          register: root_partition_info
+          changed_when: false
+          check_mode: no
 
-            - name: Parse lsblk output to create a list of all disks
-              ansible.builtin.set_fact:
-                all_physical_disks: "{{ lsblk_output.stdout | from_json | json_query('blockdevices[?type==`disk`].name') }}"
+        - name: Get the parent disk for the root partition (e.g., sdb)
+          ansible.builtin.command: "lsblk -no pkname {{ root_partition_info.stdout }}"
+          register: root_disk_info
+          changed_when: false
+          check_mode: no
 
-            # Now, we create a new list of potential data disks by removing the root disk.
-            - name: Create a list of potential data disks
-              ansible.builtin.set_fact:
-                potential_data_disks: "{{ all_physical_disks | difference([root_disk_info.stdout.strip()]) }}"
+        - name: Find all physical disks
+          ansible.builtin.set_fact:
+            all_physical_disks: "{{ ansible_devices.keys() | select('match', '^(s|v|xv)d[a-z]$') | list }}"
 
-            - name: Fail if no candidate data disk could be found
-              ansible.builtin.fail:
-                msg: |
-                  Automatic disk discovery failed.
-                  - The root disk was identified as '{{ root_disk_info.stdout.strip() }}'.
-                  - All physical disks found by lsblk: {{ all_physical_disks }}.
-                  - No other devices of type 'disk' were found.
-                  - Please verify the server has a second disk attached or set 'use_second_data_disk: false'.
-              when: potential_data_disks | length == 0
+        - name: Identify data disk by excluding the root disk
+          ansible.builtin.set_fact:
+            potential_data_disks: "{{ all_physical_disks | difference([root_disk_info.stdout.strip()]) }}"
 
-            - name: Fail if multiple candidate data disks are found (to prevent data loss)
-              ansible.builtin.fail:
-                msg: |
-                  Automatic disk discovery failed because it is ambiguous.
-                  - The root disk is '{{ root_disk_info.stdout.strip() }}'.
-                  - All physical disks found by lsblk: {{ all_physical_disks }}.
-                  - Multiple other candidate disks were found: {{ potential_data_disks }}.
-                  - To prevent accidental formatting of the wrong disk, please specify the target device
-                    manually by setting the 'data_disk_device' variable (e.g., data_disk_device: /dev/sdb).
-              when: potential_data_disks | length > 1
+        - name: Fail if a unique data disk cannot be identified
+          ansible.builtin.fail:
+            msg: "Could not reliably determine the data disk. Root disk: {{ root_disk_info.stdout.strip() }}, Candidates: {{ potential_data_disks }}"
+          when: potential_data_disks | length != 1
 
-            # If we passed the checks, there is exactly one disk in the list.
-            - name: Set data_disk_device fact from the single discovered disk
-              ansible.builtin.set_fact:
-                data_disk_device: "/dev/{{ potential_data_disks[0] }}"
+        - name: Set data_disk_device fact
+          ansible.builtin.set_fact:
+            data_disk_device: "/dev/{{ potential_data_disks[0] }}"
 
-            - name: Announce which disk was found
-              ansible.builtin.debug:
-                msg: "Successfully discovered '{{ data_disk_device }}' as the second data disk."
-        
-        - name: Create a partition on the data disk
+        - name: Announce which disk will be used for data
+          ansible.builtin.debug:
+            msg: "Root disk is '{{ root_disk_info.stdout.strip() }}'. Found '{{ data_disk_device }}' as the data disk to be partitioned and formatted."
+
+        - name: Create a single partition on the data disk
           community.general.parted:
             device: "{{ data_disk_device }}"
             number: 1
@@ -402,10 +381,10 @@
             fs_type: xfs
             label: gpt
 
-        - name: Create a filesystem on the partition
-          ansible.builtin.filesystem:
+        - name: Create an XFS filesystem on the new partition
+          community.general.filesystem:
             fstype: xfs
-            dev: "{{ data_disk_device }}1" # Assumes partition 1
+            dev: "{{ data_disk_device }}1" # Note the '1' for the partition
 
         - name: Create mount point for container data
           ansible.builtin.file:
@@ -413,13 +392,14 @@
             state: directory
             mode: "0755"
 
-        - name: Mount the data disk
+        # STEP 4: Create the new, correct fstab entry.
+        - name: Mount the data disk partition at /var/lib/containers
           ansible.builtin.mount:
             path: "{{ container_base_path }}"
-            src: "{{ data_disk_device }}1"
+            src: "{{ data_disk_device }}1" # CRITICAL: Mount the partition, not the raw disk
             fstype: xfs
             state: mounted
-            opts: "defaults,nofail,x-systemd.device-timeout=15" 
+            opts: "defaults,nofail"
 
         - name: Set ownership of the container data mount point
           ansible.builtin.file:
@@ -1274,6 +1254,12 @@
         - name: Test SSH configuration validity
           ansible.builtin.command:
             cmd: sshd -t
+          changed_when: false
+
+        - name: CRITICAL CHECK - Verify all filesystems in fstab can be mounted
+          ansible.builtin.command:
+            cmd: mount -a
+          register: mount_check
           changed_when: false
 
         - name: Wait 5 seconds before proceeding to reboot
