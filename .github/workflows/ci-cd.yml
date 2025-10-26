@@ -196,8 +196,8 @@ jobs:
           host: ${{ secrets.HETZNER_HOST }}
           username: ${{ env.REMOTE_USER }}
           key: ${{ secrets.HETZNER_SSH_KEY }}
-          source: "infra/**"
-          target: "${{ env.REMOTE_TARGET_BASE_DIR }}/infra"
+          source: "infra" 
+          target: "${{ env.REMOTE_TARGET_BASE_DIR }}"
 
       - name: Upload dashboard dist to server
         if: needs.detect-changes.outputs.dashboard == 'true'
