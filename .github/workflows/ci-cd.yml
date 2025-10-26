@@ -367,4 +367,3 @@ jobs:
             # Section 3: Cleanup
             echo "--- Cleaning up temporary files ---"
             sudo rm -rf ${{ env.REMOTE_TARGET_BASE_DIR }}
-```
