@@ -12,7 +12,6 @@ Pod=orbitcheck.pod
 EnvironmentFile=/home/podmanuser/.config/api/api.env
 EnvironmentFile=/home/podmanuser/.config/api/api.secrets.env
 
-Volume=/var/lib/containers/volumes/api-data:/app/data:Z,U
 Label="io.containers.autoupdate=image"
 NoNewPrivileges=yes
 ReadOnly=true
