@@ -7,7 +7,7 @@ Image=ghcr.io/statping-ng/statping-ng:v0.93
 ContainerName=statping
 Pod=orbitcheck.pod
 Volume=/var/lib/containers/volumes/statping-data:/app:Z,U
-EnvironmentFile=/var/lib/containers/configs/statping/statping.env
+EnvironmentFile=/home/podmanuser/.config/statping/statping.env
 Label="io.containers.autoupdate=image"
 NoNewPrivileges=yes
 

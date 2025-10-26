@@ -9,8 +9,8 @@ Image=ghcr.io/guillemso1er/api:prod
 ContainerName=api
 Pod=orbitcheck.pod
 
-EnvironmentFile=/var/lib/containers/configs/api/api.env
-EnvironmentFile=/var/lib/containers/configs/api/api.secrets.env
+EnvironmentFile=/home/podmanuser/.config/api/api.env
+EnvironmentFile=/home/podmanuser/.config/api/api.secrets.env
 
 Volume=/var/lib/containers/volumes/api-data:/app/data:Z,U
 Label="io.containers.autoupdate=image"
@@ -39,7 +39,7 @@ ExecStartPre=/bin/sh -ceu ' \
         --include-imports \
     > /var/lib/containers/configs/api/.api.secrets.env.tmp; \
     chmod 600 /var/lib/containers/configs/api/.api.secrets.env.tmp; \
-    mv /var/lib/containers/configs/api/.api.secrets.env.tmp /var/lib/containers/configs/api/api.secrets.env \
+    mv /var/lib/containers/configs/api/.api.secrets.env.tmp /home/podmanuser/.config/api/api.secrets.env \
 '
 
 

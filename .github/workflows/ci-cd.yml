@@ -1,3 +1,4 @@
+
 name: Build, Sync, and Deploy
 
 on:
@@ -223,26 +224,22 @@ jobs:
             # Section 1: Root-level file operations (configs + optional static assets)
             echo "--- Running file tasks as root (via sudo) ---"
             if [[ "${{ needs.detect-changes.outputs.infra }}" == "true" && -d ${{ env.REMOTE_TARGET_BASE_DIR }}/infra ]]; then
-              # Sync ALL infra configs (includes per-service env dirs)
+              # Sync ALL infra configs (if any exist at infra/config)
               if [[ -d ${{ env.REMOTE_TARGET_BASE_DIR }}/infra/config ]]; then
                 sudo mkdir -p ${{ env.REMOTE_CONFIGS_DIR }}
                 sudo rsync -a --delete ${{ env.REMOTE_TARGET_BASE_DIR }}/infra/config/ ${{ env.REMOTE_CONFIGS_DIR }}/
-              fi
-
-              # Ownership for all configs to the runtime user (so user units can read them)
-              if [[ -d ${{ env.REMOTE_CONFIGS_DIR }} ]]; then
                 sudo chown -R ${{ env.REMOTE_RUNTIME_USER }}:${{ env.REMOTE_RUNTIME_USER }} ${{ env.REMOTE_CONFIGS_DIR }}
               fi
             fi
 
-            # Keep dashboard deployment (if you prefer, you can later standardize this under infra/volumes/)
+            # Keep dashboard deployment
             if [[ "${{ needs.detect-changes.outputs.dashboard }}" == "true" && -d ${{ env.REMOTE_TARGET_BASE_DIR }}/dashboard-dist ]]; then
               sudo mkdir -p ${{ env.REMOTE_DASHBOARD_VOLUME_DIR }}
               sudo rsync -a --delete ${{ env.REMOTE_TARGET_BASE_DIR }}/dashboard-dist/ ${{ env.REMOTE_DASHBOARD_VOLUME_DIR }}/
               sudo chown -R ${{ env.REMOTE_RUNTIME_USER }}:${{ env.REMOTE_RUNTIME_USER }} ${{ env.REMOTE_DASHBOARD_VOLUME_DIR }}
             fi
 
-            # Section 2: Podmanuser-level operations (quadlets + restart)
+            # Section 2: Podmanuser-level operations (quadlets + envs + restart)
             echo "--- Running systemd tasks as ${{ env.REMOTE_RUNTIME_USER }} ---"
 
             # Verify Quadlet generator is installed
@@ -258,24 +255,54 @@ jobs:
               date +%s > "$HOME/.deploy_start_epoch"
 
               SRC="${{ env.REMOTE_TARGET_BASE_DIR }}/infra/quadlets"
-              DEST="$HOME/${{ env.REMOTE_SYSTEMD_USER_DIR }}"
+              DEST_SYS_D="$HOME/${{ env.REMOTE_SYSTEMD_USER_DIR }}"
+              DEST_USER_CFG="$HOME/.config"
+
+              # Ensure destination directories exist
+              mkdir -p "$DEST_SYS_D" "$DEST_USER_CFG"
 
               if [[ -d "$SRC" ]]; then
-                echo "Syncing Quadlet unit files (including env dir)..."
-                mkdir -p "$DEST"
-                rsync -a --delete "$SRC/" "$DEST/"
+                echo "Preparing flattened Quadlet unit files (.container/.pod) and envs..."
+
+                # Stage directory to flatten .container/.pod files to top-level systemd dir
+                STAGE_Q=$(mktemp -d)
+                shopt -s nullglob
+                for f in "$SRC"/*/*.container "$SRC"/*/*.pod; do
+                  [ -f "$f" ] || continue
+                  cp -f "$f" "$STAGE_Q/$(basename "$f")"
+                done
+
+                # Sync flattened units into ~/.config/containers/systemd (delete removed)
+                rsync -a --delete "$STAGE_Q"/ "$DEST_SYS_D"/
+
+                # Stage and sync per-service env files to ~/.config/<service>/<service>.env
+                STAGE_CFG=$(mktemp -d)
+                for envf in "$SRC"/*/env/"*.env"; do
+                  [ -f "$envf" ] || continue
+                  svc="$(basename "$(dirname "$(dirname "$envf")")")"  # extract <service> from .../<service>/env/<file>.env
+                  mkdir -p "$STAGE_CFG/$svc"
+                  cp -f "$envf" "$STAGE_CFG/$svc/$svc.env"
+                done
+
+                # Sync envs per service (no delete to avoid removing other user configs)
+                for dir in "$STAGE_CFG"/*; do
+                  [ -d "$dir" ] || continue
+                  svc="$(basename "$dir")"
+                  mkdir -p "$DEST_USER_CFG/$svc"
+                  rsync -a "$dir"/ "$DEST_USER_CFG/$svc"/
+                done
               else
-                echo "WARNING: $SRC not found; nothing to sync."
+                echo "WARNING: $SRC not found; skipping unit/env sync."
               fi
 
               echo "--- Regenerating systemd units ---"
               systemctl --user daemon-reload
 
-              # Discover managed services from quadlet files
+              # Discover managed services from quadlet files now in DEST_SYS_D
               echo "--- Discovering managed services from Quadlet files ---"
               shopt -s nullglob
               MANAGED_SERVICES=()
-              for f in "$HOME/${{ env.REMOTE_SYSTEMD_USER_DIR }}"/*.{pod,container}; do
+              for f in "$DEST_SYS_D"/*.{pod,container}; do
                 [ -f "$f" ] || continue
                 base="${f##*/}"
                 name="${base%.*}" # Remove .pod or .container extension
@@ -305,11 +332,11 @@ jobs:
               # Discover generated units to start
               shopt -s nullglob
               ALL_UNITS=()
-              for f in "$HOME/${{ env.REMOTE_SYSTEMD_USER_DIR }}"/*.pod; do
+              for f in "$DEST_SYS_D"/*.pod; do
                 b="${f##*/}"; n="${b%.pod}"; unit="${n}-pod.service"
                 if systemctl --user list-unit-files --all | grep -q "^$unit"; then ALL_UNITS+=("$unit"); fi
               done
-              for f in "$HOME/${{ env.REMOTE_SYSTEMD_USER_DIR }}"/*.container; do
+              for f in "$DEST_SYS_D"/*.container; do
                 b="${f##*/}"; n="${b%.container}"; unit="${n}.service"
                 if systemctl --user list-unit-files --all | grep -q "^$unit"; then ALL_UNITS+=("$unit"); fi
               done
@@ -340,3 +367,4 @@ jobs:
             # Section 3: Cleanup
             echo "--- Cleaning up temporary files ---"
             sudo rm -rf ${{ env.REMOTE_TARGET_BASE_DIR }}
+```
