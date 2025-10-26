@@ -8,5 +8,6 @@ all:
   vars:
     admin_user: "adminuser"
     podman_user: "podmanuser"
+    ghcr_username: "guillemso1er"
     admin_password_hashed: "{{ admin_password | password_hash('bcrypt') }}"
     ansible_become_pass: "{{ admin_password }}"

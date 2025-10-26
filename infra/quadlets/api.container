@@ -42,8 +42,6 @@ ExecStartPre=/bin/sh -ceu ' \
     mv /var/lib/containers/configs/api/.api.secrets.env.tmp /var/lib/containers/configs/api/api.secrets.env \
 '
 
-# Keep your GHCR login if you need it (unrelated to Infisical)
-ExecStartPre=-/bin/sh -c '/usr/bin/podman login ghcr.io -u guillemso1er --password-stdin < /run/secrets/ghcr_token'
 
 [Install]
 WantedBy=default.target
