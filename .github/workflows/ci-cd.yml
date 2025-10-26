@@ -84,7 +84,7 @@ jobs:
     name: Build and push API (only if changed)
     needs: [detect-changes]
     if: needs.detect-changes.outputs.api == 'true' || (github.event_name == 'workflow_dispatch' && inputs.force_api_build)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04-arm
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
