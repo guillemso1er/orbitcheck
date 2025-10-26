@@ -7,21 +7,31 @@
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
       "default": "./dist/index.js"
     },
     "./node": {
       "types": "./dist/node.d.ts",
+      "import": "./dist/node.js",
       "default": "./dist/node.js"
     },
     "./routes": {
       "types": "./dist/routes.d.ts",
+      "import": "./dist/routes.js",
       "default": "./dist/routes.js"
     },
     "./api-client": {
       "types": "./dist/api-client/orbitCheckAPI.d.ts",
+      "import": "./dist/api-client/orbitCheckAPI.js",
       "default": "./dist/api-client/orbitCheckAPI.js"
     }
   },
+  "files": [
+    "dist",
+    "dist/openapi.yaml",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
     "validate": "openapi-typescript openapi.yaml --strict",
     "lint": "eslint src/",
@@ -40,10 +50,5 @@
     "openapi-typescript": "^7.4.0",
     "orval": "^7.0.1",
     "typescript": "5.9.2"
-  },
-  "files": [
-    "src/",
-    "dist/",
-    "dist/openapi.yaml"
-  ]
+  }
 }

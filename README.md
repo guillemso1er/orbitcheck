@@ -179,6 +179,11 @@ pnpm --filter @orbitcheck/api run build
 pnpm --filter @orbitcheck/api run start
 ```
 
+Build the API Docker image locally:
+```
+ podman build -f apps/api/Dockerfile . -t test-api
+```
+
 ### 5. Running the Dashboard (Frontend)
 In another terminal, from the root:
 ```

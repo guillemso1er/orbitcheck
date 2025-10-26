@@ -1,5 +1,6 @@
 # syntax=docker/dockerfile:1.7
 
+# Libpostal runtime (libs + CLI binaries + data)
 FROM ghcr.io/guillemso1er/libpostal-runtime:1.1-2025-10-19 AS libpostal
 
 ############################
@@ -7,6 +8,7 @@ FROM ghcr.io/guillemso1er/libpostal-runtime:1.1-2025-10-19 AS libpostal
 ############################
 FROM node:22-bookworm-slim AS builder
 
+# Toolchain needed to build native modules like argon2 (if no prebuild available)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     python3 \
@@ -14,10 +16,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /workspace
-
-# Libpostal libs
-COPY --from=libpostal /usr/local/ /usr/local/
-RUN ldconfig
 
 # pnpm
 ENV PNPM_HOME=/pnpm
@@ -45,7 +43,17 @@ RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store \
 RUN pnpm --filter @orbitcheck/api... build
 
 # Create prod bundle for the API at /app
-RUN pnpm --filter @orbitcheck/api... deploy --prod /app
+RUN pnpm --filter @orbitcheck/api deploy --prod /app
+
+# Rebuild argon2 in the deployed app (node-postal is no longer used)
+WORKDIR /app
+ENV NPM_CONFIG_IGNORE_SCRIPTS=false \
+    npm_config_unsafe_perm=true
+RUN npm_config_build_from_source=true npm rebuild argon2 --verbose || true
+
+# Optional sanity check (non-fatal)
+RUN bash -lc 'ls -l node_modules/.pnpm/argon2@*/node_modules/argon2/build/Release/*.node || true'
+
 
 ############################
 # 2) Runtime image
@@ -55,6 +63,8 @@ FROM node:22-bookworm-slim AS runner
 ENV NODE_ENV=production
 ENV NODE_OPTIONS=--enable-source-maps
 ENV LIBPOSTAL_DATA_DIR=/opt/libpostal/data
+# Silence dotenvx missing .env warning (optional)
+ENV DOTENVX_CONFIG_SILENT=1
 
 # Minimal runtime tools
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -62,7 +72,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Libpostal runtime
+# Libpostal runtime (includes CLI binaries address_parser / expand_address)
 COPY --from=libpostal /usr/local/ /usr/local/
 COPY --from=libpostal /opt/libpostal/data /opt/libpostal/data
 RUN ldconfig

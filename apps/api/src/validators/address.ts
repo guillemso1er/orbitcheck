@@ -1,6 +1,7 @@
-import postal from 'node-postal';
 
 import crypto from "node:crypto";
+import { parseAddressCLI } from '../lib/libpostal-cli.js'; // adjust path as needed
+
 
 import type { Redis } from "ioredis";
 import type { Pool } from "pg";
@@ -67,13 +68,8 @@ export async function normalizeAddress(addr: { line1: string; line2?: string; ci
     const joined = components.join(", ");
 
     try {
-        const parsed = postal.parser.parse_address(joined);
-        const parts: Record<string, string> = {};
-        for (const item of parsed) {
-            const k = item.component;
-            const v = item.value;
-            if (k && v) parts[k] = v;
-        }
+        const parts = await parseAddressCLI(joined);
+
         return {
             line1: (parts.house_number && parts.road) ? `${parts.house_number} ${parts.road}` : addr.line1,
             line2: parts.unit || addr.line2 || "",
@@ -265,3 +261,4 @@ export async function validateAddress(
 
     return result;
 }
+
