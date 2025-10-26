@@ -105,6 +105,7 @@ jobs:
           context: .
           file: ${{ env.API_DOCKERFILE_PATH }}
           push: true
+          platforms: linux/amd64,linux/arm64
           tags: |
             ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/${{ env.API_IMAGE_NAME }}:prod
             ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/${{ env.API_IMAGE_NAME }}:sha-${{ github.sha }}
