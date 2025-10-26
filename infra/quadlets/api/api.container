@@ -1,7 +1,7 @@
 [Unit]
 Description=My API
-After=postgres.service valkey.service
-Wants=postgres.service valkey.service
+After=api-db.service valkey.service
+Wants=api-db.service valkey.service
 
 [Container]
 LogDriver=journald
