@@ -31,7 +31,7 @@ ExecStartPre=/bin/sh -ceu ' \
     tok="$(cat /home/podmanuser/.secrets/infisical/api.token)"; \
     export INFISICAL_TOKEN="$tok"; \
     /bin/infisical export \
-        --domain=https://infiscal.bastiat.xyz \
+        --domain=https://infisical.bastiat.xyz \
         --path=/api \
         --env=prod \
         --format=dotenv \
