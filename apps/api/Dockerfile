@@ -45,7 +45,7 @@ RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store \
 RUN pnpm --filter @orbitcheck/api... build
 
 # Create prod bundle for the API at /app
-RUN pnpm deploy --filter @orbitcheck/api --prod /app
+RUN pnpm --filter @orbitcheck/api... deploy --prod /app
 
 ############################
 # 2) Runtime image
@@ -70,8 +70,6 @@ RUN ldconfig
 WORKDIR /app
 COPY --from=builder /app /app
 
-# Drop privileges
-RUN chown -R node:node /app
 USER node
 
 EXPOSE 8080
