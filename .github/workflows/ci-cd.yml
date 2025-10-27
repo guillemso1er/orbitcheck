@@ -268,7 +268,6 @@ jobs:
                 [ -f "$f" ] || continue
                 cp -f "$f" "$STAGE_Q/$(basename "$f")"
               done
-
               rsync -a --delete "$STAGE_Q"/ "$DEST_SYS_D"/
 
               echo "Syncing env files..."
@@ -279,7 +278,6 @@ jobs:
                 mkdir -p "$STAGE_CFG/$svc"
                 cp -f "$envf" "$STAGE_CFG/$svc/$svc.env"
               done
-
               for dir in "$STAGE_CFG"/*; do
                 [ -d "$dir" ] || continue
                 svc="$(basename "$dir")"
@@ -287,18 +285,18 @@ jobs:
                 rsync -a "$dir"/ "$DEST_USER_CFG/$svc"/
               done
 
-              # --- Prefetch Infisical secrets (same as Quadlet ExecStartPre) ---
+              # --- Prefetch Infisical runtime secrets (for app + migrations) ---
               SERVICE="${{ env.API_IMAGE_NAME }}"            # api
               CFG_DIR="$DEST_USER_CFG/$SERVICE"              # ~/.config/api
               mkdir -p "$CFG_DIR"
 
               INFISICAL_DOMAIN="https://infisical.bastiat.xyz"
-              INFISICAL_PATH="/api"
               INFISICAL_ENV="prod"
-              TOKEN_FILE="$HOME/.secrets/infisical/${SERVICE}.token"
 
+              # Runtime token and export (/api)
+              TOKEN_FILE="$HOME/.secrets/infisical/${SERVICE}.token"
               if [[ ! -f "$TOKEN_FILE" ]]; then
-                echo "ERROR: Infisical token file not found at $TOKEN_FILE"
+                echo "ERROR: Infisical runtime token file not found at $TOKEN_FILE"
                 exit 1
               fi
               if [[ ! -x /bin/infisical ]]; then
@@ -306,12 +304,11 @@ jobs:
                 exit 1
               fi
 
-              tok="$(cat "$TOKEN_FILE")"
-              export INFISICAL_TOKEN="$tok"
+              export INFISICAL_TOKEN="$(cat "$TOKEN_FILE")"
               tmp_secrets="$(mktemp)"
               /bin/infisical export \
                 --domain="$INFISICAL_DOMAIN" \
-                --path="$INFISICAL_PATH" \
+                --path="/api" \
                 --env="$INFISICAL_ENV" \
                 --format=dotenv \
                 --silent \
@@ -320,10 +317,144 @@ jobs:
               chmod 600 "$tmp_secrets"
               mv "$tmp_secrets" "$CFG_DIR/${SERVICE}.secrets.env"
               unset INFISICAL_TOKEN
-              # --- End: secrets prefetch ---
 
-              # --- Run DB migrations (one-off container) BEFORE we stop/start services ---
+              # --- DB provisioning + migrations (only when API changed or forced deploy) ---
               if [[ "${{ needs.detect-changes.outputs.api }}" == "true" || ("${{ github.event_name }}" == "workflow_dispatch" && "${{ inputs.force_deploy }}" == "true") ]]; then
+                # Admin token and export (/api-infra)
+                ADMIN_TOKEN_FILE="$HOME/.secrets/infisical/${SERVICE}-infra.token"
+                if [[ ! -f "$ADMIN_TOKEN_FILE" ]]; then
+                  echo "ERROR: Infisical admin token file not found at $ADMIN_TOKEN_FILE"
+                  exit 1
+                fi
+                export INFISICAL_TOKEN="$(cat "$ADMIN_TOKEN_FILE")"
+                tmp_admin="$(mktemp)"
+                /bin/infisical export \
+                  --domain="$INFISICAL_DOMAIN" \
+                  --path="/api-infra" \
+                  --env="$INFISICAL_ENV" \
+                  --format=dotenv \
+                  --silent \
+                  --include-imports \
+                > "$tmp_admin"
+                chmod 600 "$tmp_admin"
+                ADMIN_ENV="$CFG_DIR/${SERVICE}.dbadmin.env"
+                mv "$tmp_admin" "$ADMIN_ENV"
+                unset INFISICAL_TOKEN
+
+                echo "--- Provisioning DB roles, DB, schema, and grants (idempotent) ---"
+                podman pull docker.io/library/postgres:16-alpine || true
+                podman run --rm --network host \
+                  --env-file "$ADMIN_ENV" \
+                  docker.io/library/postgres:16-alpine sh -s <<'SH'
+                set -euo pipefail
+
+                : "${PGHOST:?}"; : "${PGPORT:=5432}"; : "${PGADMIN_USER:?}"; : "${PGADMIN_PASSWORD:?}";
+                : "${APP_DB_NAME:?}"; : "${APP_DB_SCHEMA:=public}";
+                : "${MIGRATION_DB_USER:=api_migrator}"; : "${MIGRATION_DB_PASSWORD:?}";
+                : "${APP_DB_USER:=api_app}"; : "${APP_DB_PASSWORD:?}";
+                : "${DB_EXTENSIONS:=}";  # optional
+
+                export PGPASSWORD="$PGADMIN_PASSWORD"
+
+                # 1) Create roles if missing; rotate passwords
+                psql "host=$PGHOST port=$PGPORT dbname=postgres user=$PGADMIN_USER" -v ON_ERROR_STOP=1 -q \
+                  -v MIG_USER="$MIGRATION_DB_USER" -v APP_USER="$APP_DB_USER" \
+                  -v PASS_MIG="$MIGRATION_DB_PASSWORD" -v PASS_APP="$APP_DB_PASSWORD" <<'SQL'
+                DO $$
+                BEGIN
+                  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = :MIG_USER) THEN
+                    EXECUTE format('CREATE ROLE %I LOGIN', :MIG_USER);
+                  END IF;
+                  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = :APP_USER) THEN
+                    EXECUTE format('CREATE ROLE %I LOGIN', :APP_USER);
+                  END IF;
+                END
+                $$;
+
+                ALTER ROLE :MIG_USER WITH PASSWORD :PASS_MIG;
+                ALTER ROLE :APP_USER WITH PASSWORD :PASS_APP;
+                SQL
+
+                # 2) Ensure database exists; set owner to migrator
+                if ! psql "host=$PGHOST port=$PGPORT dbname=postgres user=$PGADMIN_USER" -tAc "SELECT 1 FROM pg_database WHERE datname = '$APP_DB_NAME'" | grep -q 1; then
+                  createdb -h "$PGHOST" -p "$PGPORT" -U "$PGADMIN_USER" -O "$MIGRATION_DB_USER" "$APP_DB_NAME"
+                else
+                  psql "host=$PGHOST port=$PGPORT dbname=postgres user=$PGADMIN_USER" -q -v ON_ERROR_STOP=1 \
+                    -c "ALTER DATABASE \"$APP_DB_NAME\" OWNER TO \"$MIGRATION_DB_USER\""
+                fi
+
+                # 3) Lock down public schema and DB-wide PUBLIC access
+                psql "host=$PGHOST port=$PGPORT dbname=$APP_DB_NAME user=$PGADMIN_USER" -v ON_ERROR_STOP=1 -q <<'SQL'
+                REVOKE CREATE ON SCHEMA public FROM PUBLIC;
+                SQL
+                psql "host=$PGHOST port=$PGPORT dbname=postgres user=$PGADMIN_USER" -v ON_ERROR_STOP=1 -q \
+                  -v DB_NAME="$APP_DB_NAME" <<'SQL'
+                REVOKE ALL ON DATABASE :"DB_NAME" FROM PUBLIC;
+                SQL
+
+                # 4) Set search_path so unqualified objects go into your schema
+                psql "host=$PGHOST port=$PGPORT dbname=postgres user=$PGADMIN_USER" -v ON_ERROR_STOP=1 -q \
+                  -v DB_NAME="$APP_DB_NAME" -v SCHEMA="$APP_DB_SCHEMA" \
+                  -v MIG_USER="$MIGRATION_DB_USER" -v APP_USER="$APP_DB_USER" <<'SQL'
+                ALTER ROLE :"MIG_USER" IN DATABASE :"DB_NAME" SET search_path = :"SCHEMA", public;
+                ALTER ROLE :"APP_USER" IN DATABASE :"DB_NAME" SET search_path = :"SCHEMA", public;
+                SQL
+
+                # 5) Allow connection for migrator + app users
+                psql "host=$PGHOST port=$PGPORT dbname=postgres user=$PGADMIN_USER" -q -v ON_ERROR_STOP=1 \
+                  -v DB_NAME="$APP_DB_NAME" -v MIG_USER="$MIGRATION_DB_USER" -v APP_USER="$APP_DB_USER" <<'SQL'
+                GRANT CONNECT ON DATABASE :"DB_NAME" TO :"MIG_USER", :"APP_USER";
+                SQL
+
+                # 6) Ensure schema exists; make migrator owner if schema != public
+                psql "host=$PGHOST port=$PGPORT dbname=$APP_DB_NAME user=$PGADMIN_USER" -q -v ON_ERROR_STOP=1 \
+                  -v SCHEMA="$APP_DB_SCHEMA" -v MIG_USER="$MIGRATION_DB_USER" <<'SQL'
+                DO $$
+                BEGIN
+                  IF NOT EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = :SCHEMA) THEN
+                    EXECUTE format('CREATE SCHEMA %I AUTHORIZATION %I', :SCHEMA, :MIG_USER);
+                  END IF;
+                END
+                $$;
+                SQL
+                if [ "$APP_DB_SCHEMA" != "public" ]; then
+                  psql "host=$PGHOST port=$PGPORT dbname=$APP_DB_NAME user=$PGADMIN_USER" -q -v ON_ERROR_STOP=1 \
+                    -v SCHEMA="$APP_DB_SCHEMA" -v MIG_USER="$MIGRATION_DB_USER" \
+                    -c 'ALTER SCHEMA :"SCHEMA" OWNER TO :"MIG_USER"'
+                fi
+
+                # 7) Grants for existing objects
+                psql "host=$PGHOST port=$PGPORT dbname=$APP_DB_NAME user=$PGADMIN_USER" -q -v ON_ERROR_STOP=1 \
+                  -v SCHEMA="$APP_DB_SCHEMA" -v APP_USER="$APP_DB_USER" <<'SQL'
+                GRANT USAGE ON SCHEMA :"SCHEMA" TO :"APP_USER";
+                GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA :"SCHEMA" TO :"APP_USER";
+                GRANT USAGE, SELECT, UPDATE ON ALL SEQUENCES IN SCHEMA :"SCHEMA" TO :"APP_USER";
+                SQL
+
+                # 8) Default privileges for future objects (created by migrator)
+                psql "host=$PGHOST port=$PGPORT dbname=$APP_DB_NAME user=$PGADMIN_USER" -q -v ON_ERROR_STOP=1 \
+                  -v SCHEMA="$APP_DB_SCHEMA" -v MIG_USER="$MIGRATION_DB_USER" -v APP_USER="$APP_DB_USER" <<'SQL'
+                ALTER DEFAULT PRIVILEGES FOR ROLE :"MIG_USER" IN SCHEMA :"SCHEMA"
+                  GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO :"APP_USER";
+                ALTER DEFAULT PRIVILEGES FOR ROLE :"MIG_USER" IN SCHEMA :"SCHEMA"
+                  GRANT USAGE, SELECT, UPDATE ON SEQUENCES TO :"APP_USER";
+                SQL
+
+                # 9) Optional: install extensions
+                if [ -n "$DB_EXTENSIONS" ]; then
+                  IFS=',' read -r -a EXT_ARR <<< "$DB_EXTENSIONS"
+                  for ext in "${EXT_ARR[@]}"; do
+                    ext="$(echo "$ext" | xargs)"
+                    [ -z "$ext" ] && continue
+                    psql "host=$PGHOST port=$PGPORT dbname=$APP_DB_NAME user=$PGADMIN_USER" -q -v ON_ERROR_STOP=1 \
+                      -v EXT="$ext" -v SCHEMA="$APP_DB_SCHEMA" \
+                      -c 'CREATE EXTENSION IF NOT EXISTS :"EXT" WITH SCHEMA :"SCHEMA"'
+                  done
+                fi
+                SH
+                echo "--- DB provisioning done ---"
+
+                # --- Run DB migrations (one-off container) BEFORE we stop/start services ---
                 IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/${{ env.API_IMAGE_NAME }}:prod"
                 STATIC_ENV="$CFG_DIR/$SERVICE.env"                 # from infra sync (non-secret)
                 SECRET_ENV="$CFG_DIR/${SERVICE}.secrets.env"       # from Infisical

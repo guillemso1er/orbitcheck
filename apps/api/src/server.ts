@@ -1,6 +1,8 @@
- import { once } from 'node:events';
+import { once } from 'node:events';
 
-import '@dotenvx/dotenvx/config';
+if (process.env.NODE_ENV !== 'production') {
+    await import('dotenv/config');
+}
 
 import cookie from "@fastify/cookie";
 import secureSession from '@fastify/secure-session';

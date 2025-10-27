@@ -1,130 +1,136 @@
-import 'dotenv/config';
-
-import { InfisicalSDK } from '@infisical/sdk';
+// src/config/environment.ts
 import { randomBytes } from 'crypto';
-import fs from 'fs';
+import 'dotenv/config'; // harmless in prod; useful for local dev
+import { bool, cleanEnv, makeValidator, num, port, str, url } from 'envalid';
+import { CRYPTO_KEY_BYTES } from './config.js'; // must match your crypto key size (bytes)
 
-import { CRYPTO_KEY_BYTES } from "./config.js";
+const NODE_ENV = process.env.NODE_ENV || 'production';
+const isProd = NODE_ENV === 'production';
 
-const enableInfisical = process.env.INFISICAL_RUNTIME_FETCH_SECRETS === 'true';
+// Helpers
+const randomHex = (bytes: number) => randomBytes(bytes).toString('hex');
 
-let infisicalCreds: { CLIENT_ID?: string; CLIENT_SECRET?: string; PROJECT_ID?: string; BASE_URL?: string } = {};
-let infisicalAuthenticated = false;
-
-try {
-  const credsPath = '/tmp/infisical-credentials.json';
-  if (fs.existsSync(credsPath)) {
-    const credsData = fs.readFileSync(credsPath, 'utf-8');
-    infisicalCreds = JSON.parse(credsData);
-  }
-} catch (error) {
-  console.warn('Failed to read Infisical credentials file:', error);
-}
-
-const infisicalClient = new InfisicalSDK({
-  siteUrl: infisicalCreds.BASE_URL || process.env.INFISICAL_SITE_URL || "https://app.infisical.com",
+const csv = makeValidator<string[]>((s) => {
+  if (typeof s !== 'string') throw new Error('must be a string');
+  return s
+    .split(',')
+    .map((x) => x.trim())
+    .filter(Boolean);
 });
 
-// Authenticate with Infisical only if enabled
-if (enableInfisical) {
+const urlOrEmpty = makeValidator<string>((s) => {
+  if (s === '' || s == null) return '';
   try {
-    if (infisicalCreds.CLIENT_ID && infisicalCreds.CLIENT_SECRET) {
-      await infisicalClient.auth().universalAuth.login({
-        clientId: infisicalCreds.CLIENT_ID,
-        clientSecret: infisicalCreds.CLIENT_SECRET,
-      });
-      infisicalAuthenticated = true;
-    } else if (process.env.INFISICAL_SERVICE_TOKEN) {
-      // Use service token by accessing the auth client directly
-      (infisicalClient as any).authenticate(process.env.INFISICAL_SERVICE_TOKEN);
-      infisicalAuthenticated = true;
-    }
-  } catch (error) {
-    console.warn('Failed to authenticate with Infisical:', error);
+    const u = new URL(String(s));
+    return u.toString();
+  } catch {
+    throw new Error('must be empty or a valid URL');
+  }
+});
+
+// Enforce hex key of exact byte length
+const hexOfBytes = (bytes: number) =>
+  makeValidator<string>((s) => {
+    if (typeof s !== 'string') throw new Error('must be a hex string');
+    if (!/^[0-9a-f]+$/i.test(s)) throw new Error('must be hex');
+    if (s.length % 2 !== 0) throw new Error('hex length must be even');
+    const buf = Buffer.from(s, 'hex');
+    if (buf.length !== bytes) throw new Error(`must be ${bytes} bytes (${bytes * 2} hex chars)`);
+    return s.toLowerCase();
+  });
+
+export const env = cleanEnv(process.env, {
+  // Runtime mode
+  NODE_ENV: str({ choices: ['development', 'test', 'production'], default: 'production' }),
+
+  // Core
+  PORT: port({ default: 8080 }),
+  DATABASE_URL: url({ default: '' }),
+  APP_DATABASE_URL: url({ default: '' }),
+  REDIS_URL: isProd ? url() : url({ default: 'redis://localhost:6379' }),
+
+  // Logging/observability
+  LOG_LEVEL: str({ choices: ['trace', 'debug', 'info', 'warn', 'error', 'fatal', 'silent'], default: 'info' }),
+  SENTRY_DSN: str({ default: '' }),
+
+  // External services and supporting URLs
+  NOMINATIM_URL: url({ default: 'https://nominatim.openstreetmap.org' }),
+  LOCATIONIQ_KEY: str({ default: '' }),
+  DISPOSABLE_LIST_URL: url({ default: 'https://raw.githubusercontent.com/disposable/disposable-email-domains/master/domains.json' }),
+  VIES_WSDL_URL: url({ default: 'https://ec.europa.eu/taxation_customs/vies/checkVatService.wsdl' }),
+
+  // Retention / rate limits
+  RETENTION_DAYS: num({ default: 90 }),
+  RATE_LIMIT_COUNT: num({ default: 300 }),
+  RATE_LIMIT_BURST: num({ default: 500 }),
+
+  // Twilio (optional, all-or-nothing)
+  TWILIO_ACCOUNT_SID: str({ default: '' }),
+  TWILIO_AUTH_TOKEN: str({ default: '' }),
+  TWILIO_VERIFY_SERVICE_SID: str({ default: '' }),
+  TWILIO_PHONE_NUMBER: str({ default: '' }),
+
+  // Object storage (S3-compatible)
+  // Endpoint can be blank (e.g., using AWS SDK defaults); in dev we default to local MinIO
+  S3_ENDPOINT: isProd ? urlOrEmpty({ default: '' }) : urlOrEmpty({ default: 'http://localhost:9000' }),
+  S3_ACCESS_KEY: isProd ? str() : str({ default: 'minioadmin' }),
+  S3_SECRET_KEY: isProd ? str() : str({ default: 'minioadmin' }),
+  S3_BUCKET: isProd ? str() : str({ default: 'orbitcheck' }),
+
+  // Geocoding
+  GOOGLE_GEOCODING_KEY: str({ default: '' }),
+  USE_GOOGLE_FALLBACK: bool({ default: false }),
+
+  // Auth/secrets
+  JWT_SECRET: isProd ? str() : str({ default: `dev_jwt_${randomHex(16)}` }),
+  ENCRYPTION_KEY: isProd
+    ? hexOfBytes(CRYPTO_KEY_BYTES)()
+    : hexOfBytes(CRYPTO_KEY_BYTES)({ default: randomHex(CRYPTO_KEY_BYTES) }),
+  SESSION_SECRET: isProd ? str() : str({ default: randomHex(CRYPTO_KEY_BYTES) }),
+
+  // OIDC (optional)
+  OIDC_ENABLED: bool({ default: false }),
+  OIDC_CLIENT_ID: str({ default: '' }),
+  OIDC_CLIENT_SECRET: str({ default: '' }),
+  OIDC_PROVIDER_URL: url({ default: '' }), // e.g., https://accounts.google.com
+  OIDC_REDIRECT_URI: isProd ? url({ default: '' }) : url({ default: 'http://localhost:8080/auth/callback' }),
+
+  // Stripe (optional)
+  STRIPE_ENABLED: bool({ default: false }),
+  STRIPE_SECRET_KEY: str({ default: '' }),
+  STRIPE_BASE_PLAN_PRICE_ID: str({ default: '' }),
+  STRIPE_USAGE_PRICE_ID: str({ default: '' }),
+  STRIPE_STORE_ADDON_PRICE_ID: str({ default: '' }),
+
+  // CORS / frontend
+  FRONTEND_URL: isProd ? url() : url({ default: 'http://localhost:5173' }),
+  CORS_ORIGINS: csv({ default: isProd ? [] : ['http://localhost:5173'] }), // comma-separated list in env
+});
+
+// Cross-field checks (fail fast with clear errors)
+if (env.OIDC_ENABLED) {
+  if (!env.OIDC_CLIENT_ID || !env.OIDC_CLIENT_SECRET || !env.OIDC_PROVIDER_URL || !env.OIDC_REDIRECT_URI) {
+    throw new Error('When OIDC_ENABLED=true you must set OIDC_CLIENT_ID, OIDC_CLIENT_SECRET, OIDC_PROVIDER_URL, and OIDC_REDIRECT_URI');
   }
 }
 
-const getSecret = async (key: string, fallback?: string): Promise<string> => {
-  // Always check environment variables first
-  const envValue = process.env[key];
-  if (envValue !== undefined) {
-    return envValue;
+if (env.STRIPE_ENABLED) {
+  if (!env.STRIPE_SECRET_KEY || !env.STRIPE_BASE_PLAN_PRICE_ID || !env.STRIPE_USAGE_PRICE_ID || !env.STRIPE_STORE_ADDON_PRICE_ID) {
+    throw new Error('When STRIPE_ENABLED=true you must set STRIPE_SECRET_KEY and all STRIPE_*_PRICE_ID values');
   }
+}
 
-  // If Infisical is enabled and authenticated, try to fetch from Infisical
-  if (enableInfisical && infisicalAuthenticated) {
-    try {
-      const secret = await infisicalClient.secrets().getSecret({
-        environment: process.env.INFISICAL_ENVIRONMENT || "dev",
-        projectId: infisicalCreds.PROJECT_ID || process.env.INFISICAL_PROJECT_ID || "",
-        secretName: key,
-      });
-      return secret.secretValue;
-    } catch (error) {
-      console.warn(`Failed to fetch secret ${key} from Infisical, using fallback:`, error);
-    }
-  }
+const twilioFields = [env.TWILIO_ACCOUNT_SID, env.TWILIO_AUTH_TOKEN, env.TWILIO_VERIFY_SERVICE_SID, env.TWILIO_PHONE_NUMBER];
+const someTwilio = twilioFields.some(Boolean);
+const allTwilio = twilioFields.every(Boolean);
+if (someTwilio && !allTwilio) {
+  throw new Error('Either set all TWILIO_* vars or none');
+}
 
-  // Use fallback if environment variable not found and Infisical not available/enabled
-  return fallback || "";
-};
-
-const getNumberSecret = async (key: string, fallback: number): Promise<number> => {
-  const value = await getSecret(key, fallback.toString());
-  return Number.parseInt(value, 10);
-};
-
-const getBooleanSecret = async (key: string, fallback: boolean): Promise<boolean> => {
-  const value = await getSecret(key, fallback ? "true" : "false");
-  return value === "true";
-};
-
+// Derived/normalized values
 export const environment = {
-  PORT: await getNumberSecret("PORT", 8080),
-  DATABASE_URL: await getSecret("DATABASE_URL", "postgres://postgres:postgres@localhost:5432/orbitcheck"),
-  REDIS_URL: await getSecret("REDIS_URL", "redis://localhost:6379"),
-  LOG_LEVEL: await getSecret("LOG_LEVEL", "info"),
-  NOMINATIM_URL: await getSecret("NOMINATIM_URL", "https://nominatim.openstreetmap.org"),
-  LOCATIONIQ_KEY: await getSecret("LOCATIONIQ_KEY", ""),
-  DISPOSABLE_LIST_URL: await getSecret("DISPOSABLE_LIST_URL", "https://raw.githubusercontent.com/disposable/disposable-email-domains/master/domains.json"),
-  SENTRY_DSN: await getSecret("SENTRY_DSN", ""),
-  VIES_WSDL_URL: await getSecret("VIES_WSDL_URL", "https://ec.europa.eu/taxation_customs/vies/checkVatService.wsdl"),
-  RETENTION_DAYS: await getNumberSecret("RETENTION_DAYS", 90),
-  RATE_LIMIT_COUNT: await getNumberSecret("RATE_LIMIT_COUNT", 300),
-  RATE_LIMIT_BURST: await getNumberSecret("RATE_LIMIT_BURST", 500),
-  TWILIO_ACCOUNT_SID: await getSecret("TWILIO_ACCOUNT_SID", ""),
-  TWILIO_AUTH_TOKEN: await getSecret("TWILIO_AUTH_TOKEN", ""),
-  TWILIO_VERIFY_SERVICE_SID: await getSecret("TWILIO_VERIFY_SERVICE_SID", ""),
-  TWILIO_PHONE_NUMBER: await getSecret("TWILIO_PHONE_NUMBER", ""),
-  S3_ENDPOINT: await getSecret("S3_ENDPOINT", "http://localhost:9000"),
-  S3_ACCESS_KEY: await getSecret("S3_ACCESS_KEY", "minioadmin"),
-  S3_SECRET_KEY: await getSecret("S3_SECRET_KEY", "minioadmin"),
-  S3_BUCKET: await getSecret("S3_BUCKET", "orbitcheck"),
-  GOOGLE_GEOCODING_KEY: await getSecret("GOOGLE_GEOCODING_KEY", ""),
-  USE_GOOGLE_FALLBACK: await getBooleanSecret("USE_GOOGLE_FALLBACK", false),
-  JWT_SECRET: await getSecret("JWT_SECRET", "dummy_jwt_secret_for_local_dev"),
-  ENCRYPTION_KEY: await getSecret("ENCRYPTION_KEY", "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"),
-  SESSION_SECRET: await getSecret("SESSION_SECRET", randomBytes(CRYPTO_KEY_BYTES).toString('hex')),
-
-  // OIDC configuration (optional)
-  OIDC_ENABLED: await getBooleanSecret("OIDC_ENABLED", false),
-  OIDC_CLIENT_ID: await getSecret("OIDC_CLIENT_ID"),
-  OIDC_CLIENT_SECRET: await getSecret("OIDC_CLIENT_SECRET"),
-  OIDC_PROVIDER_URL: await getSecret("OIDC_PROVIDER_URL"), // e.g., https://accounts.google.com
-  OIDC_REDIRECT_URI: await getSecret("OIDC_REDIRECT_URI", `http://localhost:8080/auth/callback`),
-
-  // Stripe (for billing - optional, provide dummy for local dev)
-  STRIPE_SECRET_KEY: await getSecret("STRIPE_SECRET_KEY", "sk_test_dummy"),
-  STRIPE_BASE_PLAN_PRICE_ID: await getSecret("STRIPE_BASE_PLAN_PRICE_ID", "price_dummy"),
-  STRIPE_USAGE_PRICE_ID: await getSecret("STRIPE_USAGE_PRICE_ID", "price_dummy"),
-  STRIPE_STORE_ADDON_PRICE_ID: await getSecret("STRIPE_STORE_ADDON_PRICE_ID", "price_dummy"),
-  FRONTEND_URL: await getSecret("FRONTEND_URL", "http://localhost:5173"),
-  CORS_ORIGINS: await getSecret("CORS_ORIGINS"),
-
-  NODE_ENV: process.env.NODE_ENV || 'production',
-
-  // Infisical (for secret management) - don't fetch these from Infisical itself
-  INFISICAL_PROJECT_ID: infisicalCreds.PROJECT_ID || process.env.INFISICAL_PROJECT_ID || "",
-  INFISICAL_ENVIRONMENT: process.env.INFISICAL_ENVIRONMENT || "dev",
-  INFISICAL_SITE_URL: infisicalCreds.BASE_URL || process.env.INFISICAL_SITE_URL || "https://app.infisical.com",
-};
+  ...env,
+  DATABASE_URL: env.DATABASE_URL || env.APP_DATABASE_URL || (isProd ? '' : 'postgres://postgres:postgres@localhost:5432/orbitcheck'),
+  // If CORS_ORIGINS is empty in prod, fallback to FRONTEND_URL
+  CORS_ORIGINS: env.CORS_ORIGINS.length ? env.CORS_ORIGINS : [env.FRONTEND_URL],
+} as const;

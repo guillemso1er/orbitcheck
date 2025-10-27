@@ -12,7 +12,8 @@
     "skipLibCheck": true,
     "types": [
       "vite/client",
-      "jest-environment-jsdom"
+      "@types/jest",
+      "@types/node"
     ],
     "moduleResolution": "bundler",
     "allowImportingTsExtensions": true,
