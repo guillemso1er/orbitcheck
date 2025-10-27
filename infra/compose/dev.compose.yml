@@ -81,12 +81,8 @@ services:
         condition: service_healthy
       minio:
         condition: service_healthy
-      infisical-backend:
-        condition: service_healthy
     ports:
       - "8080:8080"
-    volumes:
-     - infisical_credentials:/tmp
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
       interval: 30s
@@ -107,7 +103,6 @@ services:
       - "3000:3000"
     volumes:
       - grafana_data:/var/lib/grafana
-      - ../grafana/provisioning:/etc/grafana/provisioning
 
   loki:
     image: grafana/loki:2.9.0
@@ -157,12 +152,3 @@ volumes:
   caddy_config: {}
   statping_data: {}
   uptime_kuma_data: {}
-  infisical_pg_data:
-    driver: local
-  infisical_redis_data:
-    driver: local
-  infisical_credentials:
-    driver: local
-
-networks:
-  infisical_net:

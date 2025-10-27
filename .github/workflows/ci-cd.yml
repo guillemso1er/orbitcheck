@@ -273,7 +273,6 @@ jobs:
 
               echo "Syncing env files..."
               STAGE_CFG=$(mktemp -d)
-              # Note: NO quotes around *.env — allow shell to expand
               for envf in "$SRC"/*/env/*.env; do
                 [ -f "$envf" ] || continue
                 svc="$(basename "$(dirname "$(dirname "$envf")")")" # <service>/env/<file>.env -> service name
@@ -287,6 +286,69 @@ jobs:
                 mkdir -p "$DEST_USER_CFG/$svc"
                 rsync -a "$dir"/ "$DEST_USER_CFG/$svc"/
               done
+
+              # --- Prefetch Infisical secrets (same as Quadlet ExecStartPre) ---
+              SERVICE="${{ env.API_IMAGE_NAME }}"            # api
+              CFG_DIR="$DEST_USER_CFG/$SERVICE"              # ~/.config/api
+              mkdir -p "$CFG_DIR"
+
+              INFISICAL_DOMAIN="https://infisical.bastiat.xyz"
+              INFISICAL_PATH="/api"
+              INFISICAL_ENV="prod"
+              TOKEN_FILE="$HOME/.secrets/infisical/${SERVICE}.token"
+
+              if [[ ! -f "$TOKEN_FILE" ]]; then
+                echo "ERROR: Infisical token file not found at $TOKEN_FILE"
+                exit 1
+              fi
+              if [[ ! -x /bin/infisical ]]; then
+                echo "ERROR: /bin/infisical CLI not found. Install it or adjust the path."
+                exit 1
+              fi
+
+              tok="$(cat "$TOKEN_FILE")"
+              export INFISICAL_TOKEN="$tok"
+              tmp_secrets="$(mktemp)"
+              /bin/infisical export \
+                --domain="$INFISICAL_DOMAIN" \
+                --path="$INFISICAL_PATH" \
+                --env="$INFISICAL_ENV" \
+                --format=dotenv \
+                --silent \
+                --include-imports \
+              > "$tmp_secrets"
+              chmod 600 "$tmp_secrets"
+              mv "$tmp_secrets" "$CFG_DIR/${SERVICE}.secrets.env"
+              unset INFISICAL_TOKEN
+              # --- End: secrets prefetch ---
+
+              # --- Run DB migrations (one-off container) BEFORE we stop/start services ---
+              if [[ "${{ needs.detect-changes.outputs.api }}" == "true" || ("${{ github.event_name }}" == "workflow_dispatch" && "${{ inputs.force_deploy }}" == "true") ]]; then
+                IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/${{ env.API_IMAGE_NAME }}:prod"
+                STATIC_ENV="$CFG_DIR/$SERVICE.env"                 # from infra sync (non-secret)
+                SECRET_ENV="$CFG_DIR/${SERVICE}.secrets.env"       # from Infisical
+
+                MIG_ENV="$(mktemp)"
+                trap 'rm -f "$MIG_ENV"' EXIT
+                chmod 600 "$MIG_ENV"
+                [[ -f "$STATIC_ENV" ]] && cat "$STATIC_ENV" >> "$MIG_ENV"
+                [[ -f "$SECRET_ENV" ]] && cat "$SECRET_ENV" >> "$MIG_ENV"
+
+                echo "--- Running DB migrations using image: $IMAGE ---"
+                podman pull "$IMAGE" || true
+
+                ATTEMPTS=10
+                until podman run --rm \
+                  --env-file "$MIG_ENV" \
+                  --network host \
+                  "$IMAGE" sh -lc 'npm run migrate:ci'; do
+                  ((ATTEMPTS--)) || { echo "ERROR: Migrations failed after retries"; exit 1; }
+                  echo "Migrations failed; retrying in 3s..."
+                  sleep 3
+                done
+                echo "--- Migrations completed ---"
+              fi
+              # --- End migrations block ---
 
               echo "--- systemd daemon-reload (user) ---"
               systemctl --user daemon-reload

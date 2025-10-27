@@ -9,7 +9,6 @@ Image=docker.io/grafana/grafana:11.1.0
 ContainerName=grafana
 Pod=orbitcheck.pod
 Volume=/var/lib/containers/volumes/grafana-data:/var/lib/grafana:Z,U
-Volume=/var/lib/containers/volumes/grafana-provisioning:/etc/grafana/provisioning:Z
 EnvironmentFile=/home/podmanuser/.config/grafana/grafana.env
 Label="io.containers.autoupdate=image"
 NoNewPrivileges=yes
@@ -17,7 +16,6 @@ NoNewPrivileges=yes
 [Service]
 Restart=always
 ExecStartPre=mkdir -p /var/lib/containers/volumes/grafana-data
-ExecStartPre=mkdir -p /var/lib/containers/volumes/grafana-provisioning
 
 [Install]
 WantedBy=default.target
