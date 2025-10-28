@@ -660,8 +660,15 @@ export -f runtime_main_deployment
 deploy_as_runtime_user() {
     log_info "Starting deployment as $REMOTE_RUNTIME_USER..."
     
-    # Execute the main deployment function as runtime user
-    # All functions are exported and available in the subshell
+    # We need to get the absolute path of the currently executing script
+    # BASH_SOURCE[0] is reliable for this.
+    local script_path
+    script_path=$(readlink -f "${BASH_SOURCE[0]}")
+    
+    # Execute the main deployment function as the runtime user.
+    # The key change is `source \"$script_path\"; runtime_main_deployment`.
+    # This command first loads all functions from the script file into the new shell,
+    # and then executes the specific function we need.
     if ! sudo -iu "$REMOTE_RUNTIME_USER" \
         NEEDS_API_CHANGES="$NEEDS_API_CHANGES" \
         IS_WORKFLOW_DISPATCH="$IS_WORKFLOW_DISPATCH" \
@@ -672,7 +679,7 @@ deploy_as_runtime_user() {
         REGISTRY="$REGISTRY" \
         IMAGE_OWNER="$IMAGE_OWNER" \
         RED="$RED" GREEN="$GREEN" YELLOW="$YELLOW" BLUE="$BLUE" NC="$NC" \
-        bash -c 'runtime_main_deployment'; then
+        bash -c "source \"$script_path\"; runtime_main_deployment"; then
         
         log_error "Deployment as runtime user failed"
         exit 1
