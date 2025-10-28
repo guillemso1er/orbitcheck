@@ -40,10 +40,10 @@ log_error() {
 print_stack() {
   local i
   for ((i=${#FUNCNAME[@]}-1; i>0; i--)); do
-    # FUNCNAME[0] is the current function (trap handler), so start from 1
     echo "  at ${FUNCNAME[$i]} (${BASH_SOURCE[$i]}:${BASH_LINENO[$i-1]})" >&2
   done
 }
+
 
 trap 'code=$?; line=$LINENO; cmd=$BASH_COMMAND; file=${BASH_SOURCE[0]};
       log_error "Exit $code at $file:$line while running: $cmd";
@@ -250,9 +250,9 @@ runtime_deploy_quadlet_files() {
 
   local count=0
   for f in "$src"/**/*.container "$src"/**/*.pod; do
-    [[ -f "$f" ]] || continue
-    cp -f "$f" "$stage_q/$(basename "$f")"
-    ((count++))
+        [[ -f "$f" ]] || continue
+        cp -f "$f" "$stage_q/$(basename "$f")"
+        ((++count))
   done
 
   if [[ $count -eq 0 ]]; then
@@ -285,13 +285,12 @@ runtime_deploy_env_files() {
     
     shopt -s nullglob
     local count=0
-    
     for envf in "$src"/*/env/*.env; do
         [[ -f "$envf" ]] || continue
         local svc="$(basename "$(dirname "$(dirname "$envf")")")"
         mkdir -p "$stage_cfg/$svc"
         cp -f "$envf" "$stage_cfg/$svc/$svc.env"
-        ((count++))
+        ((++count))
     done
     
     if [[ $count -eq 0 ]]; then
