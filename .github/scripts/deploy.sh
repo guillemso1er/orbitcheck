@@ -681,7 +681,7 @@ deploy_as_runtime_user() {
     
     # Execute the main deployment function as the runtime user.
     # All required environment variables must be explicitly passed through sudo.
-    if ! sudo -iu "$REMOTE_RUNTIME_USER" \
+ if ! sudo -iu "$REMOTE_RUNTIME_USER" \
         NEEDS_API_CHANGES="$NEEDS_API_CHANGES" \
         IS_WORKFLOW_DISPATCH="$IS_WORKFLOW_DISPATCH" \
         FORCE_DEPLOY="$FORCE_DEPLOY" \
@@ -694,7 +694,7 @@ deploy_as_runtime_user() {
         REMOTE_DASHBOARD_VOLUME_DIR="$REMOTE_DASHBOARD_VOLUME_DIR" \
         REMOTE_RUNTIME_USER="$REMOTE_RUNTIME_USER" \
         RED="$RED" GREEN="$GREEN" YELLOW="$YELLOW" BLUE="$BLUE" NC="$NC" \
-        bash -c "source \"$script_path\"; runtime_main_deployment"; then
+        bash -xc "source \"$script_path\"; runtime_main_deployment"; then
         
         log_error "Deployment as runtime user failed"
         exit 1
