@@ -690,6 +690,9 @@ deploy_as_runtime_user() {
 # ============================================================================
 # Main Execution
 # ============================================================================
+# ============================================================================
+# Main Execution
+# ============================================================================
 
 main() {
     log_info "=== Starting Deployment Process ==="
@@ -709,6 +712,18 @@ main() {
     # Section 2: Runtime user operations
     log_info "=== Section 2: Runtime user operations ==="
     verify_podman_quadlet
+    
+    # --- NEW CODE BLOCK ---
+    # Change ownership of the entire temp directory to the runtime user
+    # so that it can read the source files for deployment.
+    log_info "Changing ownership of '$REMOTE_TARGET_BASE_DIR' to '$REMOTE_RUNTIME_USER'"
+    if ! sudo chown -R "$REMOTE_RUNTIME_USER:$REMOTE_RUNTIME_USER" "$REMOTE_TARGET_BASE_DIR"; then
+        log_error "Failed to change ownership of the target directory."
+        exit 1
+    fi
+    log_success "Ownership changed."
+    # --- END NEW CODE BLOCK ---
+
     deploy_as_runtime_user
     
     # Section 3: Cleanup
