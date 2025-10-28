@@ -213,11 +213,17 @@ runtime_deploy_quadlet_files() {
     local dest_sys_d="$2"
     
     log_info "Deploying Quadlet files..."
+
+    # --- Start Enhanced Debugging ---
+    # The 'set -x' command prints each command and its arguments to stderr
+    # as they are executed. This will show us exactly which command is failing.
+    set -x
     
     mkdir -p "$dest_sys_d"
     
     # Create staging directory
-    local stage_q=$(mktemp -d)
+    local stage_q
+    stage_q=$(mktemp -d)
     trap "rm -rf '$stage_q'" RETURN
     
     shopt -s nullglob globstar
@@ -230,6 +236,10 @@ runtime_deploy_quadlet_files() {
         ((count++))
     done
     
+    # --- Stop Enhanced Debugging ---
+    # Turn off xtrace to avoid cluttering the rest of the logs.
+    set +x
+
     if [[ $count -eq 0 ]]; then
         log_warning "No Quadlet files found in $src"
         return 0
@@ -690,10 +700,6 @@ deploy_as_runtime_user() {
 # ============================================================================
 # Main Execution
 # ============================================================================
-# ============================================================================
-# Main Execution
-# ============================================================================
-
 main() {
     log_info "=== Starting Deployment Process ==="
     log_info "Configuration:"
