@@ -246,7 +246,7 @@ runtime_deploy_quadlet_files() {
     fi
     
     # Sync to destination
-    rsync -a --delete "$stage_q"/ "$dest_sys_d"/
+    /usr/bin/rsync -a --delete "$stage_q"/ "$dest_sys_d"/
     log_success "Deployed $count Quadlet files"
 }
 
