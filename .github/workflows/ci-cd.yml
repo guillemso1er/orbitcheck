@@ -358,7 +358,7 @@ jobs:
 
                 # 1) Create roles if missing; rotate passwords
                 psql "host=$PGHOST port=$PGPORT dbname=postgres user=$PGADMIN_USER" -v ON_ERROR_STOP=1 -q \
-                  -v MIG_USER="$MIGRATION_DB_USER" -v APP_USER="$APP_DB_USER" \
+                  -v MIG_USER="$MIGRATION_DB_USER" -v APP_USER="$APP_USER" \
                   -v PASS_MIG="$MIGRATION_DB_PASSWORD" -v PASS_APP="$APP_DB_PASSWORD" <<'SQL'
                 DO $$
                 BEGIN
@@ -373,7 +373,7 @@ jobs:
 
                 ALTER ROLE :MIG_USER WITH PASSWORD :PASS_MIG;
                 ALTER ROLE :APP_USER WITH PASSWORD :PASS_APP;
-                SQL
+SQL
 
                 # 2) Ensure database exists; set owner to migrator
                 if ! psql "host=$PGHOST port=$PGPORT dbname=postgres user=$PGADMIN_USER" -tAc "SELECT 1 FROM pg_database WHERE datname = '$APP_DB_NAME'" | grep -q 1; then
@@ -386,25 +386,25 @@ jobs:
                 # 3) Lock down public schema and DB-wide PUBLIC access
                 psql "host=$PGHOST port=$PGPORT dbname=$APP_DB_NAME user=$PGADMIN_USER" -v ON_ERROR_STOP=1 -q <<'SQL'
                 REVOKE CREATE ON SCHEMA public FROM PUBLIC;
-                SQL
+SQL
                 psql "host=$PGHOST port=$PGPORT dbname=postgres user=$PGADMIN_USER" -v ON_ERROR_STOP=1 -q \
                   -v DB_NAME="$APP_DB_NAME" <<'SQL'
                 REVOKE ALL ON DATABASE :"DB_NAME" FROM PUBLIC;
-                SQL
+SQL
 
                 # 4) Set search_path so unqualified objects go into your schema
                 psql "host=$PGHOST port=$PGPORT dbname=postgres user=$PGADMIN_USER" -v ON_ERROR_STOP=1 -q \
                   -v DB_NAME="$APP_DB_NAME" -v SCHEMA="$APP_DB_SCHEMA" \
-                  -v MIG_USER="$MIGRATION_DB_USER" -v APP_USER="$APP_DB_USER" <<'SQL'
+                  -v MIG_USER="$MIGRATION_DB_USER" -v APP_USER="$APP_USER" <<'SQL'
                 ALTER ROLE :"MIG_USER" IN DATABASE :"DB_NAME" SET search_path = :"SCHEMA", public;
                 ALTER ROLE :"APP_USER" IN DATABASE :"DB_NAME" SET search_path = :"SCHEMA", public;
-                SQL
+SQL
 
                 # 5) Allow connection for migrator + app users
                 psql "host=$PGHOST port=$PGPORT dbname=postgres user=$PGADMIN_USER" -q -v ON_ERROR_STOP=1 \
-                  -v DB_NAME="$APP_DB_NAME" -v MIG_USER="$MIGRATION_DB_USER" -v APP_USER="$APP_DB_USER" <<'SQL'
+                  -v DB_NAME="$APP_DB_NAME" -v MIG_USER="$MIGRATION_DB_USER" -v APP_USER="$APP_USER" <<'SQL'
                 GRANT CONNECT ON DATABASE :"DB_NAME" TO :"MIG_USER", :"APP_USER";
-                SQL
+SQL
 
                 # 6) Ensure schema exists; make migrator owner if schema != public
                 psql "host=$PGHOST port=$PGPORT dbname=$APP_DB_NAME user=$PGADMIN_USER" -q -v ON_ERROR_STOP=1 \
@@ -416,7 +416,7 @@ jobs:
                   END IF;
                 END
                 $$;
-                SQL
+SQL
                 if [ "$APP_DB_SCHEMA" != "public" ]; then
                   psql "host=$PGHOST port=$PGPORT dbname=$APP_DB_NAME user=$PGADMIN_USER" -q -v ON_ERROR_STOP=1 \
                     -v SCHEMA="$APP_DB_SCHEMA" -v MIG_USER="$MIGRATION_DB_USER" \
@@ -425,20 +425,20 @@ jobs:
 
                 # 7) Grants for existing objects
                 psql "host=$PGHOST port=$PGPORT dbname=$APP_DB_NAME user=$PGADMIN_USER" -q -v ON_ERROR_STOP=1 \
-                  -v SCHEMA="$APP_DB_SCHEMA" -v APP_USER="$APP_DB_USER" <<'SQL'
+                  -v SCHEMA="$APP_DB_SCHEMA" -v APP_USER="$APP_USER" <<'SQL'
                 GRANT USAGE ON SCHEMA :"SCHEMA" TO :"APP_USER";
                 GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA :"SCHEMA" TO :"APP_USER";
                 GRANT USAGE, SELECT, UPDATE ON ALL SEQUENCES IN SCHEMA :"SCHEMA" TO :"APP_USER";
-                SQL
+SQL
 
                 # 8) Default privileges for future objects (created by migrator)
                 psql "host=$PGHOST port=$PGPORT dbname=$APP_DB_NAME user=$PGADMIN_USER" -q -v ON_ERROR_STOP=1 \
-                  -v SCHEMA="$APP_DB_SCHEMA" -v MIG_USER="$MIGRATION_DB_USER" -v APP_USER="$APP_DB_USER" <<'SQL'
+                  -v SCHEMA="$APP_DB_SCHEMA" -v MIG_USER="$MIGRATION_DB_USER" -v APP_USER="$APP_USER" <<'SQL'
                 ALTER DEFAULT PRIVILEGES FOR ROLE :"MIG_USER" IN SCHEMA :"SCHEMA"
                   GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO :"APP_USER";
                 ALTER DEFAULT PRIVILEGES FOR ROLE :"MIG_USER" IN SCHEMA :"SCHEMA"
                   GRANT USAGE, SELECT, UPDATE ON SEQUENCES TO :"APP_USER";
-                SQL
+SQL
 
                 # 9) Optional: install extensions
                 if [ -n "$DB_EXTENSIONS" ]; then
@@ -451,7 +451,7 @@ jobs:
                       -c 'CREATE EXTENSION IF NOT EXISTS :"EXT" WITH SCHEMA :"SCHEMA"'
                   done
                 fi
-                SH
+SH
                 echo "--- DB provisioning done ---"
 
                 # --- Run DB migrations (one-off container) BEFORE we stop/start services ---
@@ -535,12 +535,12 @@ jobs:
                 systemctl --user enable "$unit" 2>/dev/null || true
                 if ! systemctl --user start "$unit"; then
                   echo "ERROR: Failed to start $unit"
-                  systemctl --user status "$unit" --no-pager || true
-                  journalctl --user -u "$unit" --no-pager -n 100 || true
-                else
-                  STARTED+=("$unit")
-                fi
-              done
+                    systemctl --user status "$unit" --no-pager || true
+                    journalctl --user -u "$unit" --no-pager -n 100 || true
+                  else
+                    STARTED+=("$unit")
+                  fi
+                done
 
               echo "--- Final status of started units ---"
               for unit in "${STARTED[@]:-}"; do
@@ -557,7 +557,7 @@ jobs:
               echo "Generator outputs:"
               ls -al "$XDG_RUNTIME_DIR/systemd/" || true
               ls -al "$XDG_RUNTIME_DIR/systemd"/generator* || true
-            EOF
+EOF
 
             # Section 3: Cleanup
             echo "--- Cleaning up temporary files ---"
