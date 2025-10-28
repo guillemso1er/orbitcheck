@@ -155,8 +155,8 @@ describe('Server Build', () => {
 
   it('should build the Fastify app and init Sentry when DSN is set', async () => {
     // 1. Arrange: Modify the imported mock env for this specific test
-    environment.SENTRY_DSN = 'test_dsn';
-    environment.LOG_LEVEL = 'debug';
+    (environment as any).SENTRY_DSN = 'test_dsn';
+    (environment as any).LOG_LEVEL = 'debug';
 
     // 2. Act: Run the function under test
     const app = await build(mockPool, mockRedis);
@@ -257,9 +257,9 @@ describe('Server Startup', () => {
 
   it('should start the server and setup all services', async () => {
     // Arrange: Configure env for the startup process
-    environment.PORT = 3000;
-    environment.DATABASE_URL = 'postgres://test';
-    environment.REDIS_URL = 'redis://test';
+    (environment as any).PORT = 3000;
+    (environment as any).DATABASE_URL = 'postgres://test';
+    (environment as any).REDIS_URL = 'redis://test';
 
     // Act
     await start();

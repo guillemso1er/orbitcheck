@@ -17,11 +17,11 @@ export async function setupCors(app: FastifyInstance): Promise<void> {
     // Add production origins from environment variable or defaults
     if (process.env.NODE_ENV === 'production') {
         // Allow origins from environment variable or use defaults
-        const corsOrigins = environment.CORS_ORIGINS ? environment.CORS_ORIGINS.split(',') : [
+        const corsOrigins = environment.CORS_ORIGINS && environment.CORS_ORIGINS.length > 0 ? environment.CORS_ORIGINS : [
             'https://dashboard.orbitcheck.io',
             'https://api.orbitcheck.io'
         ];
-        corsOrigins.forEach(origin => allowedOrigins.add(origin.trim()));
+        corsOrigins.forEach(origin => allowedOrigins.add(origin));
 
         // Add your OIDC provider domain if needed
         if (environment.OIDC_PROVIDER_URL) {
@@ -34,8 +34,8 @@ export async function setupCors(app: FastifyInstance): Promise<void> {
         allowedOrigins.add('http://localhost:5174'); // Dashboard dev server
 
         // Allow additional dev origins from environment
-        if (environment.CORS_ORIGINS) {
-            environment.CORS_ORIGINS.split(',').forEach(origin => allowedOrigins.add(origin.trim()));
+        if (environment.CORS_ORIGINS && environment.CORS_ORIGINS.length > 0) {
+            environment.CORS_ORIGINS.forEach((origin: string) => allowedOrigins.add(origin.trim()));
         }
     }
 

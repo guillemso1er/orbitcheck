@@ -41,7 +41,7 @@ const hexOfBytes = (bytes: number) =>
 
 export const env = cleanEnv(process.env, {
   // Runtime mode
-  NODE_ENV: str({ choices: ['development', 'test', 'production'], default: 'production' }),
+  NODE_ENV: str({ choices: ['development', 'test', 'production', 'local'], default: 'production' }),
 
   // Core
   PORT: port({ default: 8080 }),
