@@ -85,6 +85,7 @@ jobs:
             infra:
               - 'infra/**'
               - '.github/workflows/**'
+              - '.github/scripts/**'
 
   build-api:
     name: Build and push API (only if changed)
