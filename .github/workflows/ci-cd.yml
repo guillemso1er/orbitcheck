@@ -211,6 +211,16 @@ jobs:
           source: "${{ env.DASHBOARD_DIST_PATH }}/**"
           target: "${{ env.REMOTE_TARGET_BASE_DIR }}/dashboard-dist"
 
+      - name: Copy project files and deploy script
+        uses: appleboy/scp-action@v0.1.4
+        with:
+          host: ${{ secrets.HETZNER_HOST }}
+          username: ${{ env.REMOTE_USER }}
+          key: ${{ secrets.HETZNER_SSH_KEY }}
+          source: ".github/scripts/deploy.sh"
+          target: "${{ env.REMOTE_TARGET_BASE_DIR }}"
+          strip_components: 2
+
       - name: Deploy files and restart services
         uses: appleboy/ssh-action@v1.0.3
         with:
