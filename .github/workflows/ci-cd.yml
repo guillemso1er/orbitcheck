@@ -191,6 +191,19 @@ jobs:
           name: ${{ env.DASHBOARD_ARTIFACT_NAME }}
           path: ${{ env.DASHBOARD_DIST_PATH }}
 
+      - name: Clean up previous deployment directory on server
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.HETZNER_HOST }}
+          username: ${{ env.REMOTE_USER }}
+          key: ${{ secrets.HETZNER_SSH_KEY }}
+          script: |
+            echo "Removing old deployment directory ${{ env.REMOTE_TARGET_BASE_DIR }}..."
+            # Use sudo to ensure we can remove the directory even if ownership
+            # was changed to another user in a previous failed run.
+            sudo rm -rf "${{ env.REMOTE_TARGET_BASE_DIR }}"
+            echo "Cleanup complete."
+
       - name: Upload infra to server
         if: needs.detect-changes.outputs.infra == 'true' || (github.event_name == 'workflow_dispatch' && inputs.force_deploy)
         uses: appleboy/scp-action@v0.1.7
