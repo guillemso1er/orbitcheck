@@ -9,9 +9,9 @@ Image=docker.io/library/postgres:18.0-alpine3.22
 ContainerName=api-db
 Pod=orbitcheck.pod
 EnvironmentFile=/home/podmanuser/.config/api-db/api-db.env
-EnvironmentFile=/home/podmanuser/.config/api-db/api-Dashboard.secrets.env
+EnvironmentFile=/home/podmanuser/.config/api-db/api-db.secrets.env
 
-Volume=/var/lib/containers/volumes/postgres-data:/var/lib/postgresql/data:Z,U
+Volume=/var/lib/containers/volumes/api-db:/var/lib/postgresql/data:Z,U
 Label="io.containers.autoupdate=image"
 NoNewPrivileges=yes
 # Optional resource controls:
