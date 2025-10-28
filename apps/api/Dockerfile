@@ -63,8 +63,7 @@ FROM node:22-bookworm-slim AS runner
 ENV NODE_ENV=production
 ENV NODE_OPTIONS=--enable-source-maps
 ENV LIBPOSTAL_DATA_DIR=/opt/libpostal/data
-# Silence dotenvx missing .env warning (optional)
-ENV DOTENVX_CONFIG_SILENT=1
+
 
 # Minimal runtime tools
 RUN apt-get update && apt-get install -y --no-install-recommends \

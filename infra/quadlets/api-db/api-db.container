@@ -10,7 +10,6 @@ ContainerName=api-db
 Pod=orbitcheck.pod
 EnvironmentFile=/home/podmanuser/.config/api-db/api-db.env
 EnvironmentFile=/home/podmanuser/.config/api-db/api-db.secrets.env
-
 Volume=/var/lib/containers/volumes/api-db:/var/lib/postgresql/data:Z,U
 Label="io.containers.autoupdate=image"
 NoNewPrivileges=yes
@@ -22,12 +21,8 @@ NoNewPrivileges=yes
 Restart=always
 ExecStartPre=mkdir -p /var/lib/containers/volumes/api-db
 
-[Install]
-WantedBy=default.target
-
-
 # Ensure env dir exists
-ExecStartPre=/usr/bin/install -d -m 700 /var/lib/containers/configs/api-db/env
+ExecStartPre=/usr/bin/install -d -m 700 /home/podmanuser/.config/api-db
 
 # Fetch secrets just-in-time, atomically, with strict perms
 # Uses the service token from a local file (not shown in process args)
@@ -41,7 +36,11 @@ ExecStartPre=/bin/sh -ceu ' \
         --format=dotenv \
         --silent \
         --include-imports \
-    > /var/lib/containers/configs/api-db/.api-db.secrets.env.tmp; \
-    chmod 600 /var/lib/containers/configs/api-db/.api-db.secrets.env.tmp; \
-    mv /var/lib/containers/configs/api-db/.api-db.secrets.env.tmp /home/podmanuser/.config/api-db/api-db.secrets.env \
+     | sed "s/'\''//g" \
+    > /home/podmanuser/.config/api-db/.api-db.secrets.env.tmp; \
+    chmod 600 /home/podmanuser/.config/api-db/.api-db.secrets.env.tmp; \
+    mv /home/podmanuser/.config/api-db/.api-db.secrets.env.tmp /home/podmanuser/.config/api-db/api-db.secrets.env \
 '
+
+[Install]
+WantedBy=default.target

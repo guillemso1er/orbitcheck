@@ -19,8 +19,6 @@
         "build": "tsc -p tsconfig.json",
         "typecheck": "tsc -p tsconfig.json --noEmit",
         "start": "cross-env NODE_ENV=production NODE_OPTIONS=--enable-source-maps node dist/server.js",
-        "start:staging": "dotenvx run -f .env.staging -- cross-env NODE_ENV=staging NODE_OPTIONS=--enable-source-maps node dist/server.js",
-        "start:prod": "dotenvx run -f .env.prod -- cross-env NODE_ENV=production NODE_OPTIONS=--enable-source-maps node dist/server.js",
         "migrate:local": "node-pg-migrate -m ./migrations --envPath .env.local up",
         "migrate:dev": "node-pg-migrate -m ./migrations --envPath .env.dev up",
         "migrate:ci": "node-pg-migrate -m ./migrations up -d \"$MIGRATION_DATABASE_URL\"",
