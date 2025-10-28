@@ -364,7 +364,7 @@ runtime_provision_database() {
     podman pull docker.io/library/postgres:16-alpine 2>/dev/null || true
     
     # Run provisioning
-    if ! podman run --rm --network host \
+    if ! podman run --rm --pod "$pod_name" \
         --env-file "$admin_env" \
         docker.io/library/postgres:16-alpine sh -c '
     set -euo pipefail
@@ -500,7 +500,7 @@ runtime_run_migrations() {
         
         if podman run --rm \
             --env-file "$env_file" \
-            --network host \
+            --pod "$pod_name" \
             "$image" sh -lc 'npm run migrate:ci'; then
             log_success "Migrations completed successfully"
             return 0
@@ -648,7 +648,13 @@ runtime_main_deployment() {
     
     local token_file="$HOME/.secrets/infisical/${service}.token"
     runtime_fetch_infisical_secrets "$service" "$token_file" "/api" "$cfg_dir/${service}.secrets.env"
-    
+
+    # Determine pod name from quadlet files
+    local pod_name=""
+    if [[ -d "$dest_sys_d" ]]; then
+        pod_name=$(grep -h 'PodName=' "$dest_sys_d"/*.pod 2>/dev/null | head -1 | sed 's/.*PodName=//' || echo "")
+    fi
+
     # Handle database and migrations if needed
     if [[ "$NEEDS_API_CHANGES" == "true" ]] || \
        [[ "$IS_WORKFLOW_DISPATCH" == "true" && "$FORCE_DEPLOY" == "true" ]]; then
