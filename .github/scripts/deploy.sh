@@ -598,7 +598,7 @@ runtime_main_deployment() {
     # This function orchestrates the runtime user deployment
     set -euo pipefail
     
-    for cmd in rsync podman npm; do
+    for cmd in rsync podman; do
         if ! command -v "$cmd" >/dev/null 2>&1; then
             log_error "Required command '$cmd' not found in PATH for user $(whoami)."
             exit 1
