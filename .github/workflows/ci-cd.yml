@@ -21,6 +21,10 @@ on:
         description: "Restart services at the end (even if no updates)"
         type: boolean
         default: false
+      debug:
+        description: "Enable verbose bash tracing"
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -50,6 +54,7 @@ env:
   REMOTE_CONFIGS_DIR: /var/lib/containers/configs
   REMOTE_DASHBOARD_VOLUME_DIR: /var/lib/containers/volumes/caddy-dashboard/_data
   REMOTE_SYSTEMD_USER_DIR: .config/containers/systemd
+  DEBUG: ${{ inputs.debug && '1' || '0' }}
 
 jobs:
   detect-changes:
@@ -237,6 +242,8 @@ jobs:
 
       - name: Deploy files and restart services
         uses: appleboy/ssh-action@v1.0.3
+        env:
+          DEBUG: "1"
         with:
           host: ${{ secrets.HETZNER_HOST }}
           username: ${{ env.REMOTE_USER }}

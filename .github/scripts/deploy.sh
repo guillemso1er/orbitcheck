@@ -1,5 +1,13 @@
 #!/bin/bash
-set -euo pipefail
+set -Eeuo pipefail
+set -o errtrace
+set -o functrace
+
+if [[ "${DEBUG:-0}" == "1" ]]; then
+  export BASH_XTRACEFD=2
+  export PS4='+ [${BASH_SOURCE##*/}:${LINENO} ${FUNCNAME[0]}] '
+  set -x
+fi
 
 # ============================================================================
 # Deployment Script - Handles infrastructure, dashboard, and API deployments
@@ -28,6 +36,20 @@ log_warning() {
 log_error() {
     echo -e "${RED}[$(date '+%Y-%m-%d %H:%M:%S')] ERROR:${NC} $*" >&2
 }
+
+print_stack() {
+  local i
+  for ((i=${#FUNCNAME[@]}-1; i>0; i--)); do
+    # FUNCNAME[0] is the current function (trap handler), so start from 1
+    echo "  at ${FUNCNAME[$i]} (${BASH_SOURCE[$i]}:${BASH_LINENO[$i-1]})" >&2
+  done
+}
+
+trap 'code=$?; line=$LINENO; cmd=$BASH_COMMAND; file=${BASH_SOURCE[0]};
+      log_error "Exit $code at $file:$line while running: $cmd";
+      print_stack;
+      cleanup_on_error;
+      exit $code' ERR
 
 # Error handler
 error_handler() {
@@ -209,45 +231,47 @@ verify_podman_quadlet() {
 # ============================================================================
 
 runtime_deploy_quadlet_files() {
-    local src="$1"
-    local dest_sys_d="$2"
-    
-    log_info "Deploying Quadlet files..."
+  local src="$1"
+  local dest_sys_d="$2"
 
-    # --- Start Enhanced Debugging ---
-    # The 'set -x' command prints each command and its arguments to stderr
-    # as they are executed. This will show us exactly which command is failing.
-    set -x
-    
-    mkdir -p "$dest_sys_d"
-    
-    # Create staging directory
-    local stage_q
-    stage_q=$(mktemp -d)
-    trap "rm -rf '$stage_q'" RETURN
-    
-    shopt -s nullglob globstar
-    
-    # Collect and flatten .container and .pod files
-    local count=0
-    for f in "$src"/**/*.container "$src"/**/*.pod; do
-        [[ -f "$f" ]] || continue
-        cp -f "$f" "$stage_q/$(basename "$f")"
-        ((count++))
-    done
-    
-    # --- Stop Enhanced Debugging ---
-    # Turn off xtrace to avoid cluttering the rest of the logs.
+  log_info "Deploying Quadlet files..."
+
+  # Enable detailed tracing for this critical section
+  set -x
+
+  mkdir -p "$dest_sys_d"
+
+  # Create staging directory
+  local stage_q
+  stage_q=$(mktemp -d)
+  trap "rm -rf '$stage_q'" RETURN
+
+  shopt -s nullglob globstar
+
+  local count=0
+  for f in "$src"/**/*.container "$src"/**/*.pod; do
+    [[ -f "$f" ]] || continue
+    cp -f "$f" "$stage_q/$(basename "$f")"
+    ((count++))
+  done
+
+  if [[ $count -eq 0 ]]; then
     set +x
+    log_warning "No Quadlet files found in $src"
+    return 0
+  fi
 
-    if [[ $count -eq 0 ]]; then
-        log_warning "No Quadlet files found in $src"
-        return 0
-    fi
-    
-    # Sync to destination
-    /usr/bin/rsync -a --delete "$stage_q"/ "$dest_sys_d"/
-    log_success "Deployed $count Quadlet files"
+  # Avoid owner/group preservation for rootless; surface detailed error on failure
+  if ! /usr/bin/rsync -rt --no-owner --no-group --delete "$stage_q"/ "$dest_sys_d"/; then
+    code=$?
+    set +x
+    log_error "rsync failed ($code) copying quadlets from $stage_q to $dest_sys_d"
+    /usr/bin/rsync -avvv --no-owner --no-group --delete "$stage_q"/ "$dest_sys_d"/ 2>&1 | sed 's/^/[rsync] /' >&2 || true
+    return "$code"
+  fi
+
+  set +x
+  log_success "Deployed $count Quadlet files"
 }
 
 runtime_deploy_env_files() {
@@ -674,33 +698,32 @@ export -f runtime_main_deployment
 # ============================================================================
 
 deploy_as_runtime_user() {
-    log_info "Starting deployment as $REMOTE_RUNTIME_USER..."
-    
-    local script_path
-    script_path=$(readlink -f "${BASH_SOURCE[0]}")
-    
-    # Execute the main deployment function as the runtime user.
-    # All required environment variables must be explicitly passed through sudo.
- if ! sudo -iu "$REMOTE_RUNTIME_USER" \
-        NEEDS_API_CHANGES="$NEEDS_API_CHANGES" \
-        IS_WORKFLOW_DISPATCH="$IS_WORKFLOW_DISPATCH" \
-        FORCE_DEPLOY="$FORCE_DEPLOY" \
-        REMOTE_TARGET_BASE_DIR="$REMOTE_TARGET_BASE_DIR" \
-        REMOTE_SYSTEMD_USER_DIR="$REMOTE_SYSTEMD_USER_DIR" \
-        API_IMAGE_NAME="$API_IMAGE_NAME" \
-        REGISTRY="$REGISTRY" \
-        IMAGE_OWNER="$IMAGE_OWNER" \
-        REMOTE_CONFIGS_DIR="$REMOTE_CONFIGS_DIR" \
-        REMOTE_DASHBOARD_VOLUME_DIR="$REMOTE_DASHBOARD_VOLUME_DIR" \
-        REMOTE_RUNTIME_USER="$REMOTE_RUNTIME_USER" \
-        RED="$RED" GREEN="$GREEN" YELLOW="$YELLOW" BLUE="$BLUE" NC="$NC" \
-        bash -xc "source \"$script_path\"; runtime_main_deployment"; then
-        
-        log_error "Deployment as runtime user failed"
-        exit 1
-    fi
-    
-    log_success "Runtime user deployment completed"
+  log_info "Starting deployment as $REMOTE_RUNTIME_USER..."
+
+  local script_path
+  script_path=$(readlink -f "${BASH_SOURCE[0]}")
+
+  if ! sudo -iu "$REMOTE_RUNTIME_USER" \
+      DEBUG="${DEBUG:-0}" \
+      NEEDS_API_CHANGES="$NEEDS_API_CHANGES" \
+      IS_WORKFLOW_DISPATCH="$IS_WORKFLOW_DISPATCH" \
+      FORCE_DEPLOY="$FORCE_DEPLOY" \
+      REMOTE_TARGET_BASE_DIR="$REMOTE_TARGET_BASE_DIR" \
+      REMOTE_SYSTEMD_USER_DIR="$REMOTE_SYSTEMD_USER_DIR" \
+      API_IMAGE_NAME="$API_IMAGE_NAME" \
+      REGISTRY="$REGISTRY" \
+      IMAGE_OWNER="$IMAGE_OWNER" \
+      REMOTE_CONFIGS_DIR="$REMOTE_CONFIGS_DIR" \
+      REMOTE_DASHBOARD_VOLUME_DIR="$REMOTE_DASHBOARD_VOLUME_DIR" \
+      REMOTE_RUNTIME_USER="$REMOTE_RUNTIME_USER" \
+      RED="$RED" GREEN="$GREEN" YELLOW="$YELLOW" BLUE="$BLUE" NC="$NC" \
+      bash -Eeuo pipefail -c "source \"$script_path\"; runtime_main_deployment"; then
+
+    log_error "Deployment as runtime user failed"
+    exit 1
+  fi
+
+  log_success "Runtime user deployment completed"
 }
 
 # ============================================================================
