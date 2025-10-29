@@ -4,7 +4,7 @@ import type { FastifyReply, FastifyRequest } from "fastify";
 import { type Redis as IORedisType } from 'ioredis';
 import type { Pool } from "pg";
 
-import { API_KEY_PREFIX_LENGTH, CONTENT_TYPES, HASH_ALGORITHM, HMAC_VALIDITY_MINUTES, IDEMPOTENCY_TTL_SECONDS, RATE_LIMIT_TTL_SECONDS, STATUS, USER_AGENT_WEBHOOK } from "./config.js";
+import { API_KEY_PREFIX_LENGTH, CONTENT_TYPES, ENCODING_HEX, ENCODING_UTF8, ENCRYPTION_ALGORITHM, HASH_ALGORITHM, HMAC_VALIDITY_MINUTES, IDEMPOTENCY_TTL_SECONDS, RATE_LIMIT_TTL_SECONDS, STATUS, USER_AGENT_WEBHOOK } from "./config.js";
 import { environment } from "./environment.js";
 import { ERROR_CODES, ERROR_MESSAGES, HTTP_STATUS } from "./errors.js";
 import { EVENT_TYPES } from "./validation.js";
@@ -101,10 +101,10 @@ export async function auth(request: FastifyRequest, rep: FastifyReply, pool: Poo
         // Decrypt the full key
         const encryptedWithIv = rows[0].encrypted_key;
         const [ivHex, encrypted] = encryptedWithIv.split(':');
-        const iv = Buffer.from(ivHex, 'hex');
-        const decipher = crypto.createDecipheriv('aes-256-cbc', Buffer.from(environment.ENCRYPTION_KEY, 'hex'), iv);
-        let decrypted = decipher.update(encrypted, 'hex', 'utf8');
-        decrypted += decipher.final('utf8');
+        const iv = Buffer.from(ivHex, ENCODING_HEX);
+        const decipher = crypto.createDecipheriv(ENCRYPTION_ALGORITHM, Buffer.from(environment.ENCRYPTION_KEY, ENCODING_HEX), iv);
+        let decrypted = decipher.update(encrypted, ENCODING_HEX, ENCODING_UTF8);
+        decrypted += decipher.final(ENCODING_UTF8);
         const fullKey = decrypted;
 
         const message = request.method.toUpperCase() + request.url + ts + nonce;

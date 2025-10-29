@@ -99,6 +99,10 @@ export const COMPLIANCE_REASONS = {
 export const CRYPTO_KEY_BYTES = 32 as const;
 export const CRYPTO_IV_BYTES = 16 as const;
 
+export const ENCRYPTION_ALGORITHM = 'aes-256-cbc' as const;
+export const ENCODING_UTF8 = 'utf8' as const;
+export const ENCODING_HEX = 'hex' as const;
+
 export const AUTHORIZATION_HEADER = 'authorization' as const;
 
 export const BEARER_PREFIX = 'Bearer ' as const;

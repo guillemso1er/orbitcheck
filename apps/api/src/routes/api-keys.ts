@@ -4,7 +4,7 @@ import { MGMT_V1_ROUTES } from "@orbitcheck/contracts";
 import type { FastifyInstance } from "fastify";
 import type { Pool } from "pg";
 
-import { API_KEY_PREFIX, CRYPTO_IV_BYTES, CRYPTO_KEY_BYTES, HASH_ALGORITHM, STATUS } from "../config.js";
+import { API_KEY_PREFIX, CRYPTO_IV_BYTES, CRYPTO_KEY_BYTES, ENCODING_HEX, ENCODING_UTF8, ENCRYPTION_ALGORITHM, HASH_ALGORITHM, STATUS } from "../config.js";
 import { environment } from "../environment.js";
 import { ERROR_CODES, ERROR_MESSAGES, HTTP_STATUS } from "../errors.js";
 import { errorSchema, generateRequestId, rateLimitResponse, securityHeader, sendError, sendServerError, unauthorizedResponse } from "./utils.js";
@@ -114,11 +114,11 @@ export function registerApiKeysRoutes(app: FastifyInstance, pool: Pool): void {
                     else resolve(buf);
                 });
             });
-            const cipher = crypto.createCipheriv('aes-256-cbc', Buffer.from(environment.ENCRYPTION_KEY, 'hex'), iv);
+            const cipher = crypto.createCipheriv(ENCRYPTION_ALGORITHM, Buffer.from(environment.ENCRYPTION_KEY, ENCODING_HEX), iv);
             let encrypted = await new Promise<string>((resolve, reject) => {
                 try {
-                    const updateResult = cipher.update(full_key, 'utf8', 'hex');
-                    const finalResult = cipher.final('hex');
+                    const updateResult = cipher.update(full_key, ENCODING_UTF8, ENCODING_HEX);
+                    const finalResult = cipher.final(ENCODING_HEX);
                     resolve(updateResult + finalResult);
                 } catch (error) {
                     reject(error);
