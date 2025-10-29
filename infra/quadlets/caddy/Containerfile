@@ -1,0 +1,14 @@
+# infra/caddy/Containerfile
+FROM caddy:2.8-builder AS builder
+# Cache plugin; pin a version if you prefer (e.g. @v0.x.x)
+RUN xcaddy build \
+  --with github.com/caddyserver/cache-handler
+
+FROM caddy:2.8
+COPY --from=builder /usr/bin/caddy /usr/bin/caddy
+
+# Create log dir owned by caddy
+RUN mkdir -p /var/log/caddy && chown -R caddy:caddy /var/log/caddy
+USER caddy
+
+# Default command uses /etc/caddy/Caddyfile

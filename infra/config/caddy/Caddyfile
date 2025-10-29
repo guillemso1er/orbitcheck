@@ -1,0 +1,188 @@
+{
+    # LetsEncrypt email (change to yours)
+    email guillemsoler@orbitcheck.io
+
+    # Ensure the cache plugin runs before reverse proxy
+    order request_body before cache
+    order cache before reverse_proxy
+
+    # Reduce header info leakage
+    servers {
+        # Uncomment to expose Prometheus metrics if you add the plugin
+        # metrics
+    }
+}
+
+# Shared security headers
+(common_security_headers) {
+    header {
+        -Server
+        X-Frame-Options DENY
+        X-Content-Type-Options nosniff
+        Referrer-Policy no-referrer-when-downgrade
+        Permissions-Policy "geolocation=(), microphone=(), camera=(), fullscreen=*"
+        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+    }
+    encode zstd gzip
+}
+
+# API public entrypoint
+api.orbitcheck.io {
+    import common_security_headers
+
+    # These matchers inspect the final response header AFTER it comes back
+    # from the internal caching tier (served at :18080 below).
+    @cache_hit expression {http.response.header.Cache-Status}.matches("(?i).\\bhit\\b.")
+    @cache_miss expression {http.response.header.Cache-Status}.matches("(?i).\\b(miss|stored)\\b.")
+    @cache_bypass expression {http.response.header.Cache-Status}.matches("(?i).\\bbypass\\b.")
+
+    reverse_proxy 127.0.0.1:18080 {
+        header_up X-Auth-Cache-Key {http.request.header.Authorization}
+        header_up -Authorization
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up +X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+
+        # Protect X-Forwarded-* from spoofing; only trust private ranges
+        trusted_proxies private_ranges
+    }
+
+    # After reverse_proxy completes, set a normalized cache header for clients
+    header @cache_hit    X-Cache-Status "HIT"
+    header @cache_miss   X-Cache-Status "MISS"
+    header @cache_bypass X-Cache-Status "BYPASS"
+
+    # Basic synthetic health endpoint
+    @health path /.well-known/healthz
+    respond @health 200
+
+    log {
+        output file /var/log/caddy/api.orbitcheck.io.access.log {
+            roll_size 100MiB
+            roll_keep 10
+            roll_keep_for 720h
+        }
+        format json
+    }
+
+    handle_errors {
+        respond "{http.error.status_code} {http.error.status_text}"
+    }
+}
+
+# Internal cache tier listener — loopback only
+:18080 {
+    bind 127.0.0.1
+
+    route {
+        # Make body available to placeholders
+        request_body {
+            max_size 10MB
+        }
+
+        # Put the raw body into a synthetic header for cache variance
+        header {
+          request set X-Body {http.request.body}
+        }
+
+        # Cache plugin (requires custom build — see Containerfile below)
+        cache {
+          allowed_http_verbs GET POST HEAD
+          ttl 2h
+          stale 24h
+
+          # Vary on auth AND the request body
+          headers X-Auth-Cache-Key X-Body
+
+          # Optionally set Cache-Status header if your plugin supports naming
+          # name api-cache
+        }
+
+        # If coming from api.orbitcheck.io we have X-Auth-Cache-Key; restore it to Authorization
+        @has_cache_key header_regexp X-Auth-Cache-Key .+
+        handle @has_cache_key {
+          reverse_proxy api:8080 {
+            header_up Authorization {http.request.header.X-Auth-Cache-Key}
+            header_up -X-Auth-Cache-Key
+            header_up -X-Body
+            header_up Host {host}
+            header_up X-Real-IP {remote_host}
+            header_up +X-Forwarded-For {remote_host}
+            header_up X-Forwarded-Proto {scheme}
+
+            # Health checks (active + passive)
+            health_checks {
+              active {
+                path /healthz
+                interval 10s
+                timeout 2s
+                healthy_status 2xx 3xx
+                healthy_count 1
+                unhealthy_count 3
+              }
+              passive {
+                fail_duration 30s
+                max_fails 2
+              }
+            }
+
+            transport http {
+              versions h2c 1.1
+            }
+          }
+        }
+
+        # Fallback: if someone somehow hits :18080 directly, still proxy through
+        handle {
+          reverse_proxy api:8080 {
+            header_up -X-Body
+            header_up Host {host}
+            header_up X-Real-IP {remote_host}
+            header_up +X-Forwarded-For {remote_host}
+            header_up X-Forwarded-Proto {scheme}
+
+            transport http {
+              versions h2c 1.1
+            }
+          }
+        }
+    }
+}
+
+# Dashboard (React build)
+dashboard.orbitcheck.io {
+    import common_security_headers
+
+    root * /srv/dashboard
+    encode zstd gzip
+
+    # Long-lived cache for fingerprinted assets
+    @immutable path_regexp immutable ^/(?:assets|static)/.*|.*\.(?:css|js|mjs|map|png|jpg|jpeg|gif|svg|webp|ico|woff2?|ttf|eot)$
+    header @immutable Cache-Control "public, max-age=31536000, immutable"
+
+    # Never cache HTML (ensures users get new deploys immediately)
+    @html path_regexp html ^/(?:index\.html|.*\.html)$
+    header @html Cache-Control "no-cache, no-store, must-revalidate"
+
+    # SPA fallback to index.html
+    try_files {path} /index.html
+    file_server
+
+    # Basic synthetic health endpoint
+    @health path /.well-known/healthz
+    respond @health 200
+
+    log {
+        output file /var/log/caddy/dashboard.orbitcheck.io.access.log {
+            roll_size 100MiB
+            roll_keep 10
+            roll_keep_for 720h
+        }
+        format json
+    }
+
+    handle_errors {
+        respond "{http.error.status_code} {http.error.status_text}"
+    }
+}

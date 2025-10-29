@@ -36,6 +36,7 @@ ExecStartPre=/bin/sh -ceu ' \
         --format=dotenv \
         --silent \
         --include-imports \
+        | sed "s/'\''//g" \
     > /var/lib/containers/configs/api/.api.secrets.env.tmp; \
     chmod 600 /var/lib/containers/configs/api/.api.secrets.env.tmp; \
     mv /var/lib/containers/configs/api/.api.secrets.env.tmp /home/podmanuser/.config/api/api.secrets.env \

@@ -1,29 +1,42 @@
 {
   "name": "@orbitcheck/dashboard",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
+  "description": "Orbitcheck Dashboard web app",
   "type": "module",
+  "license": "UNLICENSED",
+  "packageManager": "pnpm@9.12.0",
+  "engines": {
+    "node": ">=20.10.0",
+    "pnpm": ">=9.12.0"
+  },
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build",
+    "typecheck": "tsc -b --pretty false --noEmit",
+    "build": "pnpm run typecheck && vite build",
+    "build:ci": "pnpm run typecheck && vite build --mode production",
+    "preview": "vite preview --strictPort --port 5173",
     "lint": "eslint . --report-unused-disable-directives --max-warnings 0",
-    "preview": "vite preview",
+    "clean": "rimraf dist coverage",
     "test": "DEBUG_PRINT_LIMIT=2000 jest",
     "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage"
+    "test:coverage": "jest --coverage",
+    "test:e2e": "playwright test",
+    "test:e2e:headed": "playwright test --headed",
+    "check": "pnpm run lint && pnpm run typecheck && pnpm run test -i"
   },
   "dependencies": {
-    "@infisical/sdk": "^4.0.6",
-    "@tailwindcss/vite": "^4.1.16",
     "chart.js": "^4.4.7",
     "react": "^18.3.1",
     "react-chartjs-2": "^5.2.0",
     "react-dom": "^18.3.1",
-    "react-router-dom": "^6.26.2"
+    "react-router-dom": "^6.26.2",
+    "uuid": "13.0.0"
   },
   "devDependencies": {
     "@orbitcheck/contracts": "workspace:^",
     "@playwright/test": "^1.55.1",
+    "@tailwindcss/vite": "^4.1.16",
     "@testing-library/jest-dom": "^6.4.0",
     "@testing-library/react": "^14.3.0",
     "@testing-library/user-event": "^14.5.0",
@@ -43,11 +56,23 @@
     "jest-transform-stub": "^2.0.0",
     "postcss": "^8.5.6",
     "react-test-renderer": "^18.3.1",
+    "rimraf": "^6.0.1",
     "tailwindcss": "^4.1.16",
     "ts-jest": "^29.1.0",
     "typescript": "^5.9.2",
     "typescript-eslint": "^8.10.0",
-    "uuid": "13.0.0",
     "vite": "^6.3.5"
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
   }
 }

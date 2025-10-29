@@ -5,7 +5,7 @@ Wants=api-db.service valkey.service
 
 [Container]
 LogDriver=journald
-Image=docker.io/glitchtip/glitchtip:latest
+Image=docker.io/glitchtip/glitchtip:v5.1.1
 ContainerName=glitchtip
 Pod=orbitcheck.pod
 EnvironmentFile=/home/podmanuser/.config/glitchtip/glitchtip.env
