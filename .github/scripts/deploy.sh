@@ -445,23 +445,25 @@ runtime_provision_database() {
 
     podman pull docker.io/library/postgres:16-alpine 2>/dev/null || true
 
-    # Prepare the SQL script with proper variable handling
+    # Prepare the SQL script - avoiding psql variables inside DO blocks
     local sql_script
     sql_script=$(cat <<'EOSQL'
--- Create roles if they don't exist
+-- Create migration role if it doesn't exist
 DO $proc$
-DECLARE
-    v_migration_user text := :'MIGRATION_DB_USER';
-    v_app_user text := :'APP_DB_USER';
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = v_migration_user) THEN
-        EXECUTE format('CREATE ROLE %I LOGIN', v_migration_user);
-        RAISE NOTICE 'Created role: %', v_migration_user;
+    IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = current_setting('vars.migration_user')) THEN
+        EXECUTE format('CREATE ROLE %I LOGIN', current_setting('vars.migration_user'));
+        RAISE NOTICE 'Created role: %', current_setting('vars.migration_user');
     END IF;
-    
-    IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = v_app_user) THEN
-        EXECUTE format('CREATE ROLE %I LOGIN', v_app_user);
-        RAISE NOTICE 'Created role: %', v_app_user;
+END
+$proc$;
+
+-- Create app role if it doesn't exist
+DO $proc$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = current_setting('vars.app_user')) THEN
+        EXECUTE format('CREATE ROLE %I LOGIN', current_setting('vars.app_user'));
+        RAISE NOTICE 'Created role: %', current_setting('vars.app_user');
     END IF;
 END
 $proc$;
@@ -482,15 +484,16 @@ GRANT CONNECT ON DATABASE :"APP_DB_NAME" TO :"MIGRATION_DB_USER", :"APP_DB_USER"
 
 -- Create schema if needed
 DO $proc$
-DECLARE
-    v_schema text := :'APP_DB_SCHEMA';
-    v_migration_user text := :'MIGRATION_DB_USER';
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = v_schema) THEN
-        EXECUTE format('CREATE SCHEMA %I AUTHORIZATION %I', v_schema, v_migration_user);
-        RAISE NOTICE 'Created schema: %', v_schema;
-    ELSIF v_schema != 'public' THEN
-        EXECUTE format('ALTER SCHEMA %I OWNER TO %I', v_schema, v_migration_user);
+    IF NOT EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = current_setting('vars.app_schema')) THEN
+        EXECUTE format('CREATE SCHEMA %I AUTHORIZATION %I', 
+            current_setting('vars.app_schema'), 
+            current_setting('vars.migration_user'));
+        RAISE NOTICE 'Created schema: %', current_setting('vars.app_schema');
+    ELSIF current_setting('vars.app_schema') != 'public' THEN
+        EXECUTE format('ALTER SCHEMA %I OWNER TO %I', 
+            current_setting('vars.app_schema'), 
+            current_setting('vars.migration_user'));
     END IF;
 END
 $proc$;
@@ -554,7 +557,8 @@ EOSQL
             createdb -h "$PGHOST" -p "$PGPORT" -U "$PGADMIN_USER" "$APP_DB_NAME"
         fi
         
-        # Execute the SQL file with variables
+        # Set session variables that can be accessed in DO blocks
+        # Then execute the SQL file with regular psql variables
         psql "host=$PGHOST port=$PGPORT dbname=$APP_DB_NAME user=$PGADMIN_USER" \
             -v ON_ERROR_STOP=1 \
             -v MIGRATION_DB_USER="$MIGRATION_DB_USER" \
@@ -563,6 +567,9 @@ EOSQL
             -v APP_DB_PASSWORD="'"'"'$APP_DB_PASSWORD'"'"'" \
             -v APP_DB_NAME="$APP_DB_NAME" \
             -v APP_DB_SCHEMA="$APP_DB_SCHEMA" \
+            -c "SET vars.migration_user = '"'"'$MIGRATION_DB_USER'"'"';" \
+            -c "SET vars.app_user = '"'"'$APP_DB_USER'"'"';" \
+            -c "SET vars.app_schema = '"'"'$APP_DB_SCHEMA'"'"';" \
             -f "$SQL_FILE"
         
         # Clean up the temp file
