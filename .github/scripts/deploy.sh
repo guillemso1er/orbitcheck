@@ -445,7 +445,7 @@ runtime_provision_database() {
 
     podman pull docker.io/library/postgres:16-alpine 2>/dev/null || true
 
-    # Prepare the SQL script with corrected psql variable quoting.
+    # Prepare the SQL script. This part is correct.
     local sql_script
     sql_script=$(cat <<'EOSQL'
 -- Create roles if they dont exist
@@ -508,13 +508,19 @@ ALTER DEFAULT PRIVILEGES FOR ROLE :"MIGRATION_DB_USER" IN SCHEMA :"APP_DB_SCHEMA
 EOSQL
 )
 
+    # We will now pass the SQL into the container, write it to a temp file, and execute that file.
     if ! podman run --rm "${pod_args[@]}" \
         --env-file "$admin_env" \
         -i \
         docker.io/library/postgres:16-alpine sh -c '
         set -euo pipefail
-    
-        # Validate required variables
+        
+        # Create a temporary file to hold our SQL script
+        SQL_FILE=$(mktemp)
+        # Read the script from stdin (passed from the outside) into the temp file
+        cat > "$SQL_FILE"
+
+        # The rest of the script now uses this file, removing all ambiguity.
         : "${PGHOST:?Missing PGHOST}"
         : "${PGPORT:=5432}"
         : "${PGADMIN_USER:?Missing PGADMIN_USER}"
@@ -531,13 +537,10 @@ EOSQL
         
         echo "Connecting to PostgreSQL at $PGHOST:$PGPORT..." >&2
         
-        # Test connection
         psql "host=$PGHOST port=$PGPORT dbname=postgres user=$PGADMIN_USER" -c "SELECT 1" >/dev/null 2>&1 || {
-            echo "ERROR: Cannot connect to database" >&2
-            exit 1
+            echo "ERROR: Cannot connect to database" >&2; exit 1;
         }
         
-        # Check if database exists
         DB_EXISTS=$(psql "host=$PGHOST port=$PGPORT dbname=postgres user=$PGADMIN_USER" -tAc \
             "SELECT 1 FROM pg_database WHERE datname = '"'"'$APP_DB_NAME'"'"'" || echo "0")
         
@@ -546,7 +549,7 @@ EOSQL
             createdb -h "$PGHOST" -p "$PGPORT" -U "$PGADMIN_USER" "$APP_DB_NAME"
         fi
         
-        # Pipe the prepared SQL script from stdin into psql
+        # EXECUTE THE FILE using -f. This is the most reliable method.
         psql "host=$PGHOST port=$PGPORT dbname=$APP_DB_NAME user=$PGADMIN_USER" \
             -v ON_ERROR_STOP=1 \
             -v MIGRATION_DB_USER="$MIGRATION_DB_USER" \
@@ -554,14 +557,17 @@ EOSQL
             -v APP_DB_USER="$APP_DB_USER" \
             -v APP_DB_PASSWORD="$APP_DB_PASSWORD" \
             -v APP_DB_NAME="$APP_DB_NAME" \
-            -v APP_DB_SCHEMA="$APP_DB_SCHEMA"
+            -v APP_DB_SCHEMA="$APP_DB_SCHEMA" \
+            -f "$SQL_FILE"
         
-        # Install extensions if specified
+        # Clean up the temp file
+        rm "$SQL_FILE"
+        
         if [[ -n "$DB_EXTENSIONS" ]]; then
             echo "Installing extensions: $DB_EXTENSIONS" >&2
             IFS=',' read -ra EXT_ARR <<< "$DB_EXTENSIONS"
             for ext in "${EXT_ARR[@]}"; do
-                ext="$(echo "$ext" | xargs)" # Trim whitespace
+                ext="$(echo "$ext" | xargs)"
                 [[ -z "$ext" ]] && continue
                 echo "Installing extension: $ext" >&2
                 psql "host=$PGHOST port=$PGPORT dbname=$APP_DB_NAME user=$PGADMIN_USER" -v ON_ERROR_STOP=1 \
