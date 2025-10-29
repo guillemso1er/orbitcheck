@@ -445,25 +445,28 @@ runtime_provision_database() {
 
     podman pull docker.io/library/postgres:16-alpine 2>/dev/null || true
 
-    # Prepare the SQL script. This part is correct.
+    # Prepare the SQL script with proper variable handling
     local sql_script
     sql_script=$(cat <<'EOSQL'
--- Create roles if they dont exist
+-- Create roles if they don't exist
 DO $proc$
+DECLARE
+    v_migration_user text := :'MIGRATION_DB_USER';
+    v_app_user text := :'APP_DB_USER';
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = :'MIGRATION_DB_USER') THEN
-        EXECUTE format('CREATE ROLE %I LOGIN', :'MIGRATION_DB_USER');
-        RAISE NOTICE 'Created role: %', :'MIGRATION_DB_USER';
+    IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = v_migration_user) THEN
+        EXECUTE format('CREATE ROLE %I LOGIN', v_migration_user);
+        RAISE NOTICE 'Created role: %', v_migration_user;
     END IF;
     
-    IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = :'APP_DB_USER') THEN
-        EXECUTE format('CREATE ROLE %I LOGIN', :'APP_DB_USER');
-        RAISE NOTICE 'Created role: %', :'APP_DB_USER';
+    IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = v_app_user) THEN
+        EXECUTE format('CREATE ROLE %I LOGIN', v_app_user);
+        RAISE NOTICE 'Created role: %', v_app_user;
     END IF;
 END
 $proc$;
 
--- Update passwords
+-- Update passwords (these work fine outside DO blocks)
 ALTER ROLE :"MIGRATION_DB_USER" WITH PASSWORD :'MIGRATION_DB_PASSWORD';
 ALTER ROLE :"APP_DB_USER" WITH PASSWORD :'APP_DB_PASSWORD';
 
@@ -479,19 +482,22 @@ GRANT CONNECT ON DATABASE :"APP_DB_NAME" TO :"MIGRATION_DB_USER", :"APP_DB_USER"
 
 -- Create schema if needed
 DO $proc$
+DECLARE
+    v_schema text := :'APP_DB_SCHEMA';
+    v_migration_user text := :'MIGRATION_DB_USER';
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = :'APP_DB_SCHEMA') THEN
-        EXECUTE format('CREATE SCHEMA %I AUTHORIZATION %I', :'APP_DB_SCHEMA', :'MIGRATION_DB_USER');
-        RAISE NOTICE 'Created schema: %', :'APP_DB_SCHEMA';
-    ELSIF :'APP_DB_SCHEMA' != 'public' THEN
-        EXECUTE format('ALTER SCHEMA %I OWNER TO %I', :'APP_DB_SCHEMA', :'MIGRATION_DB_USER');
+    IF NOT EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = v_schema) THEN
+        EXECUTE format('CREATE SCHEMA %I AUTHORIZATION %I', v_schema, v_migration_user);
+        RAISE NOTICE 'Created schema: %', v_schema;
+    ELSIF v_schema != 'public' THEN
+        EXECUTE format('ALTER SCHEMA %I OWNER TO %I', v_schema, v_migration_user);
     END IF;
 END
 $proc$;
 
 -- Set search paths
-ALTER ROLE :"MIGRATION_DB_USER" IN DATABASE :"APP_DB_NAME" SET search_path = :'APP_DB_SCHEMA', public;
-ALTER ROLE :"APP_DB_USER" IN DATABASE :"APP_DB_NAME" SET search_path = :'APP_DB_SCHEMA', public;
+ALTER ROLE :"MIGRATION_DB_USER" IN DATABASE :"APP_DB_NAME" SET search_path = :"APP_DB_SCHEMA", public;
+ALTER ROLE :"APP_DB_USER" IN DATABASE :"APP_DB_NAME" SET search_path = :"APP_DB_SCHEMA", public;
 
 -- Grant schema usage
 GRANT USAGE ON SCHEMA :"APP_DB_SCHEMA" TO :"APP_DB_USER";
@@ -508,7 +514,7 @@ ALTER DEFAULT PRIVILEGES FOR ROLE :"MIGRATION_DB_USER" IN SCHEMA :"APP_DB_SCHEMA
 EOSQL
 )
 
-    # We will now pass the SQL into the container, write it to a temp file, and execute that file.
+    # Execute the SQL script
     if ! podman run --rm "${pod_args[@]}" \
         --env-file "$admin_env" \
         -i \
@@ -517,10 +523,9 @@ EOSQL
         
         # Create a temporary file to hold our SQL script
         SQL_FILE=$(mktemp)
-        # Read the script from stdin (passed from the outside) into the temp file
+        # Read the script from stdin into the temp file
         cat > "$SQL_FILE"
 
-        # The rest of the script now uses this file, removing all ambiguity.
         : "${PGHOST:?Missing PGHOST}"
         : "${PGPORT:=5432}"
         : "${PGADMIN_USER:?Missing PGADMIN_USER}"
@@ -549,13 +554,13 @@ EOSQL
             createdb -h "$PGHOST" -p "$PGPORT" -U "$PGADMIN_USER" "$APP_DB_NAME"
         fi
         
-        # EXECUTE THE FILE using -f. This is the most reliable method.
+        # Execute the SQL file with variables
         psql "host=$PGHOST port=$PGPORT dbname=$APP_DB_NAME user=$PGADMIN_USER" \
             -v ON_ERROR_STOP=1 \
             -v MIGRATION_DB_USER="$MIGRATION_DB_USER" \
-            -v MIGRATION_DB_PASSWORD="$MIGRATION_DB_PASSWORD" \
+            -v MIGRATION_DB_PASSWORD="'"'"'$MIGRATION_DB_PASSWORD'"'"'" \
             -v APP_DB_USER="$APP_DB_USER" \
-            -v APP_DB_PASSWORD="$APP_DB_PASSWORD" \
+            -v APP_DB_PASSWORD="'"'"'$APP_DB_PASSWORD'"'"'" \
             -v APP_DB_NAME="$APP_DB_NAME" \
             -v APP_DB_SCHEMA="$APP_DB_SCHEMA" \
             -f "$SQL_FILE"
@@ -571,7 +576,7 @@ EOSQL
                 [[ -z "$ext" ]] && continue
                 echo "Installing extension: $ext" >&2
                 psql "host=$PGHOST port=$PGPORT dbname=$APP_DB_NAME user=$PGADMIN_USER" -v ON_ERROR_STOP=1 \
-                    -c "CREATE EXTENSION IF NOT EXISTS \"$ext\" WITH SCHEMA :\"APP_DB_SCHEMA\""
+                    -c "CREATE EXTENSION IF NOT EXISTS \"$ext\" WITH SCHEMA \"$APP_DB_SCHEMA\""
             done
         fi
         
