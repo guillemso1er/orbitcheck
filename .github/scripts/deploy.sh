@@ -493,7 +493,7 @@ runtime_provision_database() {
             -v APP_DB_SCHEMA="$APP_DB_SCHEMA" \
             <<'"'"'EOSQL'"'"'
         -- Create roles if they dont exist
-        DO $$
+        DO $proc$
         BEGIN
             IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = :'MIGRATION_DB_USER') THEN
                 EXECUTE format('CREATE ROLE %I LOGIN', :'MIGRATION_DB_USER');
@@ -505,7 +505,7 @@ runtime_provision_database() {
                 RAISE NOTICE 'Created role: %', :'APP_DB_USER';
             END IF;
         END
-        $$;
+        $proc$;
         
         -- Update passwords
         ALTER ROLE :"MIGRATION_DB_USER" WITH PASSWORD :'MIGRATION_DB_PASSWORD';
@@ -522,7 +522,7 @@ runtime_provision_database() {
         GRANT CONNECT ON DATABASE :"APP_DB_NAME" TO :"MIGRATION_DB_USER", :"APP_DB_USER";
         
         -- Create schema if needed
-        DO $$
+        DO $proc$
         BEGIN
             IF NOT EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = :'APP_DB_SCHEMA') THEN
                 EXECUTE format('CREATE SCHEMA %I AUTHORIZATION %I', :'APP_DB_SCHEMA', :'MIGRATION_DB_USER');
@@ -531,7 +531,7 @@ runtime_provision_database() {
                 EXECUTE format('ALTER SCHEMA %I OWNER TO %I', :'APP_DB_SCHEMA', :'MIGRATION_DB_USER');
             END IF;
         END
-        $$;
+        $proc$;
         
         -- Set search paths
         ALTER ROLE :"MIGRATION_DB_USER" IN DATABASE :"APP_DB_NAME" SET search_path = :"APP_DB_SCHEMA", public;
