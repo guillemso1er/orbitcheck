@@ -446,7 +446,6 @@ runtime_provision_database() {
     podman pull docker.io/library/postgres:16-alpine 2>/dev/null || true
 
     # Prepare the SQL script with corrected psql variable quoting.
-    # Use :'variable' for string literals and :"variable" for identifiers.
     local sql_script
     sql_script=$(cat <<'EOSQL'
 -- Create roles if they dont exist
@@ -530,7 +529,7 @@ EOSQL
         
         export PGPASSWORD="$PGADMIN_PASSWORD"
         
-        echo "Connecting to PostgreSQL at $PGHOST:$PORT..." >&2
+        echo "Connecting to PostgreSQL at $PGHOST:$PGPORT..." >&2
         
         # Test connection
         psql "host=$PGHOST port=$PGPORT dbname=postgres user=$PGADMIN_USER" -c "SELECT 1" >/dev/null 2>&1 || {
