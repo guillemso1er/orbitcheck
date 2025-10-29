@@ -445,6 +445,8 @@ runtime_provision_database() {
 
     podman pull docker.io/library/postgres:16-alpine 2>/dev/null || true
 
+    # Prepare the SQL script with corrected psql variable quoting.
+    # Use :'variable' for string literals and :"variable" for identifiers.
     local sql_script
     sql_script=$(cat <<'EOSQL'
 -- Create roles if they dont exist
@@ -489,8 +491,8 @@ END
 $proc$;
 
 -- Set search paths
-ALTER ROLE :"MIGRATION_DB_USER" IN DATABASE :"APP_DB_NAME" SET search_path = :"APP_DB_SCHEMA", public;
-ALTER ROLE :"APP_DB_USER" IN DATABASE :"APP_DB_NAME" SET search_path = :"APP_DB_SCHEMA", public;
+ALTER ROLE :"MIGRATION_DB_USER" IN DATABASE :"APP_DB_NAME" SET search_path = :'APP_DB_SCHEMA', public;
+ALTER ROLE :"APP_DB_USER" IN DATABASE :"APP_DB_NAME" SET search_path = :'APP_DB_SCHEMA', public;
 
 -- Grant schema usage
 GRANT USAGE ON SCHEMA :"APP_DB_SCHEMA" TO :"APP_DB_USER";
@@ -512,8 +514,7 @@ EOSQL
         -i \
         docker.io/library/postgres:16-alpine sh -c '
         set -euo pipefail
-        set -x # ENABLE DEBUG TRACE
-
+    
         # Validate required variables
         : "${PGHOST:?Missing PGHOST}"
         : "${PGPORT:=5432}"
@@ -529,21 +530,24 @@ EOSQL
         
         export PGPASSWORD="$PGADMIN_PASSWORD"
         
-        echo "Connecting to PostgreSQL at $PGHOST:$PGPORT..."
+        echo "Connecting to PostgreSQL at $PGHOST:$PORT..." >&2
         
+        # Test connection
         psql "host=$PGHOST port=$PGPORT dbname=postgres user=$PGADMIN_USER" -c "SELECT 1" >/dev/null 2>&1 || {
-            echo "ERROR: Cannot connect to database"
+            echo "ERROR: Cannot connect to database" >&2
             exit 1
         }
         
+        # Check if database exists
         DB_EXISTS=$(psql "host=$PGHOST port=$PGPORT dbname=postgres user=$PGADMIN_USER" -tAc \
             "SELECT 1 FROM pg_database WHERE datname = '"'"'$APP_DB_NAME'"'"'" || echo "0")
         
         if [[ "$DB_EXISTS" != "1" ]]; then
-            echo "Creating database: $APP_DB_NAME"
+            echo "Creating database: $APP_DB_NAME" >&2
             createdb -h "$PGHOST" -p "$PGPORT" -U "$PGADMIN_USER" "$APP_DB_NAME"
         fi
         
+        # Pipe the prepared SQL script from stdin into psql
         psql "host=$PGHOST port=$PGPORT dbname=$APP_DB_NAME user=$PGADMIN_USER" \
             -v ON_ERROR_STOP=1 \
             -v MIGRATION_DB_USER="$MIGRATION_DB_USER" \
@@ -553,19 +557,20 @@ EOSQL
             -v APP_DB_NAME="$APP_DB_NAME" \
             -v APP_DB_SCHEMA="$APP_DB_SCHEMA"
         
+        # Install extensions if specified
         if [[ -n "$DB_EXTENSIONS" ]]; then
-            echo "Installing extensions: $DB_EXTENSIONS"
-            IFS='"'"','"'"' read -ra EXT_ARR <<< "$DB_EXTENSIONS"
+            echo "Installing extensions: $DB_EXTENSIONS" >&2
+            IFS=',' read -ra EXT_ARR <<< "$DB_EXTENSIONS"
             for ext in "${EXT_ARR[@]}"; do
-                ext="$(echo "$ext" | xargs)"
+                ext="$(echo "$ext" | xargs)" # Trim whitespace
                 [[ -z "$ext" ]] && continue
-                echo "Installing extension: $ext"
+                echo "Installing extension: $ext" >&2
                 psql "host=$PGHOST port=$PGPORT dbname=$APP_DB_NAME user=$PGADMIN_USER" -v ON_ERROR_STOP=1 \
-                    -c "CREATE EXTENSION IF NOT EXISTS \"$ext\" WITH SCHEMA \"$APP_DB_SCHEMA\""
+                    -c "CREATE EXTENSION IF NOT EXISTS \"$ext\" WITH SCHEMA :\"APP_DB_SCHEMA\""
             done
         fi
         
-        echo "Database provisioning completed successfully"
+        echo "Database provisioning completed successfully" >&2
     ' <<< "$sql_script"; then
         log_error "Database provisioning failed"
         return 1
