@@ -483,25 +483,33 @@ runtime_provision_database() {
         fi
         
         # Now work within the application database
-        psql "host=$PGHOST port=$PGPORT dbname=$APP_DB_NAME user=$PGADMIN_USER" -v ON_ERROR_STOP=1 <<'"'"'EOSQL'"'"'
+        psql "host=$PGHOST port=$PGPORT dbname=$APP_DB_NAME user=$PGADMIN_USER" \
+            -v ON_ERROR_STOP=1 \
+            -v MIGRATION_DB_USER="$MIGRATION_DB_USER" \
+            -v MIGRATION_DB_PASSWORD="$MIGRATION_DB_PASSWORD" \
+            -v APP_DB_USER="$APP_DB_USER" \
+            -v APP_DB_PASSWORD="$APP_DB_PASSWORD" \
+            -v APP_DB_NAME="$APP_DB_NAME" \
+            -v APP_DB_SCHEMA="$APP_DB_SCHEMA" \
+            <<'"'"'EOSQL'"'"'
         -- Create roles if they dont exist
         DO $$
         BEGIN
-            IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = :'"'"'MIGRATION_DB_USER'"'"') THEN
-                EXECUTE format('"'"'CREATE ROLE %I LOGIN'"'"', :'"'"'MIGRATION_DB_USER'"'"');
-                RAISE NOTICE '"'"'Created role: %'"'"', :'"'"'MIGRATION_DB_USER'"'"';
+            IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = :'MIGRATION_DB_USER') THEN
+                EXECUTE format('CREATE ROLE %I LOGIN', :'MIGRATION_DB_USER');
+                RAISE NOTICE 'Created role: %', :'MIGRATION_DB_USER';
             END IF;
             
-            IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = :'"'"'APP_DB_USER'"'"') THEN
-                EXECUTE format('"'"'CREATE ROLE %I LOGIN'"'"', :'"'"'APP_DB_USER'"'"');
-                RAISE NOTICE '"'"'Created role: %'"'"', :'"'"'APP_DB_USER'"'"';
+            IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = :'APP_DB_USER') THEN
+                EXECUTE format('CREATE ROLE %I LOGIN', :'APP_DB_USER');
+                RAISE NOTICE 'Created role: %', :'APP_DB_USER';
             END IF;
         END
         $$;
         
         -- Update passwords
-        ALTER ROLE :"MIGRATION_DB_USER" WITH PASSWORD :'"'"'MIGRATION_DB_PASSWORD'"'"';
-        ALTER ROLE :"APP_DB_USER" WITH PASSWORD :'"'"'APP_DB_PASSWORD'"'"';
+        ALTER ROLE :"MIGRATION_DB_USER" WITH PASSWORD :'MIGRATION_DB_PASSWORD';
+        ALTER ROLE :"APP_DB_USER" WITH PASSWORD :'APP_DB_PASSWORD';
         
         -- Set database owner
         ALTER DATABASE :"APP_DB_NAME" OWNER TO :"MIGRATION_DB_USER";
@@ -516,11 +524,11 @@ runtime_provision_database() {
         -- Create schema if needed
         DO $$
         BEGIN
-            IF NOT EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = :'"'"'APP_DB_SCHEMA'"'"') THEN
-                EXECUTE format('"'"'CREATE SCHEMA %I AUTHORIZATION %I'"'"', :'"'"'APP_DB_SCHEMA'"'"', :'"'"'MIGRATION_DB_USER'"'"');
-                RAISE NOTICE '"'"'Created schema: %'"'"', :'"'"'APP_DB_SCHEMA'"'"';
-            ELSIF :'"'"'APP_DB_SCHEMA'"'"' != '"'"'public'"'"' THEN
-                EXECUTE format('"'"'ALTER SCHEMA %I OWNER TO %I'"'"', :'"'"'APP_DB_SCHEMA'"'"', :'"'"'MIGRATION_DB_USER'"'"');
+            IF NOT EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = :'APP_DB_SCHEMA') THEN
+                EXECUTE format('CREATE SCHEMA %I AUTHORIZATION %I', :'APP_DB_SCHEMA', :'MIGRATION_DB_USER');
+                RAISE NOTICE 'Created schema: %', :'APP_DB_SCHEMA';
+            ELSIF :'APP_DB_SCHEMA' != 'public' THEN
+                EXECUTE format('ALTER SCHEMA %I OWNER TO %I', :'APP_DB_SCHEMA', :'MIGRATION_DB_USER');
             END IF;
         END
         $$;
