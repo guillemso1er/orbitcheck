@@ -6,7 +6,8 @@
     "type": "module",
     "main": "dist/server.js",
     "files": [
-        "dist"
+        "dist",
+        "migrations"
     ],
     "license": "UNLICENSED",
     "packageManager": "pnpm@9.12.1",
