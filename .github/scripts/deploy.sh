@@ -423,7 +423,7 @@ runtime_fetch_infisical_secrets() {
         --format=json \
         --silent \
         --include-imports \
-        | jq -r '.[] | "(.key)=(.value)"' \
+        | jq -r '.[] | "\(.key)=\(.value)"' \
     > "$tmp_secrets" || {
         log_error "Failed to fetch secrets from $path"
         return 1
