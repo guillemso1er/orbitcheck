@@ -420,9 +420,10 @@ runtime_fetch_infisical_secrets() {
         --domain="${INFISICAL_DOMAIN:-https://infisical.bastiat.xyz}" \
         --path="$path" \
         --env="${INFISICAL_ENV:-prod}" \
-        --format=dotenv \
+        --format=json \
         --silent \
         --include-imports \
+        | jq -r '.[] | "(.key)=(.value)"' \
     > "$tmp_secrets" || {
         log_error "Failed to fetch secrets from $path"
         return 1
