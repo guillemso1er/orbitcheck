@@ -517,12 +517,12 @@ ALTER DEFAULT PRIVILEGES FOR ROLE :"MIGRATION_DB_USER" IN SCHEMA :"APP_DB_SCHEMA
 EOSQL
 )
 
-    # Execute the SQL script
+    # Execute the SQL script - using POSIX-compatible shell syntax
     if ! podman run --rm "${pod_args[@]}" \
         --env-file "$admin_env" \
         -i \
         docker.io/library/postgres:16-alpine sh -c '
-        set -euo pipefail
+        set -e
         
         # Create a temporary file to hold our SQL script
         SQL_FILE=$(mktemp)
@@ -552,7 +552,7 @@ EOSQL
         DB_EXISTS=$(psql "host=$PGHOST port=$PGPORT dbname=postgres user=$PGADMIN_USER" -tAc \
             "SELECT 1 FROM pg_database WHERE datname = '"'"'$APP_DB_NAME'"'"'" || echo "0")
         
-        if [[ "$DB_EXISTS" != "1" ]]; then
+        if [ "$DB_EXISTS" != "1" ]; then
             echo "Creating database: $APP_DB_NAME" >&2
             createdb -h "$PGHOST" -p "$PGPORT" -U "$PGADMIN_USER" "$APP_DB_NAME"
         fi
@@ -575,12 +575,12 @@ EOSQL
         # Clean up the temp file
         rm "$SQL_FILE"
         
-        if [[ -n "$DB_EXTENSIONS" ]]; then
+        if [ -n "$DB_EXTENSIONS" ]; then
             echo "Installing extensions: $DB_EXTENSIONS" >&2
-            IFS=',' read -ra EXT_ARR <<< "$DB_EXTENSIONS"
-            for ext in "${EXT_ARR[@]}"; do
-                ext="$(echo "$ext" | xargs)"
-                [[ -z "$ext" ]] && continue
+            # Use echo and pipe instead of here-string
+            echo "$DB_EXTENSIONS" | tr "," "\n" | while IFS= read -r ext; do
+                ext=$(echo "$ext" | sed "s/^[[:space:]]*//;s/[[:space:]]*$//")
+                [ -z "$ext" ] && continue
                 echo "Installing extension: $ext" >&2
                 psql "host=$PGHOST port=$PGPORT dbname=$APP_DB_NAME user=$PGADMIN_USER" -v ON_ERROR_STOP=1 \
                     -c "CREATE EXTENSION IF NOT EXISTS \"$ext\" WITH SCHEMA \"$APP_DB_SCHEMA\""
