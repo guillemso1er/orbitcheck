@@ -35,7 +35,8 @@
   "scripts": {
     "validate": "openapi-typescript openapi.yaml --strict",
     "lint": "eslint src/",
-    "build": "node build.js"
+    "build": "node build.js",
+    "prepare": "npm run build"
   },
   "dependencies": {
     "axios": "^1.7.9",
