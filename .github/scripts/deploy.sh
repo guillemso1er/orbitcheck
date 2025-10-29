@@ -445,12 +445,81 @@ runtime_provision_database() {
 
     podman pull docker.io/library/postgres:16-alpine 2>/dev/null || true
 
+    # Prepare the SQL script in a variable in the outer shell. This is the safest way.
+    # The single quotes around 'EOSQL' prevent shell expansion here.
+    # The variables inside (e.g., :'MIGRATION_DB_USER') are for psql, not this shell.
+    local sql_script
+    sql_script=$(cat <<'EOSQL'
+        -- Create roles if they dont exist
+        DO $proc$
+        BEGIN
+            IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = :'MIGRATION_DB_USER') THEN
+                EXECUTE format('CREATE ROLE %I LOGIN', :'MIGRATION_DB_USER');
+                RAISE NOTICE 'Created role: %', :'MIGRATION_DB_USER';
+            END IF;
+            
+            IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = :'APP_DB_USER') THEN
+                EXECUTE format('CREATE ROLE %I LOGIN', :'APP_DB_USER');
+                RAISE NOTICE 'Created role: %', :'APP_DB_USER';
+            END IF;
+        END
+        $proc$;
+
+        -- Update passwords
+        ALTER ROLE :"MIGRATION_DB_USER" WITH PASSWORD :'MIGRATION_DB_PASSWORD';
+        ALTER ROLE :"APP_DB_USER" WITH PASSWORD :'APP_DB_PASSWORD';
+
+        -- Set database owner
+        ALTER DATABASE :"APP_DB_NAME" OWNER TO :"MIGRATION_DB_USER";
+
+        -- Revoke default PUBLIC privileges
+        REVOKE CREATE ON SCHEMA public FROM PUBLIC;
+        REVOKE ALL ON DATABASE :"APP_DB_NAME" FROM PUBLIC;
+
+        -- Grant connection rights
+        GRANT CONNECT ON DATABASE :"APP_DB_NAME" TO :"MIGRATION_DB_USER", :"APP_DB_USER";
+
+        -- Create schema if needed
+        DO $proc$
+        BEGIN
+            IF NOT EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = :'APP_DB_SCHEMA') THEN
+                EXECUTE format('CREATE SCHEMA %I AUTHORIZATION %I', :'APP_DB_SCHEMA', :'MIGRATION_DB_USER');
+                RAISE NOTICE 'Created schema: %', :'APP_DB_SCHEMA';
+            ELSIF :'APP_DB_SCHEMA' != 'public' THEN
+                EXECUTE format('ALTER SCHEMA %I OWNER TO %I', :'APP_DB_SCHEMA', :'MIGRATION_DB_USER');
+            END IF;
+        END
+        $proc$;
+
+        -- Set search paths
+        ALTER ROLE :"MIGRATION_DB_USER" IN DATABASE :"APP_DB_NAME" SET search_path = :"APP_DB_SCHEMA", public;
+        ALTER ROLE :"APP_DB_USER" IN DATABASE :"APP_DB_NAME" SET search_path = :"APP_DB_SCHEMA", public;
+
+        -- Grant schema usage
+        GRANT USAGE ON SCHEMA :"APP_DB_SCHEMA" TO :"APP_DB_USER";
+
+        -- Grant privileges on existing objects
+        GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA :"APP_DB_SCHEMA" TO :"APP_DB_USER";
+        GRANT USAGE, SELECT, UPDATE ON ALL SEQUENCES IN SCHEMA :"APP_DB_SCHEMA" TO :"APP_DB_USER";
+
+        -- Set default privileges for future objects
+        ALTER DEFAULT PRIVILEGES FOR ROLE :"MIGRATION_DB_USER" IN SCHEMA :"APP_DB_SCHEMA"
+            GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO :"APP_DB_USER";
+        ALTER DEFAULT PRIVILEGES FOR ROLE :"MIGRATION_DB_USER" IN SCHEMA :"APP_DB_SCHEMA"
+            GRANT USAGE, SELECT, UPDATE ON SEQUENCES TO :"APP_DB_USER";
+EOSQL
+)
+
+    # We pipe the sql_script variable into the podman command.
+    # The -i flag on podman run is crucial to pass stdin.
+    # The psql command inside the container will now read the script from its stdin.
     if ! podman run --rm "${pod_args[@]}" \
         --env-file "$admin_env" \
+        -i \
         docker.io/library/postgres:16-alpine sh -c '
         set -euo pipefail
     
-        # Validate required variables
+        # Validate required variables from the environment
         : "${PGHOST:?Missing PGHOST}"
         : "${PGPORT:=5432}"
         : "${PGADMIN_USER:?Missing PGADMIN_USER}"
@@ -482,7 +551,7 @@ runtime_provision_database() {
             createdb -h "$PGHOST" -p "$PGPORT" -U "$PGADMIN_USER" "$APP_DB_NAME"
         fi
         
-        # Now work within the application database
+        # Now work within the application database by reading the script from stdin.
         psql "host=$PGHOST port=$PGPORT dbname=$APP_DB_NAME user=$PGADMIN_USER" \
             -v ON_ERROR_STOP=1 \
             -v MIGRATION_DB_USER="$MIGRATION_DB_USER" \
@@ -490,66 +559,7 @@ runtime_provision_database() {
             -v APP_DB_USER="$APP_DB_USER" \
             -v APP_DB_PASSWORD="$APP_DB_PASSWORD" \
             -v APP_DB_NAME="$APP_DB_NAME" \
-            -v APP_DB_SCHEMA="$APP_DB_SCHEMA" \
-            <<'"'"'EOSQL'"'"'
-        -- Create roles if they dont exist
-        DO $proc$
-        BEGIN
-            IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = :'MIGRATION_DB_USER') THEN
-                EXECUTE format('CREATE ROLE %I LOGIN', :'MIGRATION_DB_USER');
-                RAISE NOTICE 'Created role: %', :'MIGRATION_DB_USER';
-            END IF;
-            
-            IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = :'APP_DB_USER') THEN
-                EXECUTE format('CREATE ROLE %I LOGIN', :'APP_DB_USER');
-                RAISE NOTICE 'Created role: %', :'APP_DB_USER';
-            END IF;
-        END
-        $proc$;
-        
-        -- Update passwords
-        ALTER ROLE :"MIGRATION_DB_USER" WITH PASSWORD :'MIGRATION_DB_PASSWORD';
-        ALTER ROLE :"APP_DB_USER" WITH PASSWORD :'APP_DB_PASSWORD';
-        
-        -- Set database owner
-        ALTER DATABASE :"APP_DB_NAME" OWNER TO :"MIGRATION_DB_USER";
-        
-        -- Revoke default PUBLIC privileges
-        REVOKE CREATE ON SCHEMA public FROM PUBLIC;
-        REVOKE ALL ON DATABASE :"APP_DB_NAME" FROM PUBLIC;
-        
-        -- Grant connection rights
-        GRANT CONNECT ON DATABASE :"APP_DB_NAME" TO :"MIGRATION_DB_USER", :"APP_DB_USER";
-        
-        -- Create schema if needed
-        DO $proc$
-        BEGIN
-            IF NOT EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = :'APP_DB_SCHEMA') THEN
-                EXECUTE format('CREATE SCHEMA %I AUTHORIZATION %I', :'APP_DB_SCHEMA', :'MIGRATION_DB_USER');
-                RAISE NOTICE 'Created schema: %', :'APP_DB_SCHEMA';
-            ELSIF :'APP_DB_SCHEMA' != 'public' THEN
-                EXECUTE format('ALTER SCHEMA %I OWNER TO %I', :'APP_DB_SCHEMA', :'MIGRATION_DB_USER');
-            END IF;
-        END
-        $proc$;
-        
-        -- Set search paths
-        ALTER ROLE :"MIGRATION_DB_USER" IN DATABASE :"APP_DB_NAME" SET search_path = :"APP_DB_SCHEMA", public;
-        ALTER ROLE :"APP_DB_USER" IN DATABASE :"APP_DB_NAME" SET search_path = :"APP_DB_SCHEMA", public;
-        
-        -- Grant schema usage
-        GRANT USAGE ON SCHEMA :"APP_DB_SCHEMA" TO :"APP_DB_USER";
-        
-        -- Grant privileges on existing objects
-        GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA :"APP_DB_SCHEMA" TO :"APP_DB_USER";
-        GRANT USAGE, SELECT, UPDATE ON ALL SEQUENCES IN SCHEMA :"APP_DB_SCHEMA" TO :"APP_DB_USER";
-        
-        -- Set default privileges for future objects
-        ALTER DEFAULT PRIVILEGES FOR ROLE :"MIGRATION_DB_USER" IN SCHEMA :"APP_DB_SCHEMA"
-            GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO :"APP_DB_USER";
-        ALTER DEFAULT PRIVILEGES FOR ROLE :"MIGRATION_DB_USER" IN SCHEMA :"APP_DB_SCHEMA"
-            GRANT USAGE, SELECT, UPDATE ON SEQUENCES TO :"APP_DB_USER";
-        EOSQL
+            -v APP_DB_SCHEMA="$APP_DB_SCHEMA"
         
         # Install extensions if specified
         if [[ -n "$DB_EXTENSIONS" ]]; then
@@ -565,7 +575,7 @@ runtime_provision_database() {
         fi
         
         echo "Database provisioning completed successfully"
-    '; then
+    ' <<< "$sql_script"; then
         log_error "Database provisioning failed"
         return 1
     fi
