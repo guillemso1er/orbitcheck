@@ -261,38 +261,15 @@ runtime_find_db_unit() {
   echo ""
 }
 
-# Start the pod + DB unit and wait until DB responds to psql
-runtime_start_db_and_wait() {
-  local dest_sys_d="$1"
-  local admin_env="$2"
-  shift 2 || true
+runtime_wait_for_db() {
+  local admin_env="$1"
+  shift || true
   local pod_args=("$@")
 
-  systemctl --user daemon-reload
-
-  # Start pod unit(s) if any
-  shopt -s nullglob
-  local f pod_unit
-  for f in "$dest_sys_d"/*.pod; do
-    pod_unit="$(basename "$f" .pod)-pod.service"
-    systemctl --user enable "$pod_unit" 2>/dev/null || true
-    systemctl --user start "$pod_unit" || true
-  done
-
-  # Start DB container unit
-  local db_unit
-  db_unit="$(runtime_find_db_unit "$dest_sys_d")"
-  if [[ -z "$db_unit" ]]; then
-    log_warning "Could not determine DB container unit; skipping pre-start"
-  else
-    systemctl --user enable "$db_unit" 2>/dev/null || true
-    systemctl --user start "$db_unit" || true
-  fi
-
-  # Wait for DB readiness
   log_info "Waiting for database to become ready..."
   local tries=40
   while (( tries-- > 0 )); do
+    # The podman run command now succeeds only if the DB container is already running
     if podman run --rm "${pod_args[@]}" --env-file "$admin_env" \
        docker.io/library/postgres:16-alpine sh -c '
          set -e
@@ -306,10 +283,19 @@ runtime_start_db_and_wait() {
       log_success "Database is ready"
       return 0
     fi
+    log_info "Database not ready, waiting 2s..."
     sleep 2
   done
 
   log_error "Database did not become ready in time"
+  # For better debugging, show the status of the DB unit
+  local db_unit
+  db_unit="$(runtime_find_db_unit "$HOME/$REMOTE_SYSTEMD_USER_DIR")"
+  if [[ -n "$db_unit" ]]; then
+    log_error "Status of the database service ($db_unit):"
+    systemctl --user status "$db_unit" --no-pager || true
+    journalctl --user -u "$db_unit" --no-pager -n 20 || true
+  fi
   return 1
 }
 
@@ -752,40 +738,37 @@ runtime_main_deployment() {
     [[ -n "$pod_name" ]] && pod_args+=(--pod "$pod_name")
 
     # --- RESTRUCTURED LOGIC ---
-    # Decide whether to run DB operations and restart services.
-    
-    if [[ "$NEEDS_API_CHANGES" == "true" ]] || [[ "$IS_WORKFLOW_DISPATCH" == "true" && "$FORCE_DEPLOY" == "true" ]]; then
-        log_info "API changes or force deploy detected. Running full deployment and restart."
+    if [[ "$NEEDS_API_CHANGES" == "true" ]] || [[ "$NEEDS_INFRA_CHANGES" == "true" ]] || [[ "$IS_WORKFLOW_DISPATCH" == "true" && "$FORCE_DEPLOY" == "true" ]]; then
+        if [[ "$NEEDS_API_CHANGES" == "true" ]] || [[ "$FORCE_DEPLOY" == "true" ]]; then
+            log_info "API changes or force deploy detected. Running full deployment with migrations."
+            # --- Service Management is now the FIRST step ---
+            runtime_manage_systemd_services "$dest_sys_d"
+            
+            # --- Database Operations (only for API changes) ---
+            local admin_token_file="$HOME/.secrets/infisical/${service}-infra.token"
+            local admin_env="$cfg_dir/${service}.dbadmin.env"
+            runtime_fetch_infisical_secrets "$service" "$admin_token_file" "/api-infra" "$admin_env"
 
-        # --- Database Operations (only for API changes) ---
-        local admin_token_file="$HOME/.secrets/infisical/${service}-infra.token"
-        local admin_env="$cfg_dir/${service}.dbadmin.env"
-        runtime_fetch_infisical_secrets "$service" "$admin_token_file" "/api-infra" "$admin_env"
+            # --- Wait for DB to be ready AFTER services are started ---
+            runtime_wait_for_db "$admin_env" "${pod_args[@]}"
+            
+            runtime_provision_database "$admin_env" "${pod_args[@]}"
 
-        runtime_start_db_and_wait "$dest_sys_d" "$admin_env" "${pod_args[@]}"
-        runtime_provision_database "$admin_env" "${pod_args[@]}"
+            # Prepare env for migrations
+            local image="$REGISTRY/$IMAGE_OWNER/$API_IMAGE_NAME:prod"
+            local mig_env; mig_env="$(mktemp)"; trap "rm -f '$mig_env'" RETURN
+            chmod 600 "$mig_env"
+            [[ -f "$cfg_dir/$service.env" ]] && cat "$cfg_dir/$service.env" >> "$mig_env"
+            [[ -f "$cfg_dir/${service}.secrets.env" ]] && cat "$cfg_dir/${service}.secrets.env" >> "$mig_env"
+            
+            # Migrate
+            runtime_run_migrations "$image" "$mig_env" 10 "${pod_args[@]}"
 
-        # Prepare env for migrations
-        local image="$REGISTRY/$IMAGE_OWNER/$API_IMAGE_NAME:prod"
-        local mig_env
-        mig_env="$(mktemp)"
-        trap "rm -f '$mig_env'" RETURN # Use RETURN to scope trap to this function
-        chmod 600 "$mig_env"
-        [[ -f "$cfg_dir/$service.env" ]] && cat "$cfg_dir/$service.env" >> "$mig_env"
-        [[ -f "$cfg_dir/${service}.secrets.env" ]] && cat "$cfg_dir/${service}.secrets.env" >> "$mig_env"
-
-        # Migrate
-        runtime_run_migrations "$image" "$mig_env" 10 "${pod_args[@]}"
-        
-        # --- Service Management ---
-        runtime_manage_systemd_services "$dest_sys_d"
-
-    elif [[ "$NEEDS_INFRA_CHANGES" == "true" ]]; then
-        log_info "Infrastructure changes detected. Restarting services without data migration."
-        
-        # --- Service Management ---
-        runtime_manage_systemd_services "$dest_sys_d"
-        
+        elif [[ "$NEEDS_INFRA_CHANGES" == "true" ]]; then
+            log_info "Infrastructure changes detected. Restarting services without data migration."
+            # Just restart the services
+            runtime_manage_systemd_services "$dest_sys_d"
+        fi
     else
         log_info "No API or Infrastructure changes detected. Skipping service restart."
     fi
@@ -799,7 +782,7 @@ export -f runtime_deploy_quadlet_files runtime_deploy_env_files
 export -f runtime_fetch_infisical_secrets runtime_provision_database
 export -f runtime_run_migrations runtime_manage_systemd_services
 export -f runtime_main_deployment
-export -f runtime_get_pod_name runtime_find_db_unit runtime_start_db_and_wait
+export -f runtime_get_pod_name runtime_find_db_unit runtime_wait_for_db
 
 # ============================================================================
 # Section 2: Podman/Systemd operations

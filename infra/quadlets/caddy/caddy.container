@@ -1,5 +1,7 @@
 [Unit]
 Description=Caddy reverse proxy Service
+Requires=orbitcheck-pod.service
+After=orbitcheck-pod.service
 
 [Container]
 Image=caddy.build
