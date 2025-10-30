@@ -734,6 +734,7 @@ runtime_main_deployment() {
     local dest_sys_d="$HOME/$REMOTE_SYSTEMD_USER_DIR"
     local dest_user_cfg="$HOME/.config"
 
+    # These file deployments should always happen if the deploy job runs
     runtime_deploy_quadlet_files "$src" "$dest_sys_d"
     runtime_deploy_env_files "$src" "$dest_user_cfg"
 
@@ -750,35 +751,45 @@ runtime_main_deployment() {
     local -a pod_args=()
     [[ -n "$pod_name" ]] && pod_args+=(--pod "$pod_name")
 
+    # --- RESTRUCTURED LOGIC ---
+    # Decide whether to run DB operations and restart services.
+    
     if [[ "$NEEDS_API_CHANGES" == "true" ]] || [[ "$IS_WORKFLOW_DISPATCH" == "true" && "$FORCE_DEPLOY" == "true" ]]; then
-        log_info "API changes or force deploy - running DB operations"
+        log_info "API changes or force deploy detected. Running full deployment and restart."
 
-        # Admin secrets + ensure DB is running
+        # --- Database Operations (only for API changes) ---
         local admin_token_file="$HOME/.secrets/infisical/${service}-infra.token"
         local admin_env="$cfg_dir/${service}.dbadmin.env"
         runtime_fetch_infisical_secrets "$service" "$admin_token_file" "/api-infra" "$admin_env"
 
         runtime_start_db_and_wait "$dest_sys_d" "$admin_env" "${pod_args[@]}"
-
-        # Provision
         runtime_provision_database "$admin_env" "${pod_args[@]}"
 
         # Prepare env for migrations
         local image="$REGISTRY/$IMAGE_OWNER/$API_IMAGE_NAME:prod"
         local mig_env
         mig_env="$(mktemp)"
-        trap "rm -f '$mig_env'" EXIT
+        trap "rm -f '$mig_env'" RETURN # Use RETURN to scope trap to this function
         chmod 600 "$mig_env"
         [[ -f "$cfg_dir/$service.env" ]] && cat "$cfg_dir/$service.env" >> "$mig_env"
         [[ -f "$cfg_dir/${service}.secrets.env" ]] && cat "$cfg_dir/${service}.secrets.env" >> "$mig_env"
 
         # Migrate
         runtime_run_migrations "$image" "$mig_env" 10 "${pod_args[@]}"
+        
+        # --- Service Management ---
+        runtime_manage_systemd_services "$dest_sys_d"
+
+    elif [[ "$NEEDS_INFRA_CHANGES" == "true" ]]; then
+        log_info "Infrastructure changes detected. Restarting services without data migration."
+        
+        # --- Service Management ---
+        runtime_manage_systemd_services "$dest_sys_d"
+        
     else
-        log_info "No API changes - skipping DB operations"
+        log_info "No API or Infrastructure changes detected. Skipping service restart."
     fi
 
-    runtime_manage_systemd_services "$dest_sys_d"
     log_success "Runtime deployment completed successfully"
 }
 
@@ -803,6 +814,7 @@ deploy_as_runtime_user() {
   if ! sudo -iu "$REMOTE_RUNTIME_USER" \
       DEBUG="${DEBUG:-0}" \
       NEEDS_API_CHANGES="$NEEDS_API_CHANGES" \
+      NEEDS_INFRA_CHANGES="$NEEDS_INFRA_CHANGES" \
       IS_WORKFLOW_DISPATCH="$IS_WORKFLOW_DISPATCH" \
       FORCE_DEPLOY="$FORCE_DEPLOY" \
       REMOTE_TARGET_BASE_DIR="$REMOTE_TARGET_BASE_DIR" \
@@ -845,9 +857,7 @@ main() {
     log_info "=== Section 2: Runtime user operations ==="
     verify_podman_quadlet
     
-    # --- NEW CODE BLOCK ---
-    # Change ownership of the entire temp directory to the runtime user
-    # so that it can read the source files for deployment.
+
     log_info "Changing ownership of '$REMOTE_TARGET_BASE_DIR' to '$REMOTE_RUNTIME_USER'"
     if ! sudo chown -R "$REMOTE_RUNTIME_USER:$REMOTE_RUNTIME_USER" "$REMOTE_TARGET_BASE_DIR"; then
         log_error "Failed to change ownership of the target directory."
