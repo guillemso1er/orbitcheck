@@ -1,18 +1,11 @@
 [Unit]
 Description=Caddy reverse proxy
 
-[Build]
-File=./Containerfile
-Image=ghcr.io/guillemso1er/caddy:prod
-
-
 [Container]
+Image=caddy.build
 LogDriver=journald
-Image=docker.io/library/caddy:2.10.2
 ContainerName=caddy
 Pod=orbitcheck.pod
-PublishPort=80:80/tcp
-PublishPort=443:443/tcp
 Volume= /var/lib/containers/configs/caddy/Caddyfile:/etc/caddy/Caddyfile:Z
 Volume=/var/lib/containers/volumes/caddy/data:/data:Z,U
 Volume=/var/lib/containers/configs/caddy/config:/config:Z,U

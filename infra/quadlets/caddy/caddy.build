@@ -1,0 +1,2 @@
+File=Containerfile
+ImageTag=ghcr.io/guillemso1er/caddy:prod
