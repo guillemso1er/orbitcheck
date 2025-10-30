@@ -16,7 +16,6 @@ Label="io.containers.autoupdate=image"
 NoNewPrivileges=yes
 PidsLimit=500
 Ulimit=nofile=262144:262144
-Pod=orbitcheck.pod
 
 [Service]
 Restart=always

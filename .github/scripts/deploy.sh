@@ -318,7 +318,7 @@ runtime_deploy_quadlet_files() {
   shopt -s nullglob globstar
 
   local count=0
-  for f in "$src"/**/*.container "$src"/**/*.pod "$src"/**/*.build; do
+  for f in "$src"/**/*.container "$src"/**/*.pod "$src"/**/*.build "$src"/**/*.Containerfile; do
         [[ -f "$f" ]] || continue
         cp -f "$f" "$stage_q/$(basename "$f")"
         ((++count))
