@@ -147,8 +147,8 @@ jobs:
             CONTRACTS_FILTER=@orbitcheck/contracts
             DASHBOARD_DIR=apps/dashboard
             DASHBOARD_BUILD_DIR=apps/dashboard/dist
-          cache-from: type=registry,ref=${{ env.IMAGE_REF }}:buildcache
-          cache-to: type=registry,ref=${{ env.IMAGE_REF }}:buildcache,mode=max
+          cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/${{ env.CADDY_IMAGE_NAME }}:buildcache
+          cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/${{ env.CADDY_IMAGE_NAME }}:buildcache,mode=max
   
   build-api:
     name: Build and push API (only if changed)
