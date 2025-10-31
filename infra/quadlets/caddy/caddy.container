@@ -1,17 +1,14 @@
 [Unit]
 Description=Caddy reverse proxy Service
-Requires=orbitcheck-pod.service
-After=orbitcheck-pod.service
+
 
 [Container]
-Image=caddy.build
+Image=ghcr.io/guillemso1er/caddy:prod
 LogDriver=journald
 ContainerName=caddy
 Pod=orbitcheck.pod
-Volume= /var/lib/containers/configs/caddy/Caddyfile:/etc/caddy/Caddyfile:Z
 Volume=/var/lib/containers/volumes/caddy/data:/data:Z,U
 Volume=/var/lib/containers/configs/caddy/config:/config:Z,U
-Volume=/var/lib/containers/volumes/caddy-dashboard:/srv/dashboard:Z
 Label="io.containers.autoupdate=image"
 NoNewPrivileges=yes
 PidsLimit=500

@@ -10,7 +10,7 @@ if [[ "${DEBUG:-0}" == "1" ]]; then
 fi
 
 # ============================================================================
-# Deployment Script - Handles infrastructure, dashboard, and API deployments
+# Deployment Script - Handles infrastructure and API deployments
 # ============================================================================
 
 # Color codes for better output visibility
@@ -80,7 +80,6 @@ validate_required_vars() {
     local required_vars=(
         "REMOTE_TARGET_BASE_DIR"
         "REMOTE_CONFIGS_DIR"
-        "REMOTE_DASHBOARD_VOLUME_DIR"
         "REMOTE_RUNTIME_USER"
         "REMOTE_SYSTEMD_USER_DIR"
         "REGISTRY"
@@ -102,7 +101,6 @@ validate_required_vars() {
 
 # Set defaults for optional variables
 : "${NEEDS_INFRA_CHANGES:=false}"
-: "${NEEDS_DASHBOARD_CHANGES:=false}"
 : "${NEEDS_API_CHANGES:=false}"
 : "${IS_WORKFLOW_DISPATCH:=false}"
 : "${FORCE_DEPLOY:=false}"
@@ -119,7 +117,6 @@ normalize_bool() {
 }
 
 NEEDS_INFRA_CHANGES=$(normalize_bool "$NEEDS_INFRA_CHANGES")
-NEEDS_DASHBOARD_CHANGES=$(normalize_bool "$NEEDS_DASHBOARD_CHANGES")
 NEEDS_API_CHANGES=$(normalize_bool "$NEEDS_API_CHANGES")
 IS_WORKFLOW_DISPATCH=$(normalize_bool "$IS_WORKFLOW_DISPATCH")
 FORCE_DEPLOY=$(normalize_bool "$FORCE_DEPLOY")
@@ -188,18 +185,6 @@ deploy_infrastructure_configs() {
         fi
     else
         log_info "Skipping infrastructure config deployment (no changes or directory missing)"
-    fi
-}
-
-deploy_dashboard_assets() {
-    log_info "Deploying dashboard static assets..."
-    
-    if [[ "$NEEDS_DASHBOARD_CHANGES" == "true" ]] && [[ -d "$REMOTE_TARGET_BASE_DIR/dashboard-dist" ]]; then
-        verify_directory "$REMOTE_DASHBOARD_VOLUME_DIR" true || return 1
-        safe_rsync "$REMOTE_TARGET_BASE_DIR/dashboard-dist" "$REMOTE_DASHBOARD_VOLUME_DIR" "$REMOTE_RUNTIME_USER" || return 1
-        log_success "Dashboard assets deployed"
-    else
-        log_info "Skipping dashboard deployment (no changes or directory missing)"
     fi
 }
 
@@ -806,7 +791,6 @@ deploy_as_runtime_user() {
       REGISTRY="$REGISTRY" \
       IMAGE_OWNER="$IMAGE_OWNER" \
       REMOTE_CONFIGS_DIR="$REMOTE_CONFIGS_DIR" \
-      REMOTE_DASHBOARD_VOLUME_DIR="$REMOTE_DASHBOARD_VOLUME_DIR" \
       REMOTE_RUNTIME_USER="$REMOTE_RUNTIME_USER" \
       RED="$RED" GREEN="$GREEN" YELLOW="$YELLOW" BLUE="$BLUE" NC="$NC" \
       bash -Eeuo pipefail -c "source \"$script_path\"; runtime_main_deployment"; then
@@ -825,7 +809,6 @@ main() {
     log_info "=== Starting Deployment Process ==="
     log_info "Configuration:"
     log_info "  - Infrastructure changes: $NEEDS_INFRA_CHANGES"
-    log_info "  - Dashboard changes: $NEEDS_DASHBOARD_CHANGES"
     log_info "  - API changes: $NEEDS_API_CHANGES"
     log_info "  - Force deploy: $FORCE_DEPLOY"
     log_info "  - Target directory: $REMOTE_TARGET_BASE_DIR"
@@ -834,20 +817,17 @@ main() {
     # Section 1: Root-level operations
     log_info "=== Section 1: Root-level file operations ==="
     deploy_infrastructure_configs
-    deploy_dashboard_assets
     
     # Section 2: Runtime user operations
     log_info "=== Section 2: Runtime user operations ==="
     verify_podman_quadlet
     
-
     log_info "Changing ownership of '$REMOTE_TARGET_BASE_DIR' to '$REMOTE_RUNTIME_USER'"
     if ! sudo chown -R "$REMOTE_RUNTIME_USER:$REMOTE_RUNTIME_USER" "$REMOTE_TARGET_BASE_DIR"; then
         log_error "Failed to change ownership of the target directory."
         exit 1
     fi
     log_success "Ownership changed."
-    # --- END NEW CODE BLOCK ---
 
     deploy_as_runtime_user
     

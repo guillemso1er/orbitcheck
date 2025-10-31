@@ -1,0 +1,54 @@
+# --- Stage: Build the dashboard with pnpm ---
+FROM node:20-alpine AS dashboard
+WORKDIR /src
+
+ARG PNPM_VERSION=9.12.0
+ARG DASHBOARD_DIR=apps/dashboard
+ARG DASHBOARD_BUILD_DIR=apps/dashboard/dist
+ARG CONTRACTS_FILTER=@orbitcheck/contracts
+ARG DASHBOARD_FILTER=@orbitcheck/dashboard
+
+# Needed for some pnpm installs (git deps)
+RUN apk add --no-cache git \
+    && corepack enable \
+    && corepack prepare pnpm@${PNPM_VERSION} --activate
+
+# Copy only what's needed to build the dashboard (faster caching/builds)
+# If your dashboard imports from packages/, include it.
+COPY pnpm-lock.yaml pnpm-workspace.yaml package.json tsconfig.base.json ./
+COPY packages ./packages
+COPY ${DASHBOARD_DIR} ./${DASHBOARD_DIR}
+
+# Install workspace deps and build
+RUN pnpm install --frozen-lockfile
+
+# Build any prereqs (contracts) if the dashboard depends on it
+RUN pnpm --filter ${CONTRACTS_FILTER} run build
+
+# Build the dashboard
+RUN pnpm --filter ${DASHBOARD_FILTER} run build
+
+# Ensure the build output exists
+RUN test -d "${DASHBOARD_BUILD_DIR}" || (echo "Build dir ${DASHBOARD_BUILD_DIR} not found" && exit 1)
+
+# --- Stage: Build Caddy with plugins using xcaddy ---
+FROM caddy:2.10.2-builder AS caddy-builder
+ENV GOTOOLCHAIN=auto
+RUN xcaddy build --with github.com/caddyserver/cache-handler@v0.16.0
+
+# --- Final runtime image ---
+FROM caddy:2.10.2-alpine
+
+# Custom caddy binary with plugins
+COPY --from=caddy-builder /usr/bin/caddy /usr/bin/caddy
+
+# Copy the Caddyfile from the repo (baked into the image)
+# Adjust this path if you move your Caddyfile.
+COPY infra/quadlets/caddy/Caddyfile /etc/caddy/Caddyfile
+
+# Copy built SPA into Caddy's web root
+ARG DASHBOARD_BUILD_DIR=apps/dashboard/dist
+COPY --from=dashboard /src/${DASHBOARD_BUILD_DIR}/ /usr/share/caddy/
+
+# Optionally: set a working dir
+WORKDIR /srv
