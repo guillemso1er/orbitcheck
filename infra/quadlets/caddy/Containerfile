@@ -44,7 +44,7 @@ COPY --from=caddy-builder /usr/bin/caddy /usr/bin/caddy
 
 # Copy the Caddyfile from the repo (baked into the image)
 # Adjust this path if you move your Caddyfile.
-COPY infra/quadlets/caddy/Caddyfile /etc/caddy/Caddyfile
+COPY infra/config/caddy/Caddyfile /etc/caddy/Caddyfile
 
 # Copy built SPA into Caddy's web root
 ARG DASHBOARD_BUILD_DIR=apps/dashboard/dist
