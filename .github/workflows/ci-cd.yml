@@ -42,6 +42,7 @@ env:
   IMAGE_OWNER: ${{ github.repository_owner }}
   API_IMAGE_NAME: api
   API_DOCKERFILE_PATH: ./apps/api/Dockerfile
+  PNPM_VERSION: 9.12.0
 
   # Caddy (reverse proxy + dashboard)
   CADDY_IMAGE_NAME: caddy
@@ -96,6 +97,59 @@ jobs:
               - '.github/workflows/**'
               - '.github/scripts/**'
 
+  build-caddy:
+    name: Build and push Caddy (dashboard + reverse proxy)
+    needs: [detect-changes]
+    if: needs.detect-changes.outputs.dashboard == 'true' || needs.detect-changes.outputs.infra == 'true' || (github.event_name == 'workflow_dispatch' && inputs.force_dashboard_build)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        # Fetch full history helps metadata/tagging in some setups
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Docker meta (generate tags and labels)
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/${{ env.CADDY_IMAGE_NAME }}
+          tags: |
+            type=sha
+            type=ref,event=branch
+            type=raw,value=prod,enable=${{ github.ref == 'refs/heads/main' }}
+
+      - name: Build and push Caddy + dashboard image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ${{ env.CADDY_DOCKERFILE_PATH }}
+          push: true
+          platforms: linux/amd64,linux/arm64
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            PNPM_VERSION=${{ env.PNPM_VERSION }}
+            DASHBOARD_FILTER=@orbitcheck/dashboard
+            CONTRACTS_FILTER=@orbitcheck/contracts
+            DASHBOARD_DIR=apps/dashboard
+            DASHBOARD_BUILD_DIR=apps/dashboard/dist
+          cache-from: type=registry,ref=${{ env.IMAGE_REF }}:buildcache
+          cache-to: type=registry,ref=${{ env.IMAGE_REF }}:buildcache,mode=max
+  
   build-api:
     name: Build and push API (only if changed)
     needs: [detect-changes]
@@ -141,61 +195,6 @@ jobs:
         run: |
           cosign sign --yes ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/${{ env.API_IMAGE_NAME }}:prod
 
-  build-caddy:
-    name: Build and push Caddy (dashboard + reverse proxy)
-    needs: [detect-changes]
-    if: needs.detect-changes.outputs.dashboard == 'true' || needs.detect-changes.outputs.infra == 'true' || (github.event_name == 'workflow_dispatch' && inputs.force_dashboard_build)
-    runs-on: ubuntu-latest
-    env:
-      IMAGE_REF: ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/${{ env.CADDY_IMAGE_NAME }}
-      PNPM_VERSION: 9.12.0
-    steps:
-      - name: Checkout repository
-        # Fetch full history helps metadata/tagging in some setups
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Log in to GHCR
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Docker meta (generate tags and labels)
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.IMAGE_REF }}
-          tags: |
-            type=sha
-            type=ref,event=branch
-            type=raw,value=prod,enable=${{ github.ref == 'refs/heads/main' }}
-
-      - name: Build and push Caddy + dashboard image
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: ${{ env.CADDY_DOCKERFILE_PATH }}
-          push: true
-          platforms: linux/amd64,linux/arm64
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          build-args: |
-            PNPM_VERSION=${{ env.PNPM_VERSION }}
-            DASHBOARD_FILTER=@orbitcheck/dashboard
-            CONTRACTS_FILTER=@orbitcheck/contracts
-            DASHBOARD_DIR=apps/dashboard
-            DASHBOARD_BUILD_DIR=apps/dashboard/dist
-          cache-from: type=registry,ref=${{ env.IMAGE_REF }}:buildcache
-          cache-to: type=registry,ref=${{ env.IMAGE_REF }}:buildcache,mode=max
 
   deploy:
     name: Deploy
