@@ -725,21 +725,6 @@
       changed_when: false
       failed_when: podman_info_test.rc != 0
       when: ansible_connection != 'podman'
-
-    - name: Login to GitHub Container Registry
-      no_log: true # Prevents the token from being displayed in logs
-      ansible.builtin.command:
-        cmd: "podman login ghcr.io -u {{ ghcr_username }} --password-stdin"
-        stdin: "{{ ghcr_token }}"
-      become_user: "{{ podman_user }}"
-      environment:
-        XDG_RUNTIME_DIR: "/run/user/{{ podman_user_uid }}"
-      when:
-        - ghcr_username is defined
-        - ghcr_username | length > 0
-        - ghcr_token is defined
-        - ghcr_token | length > 0
-
     
     - name: Configure Container Directories and SELinux Contexts
       block:
@@ -1233,6 +1218,20 @@
         test_command: uptime
       when:
         - ansible_service_mgr == 'systemd'
+
+    - name: Login to GitHub Container Registry
+      no_log: true
+      ansible.builtin.command:
+        cmd: "podman login ghcr.io -u {{ ghcr_username }} --password-stdin"
+        stdin: "{{ ghcr_token }}"
+      become_user: "{{ podman_user }}"
+      environment:
+        XDG_RUNTIME_DIR: "/run/user/{{ podman_user_uid }}"
+      when:
+        - ghcr_username is defined
+        - ghcr_username | length > 0
+        - ghcr_token is defined
+        - ghcr_token | length > 0
       
     - name: Log completion
       ansible.builtin.lineinfile:
