@@ -265,17 +265,11 @@ runtime_wait_for_db() {
        docker.io/library/postgres:16-alpine sh -c '
          set -e
          : "${PGHOST:=127.0.0.1}"
+         : "${PGADMIN_USER:?Missing PGADMIN_USER}"
+         : "${PGADMIN_PASSWORD:?Missing PGADMIN_PASSWORD}"
          : "${PGPORT:=5432}"
-
-         if [[ -z "${PGADMIN_USER}" ]]; then
-           DB_URL="${APP_DATABASE_URL}"
-           : "${DB_URL:?Missing APP_DATABASE_URL when PGADMIN_USER is not set}"
-         else
-           : "${PGADMIN_PASSWORD:?Missing PGADMIN_PASSWORD}"
-           DB_URL="postgresql://${PGADMIN_USER}:${PGADMIN_PASSWORD}@${PGHOST}:${PGPORT}/postgres"
-         fi
-
-         psql "$DB_URL" -c "SELECT 1" >/dev/null
+         export PGPASSWORD="$PGADMIN_PASSWORD"
+         psql "host=$PGHOST port=$PGPORT dbname=postgres user=$PGADMIN_USER" -c "SELECT 1" >/dev/null
        '; then
       log_success "Database is ready"
       return 0
