@@ -250,13 +250,6 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Download dashboard artifact
-        if: needs.detect-changes.outputs.dashboard == 'true'
-        uses: actions/download-artifact@v4
-        with:
-          name: ${{ env.DASHBOARD_ARTIFACT_NAME }}
-          path: ${{ env.DASHBOARD_DIST_PATH }}
-
       - name: Clean up previous deployment directory on server
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -280,16 +273,6 @@ jobs:
           source: "infra/**"
           target: "${{ env.REMOTE_TARGET_BASE_DIR }}/infra"
           strip_components: 1
-
-      - name: Upload dashboard dist to server
-        if: needs.detect-changes.outputs.dashboard == 'true'
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.HETZNER_HOST }}
-          username: ${{ env.REMOTE_USER }}
-          key: ${{ secrets.HETZNER_SSH_KEY }}
-          source: "${{ env.DASHBOARD_DIST_PATH }}/**"
-          target: "${{ env.REMOTE_TARGET_BASE_DIR }}/dashboard-dist"
 
       - name: Copy project files and deploy script
         uses: appleboy/scp-action@v0.1.4
