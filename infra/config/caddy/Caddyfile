@@ -94,7 +94,7 @@ api.orbitcheck.io {
 
         @has_cache_key header_regexp X-Auth-Cache-Key .+
         handle @has_cache_key {
-          reverse_proxy api:8080 {
+          reverse_proxy 127.0.0.1:8080 {
             header_up Authorization {http.request.header.X-Auth-Cache-Key}
             header_up -X-Auth-Cache-Key
             header_up -X-Body
@@ -118,7 +118,7 @@ api.orbitcheck.io {
         }
 
         handle {
-          reverse_proxy api:8080 {
+          reverse_proxy 127.0.0.1:8080 {
             header_up -X-Body
 
             transport http {
@@ -133,7 +133,7 @@ api.orbitcheck.io {
 dashboard.orbitcheck.io {
     import common_security_headers
 
-    root * /srv/dashboard
+    root * /usr/share/caddy
     encode zstd gzip
 
     # Long-lived cache for fingerprinted assets
