@@ -8,8 +8,8 @@ LogDriver=journald
 Image=docker.io/minio/minio:latest
 ContainerName=minio
 Pod=orbitcheck.pod
-EnvironmentFile=/home/podmanuser/.config/minio/minio.env
-Volume=/var/lib/containers/volumes/minio-data:/data:Z,U
+EnvironmentFile=/%h/.config/minio/minio.env
+Volume=%h/volumes/minio-data:/data:Z,U
 # Console on 9001, S3 on 9000; expose only via Caddy unless you want public S3 ports
 # Access internally within the Pod via service name "minio:9000"
 Exec=server /data --console-address :9001
@@ -18,7 +18,7 @@ NoNewPrivileges=yes
 
 [Service]
 Restart=always
-ExecStartPre=mkdir -p /var/lib/containers/volumes/minio-data
+ExecStartPre=mkdir -p %h/volumes/minio-data
 
 [Install]
 WantedBy=default.target

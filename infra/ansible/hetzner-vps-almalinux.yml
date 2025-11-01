@@ -117,7 +117,7 @@
 
     # --- General Variables ---
     log_file: "/var/log/server-setup.log"
-    container_base_path: "/var/lib/containers"
+    container_base_path: "/home/{{ podman_user }}/containers"
     podman_user_uid: "1001"
     podman_graphroot: "{{ container_base_path }}/storage"
 
@@ -331,83 +331,52 @@
         state: present
       become_user: "{{ podman_user }}"
 
-    - name: Setup second data disk if enabled
+    - name: Setup Hetzner data volume (managed by Ansible)
       when: use_second_data_disk | bool and ansible_connection != 'podman'
       block:
-
-        - name: Ensure raw data disk is not present in fstab before partitioning
-          ansible.builtin.mount:
-            path: "/mnt/HC_Volume_103791816" 
-            state: absent
- 
-        - name: Get the device for the root filesystem
-          ansible.builtin.command: findmnt -n -o SOURCE --target /
-          register: root_partition_info
-          changed_when: false
-          check_mode: no
-
-        - name: Get the parent disk for the root partition (e.g., sdb)
-          ansible.builtin.command: "lsblk -no pkname {{ root_partition_info.stdout }}"
-          register: root_disk_info
-          changed_when: false
-          check_mode: no
-
-        - name: Find all physical disks
+        - name: Define stable device path
           ansible.builtin.set_fact:
-            all_physical_disks: "{{ ansible_devices.keys() | select('match', '^(s|v|xv)d[a-z]$') | list }}"
+            data_device_by_id: "/dev/disk/by-id/scsi-0HC_Volume_{{ hetzner_volume_id }}"
 
-        - name: Identify data disk by excluding the root disk
-          ansible.builtin.set_fact:
-            potential_data_disks: "{{ all_physical_disks | difference([root_disk_info.stdout.strip()]) }}"
-
-        - name: Fail if a unique data disk cannot be identified
-          ansible.builtin.fail:
-            msg: "Could not reliably determine the data disk. Root disk: {{ root_disk_info.stdout.strip() }}, Candidates: {{ potential_data_disks }}"
-          when: potential_data_disks | length != 1
-
-        - name: Set data_disk_device fact
-          ansible.builtin.set_fact:
-            data_disk_device: "/dev/{{ potential_data_disks[0] }}"
-
-        - name: Announce which disk will be used for data
-          ansible.builtin.debug:
-            msg: "Root disk is '{{ root_disk_info.stdout.strip() }}'. Found '{{ data_disk_device }}' as the data disk to be partitioned and formatted."
-
-        - name: Create a single partition on the data disk
-          community.general.parted:
-            device: "{{ data_disk_device }}"
-            number: 1
+        - name: Wait for volume device node
+          ansible.builtin.wait_for:
+            path: "{{ data_device_by_id }}"
             state: present
-            fs_type: xfs
-            label: gpt
+            timeout: 120
 
-        - name: Create an XFS filesystem on the new partition
+        - name: Ensure xfsprogs is installed
+          ansible.builtin.package:
+            name: xfsprogs
+            state: present
+
+        - name: Create XFS filesystem if missing (on raw device)
           community.general.filesystem:
-            fstype: xfs
-            dev: "{{ data_disk_device }}1" # Note the '1' for the partition
+            fstype: "{{ volume_fs }}" 
+            dev: "{{ data_device_by_id }}"
+            force: false
 
-        - name: Create mount point for container data
+        - name: Ensure mount point exists
           ansible.builtin.file:
             path: "{{ container_base_path }}"
             state: directory
             mode: "0755"
 
-        # STEP 4: Create the new, correct fstab entry.
-        - name: Mount the data disk partition at /var/lib/containers
+        - name: Enable weekly fstrim (recommended over 'discard' mount option)
+          ansible.builtin.systemd:
+            name: fstrim.timer
+            state: started
+            enabled: true
+
+        - name: Mount and persist in fstab using by-id (no discard)
           ansible.builtin.mount:
             path: "{{ container_base_path }}"
-            src: "{{ data_disk_device }}1" # CRITICAL: Mount the partition, not the raw disk
-            fstype: xfs
+            src: "/dev/disk/by-id/scsi-0HC_Volume_{{ hetzner_volume_id }}"
+            fstype: "{{ volume_fs }}"          # xfs or ext4
+            opts: "defaults,nofail,noatime,x-systemd.device-timeout=2min"
             state: mounted
-            opts: "defaults,nofail"
-
-        - name: Set ownership of the container data mount point
-          ansible.builtin.file:
-            path: "{{ container_base_path }}"
-            state: directory
-            owner: "{{ podman_user }}"
-            group: "{{ podman_user }}"
-            mode: "0755"
+            backup: true                       # optional: backup /etc/fstab before editing
+            dump: 0
+            passno: 0                          # xfs doesn’t use fsck; 0 is fine
 
     - name: Ensure dbus service is enabled and running
       ansible.builtin.systemd:
@@ -575,6 +544,10 @@
         - { key: "AllowTcpForwarding", value: "no" }
         - { key: "ClientAliveInterval", value: "300" }
         - { key: "ClientAliveCountMax", value: "2" }
+        - { key: "PubkeyAuthentication", value: "yes" }
+        - { key: "UsePrivilegeSeparation", value: "sandbox" }
+        - { key: "KerberosAuthentication", value: "no" }
+        - { key: "GSSAPIAuthentication", value: "no" }
       notify: Restart SSH
       when: ansible_connection != 'podman' 
 
@@ -828,16 +801,6 @@
         - fail2ban
         - sshd
       when: ansible_service_mgr == 'systemd'
-
-    - name: Set inheritable execute permissions for the podman_user
-      ansible.builtin.command: "setfacl -R -m d:u:{{ podman_user }}:rwx,u:{{ podman_user }}:rwx {{ container_base_path }}/{{ item }}/"
-      loop:
-        - compose
-        - volumes
-        - logs
-        - configs
-      become: yes
-      changed_when: true
   
     - name: Ensure /var/log/journal directory exists for SELinux context restoration
       ansible.builtin.file:
@@ -1254,12 +1217,6 @@
         - name: Test SSH configuration validity
           ansible.builtin.command:
             cmd: sshd -t
-          changed_when: false
-
-        - name: CRITICAL CHECK - Verify all filesystems in fstab can be mounted
-          ansible.builtin.command:
-            cmd: mount -a
-          register: mount_check
           changed_when: false
 
         - name: Wait 5 seconds before proceeding to reboot

@@ -8,14 +8,14 @@ LogDriver=journald
 Image=docker.io/glitchtip/glitchtip:v5.1.1
 ContainerName=glitchtip
 Pod=orbitcheck.pod
-EnvironmentFile=/home/podmanuser/.config/glitchtip/glitchtip.env
-Volume=/var/lib/containers/volumes/glitchtip-data:/data:Z,U
+EnvironmentFile=/%h/.config/glitchtip/glitchtip.env
+Volume=%h/volumes/glitchtip-data:/data:Z,U
 Label="io.containers.autoupdate=image"
 NoNewPrivileges=yes
 
 [Service]
 Restart=always
-ExecStartPre=mkdir -p /var/lib/containers/volumes/glitchtip-data
+ExecStartPre=mkdir -p %h/volumes/glitchtip-data
 
 [Install]
 WantedBy=default.target

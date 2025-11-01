@@ -7,8 +7,8 @@ Image=ghcr.io/guillemso1er/caddy:prod
 LogDriver=journald
 ContainerName=caddy
 Pod=orbitcheck.pod
-Volume=/var/lib/containers/volumes/caddy/data:/data:Z,U
-Volume=/var/lib/containers/configs/caddy/config:/config:Z,U
+Volume=%h/volumes/caddy/data:/data:Z,U
+Volume=%h/configs/caddy/config:/config:Z,U
 Label="io.containers.autoupdate=image"
 NoNewPrivileges=yes
 PidsLimit=500
@@ -16,9 +16,9 @@ Ulimit=nofile=262144:262144
 
 [Service]
 Restart=always
-ExecStartPre=mkdir -p /var/lib/containers/volumes/caddy-caddyfile
+ExecStartPre=mkdir -p %h/volumes/caddy/data
 
-ExecStartPre=mkdir -p /var/lib/containers/volumes/caddy-dashboard
+ExecStartPre=mkdir -p %h/configs/caddy/config
 
 [Install]
 WantedBy=default.target

@@ -11,3 +11,5 @@ all:
     ghcr_username: "guillemso1er"
     admin_password_hashed: "{{ admin_password | password_hash('bcrypt') }}"
     ansible_become_pass: "{{ admin_password }}"
+    hetzner_volume_id: 103854103
+    volume_fs: "xfs" 

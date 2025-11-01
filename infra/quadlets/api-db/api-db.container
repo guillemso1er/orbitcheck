@@ -8,9 +8,9 @@ LogDriver=journald
 Image=docker.io/library/postgres:18.0-alpine3.22
 ContainerName=api-db
 Pod=orbitcheck.pod
-EnvironmentFile=/home/podmanuser/.config/api-db/api-db.env
-EnvironmentFile=/home/podmanuser/.config/api-db/api-db.secrets.env
-Volume=/var/lib/containers/volumes/api-db:/var/lib/postgresql/data:Z,U
+EnvironmentFile=/%h/.config/api-db/api-db.env
+EnvironmentFile=/%h/.config/api-db/api-db.secrets.env
+Volume=%h/volumes/api-db:/var/lib/postgresql/data:Z,U
 Label="io.containers.autoupdate=image"
 NoNewPrivileges=yes
 # Optional resource controls:
@@ -19,15 +19,15 @@ NoNewPrivileges=yes
 
 [Service]
 Restart=always
-ExecStartPre=mkdir -p /var/lib/containers/volumes/api-db
+ExecStartPre=mkdir -p %h/volumes/api-db
 
 # Ensure env dir exists
-ExecStartPre=/usr/bin/install -d -m 700 /home/podmanuser/.config/api-db
+ExecStartPre=/usr/bin/install -d -m 700 /%h/.config/api-db
 
 # Fetch secrets just-in-time, atomically, with strict perms
 # Uses the service token from a local file (not shown in process args)
 ExecStartPre=/bin/sh -ceu ' \
-    tok="$(cat /home/podmanuser/.secrets/infisical/api-db.token)"; \
+    tok="$(cat /%h/.secrets/infisical/api-db.token)"; \
     export INFISICAL_TOKEN="$tok"; \
     /bin/infisical export \
         --domain=https://infisical.bastiat.xyz \
@@ -37,9 +37,9 @@ ExecStartPre=/bin/sh -ceu ' \
         --silent \
         --include-imports \
      | sed "s/'\''//g" \
-    > /home/podmanuser/.config/api-db/.api-db.secrets.env.tmp; \
-    chmod 600 /home/podmanuser/.config/api-db/.api-db.secrets.env.tmp; \
-    mv /home/podmanuser/.config/api-db/.api-db.secrets.env.tmp /home/podmanuser/.config/api-db/api-db.secrets.env \
+    > /%h/.config/api-db/.api-db.secrets.env.tmp; \
+    chmod 600 /%h/.config/api-db/.api-db.secrets.env.tmp; \
+    mv /%h/.config/api-db/.api-db.secrets.env.tmp /%h/.config/api-db/api-db.secrets.env \
 '
 
 [Install]

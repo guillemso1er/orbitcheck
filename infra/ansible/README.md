@@ -26,9 +26,9 @@ ansible-playbook container.yml
     *   **Logging**: `journald` is configured for persistent logs.
 
 *   **Storage & Folders**:
-    *   A second data disk is automatically discovered, partitioned (XFS), and mounted at `/var/lib/containers`.
-    *   Container storage (`graphroot`) is located at `/var/lib/containers/storage`.
-    *   Podman-related data is organized in subdirectories: `/var/lib/containers/{volumes,compose,configs,logs}`.
+    *   A second data disk is automatically discovered, partitioned (XFS), and mounted at `%h`.
+    *   Container storage (`graphroot`) is located at `%h/storage`.
+    *   Podman-related data is organized in subdirectories: `%h/{volumes,compose,configs,logs}`.
     *   All container-related directories are owned by the `podman_user` with correct SELinux contexts and inheritable permissions (ACLs).
 
 *   **Services & Applications**:

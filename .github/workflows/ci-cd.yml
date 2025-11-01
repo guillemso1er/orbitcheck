@@ -57,8 +57,8 @@ env:
   REMOTE_USER: adminuser
   REMOTE_TARGET_BASE_DIR: /tmp/ci
   REMOTE_RUNTIME_USER: podmanuser
-  REMOTE_CONFIGS_DIR: /var/lib/containers/configs
-  REMOTE_DASHBOARD_VOLUME_DIR: /var/lib/containers/volumes/caddy-dashboard/_data
+  REMOTE_CONFIGS_DIR: ./containers/configs
+  REMOTE_DASHBOARD_VOLUME_DIR: ./volumes/caddy-dashboard/_data
   REMOTE_SYSTEMD_USER_DIR: .config/containers/systemd
   DEBUG: ${{ inputs.debug && '1' || '0' }}
 

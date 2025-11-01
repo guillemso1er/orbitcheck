@@ -9,8 +9,8 @@ Image=ghcr.io/guillemso1er/api:prod
 ContainerName=api
 Pod=orbitcheck.pod
 
-EnvironmentFile=/home/podmanuser/.config/api/api.env
-EnvironmentFile=/home/podmanuser/.config/api/api.secrets.env
+EnvironmentFile=/%h/.config/api/api.env
+EnvironmentFile=/%h/.config/api/api.secrets.env
 
 Label="io.containers.autoupdate=image"
 NoNewPrivileges=yes
@@ -22,12 +22,12 @@ Restart=always
 RestartSec=3
 
 # Ensure env dir exists
-ExecStartPre=/usr/bin/install -d -m 700 /var/lib/containers/configs/api/env
+ExecStartPre=/usr/bin/install -d -m 700 %h/configs/api/env
 
 # Fetch secrets just-in-time, atomically, with strict perms
 # Uses the service token from a local file (not shown in process args)
 ExecStartPre=/bin/sh -ceu ' \
-    tok="$(cat /home/podmanuser/.secrets/infisical/api.token)"; \
+    tok="$(cat /%h/.secrets/infisical/api.token)"; \
     export INFISICAL_TOKEN="$tok"; \
     /bin/infisical export \
         --domain=https://infisical.bastiat.xyz \
@@ -37,9 +37,9 @@ ExecStartPre=/bin/sh -ceu ' \
         --silent \
         --include-imports \
         | sed "s/'\''//g" \
-    > /var/lib/containers/configs/api/.api.secrets.env.tmp; \
-    chmod 600 /var/lib/containers/configs/api/.api.secrets.env.tmp; \
-    mv /var/lib/containers/configs/api/.api.secrets.env.tmp /home/podmanuser/.config/api/api.secrets.env \
+    > %h/configs/api/.api.secrets.env.tmp; \
+    chmod 600 %h/configs/api/.api.secrets.env.tmp; \
+    mv %h/configs/api/.api.secrets.env.tmp /%h/.config/api/api.secrets.env \
 '
 
 

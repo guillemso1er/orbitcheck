@@ -6,14 +6,14 @@ LogDriver=journald
 Image=ghcr.io/statping-ng/statping-ng:v0.93
 ContainerName=statping
 Pod=orbitcheck.pod
-Volume=/var/lib/containers/volumes/statping-data:/app:Z,U
-EnvironmentFile=/home/podmanuser/.config/statping/statping.env
+Volume=%h/volumes/statping-data:/app:Z,U
+EnvironmentFile=/%h/.config/statping/statping.env
 Label="io.containers.autoupdate=image"
 NoNewPrivileges=yes
 
 [Service]
 Restart=always
-ExecStartPre=mkdir -p /var/lib/containers/volumes/statping-data
+ExecStartPre=mkdir -p %h/volumes/statping-data
 
 [Install]
 WantedBy=default.target

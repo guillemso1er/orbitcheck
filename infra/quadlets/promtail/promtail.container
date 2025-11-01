@@ -8,16 +8,16 @@ LogDriver=journald
 Image=docker.io/grafana/promtail:2.9.8
 ContainerName=promtail
 Pod=orbitcheck.pod
-Volume=/var/lib/containers/volumes/promtail-config:/etc/promtail:Z
+Volume=%h/volumes/promtail-config:/etc/promtail:Z
 # For rootless, scrape container logs from $XDG_RUNTIME_DIR/containers or JSON logs
 # Mount the containers storage if needed:
-# Volume=/home/podmanuser/.local/share/containers:/containers:ro
+# Volume=/%h/.local/share/containers:/containers:ro
 Label="io.containers.autoupdate=image"
 NoNewPrivileges=yes
 
 [Service]
 Restart=always
-ExecStartPre=mkdir -p /var/lib/containers/volumes/promtail-config
+ExecStartPre=mkdir -p %h/volumes/promtail-config
 
 [Install]
 WantedBy=default.target

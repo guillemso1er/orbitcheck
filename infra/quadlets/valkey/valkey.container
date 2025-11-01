@@ -8,14 +8,14 @@ LogDriver=journald
 Image=docker.io/valkey/valkey:7.2.11
 ContainerName=valkey
 Pod=orbitcheck.pod
-Volume=/var/lib/containers/volumes/valkey-data:/data:Z,U
+Volume=%h/volumes/valkey-data:/data:Z,U
 Label="io.containers.autoupdate=image"
 NoNewPrivileges=yes
 ReadOnly=false
 
 [Service]
 Restart=always
-ExecStartPre=mkdir -p /var/lib/containers/volumes/valkey-data
+ExecStartPre=mkdir -p %h/volumes/valkey-data
 
 [Install]
 WantedBy=default.target
