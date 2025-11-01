@@ -246,40 +246,30 @@ runtime_find_db_unit() {
   echo ""
 }
 
+
 runtime_wait_for_db() {
   local admin_env="$1"
   shift || true
   local pod_args=("$@")
 
-  # Source the env file if it exists, to load the DATABASE_URL
   if [[ -f "$admin_env" ]]; then
     log_info "Sourcing environment from $admin_env"
     source "$admin_env"
   fi
 
   log_info "Waiting for database to become ready..."
-
-  local db_url=""
-  if [[ -n "${DATABASE_URL:-}" ]]; then
-    db_url="$DATABASE_URL"
-  elif [[ -n "${MIGRATION_DATABASE_URL:-}" ]]; then
-    db_url="$MIGRATION_DATABASE_URL"
-  elif [[ -n "${APP_DATABASE_URL:-}" ]]; then
-    db_url="$APP_DATABASE_URL"
-  fi
-
-  if [[ -z "$db_url" ]]; then
-    log_error "Database URL not found in environment or sourced file. Please set DATABASE_URL, MIGRATION_DATABASE_URL, or APP_DATABASE_URL."
-    return 1
-  fi
-
   local tries=40
   while (( tries-- > 0 )); do
-    if podman run --rm "${pod_args[@]}" \
-       --env "DB_URL=$db_url" \
+    # The podman run command now succeeds only if the DB container is already running
+    if podman run --rm "${pod_args[@]}" --env-file "$admin_env" \
        docker.io/library/postgres:16-alpine sh -c '
          set -e
-         psql "$DB_URL" -c "SELECT 1" >/dev/null
+         : "${PGHOST:=127.0.0.1}"
+         : "${PGADMIN_USER:?Missing PGADMIN_USER}"
+         : "${PGADMIN_PASSWORD:?Missing PGADMIN_PASSWORD}"
+         : "${PGPORT:=5432}"
+         export PGPASSWORD="$PGADMIN_PASSWORD"
+         psql "host=$PGHOST port=$PGPORT dbname=postgres user=$PGADMIN_USER" -c "SELECT 1" >/dev/null
        '; then
       log_success "Database is ready"
       return 0
