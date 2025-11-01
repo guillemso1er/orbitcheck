@@ -258,7 +258,7 @@ runtime_wait_for_db() {
     if podman run --rm "${pod_args[@]}" --env-file "$admin_env" \
        docker.io/library/postgres:16-alpine sh -c '
          set -e
-         : "${PGHOST:?Missing PGHOST}"
+         : "${PGHOST:=127.0.0.1}"
          : "${PGADMIN_USER:?Missing PGADMIN_USER}"
          : "${PGADMIN_PASSWORD:?Missing PGADMIN_PASSWORD}"
          : "${PGPORT:=5432}"
@@ -500,7 +500,7 @@ EOSQL
         # Read the script from stdin into the temp file
         cat > "$SQL_FILE"
 
-        : "${PGHOST:?Missing PGHOST}"
+        : "${PGHOST:=127.0.0.1}"
         : "${PGPORT:=5432}"
         : "${PGADMIN_USER:?Missing PGADMIN_USER}"
         : "${PGADMIN_PASSWORD:?Missing PGADMIN_PASSWORD}"
