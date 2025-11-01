@@ -265,11 +265,17 @@ runtime_wait_for_db() {
        docker.io/library/postgres:16-alpine sh -c '
          set -e
          : "${PGHOST:=127.0.0.1}"
-         : "${PGADMIN_USER:?Missing PGADMIN_USER}"
-         : "${PGADMIN_PASSWORD:?Missing PGADMIN_PASSWORD}"
          : "${PGPORT:=5432}"
-         export PGPASSWORD="$PGADMIN_PASSWORD"
-         psql "host=$PGHOST port=$PGPORT dbname=postgres user=$PGADMIN_USER" -c "SELECT 1" >/dev/null
+
+         if [[ -z "${PGADMIN_USER}" ]]; then
+           DB_URL="${APP_DATABASE_URL}"
+           : "${DB_URL:?Missing APP_DATABASE_URL when PGADMIN_USER is not set}"
+         else
+           : "${PGADMIN_PASSWORD:?Missing PGADMIN_PASSWORD}"
+           DB_URL="postgresql://${PGADMIN_USER}:${PGADMIN_PASSWORD}@${PGHOST}:${PGPORT}/postgres"
+         fi
+
+         psql "$DB_URL" -c "SELECT 1" >/dev/null
        '; then
       log_success "Database is ready"
       return 0
@@ -738,6 +744,73 @@ runtime_main_deployment() {
             # --- Database Operations (only for API changes) ---
             local admin_token_file="$HOME/.secrets/infisical/${service}-infra.token"
             local admin_env="$cfg_dir/${service}.dbadmin.env"
+            runtime_fetch_infisical_secrets "$service" "$admin_token_file" "/api-infra" "$admin_env"
+
+            # --- Wait for DB to be ready AFTER services are started ---
+            runtime_wait_for_db "$admin_env" "${pod_args[@]}"
+            
+            runtime_provision_database "$admin_env" "${pod_args[@]}"
+
+            # Prepare env for migrations
+            local image="$REGISTRY/$IMAGE_OWNER/$API_IMAGE_NAME:prod"
+            local mig_env; mig_env="$(mktemp)"; trap "rm -f '$mig_env'" RETURN
+            chmod 600 "$mig_env"
+            [[ -f "$cfg_dir/$service.env" ]] && cat "$cfg_dir/$service.env" >> "$mig_env"
+            [[ -f "$cfg_dir/${service}.secrets.env" ]] && cat "$cfg_dir/${service}.secrets.env" >> "$mig_env"
+            
+            # Migrate
+            runtime_run_migrations "$image" "$mig_env" 10 "${pod_args[@]}"
+
+        elif [[ "$NEEDS_INFRA_CHANGES" == "true" ]]; then
+            log_info "Infrastructure changes detected. Restarting services without data migration."
+            # Just restart the services
+            runtime_manage_systemd_services "$dest_sys_d"
+        fi
+    else
+        log_info "No API or Infrastructure changes detected. Skipping service restart."
+    fi
+
+    log_success "Runtime deployment completed successfully"
+runtime_main_deployment() {
+    set -euo pipefail
+    for cmd in rsync podman; do
+        command -v "$cmd" >/dev/null 2>&1 || { log_error "Required '$cmd' missing"; exit 1; }
+    done
+
+    export XDG_RUNTIME_DIR="/run/user/$(id -u)"
+
+    local src="$REMOTE_TARGET_BASE_DIR/infra/quadlets"
+    local dest_sys_d="$HOME/$REMOTE_SYSTEMD_USER_DIR"
+    local dest_user_cfg="$HOME/.config"
+
+    # These file deployments should always happen if the deploy job runs
+    runtime_deploy_quadlet_files "$src" "$dest_sys_d"
+    runtime_deploy_env_files "$src" "$dest_user_cfg"
+
+    local service="$API_IMAGE_NAME"
+    local cfg_dir="$dest_user_cfg/$service"
+    mkdir -p "$cfg_dir"
+
+    local token_file="$HOME/.secrets/infisical/${service}.token"
+    runtime_fetch_infisical_secrets "$service" "$token_file" "/api" "$cfg_dir/${service}.secrets.env"
+
+    # Pod args
+    local pod_name
+    pod_name="$(runtime_get_pod_name "$dest_sys_d")"
+    local -a pod_args=()
+    [[ -n "$pod_name" ]] && pod_args+=(--pod "$pod_name")
+
+    # --- RESTRUCTURED LOGIC ---
+    if [[ "$NEEDS_API_CHANGES" == "true" ]] || [[ "$NEEDS_INFRA_CHANGES" == "true" ]] || [[ "$IS_WORKFLOW_DISPATCH" == "true" && "$FORCE_DEPLOY" == "true" ]]; then
+        if [[ "$NEEDS_API_CHANGES" == "true" ]] || [[ "$FORCE_DEPLOY" == "true" ]]; then
+            log_info "API changes or force deploy detected. Running full deployment with migrations."
+            # --- Service Management is now the FIRST step ---
+            runtime_manage_systemd_services "$dest_sys_d"
+            
+            # --- Database Operations (only for API changes) ---
+            local admin_token_file="$HOME/.secrets/infisical/${service}-infra.token"
+            local admin_env="$cfg_dir/${service}.dbadmin.env"
+
             runtime_fetch_infisical_secrets "$service" "$admin_token_file" "/api-infra" "$admin_env"
 
             # --- Wait for DB to be ready AFTER services are started ---

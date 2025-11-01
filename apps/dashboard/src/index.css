@@ -1,51 +1,189 @@
-@import "tailwindcss";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-/* Use class-based dark mode via <html class="dark"> */
-@custom-variant dark (&:where(.dark, .dark *));
+/* Hint browser UI colors */
+:root { color-scheme: light; }
+.dark, [data-theme="dark"] { color-scheme: dark; }
 
-/* Smooth theme transitions and color-scheme hint */
+/* Conversion-focused tokens (HSL triplets for alpha support) */
 :root {
-    color-scheme: light dark;
+  /* Surfaces & text */
+  --background: 0 0% 100%;
+  --foreground: 222.2 47.4% 11.2%;
+
+  /* Elevation surfaces (for cards, panels, controls) */
+  --surface-1: 0 0% 100%;
+  --surface-2: 210 20% 98%;
+  --surface-3: 220 14% 96%;
+  --divider-border: 220 13% 91%;
+
+  --text-primary: 217 19% 27%;       /* gray-700 */
+  --text-secondary: 215 16.3% 46.9%; /* gray-500 */
+  --text-muted: 215 13% 65%;         /* gray-400 */
+  --text-hover: 222.2 47.4% 11.2%;   /* gray-900 */
+
+  /* Primary conversion accent (CTA): blue for trust */
+  --accent: 221.2 83.2% 53.3%;        /* blue-600 */
+  --accent-hover: 224.3 76.3% 48%;     /* blue-700 */
+  --accent-foreground: 210 40% 98%;    /* near-white */
+  --accent-muted: 214.3 95.8% 68.7%;   /* blue-400 */
+  --accent-bg-subtle: 214 100% 97%;    /* blue-50 */
+  --accent-ring: 221.2 83.2% 53.3%;
+
+  /* Status colors (AA with foregrounds) */
+  --success: 160.1 84.1% 39.4%;        /* emerald-500 */
+  --success-foreground: 210 40% 98%;
+  --warning: 38 92% 50%;               /* amber-500 */
+  --warning-foreground: 222.2 47.4% 11.2%;
+  --info: 199 89% 48%;                 /* sky-500 */
+  --info-foreground: 210 40% 98%;
+  --destructive: 0 72.2% 50.6%;        /* red-600 */
+  --destructive-foreground: 210 40% 98%;
+
+  /* Legacy aliases retained (mapped to improved tokens) */
+  --sidebar-bg: var(--surface-1);
+  --sidebar-border: var(--divider-border);
+  --controls-bg: var(--surface-2);
+  --controls-bg-hover: var(--surface-3);
+
+  /* Background gradients (subtle depth to focus attention on CTAs) */
+  --bg-gradient-start: var(--surface-2);
+  --bg-gradient-end: var(--surface-3);
+
+  /* Nav */
+  --nav-hover-start: var(--accent-bg-subtle);
+  --nav-active-start: var(--accent-bg-subtle);
+
+  /* Accent “families” preserved for compatibility */
+  --accent-blue: var(--accent);
+  --accent-blue-hover: var(--accent-hover);
+  --accent-blue-muted: var(--accent-muted);
+  --accent-blue-bg: var(--accent-bg-subtle);
+  --accent-blue-border: var(--accent-ring);
+
+  /* Purple (alt accent option) */
+  --accent-purple: 271.1 81.3% 55.9%;
+  --accent-purple-hover: 270.9 91% 47.1%;
+
+  /* Red (used by destructive) */
+  --accent-red: 0 72.2% 50.6%;
+  --accent-red-hover: 0 74.7% 41.8%;
+  --accent-red-bg: 0 85.7% 97.3%;
+  --accent-red-bg-hover: 0 93.3% 94.1%;
+
+  /* Green (success alias) */
+  --accent-green: var(--success);
+
+  /* Logo gradient (slightly tweaked to align with accent) */
+  --logo-gradient-start: var(--accent);
+  --logo-gradient-via: var(--accent-hover);
+  --logo-gradient-end: 271.1 81.3% 55.9%;
+
+  /* Logout button background */
+  --logout-bg-start: var(--surface-3);
+  --logout-bg-end: var(--divider-border);
+
+  /* Spinner */
+  --spinner-border: var(--divider-border);
+  --spinner-inner: var(--accent);
+
+  /* Radius */
+  --radius: 0.5rem;
 }
 
-/* Optional: animate color/background when theme changes */
+/* Dark theme: increase contrast and lighten accents for readability */
+.dark, [data-theme="dark"] {
+  --background: 222.2 47.4% 11.2%;
+  --foreground: 210 40% 98%;
+
+  --surface-1: 222.2 47.4% 11.2%;    /* gray-900 */
+  --surface-2: 217.2 32.6% 17.5%;    /* gray-800 */
+  --surface-3: 215 25% 27%;          /* ~gray-700 */
+  --divider-border: 217.2 32.6% 17.5%;
+
+  --text-primary: 214.3 31.8% 91.4%;  /* gray-200 */
+  --text-secondary: 215 20.2% 65.1%;  /* gray-400/500 */
+  --text-muted: 215 16.3% 46.9%;
+  --text-hover: 0 0% 100%;
+
+  /* Accent tuned for dark mode (lighter hue for contrast) */
+  --accent: 214.3 95.8% 68.7%;       /* blue-400 */
+  --accent-hover: 217.2 91.2% 59.8%; /* blue-500 */
+  --accent-foreground: 222.2 47.4% 11.2%;
+  --accent-muted: 214 95% 82%;
+  --accent-bg-subtle: 224 76% 24%;
+  --accent-ring: 214.3 95.8% 68.7%;
+
+  --success: 160 84% 40%;
+  --success-foreground: 222.2 47.4% 11.2%;
+  --warning: 45 93% 47%;
+  --warning-foreground: 222.2 47.4% 11.2%;
+  --info: 199 89% 62%;
+  --info-foreground: 222.2 47.4% 11.2%;
+  --destructive: 0 84% 60%;
+  --destructive-foreground: 222.2 47.4% 11.2%;
+
+  /* Legacy aliases */
+  --sidebar-bg: var(--surface-1);
+  --sidebar-border: var(--divider-border);
+  --controls-bg: var(--surface-2);
+  --controls-bg-hover: var(--surface-3);
+
+  --bg-gradient-start: var(--surface-1);
+  --bg-gradient-end: var(--surface-2);
+
+  --nav-hover-start: var(--surface-2);
+  --nav-active-start: var(--surface-2);
+
+  --logo-gradient-start: var(--accent);
+  --logo-gradient-via: var(--accent-hover);
+  --logo-gradient-end: 271.1 81.3% 55.9%;
+
+  --logout-bg-start: var(--surface-2);
+  --logout-bg-end: var(--surface-3);
+
+  --spinner-border: var(--surface-2);
+  --spinner-inner: var(--accent);
+}
+
+/* One-line A/B test: swap accent per subtree */
+[data-accent="emerald"] {
+  --accent: 160.1 84.1% 39.4%;
+  --accent-hover: 161 93% 30%;
+}
+[data-accent="violet"] {
+  --accent: 262.1 83.3% 57.8%;
+  --accent-hover: 263.4 70% 50.4%;
+}
+
+/* Base styles and transitions */
 @layer base {
-    body {
-        transition-property: color, background-color;
-        transition-duration: 300ms;
-    }
+  html, body { min-height: 100%; }
+  body {
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
+    transition-property: color, background-color;
+    transition-duration: 250ms;
+  }
+  *, *::before, *::after { border-color: hsl(var(--divider-border)); }
 }
 
-/* Custom scrollbar */
-.custom-scrollbar::-webkit-scrollbar {
-    width: 6px;
+/* Prefer-reduced-motion */
+@media (prefers-reduced-motion: reduce) {
+  @layer base { body { transition: none; } }
 }
 
-.custom-scrollbar::-webkit-scrollbar-track {
-    @apply bg-gray-100 dark:bg-gray-800;
-}
+/* Custom scrollbar (WebKit + Firefox) */
+.custom-scrollbar { scrollbar-width: thin; scrollbar-color: hsl(var(--text-muted)) transparent; }
+.custom-scrollbar::-webkit-scrollbar { width: 6px; }
+.custom-scrollbar::-webkit-scrollbar-track { background-color: hsl(var(--surface-2)); }
+.custom-scrollbar::-webkit-scrollbar-thumb { background-color: hsl(var(--text-muted)); border-radius: 9999px; }
+.dark .custom-scrollbar::-webkit-scrollbar-track,
+[data-theme="dark"] .custom-scrollbar::-webkit-scrollbar-track { background-color: hsl(var(--surface-2)); }
+.dark .custom-scrollbar::-webkit-scrollbar-thumb,
+[data-theme="dark"] .custom-scrollbar::-webkit-scrollbar-thumb { background-color: hsl(var(--text-secondary)); }
 
-.custom-scrollbar::-webkit-scrollbar-thumb {
-    @apply bg-gray-400 dark:bg-gray-600 rounded-full;
-}
-
-.custom-scrollbar::-webkit-scrollbar-thumb:hover {
-    @apply bg-gray-500 dark:bg-gray-500;
-}
-
-/* Fade in animation */
-@keyframes fadeIn {
-    from {
-        opacity: 0;
-        transform: translateY(10px);
-    }
-
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-.animate-fadeIn {
-    animation: fadeIn 0.3s ease-out;
-}
+/* Animations */
+@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+.animate-fadeIn { animation: fadeIn 0.3s ease-out; }
