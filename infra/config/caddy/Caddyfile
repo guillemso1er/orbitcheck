@@ -99,11 +99,13 @@ api.orbitcheck.io {
             header_up -X-Auth-Cache-Key
             header_up -X-Body
 
-            # Active health checks (Caddyfile syntax)
+            # Active health checks
             health_uri /healthz
             health_interval 10s
             health_timeout 2s
             health_status 2xx
+            health_passes 1
+            health_fails 3
 
             # Passive health checks
             fail_duration 30s
