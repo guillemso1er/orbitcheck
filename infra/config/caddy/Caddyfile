@@ -10,6 +10,9 @@
     servers {
         # Uncomment to expose Prometheus metrics if you add the plugin
         # metrics
+        trusted_proxies static private_ranges
+        # If you’re behind ALB/Cloudflare/etc., also consider:
+         trusted_proxies_strict
     }
 }
 
@@ -42,7 +45,6 @@ api.orbitcheck.io {
         header_up Host {host}
         header_up X-Real-IP {remote_host}
         header_up +X-Forwarded-For {remote_host}
-        header_up X-Forwarded-Proto {scheme}
 
         # Protect X-Forwarded-* from spoofing; only trust private ranges
         trusted_proxies private_ranges
@@ -76,56 +78,36 @@ api.orbitcheck.io {
     bind 127.0.0.1
 
     route {
-        # Make body available to placeholders
         request_body {
             max_size 10MB
         }
 
-        # Put the raw body into a synthetic header for cache variance
-        header {
-          request set X-Body {http.request.body}
-        }
+        # Set a request header (use request_header for request-side)
+        request_header X-Body {http.request.body}
 
-        # Cache plugin (requires custom build — see Containerfile below)
         cache {
           allowed_http_verbs GET POST HEAD
           ttl 2h
           stale 24h
-
-          # Vary on auth AND the request body
           headers X-Auth-Cache-Key X-Body
-
-          # Optionally set Cache-Status header if your plugin supports naming
-          # name api-cache
         }
 
-        # If coming from api.orbitcheck.io we have X-Auth-Cache-Key; restore it to Authorization
         @has_cache_key header_regexp X-Auth-Cache-Key .+
         handle @has_cache_key {
           reverse_proxy api:8080 {
             header_up Authorization {http.request.header.X-Auth-Cache-Key}
             header_up -X-Auth-Cache-Key
             header_up -X-Body
-            header_up Host {host}
-            header_up X-Real-IP {remote_host}
-            header_up +X-Forwarded-For {remote_host}
-            header_up X-Forwarded-Proto {scheme}
 
-            # Health checks (active + passive)
-            health_checks {
-              active {
-                path /healthz
-                interval 10s
-                timeout 2s
-                healthy_status 2xx 3xx
-                healthy_count 1
-                unhealthy_count 3
-              }
-              passive {
-                fail_duration 30s
-                max_fails 2
-              }
-            }
+            # Active health checks (Caddyfile syntax)
+            health_uri /healthz
+            health_interval 10s
+            health_timeout 2s
+            health_status 2xx
+
+            # Passive health checks
+            fail_duration 30s
+            max_fails 2
 
             transport http {
               versions h2c 1.1
@@ -133,14 +115,9 @@ api.orbitcheck.io {
           }
         }
 
-        # Fallback: if someone somehow hits :18080 directly, still proxy through
         handle {
           reverse_proxy api:8080 {
             header_up -X-Body
-            header_up Host {host}
-            header_up X-Real-IP {remote_host}
-            header_up +X-Forwarded-For {remote_host}
-            header_up X-Forwarded-Proto {scheme}
 
             transport http {
               versions h2c 1.1
