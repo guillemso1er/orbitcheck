@@ -327,23 +327,23 @@ jobs:
             local src="${image_base_name}:sha-${SHA}"
             local dst="${image_base_name}:${VER}"
             
-            echo "Checking for source image: ${src}"
+            echo "Checking for source image: ${src}" >&2
             
             # Check if the source sha-tagged image exists
             if crane manifest "$src" >/dev/null 2>&1; then
-              echo "✓ Found source image ${src}"
-              echo "Promoting ${src} to ${dst}"
+              echo "✓ Found source image ${src}" >&2
+              echo "Promoting ${src} to ${dst}" >&2
               # Create the new version tag pointing to the same manifest digest
               docker buildx imagetools create --tag "$dst" "$src"
               # Get the digest of the source image to form the immutable ref
               local dg
               dg=$(crane digest "$src")
-              echo "✓ Successfully promoted to ${dst}"
+              echo "✓ Successfully promoted to ${dst}" >&2
               echo "${image_base_name}@${dg}"
             else
-              echo "✗ Source image ${src} not found!"
-              echo "::error title=Missing SHA Image::Source image ${src} not found. The commit SHA ${SHA} was never built on the 'main' branch."
-              echo "::warning::To fix this, ensure the commit is pushed to main and images are built before creating the tag."
+              echo "✗ Source image ${src} not found!" >&2
+              echo "::error title=Missing SHA Image::Source image ${src} not found. The commit SHA ${SHA} was never built on the 'main' branch." >&2
+              echo "::warning::To fix this, ensure the commit is pushed to main and images are built before creating the tag." >&2
               return 1
             fi
           }
@@ -353,27 +353,27 @@ jobs:
 
           # Track failures
           failed=0
-          
-          echo "Promoting API image ($API_IMG)..."
+
+          echo "Promoting API image ($API_IMG)..." >&2
           if API_REF=$(promote "$API_IMG"); then
             echo "api_ref=${API_REF}" >> "$GITHUB_OUTPUT"
           else
             failed=1
           fi
 
-          echo "Promoting Caddy image ($CADDY_IMG)..."
+          echo "Promoting Caddy image ($CADDY_IMG)..." >&2
           if CADDY_REF=$(promote "$CADDY_IMG"); then
             echo "caddy_ref=${CADDY_REF}" >> "$GITHUB_OUTPUT"
           else
             failed=1
           fi
-          
+
           if [ $failed -eq 1 ]; then
-            echo "::error::Image promotion failed. See logs above for details."
+            echo "::error::Image promotion failed. See logs above for details." >&2
             exit 1
           fi
-          
-          echo "✓ All images promoted successfully"
+
+          echo "✓ All images promoted successfully" >&2
 
   # Production deploy only for stable release tags vX.Y.Z, or manual dispatch with version set/force_deploy
   deploy:
