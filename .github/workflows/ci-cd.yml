@@ -321,7 +321,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       # Install crane (used to check existence and get digests)
-      - uses: imjasonh/setup-crane@v0.4.0
+      - uses: imjasonh/setup-crane@v0.4
 
       - name: Promote images by re-tagging (monorepo-aware)
         id: promote
