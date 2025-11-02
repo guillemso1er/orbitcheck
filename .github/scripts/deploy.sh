@@ -353,7 +353,7 @@ runtime_patch_quadlet_images() {
     # Patch API lines that reference the API image path
     if grep -Eq "^\s*Image\s*=\s*.*/${API_IMAGE_NAME}(:|@)" "$f"; then
       sed -i -E "s#^(\s*Image\s*=\s*).*/${API_IMAGE_NAME}(:|@)[^[:space:]]*#\1${api_ref}#g" "$f"
-      let api_patched++
+      ((++caddy_patched))
     fi
 
     # Patch Caddy lines that reference the Caddy image path
