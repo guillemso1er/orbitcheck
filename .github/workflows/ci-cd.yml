@@ -3,7 +3,7 @@ name: Build, Sign, and Deploy (immutable by version)
 on:
   push:
     branches: [main]
-    # Build once and deploy only for version tags. Pre-releases (e.g. -rc.1) build but do not deploy to prod.
+    # Build once on main, deploy only for version tags. Pre-releases (e.g. -rc.1) build but do not deploy to prod.
     tags:
       - "v*.*.*"
       - "v*.*.*-*"
@@ -117,7 +117,6 @@ jobs:
 
   detect-changes:
     name: Detect changes
-    needs: [meta]
     runs-on: ubuntu-latest
     outputs:
       api: ${{ steps.filter.outputs.api }}
@@ -152,9 +151,9 @@ jobs:
 
   build-dashboard-dist:
     name: Build dashboard dist (workspace)
-    needs: [meta, detect-changes]
-    # Always build for tags (release/prerelease), otherwise only when changed or forced
-    if: needs.meta.outputs.is_tag == 'true' || needs.detect-changes.outputs.dashboard == 'true' || needs.detect-changes.outputs.infra == 'true' || (github.event_name == 'workflow_dispatch' && inputs.force_dashboard_build)
+    needs: [detect-changes]
+    # Build only on main branch pushes with relevant changes, or when forced
+    if: (github.ref_name == 'main' && (needs.detect-changes.outputs.dashboard == 'true' || needs.detect-changes.outputs.infra == 'true')) || (github.event_name == 'workflow_dispatch' && inputs.force_dashboard_build)
     runs-on: ubuntu-24.04-arm
     steps:
       - uses: actions/checkout@v4
@@ -182,12 +181,10 @@ jobs:
 
   build-caddy:
     name: Build, sign, and push Caddy (dashboard + reverse proxy)
-    needs: [meta, detect-changes, build-dashboard-dist]
-    if: needs.meta.outputs.is_tag == 'true' || needs.detect-changes.outputs.dashboard == 'true' || needs.detect-changes.outputs.infra == 'true' || (github.event_name == 'workflow_dispatch' && inputs.force_dashboard_build)
+    needs: [detect-changes, build-dashboard-dist]
+    # Build only on main branch pushes with relevant changes, or when forced
+    if: (github.ref_name == 'main' && (needs.detect-changes.outputs.dashboard == 'true' || needs.detect-changes.outputs.infra == 'true')) || (github.event_name == 'workflow_dispatch' && inputs.force_dashboard_build)
     runs-on: ubuntu-24.04-arm
-    outputs:
-      digest: ${{ steps.build.outputs.digest }}
-      image_ref: ${{ steps.setref.outputs.image_ref }}
     steps:
       - uses: actions/checkout@v4
         with: { fetch-depth: 0 }
@@ -214,8 +211,6 @@ jobs:
           flavor: |
             latest=false
           tags: |
-            # If this run is for a tag (release or prerelease), publish the semver tag
-            type=semver,pattern={{version}},value=${{ needs.meta.outputs.version }},enable=${{ needs.meta.outputs.is_tag == 'true' }}
             # Always publish a commit SHA tag for traceability
             type=raw,value=sha-${{ github.sha }}
       - name: Build and push Caddy + dashboard (arm64 only)
@@ -247,22 +242,13 @@ jobs:
           subject-name: ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/${{ env.CADDY_IMAGE_NAME }}
           subject-digest: ${{ steps.build.outputs.digest }}
           push-to-registry: true
-      # Optional SBOM attachment (enable if desired)
-      # - name: Generate SBOM (Caddy) and attach
-      #   uses: anchore/sbom-action@v0
-      #   with:
-      #     image: ${{ steps.setref.outputs.image_ref }}
-      #     format: cyclonedx-json
-      #     artifact-name: caddy-sbom.cdx.json
 
   build-api:
     name: Build, sign, and push API
-    needs: [meta, detect-changes]
-    if: needs.meta.outputs.is_tag == 'true' || needs.detect-changes.outputs.api == 'true' || (github.event_name == 'workflow_dispatch' && inputs.force_api_build)
+    needs: [detect-changes]
+    # Build only on main branch pushes with relevant changes, or when forced
+    if: (github.ref_name == 'main' && needs.detect-changes.outputs.api == 'true') || (github.event_name == 'workflow_dispatch' && inputs.force_api_build)
     runs-on: ubuntu-24.04-arm
-    outputs:
-      digest: ${{ steps.build.outputs.digest }}
-      image_ref: ${{ steps.setref.outputs.image_ref }}
     steps:
       - uses: actions/checkout@v4
       - name: Set up Docker Buildx
@@ -283,7 +269,7 @@ jobs:
           flavor: |
             latest=false
           tags: |
-            type=semver,pattern={{version}},value=${{ needs.meta.outputs.version }},enable=${{ needs.meta.outputs.is_tag == 'true' }}
+            # Always publish a commit SHA tag for traceability
             type=raw,value=sha-${{ github.sha }}
       - name: Build and push API image (arm64 only)
         id: build
@@ -312,18 +298,58 @@ jobs:
           subject-name: ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/${{ env.API_IMAGE_NAME }}
           subject-digest: ${{ steps.build.outputs.digest }}
           push-to-registry: true
-      # Optional SBOM attachment (enable if desired)
-      # - name: Generate SBOM (API) and attach
-      #   uses: anchore/sbom-action@v0
-      #   with:
-      #     image: ${{ steps.setref.outputs.image_ref }}
-      #     format: cyclonedx-json
-      #     artifact-name: api-sbom.cdx.json
+
+  promote-images:
+    name: Promote SHA images to version tag
+    needs: [meta]
+    if: needs.meta.outputs.is_tag == 'true'
+    runs-on: ubuntu-latest
+    outputs:
+      api_ref: ${{ steps.promote.outputs.api_ref }}
+      caddy_ref: ${{ steps.promote.outputs.caddy_ref }}
+    steps:
+      - uses: docker/setup-buildx-action@v3
+        with: { driver-opts: "image=moby/buildkit:buildx-stable-1" }
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: imjasonh/setup-crane@v0.4
+      - name: Promote images by re-tagging
+        id: promote
+        run: |
+          set -euo pipefail
+          VER="${{ needs.meta.outputs.version }}"
+          SHA="${{ github.sha }}"
+          promote() {
+            local image_base_name="$1"
+            local src="${image_base_name}:sha-${SHA}"
+            local dst="${image_base_name}:${VER}"
+            # Check if the source sha-tagged image exists
+            if crane manifest "$src" >/dev/null 2>&1; then
+              echo "Promoting ${src} to ${dst}"
+              # Create the new version tag pointing to the same manifest
+              docker buildx imagetools create --tag "$dst" "$src"
+              # Get the digest of the source image for the immutable ref
+              dg=$(crane digest "$src")
+              echo "${image_base_name}@${dg}"
+            else
+              echo "MISSING: Source image ${src} not found."
+              echo "MISSING"
+            fi
+          }
+          API_IMG="${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/${{ env.API_IMAGE_NAME }}"
+          CADDY_IMG="${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/${{ env.CADDY_IMAGE_NAME }}"
+          API_REF=$(promote "$API_IMG")
+          CADDY_REF=$(promote "$CADDY_IMG")
+          echo "api_ref=${API_REF}" >> "$GITHUB_OUTPUT"
+          echo "caddy_ref=${CADDY_REF}" >> "$GITHUB_OUTPUT"
 
   # Production deploy only for stable release tags vX.Y.Z, or manual dispatch with version set/force_deploy
   deploy:
     name: Deploy (production)
-    needs: [meta, detect-changes, build-api, build-caddy]
+    needs: [meta, detect-changes, promote-images]
     if: >
       always() && (
         (needs.meta.outputs.is_stable_release == 'true') ||
@@ -384,7 +410,6 @@ jobs:
             API_IMAGE_REF,CADDY_IMAGE_REF,RELEASE_VERSION,FORCE_RESTART
           script: |
             set -euo pipefail
-
             # Export variables for the deploy script
             export NEEDS_INFRA_CHANGES="${{ needs.detect-changes.outputs.infra }}"
             export NEEDS_DASHBOARD_CHANGES="${{ needs.detect-changes.outputs.dashboard }}"
@@ -393,13 +418,22 @@ jobs:
             export FORCE_DEPLOY="${{ inputs.force_deploy }}"
             export FORCE_RESTART="${{ inputs.force_restart || false }}"
 
-            # Prefer immutable refs (name@sha256:digest). Fall back to version tag if provided manually.
-            export API_IMAGE_REF="${{ needs.build-api.outputs.image_ref || (format('{0}/{1}/{2}:{3}', env.REGISTRY, env.IMAGE_OWNER, env.API_IMAGE_NAME, needs.meta.outputs.version)) }}"
-            export CADDY_IMAGE_REF="${{ needs.build-caddy.outputs.image_ref || (format('{0}/{1}/{2}:{3}', env.REGISTRY, env.IMAGE_OWNER, env.CADDY_IMAGE_NAME, needs.meta.outputs.version)) }}"
+            # Use immutable image references from the promotion job for tag-based deploys
+            export API_IMAGE_REF="${{ needs.promote-images.outputs.api_ref }}"
+            export CADDY_IMAGE_REF="${{ needs.promote-images.outputs.caddy_ref }}"
 
-            # Version (may be empty if not a tag)
+            # Fail if the image reference is missing (promotion step failed)
+            if [ "${API_IMAGE_REF}" = "MISSING" ] || [ -z "${API_IMAGE_REF}" ]; then
+              echo "::error::API image reference is missing. The sha-tagged image was likely not built on the main branch before this tag was pushed."
+              exit 1
+            fi
+            if [ "${CADDY_IMAGE_REF}" = "MISSING" ] || [ -z "${CADDY_IMAGE_REF}" ]; then
+              echo "::error::Caddy image reference is missing. The sha-tagged image was likely not built on the main branch before this tag was pushed."
+              exit 1
+            fi
+
+            # Version
             export RELEASE_VERSION="${{ needs.meta.outputs.version }}"
-
             chmod +x "${{ env.REMOTE_TARGET_BASE_DIR }}/deploy.sh"
             "${{ env.REMOTE_TARGET_BASE_DIR }}/deploy.sh"
 
@@ -408,11 +442,11 @@ jobs:
   # then uncomment the job below. Pre-release tags (vX.Y.Z-rc.N) will deploy there.
   # deploy-staging:
   #   name: Deploy (staging)
-  #   needs: [meta, build-api, build-caddy, build-dashboard-dist]
+  #   needs: [meta, promote-images] # Depends on promotion, not build
   #   if: needs.meta.outputs.is_prerelease == 'true'
   #   runs-on: ubuntu-latest
   #   environment:
   #     name: staging
   #     url: https://staging.orbitcheck.io
   #   steps:
-  #     - run: echo "Deploy to staging here using the same API_IMAGE_REF and CADDY_IMAGE_REF."
+  #     - run: echo "Deploy to staging here using API_IMAGE_REF=${{ needs.promote-images.outputs.api_ref }} and CADDY_IMAGE_REF=${{ needs.promote-images.outputs.caddy_ref }}"
