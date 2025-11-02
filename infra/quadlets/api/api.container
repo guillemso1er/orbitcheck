@@ -6,7 +6,7 @@ Wants=api-db.service valkey.service
 [Container]
 LogDriver=journald
 # Placeholder only. The deploy script patches this line to an immutable digest (name@sha256:...)
-Image=ghcr.io/guillemso1er/api:v0.0.0
+Image=ghcr.io/guillemso1er/orbitcheck/api:v0.0.0
 ContainerName=api
 Pod=orbitcheck.pod
 

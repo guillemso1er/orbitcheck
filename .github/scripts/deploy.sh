@@ -353,13 +353,13 @@ runtime_patch_quadlet_images() {
     # Patch API lines that reference the API image path
     if grep -Eq "^\s*Image\s*=\s*.*/${API_IMAGE_NAME}(:|@)" "$f"; then
       sed -i -E "s#^(\s*Image\s*=\s*).*/${API_IMAGE_NAME}(:|@)[^[:space:]]*#\1${api_ref}#g" "$f"
-      ((++caddy_patched))
+      ((++api_patched))
     fi
 
     # Patch Caddy lines that reference the Caddy image path
     if grep -Eq "^\s*Image\s*=\s*.*/${CADDY_IMAGE_NAME}(:|@)" "$f"; then
       sed -i -E "s#^(\s*Image\s*=\s*).*/${CADDY_IMAGE_NAME}(:|@)[^[:space:]]*#\1${caddy_ref}#g" "$f"
-      let caddy_patched++
+      ((++caddy_patched))
     fi
   done
 
@@ -794,8 +794,8 @@ runtime_main_deployment() {
     local dest_user_cfg="$HOME/.config"
 
     # These file deployments should always happen if the deploy job runs
-    runtime_patch_quadlet_images "$dest_sys_d"
     runtime_deploy_quadlet_files "$src" "$dest_sys_d"
+    runtime_patch_quadlet_images "$dest_sys_d"
     runtime_deploy_env_files "$src" "$dest_user_cfg"
 
     local service="$API_IMAGE_NAME"
@@ -817,61 +817,62 @@ runtime_main_deployment() {
 
     # A tagged release always redeploys and runs migrations
     if [[ -n "$RELEASE_VERSION" ]]; then
-    should_restart="true"
-    run_migrations="true"
+        should_restart="true"
+        run_migrations="true"
     fi
 
     # File-based change detection
     if [[ "$NEEDS_API_CHANGES" == "true" ]]; then
-    should_restart="true"
-    run_migrations="true"
+        should_restart="true"
+        run_migrations="true"
     fi
     if [[ "$NEEDS_INFRA_CHANGES" == "true" || "$NEEDS_DASHBOARD_CHANGES" == "true" ]]; then
-    should_restart="true"
+        should_restart="true"
     fi
 
     # Force flags
     if [[ "$IS_WORKFLOW_DISPATCH" == "true" && "$FORCE_DEPLOY" == "true" ]]; then
-    should_restart="true"
-    # Be conservative and run migrations; they're idempotent
-    run_migrations="true"
+        should_restart="true"
+        # Be conservative and run migrations; they're idempotent
+        run_migrations="true"
     fi
     if [[ "$FORCE_RESTART" == "true" ]]; then
-    should_restart="true"
+        should_restart="true"
     fi
 
     if [[ "$should_restart" == "true" ]]; then
-    log_info "Restarting systemd units (reason: release/change/force)"
-    runtime_manage_systemd_services "$dest_sys_d"
+        log_info "Restarting systemd units (reason: release/change/force)"
+        runtime_manage_systemd_services "$dest_sys_d"
 
-    if [[ "$run_migrations" == "true" ]]; then
-        log_info "Executing DB wait + provision + migrations"
+        if [[ "$run_migrations" == "true" ]]; then
+            log_info "Executing DB wait + provision + migrations"
 
-        local admin_token_file="$HOME/.secrets/infisical/${service}-infra.token"
-        local admin_env="$cfg_dir/${service}.dbadmin.env"
+            local admin_token_file="$HOME/.secrets/infisical/${service}-infra.token"
+            local admin_env="$cfg_dir/${service}.dbadmin.env"
 
-        runtime_fetch_infisical_secrets "$service" "$admin_token_file" "/api-infra" "$admin_env"
-        runtime_wait_for_db "$admin_env" "${pod_args[@]}"
-        runtime_provision_database "$admin_env" "${pod_args[@]}"
+            runtime_fetch_infisical_secrets "$service" "$admin_token_file" "/api-infra" "$admin_env"
+            runtime_wait_for_db "$admin_env" "${pod_args[@]}"
+            runtime_provision_database "$admin_env" "${pod_args[@]}"
 
-        local migration_image
-        migration_image="$(resolve_image_ref "api" "$API_IMAGE_NAME" "$API_IMAGE_REF")"
+            local migration_image
+            migration_image="$(resolve_image_ref "api" "$API_IMAGE_NAME" "$API_IMAGE_REF")"
 
-        local mig_env; mig_env="$(mktemp)"; trap "rm -f '$mig_env'" RETURN
-        chmod 600 "$mig_env"
-        [[ -f "$cfg_dir/$service.env" ]] && cat "$cfg_dir/$service.env" >> "$mig_env"
-        [[ -f "$cfg_dir/${service}.secrets.env" ]] && cat "$cfg_dir/${service}.secrets.env" >> "$mig_env"
+            local mig_env; mig_env="$(mktemp)"; trap "rm -f '$mig_env'" RETURN
+            chmod 600 "$mig_env"
+            [[ -f "$cfg_dir/$service.env" ]] && cat "$cfg_dir/$service.env" >> "$mig_env"
+            [[ -f "$cfg_dir/${service}.secrets.env" ]] && cat "$cfg_dir/${service}.secrets.env" >> "$mig_env"
 
-        runtime_run_migrations "$migration_image" "$mig_env" 10 "${pod_args[@]}"
+            runtime_run_migrations "$migration_image" "$mig_env" 10 "${pod_args[@]}"
+        else
+            log_info "Skipping migrations for this deploy"
+        fi
     else
-        log_info "Skipping migrations for this deploy"
-    fi
-    else
-    log_info "No restart needed (no release/changes/force flags)"
+        log_info "No restart needed (no release/changes/force flags)"
     fi
 
     log_success "Runtime deployment completed successfully"
 }
+
 # Export all functions for use in subshell
 export -f log_info log_success log_warning log_error
 export -f runtime_deploy_quadlet_files runtime_deploy_env_files

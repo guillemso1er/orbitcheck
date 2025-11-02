@@ -5,7 +5,7 @@ Wants=network-online.target
 
 [Container]
 # Placeholder only; deploy script will replace with an immutable digest (name@sha256:...)
-Image=ghcr.io/guillemso1er/caddy:v0.0.0
+Image=ghcr.io/guillemso1er/orbitcheck/caddy:v0.0.0
 LogDriver=journald
 ContainerName=caddy
 Pod=orbitcheck.pod
