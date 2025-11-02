@@ -356,20 +356,27 @@ jobs:
             local -a paths=("$@")
             local src dst dg
 
-            echo "Resolving source for ${image} from tag $VER (commit $SHA)..."
+            # Send logs to STDERR so they don't get captured by the variable
+            echo "Resolving source for ${image} from tag $VER (commit $SHA)..." >&2
 
-            # Explicitly check the exit code of find_src_tag
             src="$(find_src_tag "$image" "${paths[@]}")"
             if [ $? -ne 0 ]; then
+                # This error message is already correctly formatted for the runner
                 echo "::error::Failed to find a source image for ${image}. Aborting promotion." >&2
                 exit 1
             fi
 
-            echo "✓ Found source: $src"
+            # Send logs to STDERR
+            echo "✓ Found source: $src" >&2
             dst="${image}:${VER}"
-            echo "Promoting $src -> $dst"
-            docker buildx imagetools create --tag "$dst" "$src"
+            echo "Promoting $src -> $dst" >&2
+
+            # Redirect the buildx command's output to STDERR as well
+            docker buildx imagetools create --tag "$dst" "$src" >&2
+
             dg="$(crane digest "$src")"
+
+            # This is the ONLY echo that goes to STDOUT. It becomes the function's return value.
             echo "${image}@${dg}"
           }
 
