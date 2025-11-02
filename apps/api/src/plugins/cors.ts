@@ -1,5 +1,5 @@
 import cors from "@fastify/cors";
-import type { FastifyInstance } from "fastify";
+import type { FastifyInstance, RawServerBase } from "fastify";
 
 import { environment } from "../environment.js";
 
@@ -7,7 +7,7 @@ import { environment } from "../environment.js";
  * Configures CORS for the Fastify application based on environment settings.
  * Handles both development and production origins, with support for server-to-server requests.
  */
-export async function setupCors(app: FastifyInstance): Promise<void> {
+export async function setupCors<TServer extends RawServerBase = RawServerBase>(app: FastifyInstance<TServer>): Promise<void> {
     // Define allowed origins based on environment
     const allowedOrigins = new Set([
         `http://localhost:${environment.PORT}`, // API itself for health/docs

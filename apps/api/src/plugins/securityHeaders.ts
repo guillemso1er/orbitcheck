@@ -1,4 +1,4 @@
-import type { FastifyInstance, FastifyRequest } from "fastify";
+import type { FastifyInstance, FastifyRequest, RawServerBase, RouteGenericInterface } from "fastify";
 
 import { ROUTES } from "../config.js";
 import { environment } from "../environment.js";
@@ -7,9 +7,9 @@ import { environment } from "../environment.js";
  * Adds comprehensive security headers to all responses.
  * Includes CORS, CSP for dashboard routes, HSTS in production, and request tracing headers.
  */
-export async function setupSecurityHeaders(app: FastifyInstance): Promise<void> {
+export async function setupSecurityHeaders<TServer extends RawServerBase = RawServerBase>(app: FastifyInstance<TServer>): Promise<void> {
     // Add security headers (enhanced security)
-    app.addHook('onSend', async (request: FastifyRequest, reply, payload) => {
+    app.addHook('onSend', async (request: FastifyRequest<RouteGenericInterface, TServer>, reply, payload) => {
         // Basic security headers
         reply.header('X-Content-Type-Options', 'nosniff');
         reply.header('X-Frame-Options', 'DENY');

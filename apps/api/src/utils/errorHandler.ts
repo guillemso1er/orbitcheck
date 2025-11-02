@@ -2,7 +2,7 @@
  * Enhanced error handling utilities to prevent sensitive information leakage
  */
 
-import type { FastifyReply } from 'fastify';
+import type { FastifyReply, RawServerBase, RouteGenericInterface } from 'fastify';
 
 export class ErrorHandler {
     /**
@@ -91,7 +91,7 @@ export class ErrorHandler {
     /**
      * Handles database errors safely
      */
-    static handleDatabaseError(reply: FastifyReply, error: any, operation: string) {
+    static handleDatabaseError<TServer extends RawServerBase = RawServerBase>(reply: FastifyReply<RouteGenericInterface, TServer>, error: any, operation: string) {
         // Log the full error for debugging
         console.error(`Database error in ${operation}:`, {
             code: error?.code,
@@ -132,7 +132,7 @@ export class ErrorHandler {
     /**
      * Handles external service errors safely
      */
-    static handleExternalServiceError(reply: FastifyReply, error: any, serviceName: string) {
+    static handleExternalServiceError<TServer extends RawServerBase = RawServerBase>(reply: FastifyReply<RouteGenericInterface, TServer>, error: any, serviceName: string) {
         // Log error details for debugging
         console.error(`External service error (${serviceName}):`, {
             message: error?.message,

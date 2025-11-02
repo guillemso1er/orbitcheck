@@ -50,13 +50,13 @@ export async function build(pool: Pool, redis: IORedisType): Promise<FastifyInst
         },
         requestTimeout: REQUEST_TIMEOUT_MS,
         trustProxy: true, // Important for secure cookies behind proxies
-    });
+    }) as any;
 
     // Setup API documentation
     await setupDocumentation(app);
 
     // NOW add input sanitization hook AFTER documentation is registered
-    app.addHook('preHandler', async (request, reply) => {
+    app.addHook('preHandler', async (request: any, reply: any) => {
         if (
             request.url.startsWith('/documentation') ||
             request.url.startsWith('/reference') ||
@@ -124,7 +124,7 @@ export async function build(pool: Pool, redis: IORedisType): Promise<FastifyInst
     // Register health check routes
     await registerHealthRoutes(app, pool, redis);
 
-    return app;
+    return app as any;
 }
 
 /**

@@ -1,4 +1,4 @@
-import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
+import type { FastifyInstance, FastifyReply, FastifyRequest, RawServerBase, RouteGenericInterface } from "fastify";
 
 import { ErrorHandler } from "../utils/errorHandler.js";
 
@@ -6,9 +6,9 @@ import { ErrorHandler } from "../utils/errorHandler.js";
  * Sets up comprehensive error handling for the Fastify application.
  * Handles various error types with appropriate security measures and safe responses.
  */
-export async function setupErrorHandler(app: FastifyInstance): Promise<void> {
+export async function setupErrorHandler<TServer extends RawServerBase = RawServerBase>(app: FastifyInstance<TServer>): Promise<void> {
     // Enhanced error handler to prevent sensitive information leakage
-    app.setErrorHandler(async (error: Error & { code?: string; statusCode?: number }, request: FastifyRequest, reply: FastifyReply) => {
+    app.setErrorHandler(async (error: Error & { code?: string; statusCode?: number }, request: FastifyRequest<RouteGenericInterface, TServer>, reply: FastifyReply<RouteGenericInterface, TServer>) => {
         // Use the ErrorHandler utility for secure logging
         ErrorHandler.logErrorSecurely(request.log, error, {
             method: request.method,

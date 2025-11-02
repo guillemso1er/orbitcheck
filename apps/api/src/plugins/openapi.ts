@@ -1,5 +1,5 @@
 import { openapiYaml } from '@orbitcheck/contracts/node';
-import type { FastifyInstance, FastifyRequest } from "fastify";
+import type { FastifyInstance, FastifyRequest, RawServerBase, RouteGenericInterface } from "fastify";
 import yaml from 'js-yaml';
 
 // Load OpenAPI spec
@@ -10,7 +10,7 @@ const openapiSchema = yaml.load(openapiYaml);
  * Validates that all endpoints defined in the OpenAPI spec are implemented
  * and optionally validates requests/responses against the schema
  */
-export async function openapiValidation(app: FastifyInstance): Promise<void> {
+export async function openapiValidation<TServer extends RawServerBase = RawServerBase>(app: FastifyInstance<TServer>): Promise<void> {
   app.log.info("OpenAPI validation plugin loaded");
 
   // Validate endpoint coverage on startup
@@ -42,7 +42,7 @@ export async function openapiValidation(app: FastifyInstance): Promise<void> {
 /**
  * Validates that all endpoints defined in the OpenAPI spec are implemented as routes
  */
-async function validateEndpointCoverage(app: FastifyInstance): Promise<void> {
+async function validateEndpointCoverage<TServer extends RawServerBase = RawServerBase>(app: FastifyInstance<TServer>): Promise<void> {
   const spec = openapiSchema as any;
   const paths = spec.paths || {};
   const servers = spec.servers || [];
@@ -108,7 +108,7 @@ async function validateEndpointCoverage(app: FastifyInstance): Promise<void> {
 /**
  * Validates request against OpenAPI schema
  */
-async function validateRequest(request: FastifyRequest): Promise<void> {
+async function validateRequest<TServer extends RawServerBase = RawServerBase>(request: FastifyRequest<RouteGenericInterface, TServer>): Promise<void> {
   // TODO: Implement request validation using AJV against OpenAPI schema
   // For now, just log the request
   request.log.debug({
@@ -121,7 +121,7 @@ async function validateRequest(request: FastifyRequest): Promise<void> {
 /**
  * Validates response against OpenAPI schema
  */
-async function validateResponse(request: FastifyRequest, _payload: any): Promise<void> {
+async function validateResponse<TServer extends RawServerBase = RawServerBase>(request: FastifyRequest<RouteGenericInterface, TServer>, _payload: any): Promise<void> {
   // TODO: Implement response validation using AJV against OpenAPI schema
   // For now, just log the response
   request.log.debug({

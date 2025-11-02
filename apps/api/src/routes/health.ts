@@ -1,4 +1,4 @@
-import type { FastifyInstance } from "fastify";
+import type { FastifyInstance, RawServerBase } from "fastify";
 import type { Redis as IORedisType } from 'ioredis';
 import type { Pool } from "pg";
 
@@ -8,7 +8,7 @@ import { API_VERSION, ROUTES } from "../config.js";
  * Registers health check endpoints for monitoring application status.
  * Includes status, health, and ready endpoints with different levels of dependency checks.
  */
-export async function registerHealthRoutes(app: FastifyInstance, pool: Pool, redis: IORedisType): Promise<void> {
+export async function registerHealthRoutes<TServer extends RawServerBase = RawServerBase>(app: FastifyInstance<TServer>, pool: Pool, redis: IORedisType): Promise<void> {
     // Status endpoint (public, no auth required)
     app.get(ROUTES.STATUS, async (): Promise<{ status: string; version: string; timestamp: string }> => ({
         status: "healthy",

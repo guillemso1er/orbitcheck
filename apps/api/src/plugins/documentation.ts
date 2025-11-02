@@ -1,12 +1,12 @@
 import fastifySwagger from '@fastify/swagger'
 import fastifySwaggerUi from '@fastify/swagger-ui'
 import ScalarApiReference from '@scalar/fastify-api-reference'
-import type { FastifyInstance } from 'fastify'
+import type { FastifyInstance, RawServerBase } from 'fastify'
 
 import { API_VERSION, ROUTES } from '../config.js'
 import { environment } from '../environment.js'
 
-export async function setupDocumentation(app: FastifyInstance): Promise<void> {
+export async function setupDocumentation<TServer extends RawServerBase = RawServerBase>(app: FastifyInstance<TServer>): Promise<void> {
 
     app.addHook('onRoute', (routeOptions) => {
         const url = routeOptions.url || ''
