@@ -322,27 +322,34 @@ jobs:
           set -euo pipefail
           VER="${{ needs.meta.outputs.version }}"
           SHA="${{ github.sha }}"
+
           promote() {
             local image_base_name="$1"
             local src="${image_base_name}:sha-${SHA}"
             local dst="${image_base_name}:${VER}"
-            # Check if the source sha-tagged image exists
+            
+            # Check if the source sha-tagged image exists. If not, fail the job.
             if crane manifest "$src" >/dev/null 2>&1; then
               echo "Promoting ${src} to ${dst}"
-              # Create the new version tag pointing to the same manifest
+              # Create the new version tag pointing to the same manifest digest
               docker buildx imagetools create --tag "$dst" "$src"
-              # Get the digest of the source image for the immutable ref
+              # Get the digest of the source image to form the immutable ref
+              local dg
               dg=$(crane digest "$src")
               echo "${image_base_name}@${dg}"
             else
-              echo "MISSING: Source image ${src} not found."
-              echo "MISSING"
+              # Use GitHub's error command format and exit with an error code
+              echo "::error::Source image ${src} not found. A tag was likely pushed from a commit that was never built on the 'main' branch."
+              exit 1
             fi
           }
+
           API_IMG="${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/${{ env.API_IMAGE_NAME }}"
           CADDY_IMG="${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/${{ env.CADDY_IMAGE_NAME }}"
+
           API_REF=$(promote "$API_IMG")
           CADDY_REF=$(promote "$CADDY_IMG")
+
           echo "api_ref=${API_REF}" >> "$GITHUB_OUTPUT"
           echo "caddy_ref=${CADDY_REF}" >> "$GITHUB_OUTPUT"
 
@@ -418,22 +425,14 @@ jobs:
             export FORCE_DEPLOY="${{ inputs.force_deploy }}"
             export FORCE_RESTART="${{ inputs.force_restart || false }}"
 
-            # Use immutable image references from the promotion job for tag-based deploys
+            # Use immutable image references. The workflow will have already failed in the 'promote-images' job
+            # if these were missing, so no checks are needed here.
             export API_IMAGE_REF="${{ needs.promote-images.outputs.api_ref }}"
             export CADDY_IMAGE_REF="${{ needs.promote-images.outputs.caddy_ref }}"
 
-            # Fail if the image reference is missing (promotion step failed)
-            if [ "${API_IMAGE_REF}" = "MISSING" ] || [ -z "${API_IMAGE_REF}" ]; then
-              echo "::error::API image reference is missing. The sha-tagged image was likely not built on the main branch before this tag was pushed."
-              exit 1
-            fi
-            if [ "${CADDY_IMAGE_REF}" = "MISSING" ] || [ -z "${CADDY_IMAGE_REF}" ]; then
-              echo "::error::Caddy image reference is missing. The sha-tagged image was likely not built on the main branch before this tag was pushed."
-              exit 1
-            fi
-
             # Version
             export RELEASE_VERSION="${{ needs.meta.outputs.version }}"
+
             chmod +x "${{ env.REMOTE_TARGET_BASE_DIR }}/deploy.sh"
             "${{ env.REMOTE_TARGET_BASE_DIR }}/deploy.sh"
 
