@@ -153,7 +153,7 @@ jobs:
     name: Build dashboard dist (workspace)
     needs: [detect-changes]
     # Build only on main branch pushes with relevant changes, or when forced
-    if: (github.ref_name == 'main' && (needs.detect-changes.outputs.dashboard == 'true' || needs.detect-changes.outputs.infra == 'true')) || (github.event_name == 'workflow_dispatch' && inputs.force_dashboard_build)
+    if: (github.event_name == 'push' && github.ref_name == 'main' && (needs.detect-changes.outputs.dashboard == 'true' || needs.detect-changes.outputs.infra == 'true')) || (github.event_name == 'workflow_dispatch' && inputs.force_dashboard_build)
     runs-on: ubuntu-24.04-arm
     steps:
       - uses: actions/checkout@v4
@@ -183,7 +183,7 @@ jobs:
     name: Build, sign, and push Caddy (dashboard + reverse proxy)
     needs: [detect-changes, build-dashboard-dist]
     # Build only on main branch pushes with relevant changes, or when forced
-    if: (github.ref_name == 'main' && (needs.detect-changes.outputs.dashboard == 'true' || needs.detect-changes.outputs.infra == 'true')) || (github.event_name == 'workflow_dispatch' && inputs.force_dashboard_build)
+    if: (github.event_name == 'push' && github.ref_name == 'main' && (needs.detect-changes.outputs.dashboard == 'true' || needs.detect-changes.outputs.infra == 'true')) || (github.event_name == 'workflow_dispatch' && inputs.force_dashboard_build)
     runs-on: ubuntu-24.04-arm
     steps:
       - uses: actions/checkout@v4
@@ -236,7 +236,7 @@ jobs:
     name: Build, sign, and push API
     needs: [detect-changes]
     # Build only on main branch pushes with relevant changes, or when forced
-    if: (github.ref_name == 'main' && needs.detect-changes.outputs.api == 'true') || (github.event_name == 'workflow_dispatch' && inputs.force_api_build)
+    if: (github.event_name == 'push' && github.ref_name == 'main' && needs.detect-changes.outputs.api == 'true') || (github.event_name == 'workflow_dispatch' && inputs.force_api_build)
     runs-on: ubuntu-24.04-arm
     steps:
       - uses: actions/checkout@v4

@@ -61,7 +61,11 @@ error_handler() {
 }
 
 # Set up error handling
-trap 'error_handler ${LINENO} $?' ERR
+trap 'code=$?; line=$LINENO; cmd=$BASH_COMMAND; file=${BASH_SOURCE[0]};
+      log_error "Exit $code at $file:$line while running: $cmd";
+      print_stack;
+      cleanup_on_error;
+      exit $code' ERR
 
 # Cleanup function for error cases
 cleanup_on_error() {
