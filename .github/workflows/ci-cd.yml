@@ -354,14 +354,14 @@ jobs:
           # Track failures
           failed=0
           
-          echo "Promoting API image..."
+          echo "Promoting API image ($API_IMG)..."
           if API_REF=$(promote "$API_IMG"); then
             echo "api_ref=${API_REF}" >> "$GITHUB_OUTPUT"
           else
             failed=1
           fi
-          
-          echo "Promoting Caddy image..."
+
+          echo "Promoting Caddy image ($CADDY_IMG)..."
           if CADDY_REF=$(promote "$CADDY_IMG"); then
             echo "caddy_ref=${CADDY_REF}" >> "$GITHUB_OUTPUT"
           else
