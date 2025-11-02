@@ -112,8 +112,7 @@ validate_required_vars() {
 : "${RELEASE_VERSION:=}"      # e.g., v1.2.3
 : "${FORCE_RESTART:=false}"
 
-NEEDS_DASHBOARD_CHANGES=$(normalize_bool "$NEEDS_DASHBOARD_CHANGES")
-FORCE_RESTART=$(normalize_bool "$FORCE_RESTART")
+
 
 # Validate all required variables
 validate_required_vars
@@ -130,6 +129,8 @@ NEEDS_INFRA_CHANGES=$(normalize_bool "$NEEDS_INFRA_CHANGES")
 NEEDS_API_CHANGES=$(normalize_bool "$NEEDS_API_CHANGES")
 IS_WORKFLOW_DISPATCH=$(normalize_bool "$IS_WORKFLOW_DISPATCH")
 FORCE_DEPLOY=$(normalize_bool "$FORCE_DEPLOY")
+NEEDS_DASHBOARD_CHANGES=$(normalize_bool "$NEEDS_DASHBOARD_CHANGES")
+FORCE_RESTART=$(normalize_bool "$FORCE_RESTART")
 
 # ============================================================================
 # Helper Functions
