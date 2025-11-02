@@ -315,7 +315,6 @@ jobs:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - uses: imjasonh/setup-crane@v0.4
       - name: Promote images by re-tagging
         id: promote
         run: |
@@ -328,37 +327,60 @@ jobs:
             local src="${image_base_name}:sha-${SHA}"
             local dst="${image_base_name}:${VER}"
             
-            # Check if the source sha-tagged image exists. If not, fail the job.
+            echo "Checking for source image: ${src}"
+            
+            # Check if the source sha-tagged image exists
             if crane manifest "$src" >/dev/null 2>&1; then
+              echo "✓ Found source image ${src}"
               echo "Promoting ${src} to ${dst}"
               # Create the new version tag pointing to the same manifest digest
               docker buildx imagetools create --tag "$dst" "$src"
               # Get the digest of the source image to form the immutable ref
               local dg
               dg=$(crane digest "$src")
+              echo "✓ Successfully promoted to ${dst}"
               echo "${image_base_name}@${dg}"
             else
-              # Use GitHub's error command format and exit with an error code
-              echo "::error::Source image ${src} not found. A tag was likely pushed from a commit that was never built on the 'main' branch."
-              exit 1
+              echo "✗ Source image ${src} not found!"
+              echo "::error title=Missing SHA Image::Source image ${src} not found. The commit SHA ${SHA} was never built on the 'main' branch."
+              echo "::warning::To fix this, ensure the commit is pushed to main and images are built before creating the tag."
+              return 1
             fi
           }
 
           API_IMG="${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/${{ env.API_IMAGE_NAME }}"
           CADDY_IMG="${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/${{ env.CADDY_IMAGE_NAME }}"
 
-          API_REF=$(promote "$API_IMG")
-          CADDY_REF=$(promote "$CADDY_IMG")
-
-          echo "api_ref=${API_REF}" >> "$GITHUB_OUTPUT"
-          echo "caddy_ref=${CADDY_REF}" >> "$GITHUB_OUTPUT"
+          # Track failures
+          failed=0
+          
+          echo "Promoting API image..."
+          if API_REF=$(promote "$API_IMG"); then
+            echo "api_ref=${API_REF}" >> "$GITHUB_OUTPUT"
+          else
+            failed=1
+          fi
+          
+          echo "Promoting Caddy image..."
+          if CADDY_REF=$(promote "$CADDY_IMG"); then
+            echo "caddy_ref=${CADDY_REF}" >> "$GITHUB_OUTPUT"
+          else
+            failed=1
+          fi
+          
+          if [ $failed -eq 1 ]; then
+            echo "::error::Image promotion failed. See logs above for details."
+            exit 1
+          fi
+          
+          echo "✓ All images promoted successfully"
 
   # Production deploy only for stable release tags vX.Y.Z, or manual dispatch with version set/force_deploy
   deploy:
     name: Deploy (production)
     needs: [meta, detect-changes, promote-images]
-    if: >
-      always() && (
+    if: |
+      needs.promote-images.result == 'success' && (
         (needs.meta.outputs.is_stable_release == 'true') ||
         (github.event_name == 'workflow_dispatch' && (inputs.version || inputs.force_deploy))
       )
