@@ -5,14 +5,21 @@ Wants=api-db.service valkey.service
 
 [Container]
 LogDriver=journald
-Image=ghcr.io/guillemso1er/api:prod
+# Placeholder only. The deploy script patches this line to an immutable digest (name@sha256:...)
+Image=ghcr.io/guillemso1er/api:v0.0.0
 ContainerName=api
 Pod=orbitcheck.pod
 
-EnvironmentFile=/%h/.config/api/api.env
-EnvironmentFile=/%h/.config/api/api.secrets.env
+# Config files written by deploy (or ExecStartPre below)
+EnvironmentFile=%h/.config/api/api.env
+EnvironmentFile=%h/.config/api/api.secrets.env
 
-Label="io.containers.autoupdate=image"
+# Ensure the pinned digest is pulled if not present
+Pull=missing
+
+# We do controlled rollouts; remove auto-update
+# Label="io.containers.autoupdate=image"
+
 NoNewPrivileges=yes
 ReadOnly=true
 Tmpfs=/tmp:size=64M
@@ -21,27 +28,26 @@ Tmpfs=/tmp:size=64M
 Restart=always
 RestartSec=3
 
-# Ensure env dir exists
-ExecStartPre=/usr/bin/install -d -m 700 %h/configs/api/env
+# Ensure config dir exists
+ExecStartPre=/usr/bin/install -d -m 700 %h/.config/api
 
-# Fetch secrets just-in-time, atomically, with strict perms
-# Uses the service token from a local file (not shown in process args)
+# OPTIONAL: keep this if you want JIT secret fetch on every start
+# If you keep it, you can remove the duplicate secret fetch for /api in the deploy script.
 ExecStartPre=/bin/sh -ceu ' \
-    tok="$(cat /%h/.secrets/infisical/api.token)"; \
-    export INFISICAL_TOKEN="$tok"; \
-    /bin/infisical export \
-        --domain=https://infisical.bastiat.xyz \
-        --path=/api \
-        --env=prod \
-        --format=dotenv \
-        --silent \
-        --include-imports \
-        | sed "s/'\''//g" \
-    > %h/configs/api/.api.secrets.env.tmp; \
-    chmod 600 %h/configs/api/.api.secrets.env.tmp; \
-    mv %h/configs/api/.api.secrets.env.tmp /%h/.config/api/api.secrets.env \
+  tok="$(cat %h/.secrets/infisical/api.token)"; \
+  export INFISICAL_TOKEN="$tok"; \
+  /bin/infisical export \
+    --domain=https://infisical.bastiat.xyz \
+    --path=/api \
+    --env=prod \
+    --format=dotenv \
+    --silent \
+    --include-imports \
+    | sed "s/'\''//g" \
+  > %h/.config/api/.api.secrets.env.tmp; \
+  chmod 600 %h/.config/api/.api.secrets.env.tmp; \
+  mv %h/.config/api/.api.secrets.env.tmp %h/.config/api/api.secrets.env \
 '
-
 
 [Install]
 WantedBy=default.target

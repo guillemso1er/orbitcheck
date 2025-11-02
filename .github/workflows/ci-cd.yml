@@ -1,10 +1,18 @@
-name: Build, Sync, and Deploy
+name: Build, Sign, and Deploy (immutable by version)
 
 on:
   push:
     branches: [main]
+    # Build once and deploy only for version tags. Pre-releases (e.g. -rc.1) build but do not deploy to prod.
+    tags:
+      - "v*.*.*"
+      - "v*.*.*-*"
   workflow_dispatch:
     inputs:
+      # Optional: allow a manual deploy pass (e.g., re-deploy same tag).
+      version:
+        description: "Release tag to deploy (e.g., v1.2.3). If set, only deploy will run (no rebuild)."
+        required: false
       force_deploy:
         description: "Run deploy even if nothing changed"
         type: boolean
@@ -14,7 +22,7 @@ on:
         type: boolean
         default: false
       force_dashboard_build:
-        description: "Rebuild dashboard even if unchanged"
+        description: "Rebuild/push Caddy+dashboard even if unchanged"
         type: boolean
         default: false
       force_restart:
@@ -40,11 +48,12 @@ env:
   # General & Docker
   REGISTRY: ghcr.io
   IMAGE_OWNER: ${{ github.repository_owner }}
-  API_IMAGE_NAME: api
-  API_DOCKERFILE_PATH: ./apps/api/Dockerfile
   PNPM_VERSION: 9.12.0
 
-  # Caddy (reverse proxy + dashboard)
+  # Images
+  API_IMAGE_NAME: api
+  API_DOCKERFILE_PATH: ./apps/api/Dockerfile
+
   CADDY_IMAGE_NAME: caddy
   CADDY_DOCKERFILE_PATH: ./infra/quadlets/caddy/Containerfile
   CADDYFILE_PATH: infra/config/caddy/Caddyfile
@@ -60,11 +69,55 @@ env:
   REMOTE_CONFIGS_DIR: ./containers/configs
   REMOTE_DASHBOARD_VOLUME_DIR: ./volumes/caddy-dashboard/_data
   REMOTE_SYSTEMD_USER_DIR: .config/containers/systemd
+
   DEBUG: ${{ inputs.debug && '1' || '0' }}
 
 jobs:
+  meta:
+    name: Compute release metadata
+    runs-on: ubuntu-latest
+    outputs:
+      is_tag: ${{ steps.vars.outputs.is_tag }}
+      is_prerelease: ${{ steps.vars.outputs.is_prerelease }}
+      is_stable_release: ${{ steps.vars.outputs.is_stable_release }}
+      version: ${{ steps.vars.outputs.version }}
+    steps:
+      - name: Derive version context
+        id: vars
+        run: |
+          set -euo pipefail
+          ref_type="${{ github.ref_type }}"
+          ref_name="${{ github.ref_name }}"
+          is_tag=false
+          is_prerelease=false
+          is_stable_release=false
+          version=""
+          # Support manual 'version' input for workflow_dispatch (deploy-only)
+          if [ -n "${{ inputs.version || '' }}" ]; then
+            is_tag=true
+            version="${{ inputs.version }}"
+            if [[ "$version" == *-* ]]; then
+              is_prerelease=true
+            else
+              is_stable_release=true
+            fi
+          elif [ "$ref_type" = "tag" ] && [[ "$ref_name" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z\.-]+)?$ ]]; then
+            is_tag=true
+            version="$ref_name"
+            if [[ "$ref_name" == *-* ]]; then
+              is_prerelease=true
+            else
+              is_stable_release=true
+            fi
+          fi
+          echo "is_tag=$is_tag" >> "$GITHUB_OUTPUT"
+          echo "is_prerelease=$is_prerelease" >> "$GITHUB_OUTPUT"
+          echo "is_stable_release=$is_stable_release" >> "$GITHUB_OUTPUT"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
   detect-changes:
     name: Detect changes
+    needs: [meta]
     runs-on: ubuntu-latest
     outputs:
       api: ${{ steps.filter.outputs.api }}
@@ -73,7 +126,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with: { fetch-depth: 0 }
-
       - id: filter
         uses: dorny/paths-filter@v3
         with:
@@ -100,34 +152,26 @@ jobs:
 
   build-dashboard-dist:
     name: Build dashboard dist (workspace)
-    needs: [detect-changes]
-    if: needs.detect-changes.outputs.dashboard == 'true' || needs.detect-changes.outputs.infra == 'true' || (github.event_name == 'workflow_dispatch' && inputs.force_dashboard_build)
+    needs: [meta, detect-changes]
+    # Always build for tags (release/prerelease), otherwise only when changed or forced
+    if: needs.meta.outputs.is_tag == 'true' || needs.detect-changes.outputs.dashboard == 'true' || needs.detect-changes.outputs.infra == 'true' || (github.event_name == 'workflow_dispatch' && inputs.force_dashboard_build)
     runs-on: ubuntu-24.04-arm
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Install pnpm
-        uses: pnpm/action-setup@v4
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
         with: { version: 9.12.0 }
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
           cache: pnpm
           cache-dependency-path: |
             pnpm-lock.yaml
-
       - name: Install deps (no scripts)
         run: pnpm install --frozen-lockfile --ignore-scripts
-
       - name: Build contracts package
         run: pnpm --filter @orbitcheck/contracts run build
-
       - name: Build dashboard
         run: pnpm --filter @orbitcheck/dashboard run build
-
       - name: Upload dashboard dist
         uses: actions/upload-artifact@v4
         with:
@@ -137,47 +181,47 @@ jobs:
           retention-days: 5
 
   build-caddy:
-    name: Build and push Caddy (dashboard + reverse proxy)
-    needs: [detect-changes, build-dashboard-dist]
-    if: needs.detect-changes.outputs.dashboard == 'true' || needs.detect-changes.outputs.infra == 'true' || (github.event_name == 'workflow_dispatch' && inputs.force_dashboard_build)
+    name: Build, sign, and push Caddy (dashboard + reverse proxy)
+    needs: [meta, detect-changes, build-dashboard-dist]
+    if: needs.meta.outputs.is_tag == 'true' || needs.detect-changes.outputs.dashboard == 'true' || needs.detect-changes.outputs.infra == 'true' || (github.event_name == 'workflow_dispatch' && inputs.force_dashboard_build)
     runs-on: ubuntu-24.04-arm
+    outputs:
+      digest: ${{ steps.build.outputs.digest }}
+      image_ref: ${{ steps.setref.outputs.image_ref }}
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with: { fetch-depth: 0 }
-
       - name: Download dashboard dist
         uses: actions/download-artifact@v4
         with:
           name: ${{ env.DASHBOARD_ARTIFACT_NAME }}
           path: ${{ env.DASHBOARD_DIST_PATH }}
-
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
-
       - name: Log in to GHCR
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-
       - name: Docker meta (generate tags and labels)
         id: meta
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/${{ env.CADDY_IMAGE_NAME }}
+          flavor: |
+            latest=false
           tags: |
-            type=sha
-            type=ref,event=branch
-            type=raw,value=prod,enable=${{ github.ref == 'refs/heads/main' }}
-
+            # If this run is for a tag (release or prerelease), publish the semver tag
+            type=semver,pattern={{version}},value=${{ needs.meta.outputs.version }},enable=${{ needs.meta.outputs.is_tag == 'true' }}
+            # Always publish a commit SHA tag for traceability
+            type=raw,value=sha-${{ github.sha }}
       - name: Build and push Caddy + dashboard (arm64 only)
-        uses: docker/build-push-action@v5
+        id: build
+        uses: docker/build-push-action@v6
         with:
           context: .
           file: ${{ env.CADDY_DOCKERFILE_PATH }}
-          target: "" # default target uses the final stage
           push: true
           platforms: linux/arm64
           tags: ${{ steps.meta.outputs.tags }}
@@ -186,69 +230,107 @@ jobs:
             CADDYFILE_PATH=${{ env.CADDYFILE_PATH }}
           cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/${{ env.CADDY_IMAGE_NAME }}:buildcache
           cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/${{ env.CADDY_IMAGE_NAME }}:buildcache,mode=max
+      - name: Compute immutable image ref
+        id: setref
+        run: echo "image_ref=${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/${{ env.CADDY_IMAGE_NAME }}@${{ steps.build.outputs.digest }}" >> "$GITHUB_OUTPUT"
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@v3.7.0
+      - name: Sign Caddy image (keyless)
+        env:
+          COSIGN_EXPERIMENTAL: "true"
+        run: cosign sign --yes "${{ steps.setref.outputs.image_ref }}"
+      - name: Attest build provenance (Caddy)
+        uses: actions/attest-build-provenance@v1
+        with:
+          subject-name: ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/${{ env.CADDY_IMAGE_NAME }}
+          subject-digest: ${{ steps.build.outputs.digest }}
+          push-to-registry: true
+      # Optional SBOM attachment (enable if desired)
+      # - name: Generate SBOM (Caddy) and attach
+      #   uses: anchore/sbom-action@v0
+      #   with:
+      #     image: ${{ steps.setref.outputs.image_ref }}
+      #     format: cyclonedx-json
+      #     artifact-name: caddy-sbom.cdx.json
 
   build-api:
-    name: Build and push API (only if changed)
-    needs: [detect-changes]
-    if: needs.detect-changes.outputs.api == 'true' || (github.event_name == 'workflow_dispatch' && inputs.force_api_build)
+    name: Build, sign, and push API
+    needs: [meta, detect-changes]
+    if: needs.meta.outputs.is_tag == 'true' || needs.detect-changes.outputs.api == 'true' || (github.event_name == 'workflow_dispatch' && inputs.force_api_build)
     runs-on: ubuntu-24.04-arm
+    outputs:
+      digest: ${{ steps.build.outputs.digest }}
+      image_ref: ${{ steps.setref.outputs.image_ref }}
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
+      - uses: actions/checkout@v4
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
-
-      - name: Log in to GitHub Container Registry
+      - name: Log in to GHCR
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
-          password: ${{ secrets.GHCR_PAT }}
-
-      - name: Build and push API image
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Docker meta (generate tags and labels)
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/${{ env.API_IMAGE_NAME }}
+          flavor: |
+            latest=false
+          tags: |
+            type=semver,pattern={{version}},value=${{ needs.meta.outputs.version }},enable=${{ needs.meta.outputs.is_tag == 'true' }}
+            type=raw,value=sha-${{ github.sha }}
+      - name: Build and push API image (arm64 only)
+        id: build
         uses: docker/build-push-action@v6
         with:
           context: .
           file: ${{ env.API_DOCKERFILE_PATH }}
           push: true
           platforms: linux/arm64
-          tags: |
-            ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/${{ env.API_IMAGE_NAME }}:prod
-            ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/${{ env.API_IMAGE_NAME }}:sha-${{ github.sha }}
-          labels: |
-            org.opencontainers.image.source=${{ github.repository }}
-            org.opencontainers.image.revision=${{ github.sha }}
-            org.opencontainers.image.run_id=${{ github.run_id }}
-          cache-from: type=gha,scope=api
-          cache-to: type=gha,scope=api,mode=max
-
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/${{ env.API_IMAGE_NAME }}:buildcache
+          cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/${{ env.API_IMAGE_NAME }}:buildcache,mode=max
+      - name: Compute immutable image ref
+        id: setref
+        run: echo "image_ref=${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/${{ env.API_IMAGE_NAME }}@${{ steps.build.outputs.digest }}" >> "$GITHUB_OUTPUT"
       - name: Install Cosign
         uses: sigstore/cosign-installer@v3.7.0
-
-      - name: Sign images with Cosign (Keyless)
+      - name: Sign API image (keyless)
         env:
           COSIGN_EXPERIMENTAL: "true"
-        run: |
-          cosign sign --yes ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/${{ env.API_IMAGE_NAME }}:prod
+        run: cosign sign --yes "${{ steps.setref.outputs.image_ref }}"
+      - name: Attest build provenance (API)
+        uses: actions/attest-build-provenance@v1
+        with:
+          subject-name: ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/${{ env.API_IMAGE_NAME }}
+          subject-digest: ${{ steps.build.outputs.digest }}
+          push-to-registry: true
+      # Optional SBOM attachment (enable if desired)
+      # - name: Generate SBOM (API) and attach
+      #   uses: anchore/sbom-action@v0
+      #   with:
+      #     image: ${{ steps.setref.outputs.image_ref }}
+      #     format: cyclonedx-json
+      #     artifact-name: api-sbom.cdx.json
 
+  # Production deploy only for stable release tags vX.Y.Z, or manual dispatch with version set/force_deploy
   deploy:
-    name: Deploy
-    needs: [detect-changes, build-api, build-caddy]
+    name: Deploy (production)
+    needs: [meta, detect-changes, build-api, build-caddy]
     if: >
       always() && (
-        (github.event_name == 'workflow_dispatch' && inputs.force_deploy)
-        || needs.detect-changes.outputs.api == 'true'
-        || needs.detect-changes.outputs.dashboard == 'true'
-        || needs.detect-changes.outputs.infra == 'true'
+        (needs.meta.outputs.is_stable_release == 'true') ||
+        (github.event_name == 'workflow_dispatch' && (inputs.version || inputs.force_deploy))
       )
     runs-on: ubuntu-latest
     environment:
       name: production
       url: https://api.orbitcheck.io
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - name: Clean up previous deployment directory on server
         uses: appleboy/ssh-action@v1.0.3
@@ -257,14 +339,13 @@ jobs:
           username: ${{ env.REMOTE_USER }}
           key: ${{ secrets.HETZNER_SSH_KEY }}
           script: |
+            set -euo pipefail
             echo "Removing old deployment directory ${{ env.REMOTE_TARGET_BASE_DIR }}..."
-            # Use sudo to ensure we can remove the directory even if ownership
-            # was changed to another user in a previous failed run.
             sudo rm -rf "${{ env.REMOTE_TARGET_BASE_DIR }}"
             echo "Cleanup complete."
 
-      - name: Upload infra to server
-        if: needs.detect-changes.outputs.infra == 'true' || (github.event_name == 'workflow_dispatch' && inputs.force_deploy)
+      - name: Upload infra to server (only when infra changed or manual)
+        if: needs.meta.outputs.is_stable_release == 'true' || needs.detect-changes.outputs.infra == 'true' || (github.event_name == 'workflow_dispatch' && inputs.force_deploy)
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.HETZNER_HOST }}
@@ -274,7 +355,7 @@ jobs:
           target: "${{ env.REMOTE_TARGET_BASE_DIR }}/infra"
           strip_components: 1
 
-      - name: Copy project files and deploy script
+      - name: Copy deploy script
         uses: appleboy/scp-action@v0.1.4
         with:
           host: ${{ secrets.HETZNER_HOST }}
@@ -287,12 +368,16 @@ jobs:
       - name: Deploy files and restart services
         uses: appleboy/ssh-action@v1.0.3
         env:
-          DEBUG: "1"
+          DEBUG: ${{ env.DEBUG }}
         with:
           host: ${{ secrets.HETZNER_HOST }}
           username: ${{ env.REMOTE_USER }}
           key: ${{ secrets.HETZNER_SSH_KEY }}
-          envs: NEEDS_INFRA_CHANGES,NEEDS_DASHBOARD_CHANGES,NEEDS_API_CHANGES,IS_WORKFLOW_DISPATCH,FORCE_DEPLOY,REMOTE_TARGET_BASE_DIR,REMOTE_CONFIGS_DIR,REMOTE_DASHBOARD_VOLUME_DIR,REMOTE_RUNTIME_USER,REMOTE_SYSTEMD_USER_DIR,REGISTRY,IMAGE_OWNER,API_IMAGE_NAME
+          envs: |
+            NEEDS_INFRA_CHANGES,NEEDS_DASHBOARD_CHANGES,NEEDS_API_CHANGES,IS_WORKFLOW_DISPATCH,FORCE_DEPLOY,
+            REMOTE_TARGET_BASE_DIR,REMOTE_CONFIGS_DIR,REMOTE_DASHBOARD_VOLUME_DIR,REMOTE_RUNTIME_USER,REMOTE_SYSTEMD_USER_DIR,
+            REGISTRY,IMAGE_OWNER,API_IMAGE_NAME,CADDY_IMAGE_NAME,
+            API_IMAGE_REF,CADDY_IMAGE_REF,RELEASE_VERSION,FORCE_RESTART
           script: |
             set -euo pipefail
 
@@ -302,7 +387,28 @@ jobs:
             export NEEDS_API_CHANGES="${{ needs.detect-changes.outputs.api }}"
             export IS_WORKFLOW_DISPATCH="${{ github.event_name == 'workflow_dispatch' }}"
             export FORCE_DEPLOY="${{ inputs.force_deploy }}"
+            export FORCE_RESTART="${{ inputs.force_restart || false }}"
 
-            # Ensure script is executable and run it
+            # Prefer immutable refs (name@sha256:digest). Fall back to version tag if provided manually.
+            export API_IMAGE_REF="${{ needs.build-api.outputs.image_ref || (format('{0}/{1}/{2}:{3}', env.REGISTRY, env.IMAGE_OWNER, env.API_IMAGE_NAME, needs.meta.outputs.version)) }}"
+            export CADDY_IMAGE_REF="${{ needs.build-caddy.outputs.image_ref || (format('{0}/{1}/{2}:{3}', env.REGISTRY, env.IMAGE_OWNER, env.CADDY_IMAGE_NAME, needs.meta.outputs.version)) }}"
+
+            # Version (may be empty if not a tag)
+            export RELEASE_VERSION="${{ needs.meta.outputs.version }}"
+
             chmod +x "${{ env.REMOTE_TARGET_BASE_DIR }}/deploy.sh"
             "${{ env.REMOTE_TARGET_BASE_DIR }}/deploy.sh"
+
+  # --- Ready for Scenario 2 (staging) ---
+  # To enable staging, create an environment "staging" and host secrets (e.g., HETZNER_HOST_STAGING),
+  # then uncomment the job below. Pre-release tags (vX.Y.Z-rc.N) will deploy there.
+  # deploy-staging:
+  #   name: Deploy (staging)
+  #   needs: [meta, build-api, build-caddy, build-dashboard-dist]
+  #   if: needs.meta.outputs.is_prerelease == 'true'
+  #   runs-on: ubuntu-latest
+  #   environment:
+  #     name: staging
+  #     url: https://staging.orbitcheck.io
+  #   steps:
+  #     - run: echo "Deploy to staging here using the same API_IMAGE_REF and CADDY_IMAGE_REF."

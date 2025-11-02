@@ -85,6 +85,7 @@ validate_required_vars() {
         "REGISTRY"
         "IMAGE_OWNER"
         "API_IMAGE_NAME"
+        "CADDY_IMAGE_NAME" 
     )
     
     for var in "${required_vars[@]}"; do
@@ -104,6 +105,15 @@ validate_required_vars() {
 : "${NEEDS_API_CHANGES:=false}"
 : "${IS_WORKFLOW_DISPATCH:=false}"
 : "${FORCE_DEPLOY:=false}"
+
+: "${NEEDS_DASHBOARD_CHANGES:=false}"
+: "${API_IMAGE_REF:=}"        # e.g., ghcr.io/org/api@sha256:...
+: "${CADDY_IMAGE_REF:=}"      # e.g., ghcr.io/org/caddy@sha256:...
+: "${RELEASE_VERSION:=}"      # e.g., v1.2.3
+: "${FORCE_RESTART:=false}"
+
+NEEDS_DASHBOARD_CHANGES=$(normalize_bool "$NEEDS_DASHBOARD_CHANGES")
+FORCE_RESTART=$(normalize_bool "$FORCE_RESTART")
 
 # Validate all required variables
 validate_required_vars
@@ -211,6 +221,31 @@ verify_podman_quadlet() {
     fi
 }
 
+# Resolve immutable image ref for a service:
+# - Prefer explicit digest ref (SERVICE_IMAGE_REF)
+# - Else use version tag (RELEASE_VERSION)
+# - Else error (we don't want floating tags in prod)
+resolve_image_ref() {
+  local svc_name="$1"           # "api" or "caddy"
+  local image_name="$2"         # e.g., "$API_IMAGE_NAME" or "$CADDY_IMAGE_NAME"
+  local explicit_ref="$3"       # e.g., "$API_IMAGE_REF" or "$CADDY_IMAGE_REF"
+
+  local repo="${REGISTRY}/${IMAGE_OWNER}/${image_name}"
+
+  if [[ -n "$explicit_ref" ]]; then
+    echo "$explicit_ref"
+    return 0
+  fi
+
+  if [[ -n "$RELEASE_VERSION" ]]; then
+    echo "${repo}:${RELEASE_VERSION}"
+    return 0
+  fi
+
+  log_error "No immutable ref or version provided for ${svc_name} (${repo}). Provide API_IMAGE_REF/CADDY_IMAGE_REF or RELEASE_VERSION."
+  return 1
+}
+
 # ============================================================================
 # Runtime User Functions (defined here for syntax highlighting)
 # ============================================================================
@@ -288,6 +323,48 @@ runtime_wait_for_db() {
     journalctl --user -u "$db_unit" --no-pager -n 20 || true
   fi
   return 1
+}
+
+# Replace Image= lines for API and Caddy with pinned refs
+runtime_patch_quadlet_images() {
+  local dest_sys_d="$1"
+
+  local api_ref
+  api_ref="$(resolve_image_ref "api" "$API_IMAGE_NAME" "$API_IMAGE_REF")" || return 1
+  local caddy_ref
+  caddy_ref="$(resolve_image_ref "caddy" "$CADDY_IMAGE_NAME" "$CADDY_IMAGE_REF")" || return 1
+
+  log_info "Patching Quadlet Image= lines with immutable refs"
+  log_info "  API   -> $api_ref"
+  log_info "  Caddy -> $caddy_ref"
+
+  shopt -s nullglob
+  local f
+  local api_patched=0 caddy_patched=0
+
+  for f in "$dest_sys_d"/*.container "$dest_sys_d"/*.pod; do
+    [[ -f "$f" ]] || continue
+
+    # Patch API lines that reference the API image path
+    if grep -Eq "^\s*Image\s*=\s*.*/${API_IMAGE_NAME}(:|@)" "$f"; then
+      sed -i -E "s#^(\s*Image\s*=\s*).*/${API_IMAGE_NAME}(:|@)[^[:space:]]*#\1${api_ref}#g" "$f"
+      ((api_patched++))
+    fi
+
+    # Patch Caddy lines that reference the Caddy image path
+    if grep -Eq "^\s*Image\s*=\s*.*/${CADDY_IMAGE_NAME}(:|@)" "$f"; then
+      sed -i -E "s#^(\s*Image\s*=\s*).*/${CADDY_IMAGE_NAME}(:|@)[^[:space:]]*#\1${caddy_ref}#g" "$f"
+      ((caddy_patched++))
+    fi
+  done
+
+  if (( api_patched == 0 )); then
+    log_warning "No API Image= lines patched; ensure Quadlet files reference .../${API_IMAGE_NAME}:<tag>"
+  fi
+  if (( caddy_patched == 0 )); then
+    log_warning "No Caddy Image= lines patched; ensure Quadlet files reference .../${CADDY_IMAGE_NAME}:<tag>"
+  fi
+  log_success "Quadlet images patched (API: $api_patched, Caddy: $caddy_patched)"
 }
 
 runtime_deploy_quadlet_files() {
@@ -588,7 +665,7 @@ runtime_run_migrations() {
         log_info "Migration attempt $attempt/$max_attempts..."
         if podman run --rm "${pod_args[@]}" \
             --env-file "$env_file" \
-            "$image" sh -lc "npm run migrate:ci"; then
+            "$image" sh -c "npm run migrate:ci"; then
             log_success "Migrations completed successfully"
             return 0
         fi
@@ -712,6 +789,7 @@ runtime_main_deployment() {
     local dest_user_cfg="$HOME/.config"
 
     # These file deployments should always happen if the deploy job runs
+    runtime_patch_quadlet_images "$dest_sys_d"
     runtime_deploy_quadlet_files "$src" "$dest_sys_d"
     runtime_deploy_env_files "$src" "$dest_user_cfg"
 
@@ -728,41 +806,63 @@ runtime_main_deployment() {
     local -a pod_args=()
     [[ -n "$pod_name" ]] && pod_args+=(--pod "$pod_name")
 
-    # --- RESTRUCTURED LOGIC ---
-    if [[ "$NEEDS_API_CHANGES" == "true" ]] || [[ "$NEEDS_INFRA_CHANGES" == "true" ]] || [[ "$IS_WORKFLOW_DISPATCH" == "true" && "$FORCE_DEPLOY" == "true" ]]; then
-        if [[ "$NEEDS_API_CHANGES" == "true" ]] || [[ "$FORCE_DEPLOY" == "true" ]]; then
-            log_info "API changes or force deploy detected. Running full deployment with migrations."
-            # --- Service Management is now the FIRST step ---
-            runtime_manage_systemd_services "$dest_sys_d"
-            
-            # --- Database Operations (only for API changes) ---
-            local admin_token_file="$HOME/.secrets/infisical/${service}-infra.token"
-            local admin_env="$cfg_dir/${service}.dbadmin.env"
+    # Decide what to do
+    local should_restart="false"
+    local run_migrations="false"
 
-            runtime_fetch_infisical_secrets "$service" "$admin_token_file" "/api-infra" "$admin_env"
+    # A tagged release always redeploys and runs migrations
+    if [[ -n "$RELEASE_VERSION" ]]; then
+    should_restart="true"
+    run_migrations="true"
+    fi
 
-            # --- Wait for DB to be ready AFTER services are started ---
-            runtime_wait_for_db "$admin_env" "${pod_args[@]}"
-            
-            runtime_provision_database "$admin_env" "${pod_args[@]}"
+    # File-based change detection
+    if [[ "$NEEDS_API_CHANGES" == "true" ]]; then
+    should_restart="true"
+    run_migrations="true"
+    fi
+    if [[ "$NEEDS_INFRA_CHANGES" == "true" || "$NEEDS_DASHBOARD_CHANGES" == "true" ]]; then
+    should_restart="true"
+    fi
 
-            # Prepare env for migrations
-            local image="$REGISTRY/$IMAGE_OWNER/$API_IMAGE_NAME:prod"
-            local mig_env; mig_env="$(mktemp)"; trap "rm -f '$mig_env'" RETURN
-            chmod 600 "$mig_env"
-            [[ -f "$cfg_dir/$service.env" ]] && cat "$cfg_dir/$service.env" >> "$mig_env"
-            [[ -f "$cfg_dir/${service}.secrets.env" ]] && cat "$cfg_dir/${service}.secrets.env" >> "$mig_env"
-            
-            # Migrate
-            runtime_run_migrations "$image" "$mig_env" 10 "${pod_args[@]}"
+    # Force flags
+    if [[ "$IS_WORKFLOW_DISPATCH" == "true" && "$FORCE_DEPLOY" == "true" ]]; then
+    should_restart="true"
+    # Be conservative and run migrations; they're idempotent
+    run_migrations="true"
+    fi
+    if [[ "$FORCE_RESTART" == "true" ]]; then
+    should_restart="true"
+    fi
 
-        elif [[ "$NEEDS_INFRA_CHANGES" == "true" ]]; then
-            log_info "Infrastructure changes detected. Restarting services without data migration."
-            # Just restart the services
-            runtime_manage_systemd_services "$dest_sys_d"
-        fi
+    if [[ "$should_restart" == "true" ]]; then
+    log_info "Restarting systemd units (reason: release/change/force)"
+    runtime_manage_systemd_services "$dest_sys_d"
+
+    if [[ "$run_migrations" == "true" ]]; then
+        log_info "Executing DB wait + provision + migrations"
+
+        local admin_token_file="$HOME/.secrets/infisical/${service}-infra.token"
+        local admin_env="$cfg_dir/${service}.dbadmin.env"
+
+        runtime_fetch_infisical_secrets "$service" "$admin_token_file" "/api-infra" "$admin_env"
+        runtime_wait_for_db "$admin_env" "${pod_args[@]}"
+        runtime_provision_database "$admin_env" "${pod_args[@]}"
+
+        local migration_image
+        migration_image="$(resolve_image_ref "api" "$API_IMAGE_NAME" "$API_IMAGE_REF")"
+
+        local mig_env; mig_env="$(mktemp)"; trap "rm -f '$mig_env'" RETURN
+        chmod 600 "$mig_env"
+        [[ -f "$cfg_dir/$service.env" ]] && cat "$cfg_dir/$service.env" >> "$mig_env"
+        [[ -f "$cfg_dir/${service}.secrets.env" ]] && cat "$cfg_dir/${service}.secrets.env" >> "$mig_env"
+
+        runtime_run_migrations "$migration_image" "$mig_env" 10 "${pod_args[@]}"
     else
-        log_info "No API or Infrastructure changes detected. Skipping service restart."
+        log_info "Skipping migrations for this deploy"
+    fi
+    else
+    log_info "No restart needed (no release/changes/force flags)"
     fi
 
     log_success "Runtime deployment completed successfully"
@@ -786,20 +886,26 @@ deploy_as_runtime_user() {
   script_path=$(readlink -f "${BASH_SOURCE[0]}")
 
   if ! sudo -iu "$REMOTE_RUNTIME_USER" \
-      DEBUG="${DEBUG:-0}" \
-      NEEDS_API_CHANGES="$NEEDS_API_CHANGES" \
-      NEEDS_INFRA_CHANGES="$NEEDS_INFRA_CHANGES" \
-      IS_WORKFLOW_DISPATCH="$IS_WORKFLOW_DISPATCH" \
-      FORCE_DEPLOY="$FORCE_DEPLOY" \
-      REMOTE_TARGET_BASE_DIR="$REMOTE_TARGET_BASE_DIR" \
-      REMOTE_SYSTEMD_USER_DIR="$REMOTE_SYSTEMD_USER_DIR" \
-      API_IMAGE_NAME="$API_IMAGE_NAME" \
-      REGISTRY="$REGISTRY" \
-      IMAGE_OWNER="$IMAGE_OWNER" \
-      REMOTE_CONFIGS_DIR="$REMOTE_CONFIGS_DIR" \
-      REMOTE_RUNTIME_USER="$REMOTE_RUNTIME_USER" \
-      RED="$RED" GREEN="$GREEN" YELLOW="$YELLOW" BLUE="$BLUE" NC="$NC" \
-      bash -Eeuo pipefail -c "source \"$script_path\"; runtime_main_deployment"; then
+        DEBUG="${DEBUG:-0}" \
+        NEEDS_API_CHANGES="$NEEDS_API_CHANGES" \
+        NEEDS_INFRA_CHANGES="$NEEDS_INFRA_CHANGES" \
+        NEEDS_DASHBOARD_CHANGES="${NEEDS_DASHBOARD_CHANGES:-false}" \
+        IS_WORKFLOW_DISPATCH="$IS_WORKFLOW_DISPATCH" \
+        FORCE_DEPLOY="$FORCE_DEPLOY" \
+        FORCE_RESTART="${FORCE_RESTART:-false}" \
+        REMOTE_TARGET_BASE_DIR="$REMOTE_TARGET_BASE_DIR" \
+        REMOTE_SYSTEMD_USER_DIR="$REMOTE_SYSTEMD_USER_DIR" \
+        API_IMAGE_NAME="$API_IMAGE_NAME" \
+        CADDY_IMAGE_NAME="${CADDY_IMAGE_NAME}" \
+        API_IMAGE_REF="${API_IMAGE_REF:-}" \
+        CADDY_IMAGE_REF="${CADDY_IMAGE_REF:-}" \
+        RELEASE_VERSION="${RELEASE_VERSION:-}" \
+        REGISTRY="$REGISTRY" \
+        IMAGE_OWNER="$IMAGE_OWNER" \
+        REMOTE_CONFIGS_DIR="$REMOTE_CONFIGS_DIR" \
+        REMOTE_RUNTIME_USER="$REMOTE_RUNTIME_USER" \
+        RED="$RED" GREEN="$GREEN" YELLOW="$YELLOW" BLUE="$BLUE" NC="$NC" \
+        bash -Eeuo pipefail -c "source \"$script_path\"; runtime_main_deployment"; then
 
     log_error "Deployment as runtime user failed"
     exit 1

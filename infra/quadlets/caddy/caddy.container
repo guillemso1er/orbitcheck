@@ -1,24 +1,38 @@
 [Unit]
 Description=Caddy reverse proxy Service
-
+After=network-online.target
+Wants=network-online.target
 
 [Container]
-Image=ghcr.io/guillemso1er/caddy:prod
+# Placeholder only; deploy script will replace with an immutable digest (name@sha256:...)
+Image=ghcr.io/guillemso1er/caddy:v0.0.0
 LogDriver=journald
 ContainerName=caddy
 Pod=orbitcheck.pod
+
+# Ensure the pinned digest is pulled if not present
+Pull=missing
+
+# Volumes
 Volume=%h/volumes/caddy/data:/data:Z,U
 Volume=%h/configs/caddy/config:/config:Z,U
-Label="io.containers.autoupdate=image"
+
+# Controlled rollouts via CI/CD; disable Podman auto-update
+# Label="io.containers.autoupdate=image"
+
 NoNewPrivileges=yes
+ReadOnly=true
+Tmpfs=/tmp:size=64M
 PidsLimit=500
 Ulimit=nofile=262144:262144
 
 [Service]
 Restart=always
-ExecStartPre=mkdir -p %h/volumes/caddy/data
+RestartSec=3
 
-ExecStartPre=mkdir -p %h/configs/caddy/config
+# Ensure dirs exist with sane perms before start
+ExecStartPre=/usr/bin/install -d -m 755 %h/volumes/caddy/data
+ExecStartPre=/usr/bin/install -d -m 755 %h/configs/caddy/config
 
 [Install]
 WantedBy=default.target
