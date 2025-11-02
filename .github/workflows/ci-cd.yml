@@ -346,60 +346,54 @@ jobs:
              exit 1
            fi
 
-           find_src_tag() {
-             local image="$1"; shift
-             local -a paths=("$@")
+          find_src_tag() {
+            local image="$1"; shift
+            local -a paths=("$@")
+            local candidates=("${image}:sha-${SHA}")
+            local last_change
+            last_change="$(git rev-list -1 "$SHA" -- "${paths[@]}" || true)"
+            if [ -n "$last_change" ] && [ "$last_change" != "$SHA" ]; then
+              candidates+=("${image}:sha-${last_change}")
+            fi
+            while read -r c; do
+              candidates+=("${image}:sha-${c}")
+            done < <(git rev-list "$SHA" -- "${paths[@]}" | head -n 30)
+            local src=""
+            for cand in "${candidates[@]}"; do
+              if crane manifest "$cand" >/dev/null 2>&1; then
+                src="$cand"
+                break
+              fi
+            done
+            if [ -z "$src" ]; then
+              # Write the error to stderr to avoid it being captured as output
+              echo "::error::No built image tag found for ${image} reachable from $SHA. Ensure the component was built on main before tagging." >&2
+              return 1
+            fi
+            echo "$src"
+          }
 
-             # Candidates in order:
-             # 1) Exact release-commit SHA
-             # 2) Last commit that touched the component paths at/before the tag commit
-             # 3) A few earlier commits that touched those paths (in case of CI hiccups)
-             local candidates=("${image}:sha-${SHA}")
+          promote() {
+            local image="$1"; shift
+            local -a paths=("$@")
+            local src dst dg
 
-             local last_change
-             last_change="$(git rev-list -1 "$SHA" -- "${paths[@]}" || true)"
-             if [ -n "$last_change" ] && [ "$last_change" != "$SHA" ]; then
-               candidates+=("${image}:sha-${last_change}")
-             fi
+            echo "Resolving source for ${image} from tag $VER (commit $SHA)..."
 
-             while read -r c; do
-               candidates+=("${image}:sha-${c}")
-             done < <(git rev-list "$SHA" -- "${paths[@]}" | head -n 30)
+            # Explicitly check the exit code of find_src_tag
+            src="$(find_src_tag "$image" "${paths[@]}")"
+            if [ $? -ne 0 ]; then
+                echo "::error::Failed to find a source image for ${image}. Aborting promotion." >&2
+                exit 1
+            fi
 
-             local src=""
-             for cand in "${candidates[@]}"; do
-               if crane manifest "$cand" >/dev/null 2>&1; then
-                 src="$cand"
-                 break
-               fi
-             done
-
-             if [ -z "$src" ]; then
-               echo "::error::No built image tag found for ${image} reachable from $SHA. Ensure the component was built on main before tagging."
-               return 1 # Use return code to signal failure
-             fi
-
-             echo "$src" # Print the valid source tag to stdout
-           }
-
-           promote() {
-             local image="$1"; shift
-             local -a paths=("$@")
-             local src dst dg
-
-             echo "Resolving source for ${image} from tag $VER (commit $SHA)..."
-             # Capture the output, and if the command fails, the script will exit due to "set -e"
-             src="$(find_src_tag "$image" "${paths[@]}")"
-
-             echo "✓ Found source: $src"
-
-             dst="${image}:${VER}"
-             echo "Promoting $src -> $dst"
-             docker buildx imagetools create --tag "$dst" "$src"
-
-             dg="$(crane digest "$src")"
-             echo "${image}@${dg}"
-           }
+            echo "✓ Found source: $src"
+            dst="${image}:${VER}"
+            echo "Promoting $src -> $dst"
+            docker buildx imagetools create --tag "$dst" "$src"
+            dg="$(crane digest "$src")"
+            echo "${image}@${dg}"
+          }
 
            # Define the paths that determine each component
            # API paths mirror your paths-filter (api)
