@@ -1,4 +1,4 @@
-# syntax=ghcr.io/docker/dockerfile:1.7.1
+# syntax=docker/dockerfile:1.7
 
 # Libpostal runtime (libs + CLI binaries + data)
 FROM ghcr.io/guillemso1er/libpostal-runtime:1.1-2025-10-19 AS libpostal
