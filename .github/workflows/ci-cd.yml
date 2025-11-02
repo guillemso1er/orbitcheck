@@ -274,7 +274,7 @@ jobs:
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          password: ${{ secrets.GHCR_PAT }}
       - name: Docker meta (generate tags and labels)
         id: meta
         uses: docker/metadata-action@v5
