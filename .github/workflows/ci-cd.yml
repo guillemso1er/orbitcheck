@@ -203,16 +203,6 @@ jobs:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Docker meta (generate tags and labels)
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/${{ env.CADDY_IMAGE_NAME }}
-          flavor: |
-            latest=false
-          tags: |
-            # Always publish a commit SHA tag for traceability
-            type=raw,value=sha-${{ github.sha }}
       - name: Build and push Caddy + dashboard (arm64 only)
         id: build
         uses: docker/build-push-action@v6
@@ -221,8 +211,7 @@ jobs:
           file: ${{ env.CADDY_DOCKERFILE_PATH }}
           push: true
           platforms: linux/arm64
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/${{ env.CADDY_IMAGE_NAME }}:sha-${{ github.sha }}
           build-args: |
             CADDYFILE_PATH=${{ env.CADDYFILE_PATH }}
           cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/${{ env.CADDY_IMAGE_NAME }}:buildcache
@@ -260,17 +249,7 @@ jobs:
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
-          password: ${{ secrets.GHCR_PAT }}
-      - name: Docker meta (generate tags and labels)
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/${{ env.API_IMAGE_NAME }}
-          flavor: |
-            latest=false
-          tags: |
-            # Always publish a commit SHA tag for traceability
-            type=raw,value=sha-${{ github.sha }}
+          password: ${{ secrets.GITHUB_TOKEN }}
       - name: Build and push API image (arm64 only)
         id: build
         uses: docker/build-push-action@v6
@@ -279,8 +258,7 @@ jobs:
           file: ${{ env.API_DOCKERFILE_PATH }}
           push: true
           platforms: linux/arm64
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/${{ env.API_IMAGE_NAME }}:sha-${{ github.sha }}
           cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/${{ env.API_IMAGE_NAME }}:buildcache
           cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/${{ env.API_IMAGE_NAME }}:buildcache,mode=max
       - name: Compute immutable image ref
