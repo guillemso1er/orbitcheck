@@ -657,10 +657,10 @@ EOSQL
 
 runtime_run_migrations() {
     local image="$1"
-    local env_file="$2"
-    local max_attempts="${3:-10}"
-    shift 3 || true
-    local pod_args=("$@")
+    local max_attempts="${2:-10}"
+    shift 2 || true
+    # All remaining arguments are passed to podman run
+    local podman_args=("$@")
 
     log_info "Running database migrations with image: $image"
     podman pull "$image" 2>/dev/null || log_warning "Could not pull latest image, using cached"
@@ -668,9 +668,8 @@ runtime_run_migrations() {
     local attempt=1
     while [[ $attempt -le $max_attempts ]]; do
         log_info "Migration attempt $attempt/$max_attempts..."
-        if podman run --rm "${pod_args[@]}" \
-            --env-file "$env_file" \
-            "$image" sh -c "npm run migrate:ci"; then
+        # Pass the podman_args array directly
+        if podman run --rm "${podman_args[@]}" "$image" sh -c "npm run migrate:ci"; then
             log_success "Migrations completed successfully"
             return 0
         fi
@@ -857,12 +856,23 @@ runtime_main_deployment() {
             local migration_image
             migration_image="$(resolve_image_ref "api" "$API_IMAGE_NAME" "$API_IMAGE_REF")"
 
-            local mig_env; mig_env="$(mktemp)"; trap "rm -f '$mig_env'" RETURN
-            chmod 600 "$mig_env"
-            [[ -f "$cfg_dir/$service.env" ]] && cat "$cfg_dir/$service.env" >> "$mig_env"
-            [[ -f "$cfg_dir/${service}.secrets.env" ]] && cat "$cfg_dir/${service}.secrets.env" >> "$mig_env"
+            # Build an array of arguments for the podman command
+            local -a migration_args=()
+            migration_args+=("${pod_args[@]}") # Add pod args first
 
-            runtime_run_migrations "$migration_image" "$mig_env" 10 "${pod_args[@]}"
+            # Add env files if they exist
+            local env_file="$cfg_dir/$service.env"
+            local secrets_file="$cfg_dir/${service}.secrets.env"
+            
+            if [[ -f "$env_file" ]]; then
+                migration_args+=(--env-file "$env_file")
+            fi
+            if [[ -f "$secrets_file" ]]; then
+                migration_args+=(--env-file "$secrets_file")
+            fi
+
+            # Call with the image, attempt count, and the combined arguments array
+            runtime_run_migrations "$migration_image" 10 "${migration_args[@]}"
         else
             log_info "Skipping migrations for this deploy"
         fi
