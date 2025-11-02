@@ -16,6 +16,7 @@ Pull=missing
 # Volumes
 Volume=%h/volumes/caddy/data:/data:Z,U
 Volume=%h/configs/caddy/config:/config:Z,U
+Volume=%h/volumes/caddy/logs:/var/log/caddy:Z,U
 
 # Controlled rollouts via CI/CD; disable Podman auto-update
 # Label="io.containers.autoupdate=image"
@@ -33,6 +34,7 @@ RestartSec=3
 # Ensure dirs exist with sane perms before start
 ExecStartPre=/usr/bin/install -d -m 755 %h/volumes/caddy/data
 ExecStartPre=/usr/bin/install -d -m 755 %h/configs/caddy/config
+ExecStartPre=/usr/bin/install -d -m 755 %h/volumes/caddy/logs
 
 [Install]
 WantedBy=default.target

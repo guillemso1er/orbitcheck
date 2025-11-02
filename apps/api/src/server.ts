@@ -41,6 +41,7 @@ export async function build(pool: Pool, redis: IORedisType): Promise<FastifyInst
     }
 
     const app = Fastify({
+        http2: true,
         logger: {
             level: environment.LOG_LEVEL,
             transport: process.env.NODE_ENV === 'production'

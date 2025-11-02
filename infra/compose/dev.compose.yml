@@ -123,7 +123,7 @@ services:
 
 
   statping:
-    image: statping/statping:latest
+    image: docker.io/dockurr/statping:0.93.0
     ports:
       - "8082:80"
     volumes:
