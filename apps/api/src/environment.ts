@@ -3,7 +3,6 @@ import { randomBytes } from 'crypto';
 import 'dotenv/config'; // harmless in prod; useful for local dev
 import { bool, cleanEnv, makeValidator, num, port, str, url } from 'envalid';
 import { CRYPTO_KEY_BYTES } from './config.js'; // must match your crypto key size (bytes)
-import { is } from 'zod/v4/locales';
 
 const NODE_ENV = process.env.NODE_ENV || 'production';
 const isProd = NODE_ENV === 'production';
@@ -93,8 +92,8 @@ export const env = cleanEnv(process.env, {
   OIDC_ENABLED: bool({ default: false }),
   OIDC_CLIENT_ID: str({ default: '' }),
   OIDC_CLIENT_SECRET: str({ default: '' }),
-  OIDC_PROVIDER_URL: url({ default: '' }), // e.g., https://accounts.google.com
-  OIDC_REDIRECT_URI: isProd ? url({ default: '' }) : url({ default: 'http://localhost:8080/auth/callback' }),
+  OIDC_PROVIDER_URL: url({ default: 'https://accounts.google.com' }), // e.g., https://accounts.google.com
+  OIDC_REDIRECT_URI: isProd ? url() : url({ default: 'http://localhost:8080/auth/callback' }),
 
   // Stripe (optional)
   STRIPE_ENABLED: bool({ default: false }),

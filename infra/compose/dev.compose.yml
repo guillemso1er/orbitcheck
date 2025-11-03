@@ -39,17 +39,58 @@ services:
       retries: 3
 
   dashboard:
-    image: node:18
+    build:
+      context: ../../ # Build context is the monorepo root
+      dockerfile: apps/dashboard/Dockerfile.dev
     working_dir: /app
     volumes:
+      # Mount the entire project source code into the container
       - ../../:/app
-    command: sh -c "npm install -g pnpm && pnpm install && cd apps/dashboard && pnpm run dev --host 0.0.0.0"
+      # This named volume prevents the local mount from overwriting the
+      # node_modules installed inside the image.
+      - node_modules_dashboard:/app/node_modules
+    # Override the command to run the Vite dev server
+    # Using pnpm filter is more robust than `cd`
+    command: sh -c "pnpm --filter @orbitcheck/dashboard run dev --host 0.0.0.0"
     ports:
       - "5173:5173"
     environment:
       - CI=true
+      - CHOKIDAR_USEPOLLING=true # Recommended for reliable file watching in Docker
     depends_on:
       - api
+
+  # --- API SERVICE (with Hot Reload) ---
+  api:
+    build:
+      context: ../../
+      dockerfile: apps/api/Dockerfile.dev
+    env_file:
+      - ../../apps/api/.env.local
+    volumes:
+      # Mount the entire project source code into the container
+      - ../../:/app
+      # Use a named volume to preserve node_modules from the image build
+      - node_modules_api:/app/node_modules
+    # Override the command to run the development server with tsx watch
+    command: sh -c "pnpm --filter @orbitcheck/api run dev"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      valkey:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+    # NOTE: Your dev server might not have a /health endpoint immediately.
+    # You may need to comment out this healthcheck for the dev environment.
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
 
   caddy:
       build: ./caddy
@@ -68,27 +109,7 @@ services:
         valkey:
           condition: service_healthy
 
-  api:
-    build:
-      context: ../../
-      dockerfile: apps/api/Dockerfile
-    env_file:
-      - ../../apps/api/.env.local
-    depends_on:
-      postgres:
-        condition: service_healthy
-      valkey:
-        condition: service_healthy
-      minio:
-        condition: service_healthy
-    ports:
-      - "8080:8080"
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 30s
+
 
   prom:
     image: prom/prometheus:latest
@@ -152,3 +173,5 @@ volumes:
   caddy_config: {}
   statping_data: {}
   uptime_kuma_data: {}
+  node_modules_dashboard: {}
+  node_modules_api: {}
