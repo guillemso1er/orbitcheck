@@ -1,20 +1,15 @@
-import { once } from 'node:events';
-
-if (process.env.NODE_ENV !== 'production') {
-    await import('dotenv/config');
-}
-
 import cookie from "@fastify/cookie";
 import secureSession from '@fastify/secure-session';
 import metrics from "@immobiliarelabs/fastify-metrics";
 import * as Sentry from '@sentry/node';
 import { Queue, Worker } from 'bullmq';
+import * as dotenv from 'dotenv';
 import type { FastifyInstance } from "fastify";
 import Fastify from "fastify";
 import { type Redis as IORedisType, Redis } from 'ioredis';
 import cron from 'node-cron';
+import { once } from 'node:events';
 import { Pool } from "pg";
-
 import { MESSAGES, REQUEST_TIMEOUT_MS, ROUTES, SESSION_MAX_AGE_MS, STARTUP_SMOKE_TEST_TIMEOUT_MS } from "./config.js";
 import { runLogRetention } from './cron/retention.js';
 import { environment } from "./environment.js";
@@ -31,6 +26,11 @@ import { registerAuthenticatedDocsRoutes } from "./routes/authenticatedDocs.js";
 import { registerHealthRoutes } from "./routes/health.js";
 import startupGuard from './startup-guard.js';
 import { registerRoutes } from "./web.js";
+if (process.env.NODE_ENV !== 'production' && process.env.NODE_ENV !== 'test') {
+    dotenv.config();
+}
+
+
 
 export async function build(pool: Pool, redis: IORedisType): Promise<FastifyInstance> {
     if (environment.SENTRY_DSN) {
@@ -39,9 +39,8 @@ export async function build(pool: Pool, redis: IORedisType): Promise<FastifyInst
             tracesSampleRate: 1,
         });
     }
-
     const app = Fastify({
-        http2: true,
+        ...(environment.HTTP2_ENABLED ? { http2: true as const } : {}),
         logger: {
             level: environment.LOG_LEVEL,
             transport: process.env.NODE_ENV === 'production'

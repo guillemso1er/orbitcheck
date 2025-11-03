@@ -2,8 +2,5 @@ packages:
   - apps/*
   - packages/*
 
-# neverBuiltDependencies:
-#   - node-postal
-
 onlyBuiltDependencies:
   - msgpackr-extract

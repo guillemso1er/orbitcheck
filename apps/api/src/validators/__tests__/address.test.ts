@@ -1,20 +1,16 @@
 import * as cpModule from 'node:child_process';
-import * as postal from 'node-postal';
 
 import { detectPoBox, normalizeAddress } from '../address.js';
 
 // Mock the entire 'node:child_process' module
 jest.mock('node:child_process');
 
-// Mock node-postal
-jest.mock('node-postal', () => ({
-  parser: {
-    parse_address: jest.fn(),
-  },
-}));
+// Mock parseAddressCLI
+jest.mock('../../lib/libpostal-cli.js');
 
 // Create a typed constant for the mocked function
 const mockedExecFile = cpModule.execFile as jest.MockedFunction<typeof cpModule.execFile>;
+const mockedParseAddressCLI = jest.mocked(require('../../lib/libpostal-cli.js').parseAddressCLI);
 
 describe('Address Validators', () => {
   describe('detectPoBox', () => {
@@ -47,19 +43,19 @@ describe('Address Validators', () => {
     beforeEach(() => {
       // Clear any previous mock implementations and calls
       mockedExecFile.mockClear();
-      (postal.parser.parse_address as jest.Mock).mockClear();
+      mockedParseAddressCLI.mockClear();
     });
 
     it('should normalize a basic address using libpostal', async () => {
-      // Mock the parsed result as an array of objects with component and value
-      (postal.parser.parse_address as jest.Mock).mockReturnValue([
-        { component: 'house_number', value: '123' },
-        { component: 'road', value: 'Main St' },
-        { component: 'city', value: 'New York' },
-        { component: 'state', value: 'NY' },
-        { component: 'postcode', value: '10001' },
-        { component: 'country', value: 'US' },
-      ]);
+      // Mock the parsed result as an object with component keys
+      mockedParseAddressCLI.mockReturnValue({
+        house_number: '123',
+        road: 'Main St',
+        city: 'New York',
+        state: 'NY',
+        postcode: '10001',
+        country: 'US',
+      });
 
       const addr = {
         line1: '123 Main Street',
@@ -70,7 +66,7 @@ describe('Address Validators', () => {
 
       const result = await normalizeAddress(addr);
 
-      expect(postal.parser.parse_address).toHaveBeenCalledWith('123 Main Street, New York, 10001, US');
+      expect(mockedParseAddressCLI).toHaveBeenCalledWith('123 Main Street, New York, 10001, US');
       expect(result.line1).toBe('123 Main St');
       expect(result.city).toBe('New York');
       expect(result.postal_code).toBe('10001');
@@ -79,7 +75,7 @@ describe('Address Validators', () => {
     });
 
     it('should handle fallback normalization when libpostal fails', async () => {
-      (postal.parser.parse_address as jest.Mock).mockImplementation(() => {
+      mockedParseAddressCLI.mockImplementation(() => {
         throw new Error('Mock libpostal error');
       });
 
@@ -103,7 +99,7 @@ describe('Address Validators', () => {
     });
 
     it('should handle missing fields gracefully', async () => {
-      (postal.parser.parse_address as jest.Mock).mockImplementation(() => {
+      mockedParseAddressCLI.mockImplementation(() => {
         throw new Error('Mock error');
       });
 

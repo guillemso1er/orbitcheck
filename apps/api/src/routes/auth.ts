@@ -143,7 +143,7 @@ export function registerAuthRoutes(app: FastifyInstance, pool: Pool): void {
             const request_id = generateRequestId();
             const body = request.body as any;
             const { email, password, confirm_password } = body;
-            request.log.info({ email: !!email, password: !!password, confirm_password: !!confirm_password, passwordType: typeof password, bodyKeys: Object.keys(body), body: body }, 'Auth register body check');
+            request.log.info({ email: !!email, password: !!password, confirm_password: !!confirm_password, passwordType: typeof password, bodyKeys: Object.keys(body)}, 'Auth register body check');
             if (!password || typeof password !== 'string') {
                 return sendError(rep, HTTP_STATUS.BAD_REQUEST, ERROR_CODES.INVALID_INPUT, 'Valid password is required', request_id);
             }
@@ -219,10 +219,11 @@ export function registerAuthRoutes(app: FastifyInstance, pool: Pool): void {
             });
             const patToken = PAT_PREFIX + patBuf.toString('hex');
             const patHash = crypto.createHash(HASH_ALGORITHM).update(patToken).digest('hex');
+            const tokenId = crypto.randomUUID();
 
             await pool.query(
-                "INSERT INTO personal_access_tokens (user_id, name, token_hash, scopes, expires_at) VALUES ($1, $2, $3, $4, $5)",
-                [user.id, DEFAULT_PAT_NAME, patHash, PAT_SCOPES_ALL, null]
+                "INSERT INTO personal_access_tokens (user_id, name, token_id, token_hash, scopes, env, expires_at) VALUES ($1, $2, $3, $4, $5, $6, $7)",
+                [user.id, DEFAULT_PAT_NAME, tokenId, patHash, PAT_SCOPES_ALL, 'live', null]
             );
 
             // Set session cookie for dashboard access
@@ -295,10 +296,11 @@ export function registerAuthRoutes(app: FastifyInstance, pool: Pool): void {
             });
             const patToken = PAT_PREFIX + patBuf.toString('hex');
             const patHash = crypto.createHash(HASH_ALGORITHM).update(patToken).digest('hex');
+            const tokenId = crypto.randomUUID();
 
             await pool.query(
-                "INSERT INTO personal_access_tokens (user_id, name, token_hash, scopes, expires_at) VALUES ($1, $2, $3, $4, $5)",
-                [user.id, DEFAULT_PAT_NAME, patHash, PAT_SCOPES_ALL, null]
+                "INSERT INTO personal_access_tokens (user_id, name, token_id, token_hash, scopes, env, expires_at) VALUES ($1, $2, $3, $4, $5, $6, $7)",
+                [user.id, DEFAULT_PAT_NAME, tokenId, patHash, PAT_SCOPES_ALL, 'live', null]
             );
 
             // Set session cookie for dashboard access

@@ -84,7 +84,7 @@ export async function verifyPat(req: FastifyRequest, pool: Pool) {
   if (!parsed) return null;
 
   const { rows } = await pool.query(
-    "SELECT id, org_id, user_id, scopes, ip_allowlist, expires_at, disabled FROM personal_access_tokens WHERE token_id = $1 AND hashed_secret IS NOT NULL",
+    "SELECT id, org_id, user_id, scopes, ip_allowlist, expires_at, disabled FROM personal_access_tokens WHERE token_id = $1 AND token_hash IS NOT NULL",
     [parsed.tokenId]
   );
 
@@ -94,7 +94,7 @@ export async function verifyPat(req: FastifyRequest, pool: Pool) {
   if (pat.disabled) return null;
   if (pat.expires_at && pat.expires_at < new Date()) return null;
 
-  const ok = await argon2.verify(pat.hashed_secret, parsed.secret + PAT_PEPPER);
+  const ok = await argon2.verify(pat.token_hash, parsed.secret + PAT_PEPPER);
   if (!ok) return null;
 
   // Check IP allowlist if specified
@@ -226,10 +226,10 @@ export function registerPatRoutes(app: FastifyInstance, pool: Pool): void {
       // Store in database
       const { rows } = await pool.query(
         `INSERT INTO personal_access_tokens
-         (org_id, user_id, token_id, hashed_secret, name, scopes, env, expires_at, ip_allowlist, project_id)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+         (user_id, token_id, token_hash, name, scopes, env, expires_at, ip_allowlist, project_id)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
          RETURNING id, created_at`,
-        [orgId, userId, tokenId, hashedSecret, name, scopes, env, expiresAt, ip_allowlist || [], project_id]
+        [userId, tokenId, hashedSecret, name, scopes, env, expiresAt, ip_allowlist || [], project_id]
       );
 
       const response = {
@@ -295,7 +295,7 @@ export function registerPatRoutes(app: FastifyInstance, pool: Pool): void {
       const { rows } = await pool.query(
         `SELECT id, token_id, name, scopes, env, last_used_at, last_used_ip, expires_at, disabled, created_at
          FROM personal_access_tokens
-         WHERE user_id = $1 AND hashed_secret IS NOT NULL
+         WHERE user_id = $1 AND token_hash IS NOT NULL
          ORDER BY created_at DESC`,
         [userId]
       );

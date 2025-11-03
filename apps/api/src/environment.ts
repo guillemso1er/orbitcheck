@@ -3,6 +3,7 @@ import { randomBytes } from 'crypto';
 import 'dotenv/config'; // harmless in prod; useful for local dev
 import { bool, cleanEnv, makeValidator, num, port, str, url } from 'envalid';
 import { CRYPTO_KEY_BYTES } from './config.js'; // must match your crypto key size (bytes)
+import { is } from 'zod/v4/locales';
 
 const NODE_ENV = process.env.NODE_ENV || 'production';
 const isProd = NODE_ENV === 'production';
@@ -133,4 +134,5 @@ export const environment = {
   DATABASE_URL: env.DATABASE_URL || env.APP_DATABASE_URL || (isProd ? '' : 'postgres://postgres:postgres@localhost:5432/orbitcheck'),
   // If CORS_ORIGINS is empty in prod, fallback to FRONTEND_URL
   CORS_ORIGINS: env.CORS_ORIGINS.length ? env.CORS_ORIGINS : [env.FRONTEND_URL],
+  HTTP2_ENABLED: isProd
 } as const;

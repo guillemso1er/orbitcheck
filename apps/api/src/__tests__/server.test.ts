@@ -19,9 +19,6 @@ jest.mock('@orbitcheck/contracts', () => ({
   }
 }));
 
-jest.mock('@dotenvx/dotenvx/config', () => ({
-
-}));
 
 jest.mock('../environment', () => ({
   environment: {
@@ -96,9 +93,7 @@ jest.mock('../jobs/refreshDisposable', () => ({
   disposableProcessor: jest.fn(),
 }));
 
-jest.mock('node-postal', () => ({
-  parse: jest.fn(() => ({})),
-}));
+
 
 // Mock fs and yaml for OpenAPI spec loading
 jest.mock('node:fs', () => ({

@@ -14,7 +14,7 @@ const up = (pgm) => {
       id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
       user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
       token_id text NOT NULL UNIQUE,
-      hashed_secret text NOT NULL,
+      token_hash text NOT NULL,
       name text NOT NULL,
       scopes text[] NOT NULL,
       ip_allowlist cidr[] DEFAULT '{}',
@@ -29,7 +29,7 @@ const up = (pgm) => {
   `);
   pgm.sql(`CREATE INDEX ON personal_access_tokens(user_id);`);
   pgm.sql(`CREATE INDEX ON personal_access_tokens(token_id);`);
-  pgm.sql(`CREATE INDEX ON personal_access_tokens(hashed_secret);`);
+  pgm.sql(`CREATE INDEX ON personal_access_tokens(token_hash);`);
 
   pgm.sql(`ALTER TABLE users ADD COLUMN role text DEFAULT 'developer';`);
   pgm.sql(`ALTER TABLE api_keys ADD COLUMN encrypted_key text;`);

@@ -135,8 +135,8 @@ export function registerApiKeysRoutes(app: FastifyInstance, pool: Pool): void {
 
             // Create PAT for the new API key
             await pool.query(
-                "INSERT INTO personal_access_tokens (user_id, name, token_hash, scopes, expires_at) VALUES ($1, $2, $3, $4, $5)",
-                [request.user_id, name || 'API Key', keyHash, ['*'], null]
+                "INSERT INTO personal_access_tokens (user_id, token_id, name, token_hash, scopes, env, expires_at) VALUES ($1, $2, $3, $4, $5, $6, $7)",
+                [request.user_id, crypto.randomUUID(), name || 'API Key', keyHash, ['*'], 'live', null]
             );
             const response: any = {
                 id: newKey.id,

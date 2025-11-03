@@ -109,6 +109,9 @@ describe('API Keys Routes (JWT Auth)', () => {
             if (upperQuery.includes('INSERT INTO API_KEYS')) {
                 return Promise.resolve({ rows: [{ id: 'new_key_id', created_at: new Date().toISOString() }] });
             }
+            if (upperQuery.includes('INSERT INTO PERSONAL_ACCESS_TOKENS')) {
+                return Promise.resolve({ rows: [{ id: 'pat_id' }] });
+            }
             if (upperQuery.includes('UPDATE API_KEYS SET STATUS')) {
                 return Promise.resolve({ rowCount: 1 });
             }
