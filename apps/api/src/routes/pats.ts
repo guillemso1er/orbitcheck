@@ -213,7 +213,7 @@ export function registerPatRoutes(app: FastifyInstance, pool: Pool): void {
 
       // Create token
       const { token, tokenId, hashedSecret } = await createPat({
-        orgId,
+        orgId: userId,
         userId,
         name,
         scopes,

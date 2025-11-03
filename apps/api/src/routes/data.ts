@@ -277,7 +277,7 @@ export function registerDataRoutes(app: FastifyInstance, pool: Pool): void {
 
                 // Anonymize user data (keep account structure but remove personal data)
                 await pool.query(
-                    'UPDATE users SET email = CONCAT(\'deleted-user-\', id, \'@anonymized.orbitcheck\'), password_hash = NULL WHERE id = $1',
+                    'UPDATE users SET email = CONCAT(\'deleted-user-\', id, \'@anonymized.orbitcheck\'), password_hash = \'deleted\' WHERE id = $1',
                     [user_id]
                 );
             }

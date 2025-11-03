@@ -193,17 +193,18 @@ export function registerAuthRoutes(app: FastifyInstance, pool: Pool): void {
                     else resolve(buf);
                 });
             });
-            const cipher = crypto.createCipheriv(ENCRYPTION_ALGORITHM, Buffer.from(environment.ENCRYPTION_KEY, ENCODING_HEX), iv);
-            let encrypted = await new Promise<string>((resolve, reject) => {
-                try {
-                    const updateResult = cipher.update(fullKey, ENCODING_UTF8, ENCODING_HEX);
-                    const finalResult = cipher.final(ENCODING_HEX);
-                    resolve(updateResult + finalResult);
-                } catch (error) {
-                    reject(error);
-                }
+            const encryptedWithIv = await new Promise<string>((resolve, reject) => {
+                setImmediate(() => {
+                    try {
+                        const cipher = crypto.createCipheriv(ENCRYPTION_ALGORITHM, Buffer.from(environment.ENCRYPTION_KEY, ENCODING_HEX), iv);
+                        const updateResult = cipher.update(fullKey, ENCODING_UTF8, ENCODING_HEX);
+                        const finalResult = cipher.final(ENCODING_HEX);
+                        resolve(iv.toString('hex') + ':' + updateResult + finalResult);
+                    } catch (error) {
+                        reject(error);
+                    }
+                });
             });
-            const encryptedWithIv = iv.toString('hex') + ':' + encrypted;
 
             await pool.query(
                 "INSERT INTO api_keys (project_id, prefix, hash, encrypted_key, status, name) VALUES ($1, $2, $3, $4, $5, $6)",

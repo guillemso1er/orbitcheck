@@ -67,7 +67,7 @@ export async function setupDocumentation<TServer extends RawServerBase = RawServ
                     },
                 },
             },
-            servers: [{ url: `http://localhost:${environment.PORT}`, description: 'Development server' }],
+            servers: [{ url: environment.BASE_URL, description: 'Development server' }],
         },
         transform: ({ schema, url }: { schema: any; url: string }) => {
             if (

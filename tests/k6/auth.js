@@ -194,7 +194,7 @@ export function testCreatePat(patToken, check) {
 
     const createPatPayload = JSON.stringify({
         name: 'k6-test-pat',
-        scopes: ['api-keys:read', 'api-keys:write', 'webhooks:read', 'webhooks:write']
+        scopes: ['keys:read', 'keys:write', 'webhooks:manage', 'logs:read', 'usage:read']
     });
 
     const res = http.post(`${API_V1_URL}/pats`, createPatPayload, { headers: mgmtHeaders });
@@ -210,7 +210,14 @@ export function testCreatePat(patToken, check) {
 
     check(res, {
         '[Create PAT] status 201': (r) => r.status === 201,
-        '[Create PAT] has token': (r) => r.status === 201 && patBody && patBody.token && patBody.token_id
+        '[Create PAT] has token': (r) => {
+            if (r.status !== 201) return false;
+            try {
+                return patBody && patBody.token && patBody.token_id;
+            } catch (e) {
+                return false;
+            }
+        }
     });
 
     return {

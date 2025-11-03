@@ -1,6 +1,5 @@
 import { check as k6check, sleep } from 'k6';
 import http from 'k6/http';
-import exec from 'k6/x/exec'; // Import the exec module
 import { getHeaders } from './auth-utils.js';
 
 
@@ -74,7 +73,7 @@ export function testDeleteWebhook(headers, check, webhookId) {
 
 export function testTestWebhook(headers, check) {
     const webhookPayload = JSON.stringify({
-        url: 'http://localhost:8054/post', // Use the local container
+        url: 'http://host.containers.internal:8054/post', // Use the local container
         payload_type: 'validation'
     });
     const res = http.post(`${API_V1_URL}/webhooks/test`, webhookPayload, { headers });
@@ -100,7 +99,7 @@ export function testTestWebhook(headers, check) {
                 const body = JSON.parse(r.body);
                 if (body.response && typeof body.response.body === 'string') {
                     const httpbinResponse = JSON.parse(body.response.body);
-                    return httpbinResponse.url === 'http://localhost:8054/post';
+                    return httpbinResponse.url === 'http://host.containers.internal:8054/post';
                 }
                 return false;
             } catch (e) {

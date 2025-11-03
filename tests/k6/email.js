@@ -25,8 +25,14 @@ export function testValidateEmail(headers, check) {
     check(res, {
         '[Validate Email] status 200': (r) => r.status === 200,
         '[Validate Email] has result': (r) => {
-            const body = JSON.parse(r.body);
-            return body.valid !== undefined;
+            if (r.status !== 200) return false;
+            try {
+                const body = JSON.parse(r.body);
+                console.log('Validate Email Response Body:', body);
+                return body.valid !== undefined;
+            } catch (e) {
+                return false;
+            }
         }
     });
 }

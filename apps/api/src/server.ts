@@ -112,7 +112,7 @@ export async function build(pool: Pool, redis: IORedisType): Promise<FastifyInst
     registerRoutes(app, pool, redis);
 
     // Enable metrics collection (after routes to ensure auth hooks apply)
-    await app.register(metrics as any);
+    await app.register(metrics, { endpoint: '/metrics' });
 
     // Register OpenAPI validation (after routes are registered)
     await openapiValidation(app);
