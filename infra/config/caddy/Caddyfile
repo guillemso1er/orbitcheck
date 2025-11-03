@@ -100,7 +100,7 @@ api.orbitcheck.io {
             header_up -X-Body
 
             # Active health checks
-            health_uri /healthz
+            health_uri /health
             health_interval 10s
             health_timeout 2s
             health_status 2xx

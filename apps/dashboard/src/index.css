@@ -1,120 +1,153 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+/* 
+ * 1. Import Tailwind and define the dark mode variant selector.
+ * This is a top-level rule.
+ */
+@import "tailwindcss";
+@variant dark (&:where(.dark, [data-theme="dark"]) &);
 
-/* Hint browser UI colors */
-:root { color-scheme: light; }
-.dark, [data-theme="dark"] { color-scheme: dark; }
+/* 
+ * 2. Configure your theme using the @theme directive.
+ * This block contains ALL utility-generating variables and default (light theme) values.
+ */
+@theme {
+  /* FONT & ANIMATION ALIASES */
+  --animation-fadeIn: fadeIn 0.3s ease-out;
 
-/* Conversion-focused tokens (HSL triplets for alpha support) */
-:root {
-  /* Surfaces & text */
+  /* RADIUS ALIASES */
+  --radius-lg: var(--radius);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) - 4px);
+
+  /* UTILITY-GENERATING COLOR ALIASES */
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  --color-surface-1: hsl(var(--surface-1));
+  --color-surface-2: hsl(var(--surface-2));
+  --color-surface-3: hsl(var(--surface-3));
+  --color-border: hsl(var(--divider-border));
+  --color-accent: hsl(var(--accent));
+  --color-accent-hover: hsl(var(--accent-hover));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+  --color-accent-muted: hsl(var(--accent-muted));
+  --color-accent-ring: hsl(var(--accent-ring) / 0.35);
+  --color-accent-bg-subtle: hsl(var(--accent-bg-subtle));
+  --color-success: hsl(var(--success));
+  --color-success-foreground: hsl(var(--success-foreground));
+  --color-warning: hsl(var(--warning));
+  --color-warning-foreground: hsl(var(--warning-foreground));
+  --color-info: hsl(var(--info));
+  --color-info-foreground: hsl(var(--info-foreground));
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+
+  /* LEGACY & BACK-COMPAT ALIASES */
+  --color-primary: hsl(var(--sidebar-bg));
+  --color-secondary: hsl(var(--controls-bg));
+  --color-text-primary: hsl(var(--text-primary));
+  --color-text-secondary: hsl(var(--text-secondary));
+  --color-text-muted: hsl(var(--text-muted));
+  --color-text-hover: hsl(var(--text-hover));
+  --color-accent-blue: hsl(var(--accent-blue-bg));
+  --color-accent-red: hsl(var(--destructive));
+  --color-accent-green: hsl(var(--success));
+  --border-color-primary: hsl(var(--sidebar-border));
+  --border-color-accent-blue: hsl(var(--accent-blue-border));
+  --border-color-accent: hsl(var(--accent));
+  --ring-color-accent: hsl(var(--accent-ring));
+  --ring-color-success: hsl(var(--success));
+  --ring-color-destructive: hsl(var(--destructive));
+
+  /* GRADIENTS */
+  --background-image-gradient-primary: linear-gradient(to bottom right, hsl(var(--bg-gradient-start)), hsl(var(--bg-gradient-end)));
+  --background-image-gradient-logo: linear-gradient(to bottom right, hsl(var(--logo-gradient-start)), hsl(var(--logo-gradient-via)), hsl(var(--logo-gradient-end)));
+  --background-image-gradient-logout: linear-gradient(to right, hsl(var(--logout-bg-start)), hsl(var(--logout-bg-end)));
+  --background-image-gradient-nav-hover: linear-gradient(to right, hsl(var(--nav-hover-start)), transparent);
+  --background-image-gradient-nav-active: linear-gradient(to right, hsl(var(--nav-active-start)), transparent);
+
+  /* DEFAULT (LIGHT THEME) CSS VARIABLES */
   --background: 0 0% 100%;
   --foreground: 222.2 47.4% 11.2%;
-
-  /* Elevation surfaces (for cards, panels, controls) */
   --surface-1: 0 0% 100%;
   --surface-2: 210 20% 98%;
   --surface-3: 220 14% 96%;
   --divider-border: 220 13% 91%;
-
-  --text-primary: 217 19% 27%;       /* gray-700 */
-  --text-secondary: 215 16.3% 46.9%; /* gray-500 */
-  --text-muted: 215 13% 65%;         /* gray-400 */
-  --text-hover: 222.2 47.4% 11.2%;   /* gray-900 */
-
-  /* Primary conversion accent (CTA): blue for trust */
-  --accent: 221.2 83.2% 53.3%;        /* blue-600 */
-  --accent-hover: 224.3 76.3% 48%;     /* blue-700 */
-  --accent-foreground: 210 40% 98%;    /* near-white */
-  --accent-muted: 214.3 95.8% 68.7%;   /* blue-400 */
-  --accent-bg-subtle: 214 100% 97%;    /* blue-50 */
+  --text-primary: 217 19% 27%;
+  --text-secondary: 215 16.3% 46.9%;
+  --text-muted: 215 13% 65%;
+  --text-hover: 222.2 47.4% 11.2%;
+  --accent: 221.2 83.2% 53.3%;
+  --accent-hover: 224.3 76.3% 48%;
+  --accent-foreground: 210 40% 98%;
+  --accent-muted: 214.3 95.8% 68.7%;
+  --accent-bg-subtle: 214 100% 97%;
   --accent-ring: 221.2 83.2% 53.3%;
-
-  /* Status colors (AA with foregrounds) */
-  --success: 160.1 84.1% 39.4%;        /* emerald-500 */
+  --success: 160.1 84.1% 39.4%;
   --success-foreground: 210 40% 98%;
-  --warning: 38 92% 50%;               /* amber-500 */
+  --warning: 38 92% 50%;
   --warning-foreground: 222.2 47.4% 11.2%;
-  --info: 199 89% 48%;                 /* sky-500 */
+  --info: 199 89% 48%;
   --info-foreground: 210 40% 98%;
-  --destructive: 0 72.2% 50.6%;        /* red-600 */
+  --destructive: 0 72.2% 50.6%;
   --destructive-foreground: 210 40% 98%;
-
-  /* Legacy aliases retained (mapped to improved tokens) */
   --sidebar-bg: var(--surface-1);
   --sidebar-border: var(--divider-border);
   --controls-bg: var(--surface-2);
   --controls-bg-hover: var(--surface-3);
-
-  /* Background gradients (subtle depth to focus attention on CTAs) */
   --bg-gradient-start: var(--surface-2);
   --bg-gradient-end: var(--surface-3);
-
-  /* Nav */
   --nav-hover-start: var(--accent-bg-subtle);
   --nav-active-start: var(--accent-bg-subtle);
-
-  /* Accent “families” preserved for compatibility */
   --accent-blue: var(--accent);
   --accent-blue-hover: var(--accent-hover);
   --accent-blue-muted: var(--accent-muted);
   --accent-blue-bg: var(--accent-bg-subtle);
   --accent-blue-border: var(--accent-ring);
-
-  /* Purple (alt accent option) */
   --accent-purple: 271.1 81.3% 55.9%;
   --accent-purple-hover: 270.9 91% 47.1%;
-
-  /* Red (used by destructive) */
-  --accent-red: 0 72.2% 50.6%;
-  --accent-red-hover: 0 74.7% 41.8%;
   --accent-red-bg: 0 85.7% 97.3%;
   --accent-red-bg-hover: 0 93.3% 94.1%;
-
-  /* Green (success alias) */
-  --accent-green: var(--success);
-
-  /* Logo gradient (slightly tweaked to align with accent) */
   --logo-gradient-start: var(--accent);
   --logo-gradient-via: var(--accent-hover);
   --logo-gradient-end: 271.1 81.3% 55.9%;
-
-  /* Logout button background */
   --logout-bg-start: var(--surface-3);
   --logout-bg-end: var(--divider-border);
-
-  /* Spinner */
   --spinner-border: var(--divider-border);
   --spinner-inner: var(--accent);
-
-  /* Radius */
   --radius: 0.5rem;
 }
 
-/* Dark theme: increase contrast and lighten accents for readability */
-.dark, [data-theme="dark"] {
+/* Hint browser UI colors */
+:root {
+  color-scheme: light;
+}
+
+.dark,
+[data-theme="dark"] {
+  color-scheme: dark;
+}
+
+/* 
+ * 3. Define Dark Theme overrides using a standard CSS ruleset.
+ * This is NOT inside the @theme block.
+ */
+.dark,
+[data-theme="dark"] {
   --background: 222.2 47.4% 11.2%;
   --foreground: 210 40% 98%;
-
-  --surface-1: 222.2 47.4% 11.2%;    /* gray-900 */
-  --surface-2: 217.2 32.6% 17.5%;    /* gray-800 */
-  --surface-3: 215 25% 27%;          /* ~gray-700 */
+  --surface-1: 222.2 47.4% 11.2%;
+  --surface-2: 217.2 32.6% 17.5%;
+  --surface-3: 215 25% 27%;
   --divider-border: 217.2 32.6% 17.5%;
-
-  --text-primary: 214.3 31.8% 91.4%;  /* gray-200 */
-  --text-secondary: 215 20.2% 65.1%;  /* gray-400/500 */
+  --text-primary: 214.3 31.8% 91.4%;
+  --text-secondary: 215 20.2% 65.1%;
   --text-muted: 215 16.3% 46.9%;
   --text-hover: 0 0% 100%;
-
-  /* Accent tuned for dark mode (lighter hue for contrast) */
-  --accent: 214.3 95.8% 68.7%;       /* blue-400 */
-  --accent-hover: 217.2 91.2% 59.8%; /* blue-500 */
+  --accent: 214.3 95.8% 68.7%;
+  --accent-hover: 217.2 91.2% 59.8%;
   --accent-foreground: 222.2 47.4% 11.2%;
   --accent-muted: 214 95% 82%;
   --accent-bg-subtle: 224 76% 24%;
   --accent-ring: 214.3 95.8% 68.7%;
-
   --success: 160 84% 40%;
   --success-foreground: 222.2 47.4% 11.2%;
   --warning: 45 93% 47%;
@@ -123,26 +156,15 @@
   --info-foreground: 222.2 47.4% 11.2%;
   --destructive: 0 84% 60%;
   --destructive-foreground: 222.2 47.4% 11.2%;
-
-  /* Legacy aliases */
-  --sidebar-bg: var(--surface-1);
-  --sidebar-border: var(--divider-border);
-  --controls-bg: var(--surface-2);
-  --controls-bg-hover: var(--surface-3);
-
   --bg-gradient-start: var(--surface-1);
   --bg-gradient-end: var(--surface-2);
-
   --nav-hover-start: var(--surface-2);
   --nav-active-start: var(--surface-2);
-
   --logo-gradient-start: var(--accent);
   --logo-gradient-via: var(--accent-hover);
   --logo-gradient-end: 271.1 81.3% 55.9%;
-
   --logout-bg-start: var(--surface-2);
   --logout-bg-end: var(--surface-3);
-
   --spinner-border: var(--surface-2);
   --spinner-inner: var(--accent);
 }
@@ -152,38 +174,86 @@
   --accent: 160.1 84.1% 39.4%;
   --accent-hover: 161 93% 30%;
 }
+
 [data-accent="violet"] {
   --accent: 262.1 83.3% 57.8%;
   --accent-hover: 263.4 70% 50.4%;
 }
 
-/* Base styles and transitions */
+/* 4. Define custom components and base styles. */
 @layer base {
-  html, body { min-height: 100%; }
+
+  html,
+  body {
+    min-height: 100%;
+  }
+
   body {
     background-color: hsl(var(--background));
     color: hsl(var(--foreground));
     transition-property: color, background-color;
     transition-duration: 250ms;
   }
-  *, *::before, *::after { border-color: hsl(var(--divider-border)); }
+
+  *,
+  *::before,
+  *::after {
+    border-color: hsl(var(--divider-border));
+  }
+}
+
+@layer components {
+  .container {
+    @apply w-full mx-auto px-4;
+  }
 }
 
 /* Prefer-reduced-motion */
 @media (prefers-reduced-motion: reduce) {
-  @layer base { body { transition: none; } }
+  @layer base {
+    body {
+      transition: none;
+    }
+  }
 }
 
-/* Custom scrollbar (WebKit + Firefox) */
-.custom-scrollbar { scrollbar-width: thin; scrollbar-color: hsl(var(--text-muted)) transparent; }
-.custom-scrollbar::-webkit-scrollbar { width: 6px; }
-.custom-scrollbar::-webkit-scrollbar-track { background-color: hsl(var(--surface-2)); }
-.custom-scrollbar::-webkit-scrollbar-thumb { background-color: hsl(var(--text-muted)); border-radius: 9999px; }
-.dark .custom-scrollbar::-webkit-scrollbar-track,
-[data-theme="dark"] .custom-scrollbar::-webkit-scrollbar-track { background-color: hsl(var(--surface-2)); }
-.dark .custom-scrollbar::-webkit-scrollbar-thumb,
-[data-theme="dark"] .custom-scrollbar::-webkit-scrollbar-thumb { background-color: hsl(var(--text-secondary)); }
+/* 5. Keep other custom CSS and animations */
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(var(--text-muted)) transparent;
+}
 
-/* Animations */
-@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-.animate-fadeIn { animation: fadeIn 0.3s ease-out; }
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background-color: hsl(var(--surface-2));
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background-color: hsl(var(--text-muted));
+  border-radius: 9999px;
+}
+
+.dark .custom-scrollbar::-webkit-scrollbar-track,
+[data-theme="dark"] .custom-scrollbar::-webkit-scrollbar-track {
+  background-color: hsl(var(--surface-2));
+}
+
+.dark .custom-scrollbar::-webkit-scrollbar-thumb,
+[data-theme="dark"] .custom-scrollbar::-webkit-scrollbar-thumb {
+  background-color: hsl(var(--text-secondary));
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
