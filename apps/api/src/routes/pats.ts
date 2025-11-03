@@ -179,7 +179,6 @@ export function registerPatRoutes(app: FastifyInstance, pool: Pool): void {
   }, async (request, rep) => {
     try {
       const userId = request.user_id!;
-      const orgId = (request as any).org_id || userId; // Fallback for now
       const body = request.body as any;
       const {
         name,
