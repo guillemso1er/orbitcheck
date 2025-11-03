@@ -170,7 +170,7 @@ jobs:
       - name: Build contracts package
         run: pnpm --filter @orbitcheck/contracts run build
       - name: Build dashboard
-        run: pnpm --filter @orbitcheck/dashboard run build
+        run: pnpm --filter @orbitcheck/dashboard run build:ci
       - name: Upload dashboard dist
         uses: actions/upload-artifact@v4
         with:
