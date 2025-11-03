@@ -24,9 +24,9 @@ export async function setupCors<TServer extends RawServerBase = RawServerBase>(a
         corsOrigins.forEach(origin => allowedOrigins.add(origin));
 
         // Add your OIDC provider domain if needed
-        if (environment.OIDC_PROVIDER_URL) {
-            allowedOrigins.add(new URL(environment.OIDC_PROVIDER_URL).origin);
-        }
+        // if (environment.OIDC_PROVIDER_URL) {
+        //     allowedOrigins.add(new URL(environment.OIDC_PROVIDER_URL).origin);
+        // }
     } else {
         // Development origins
         allowedOrigins.add('http://localhost:5173'); // Vite dev server

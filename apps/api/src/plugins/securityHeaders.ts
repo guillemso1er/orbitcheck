@@ -1,7 +1,6 @@
 import type { FastifyInstance, FastifyRequest, RawServerBase, RouteGenericInterface } from "fastify";
 
 import { ROUTES } from "../config.js";
-import { environment } from "../environment.js";
 
 /**
  * Adds comprehensive security headers to all responses.
@@ -24,7 +23,9 @@ export async function setupSecurityHeaders<TServer extends RawServerBase = RawSe
                 "script-src 'self' 'unsafe-inline' 'unsafe-eval'; " + // May need to adjust for your frontend
                 "style-src 'self' 'unsafe-inline'; " +
                 "img-src 'self' data: https:; " +
-                "connect-src 'self' " + (environment.OIDC_PROVIDER_URL || '') + "; " +
+                "connect-src 'self' "
+                // + (environment.OIDC_PROVIDER_URL || '') 
+                + "; " +
                 "frame-ancestors 'none';"
             );
         }
