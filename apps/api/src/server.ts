@@ -102,11 +102,11 @@ export async function build(pool: Pool, redis: IORedisType): Promise<FastifyInst
     });
 
     // Add OIDC support for dashboard authentication (if configured)
-    if (environment.OIDC_ENABLED && environment.OIDC_CLIENT_ID && environment.OIDC_CLIENT_SECRET) {
-        // Register OIDC plugin here if using one
-        // Example: await app.register(fastifyOauth2, { ... })
-        app.log.info('OIDC authentication configured for dashboard');
-    }
+    // if (environment.OIDC_ENABLED && environment.OIDC_CLIENT_ID && environment.OIDC_CLIENT_SECRET) {
+    //     // Register OIDC plugin here if using one
+    //     // Example: await app.register(fastifyOauth2, { ... })
+    //     app.log.info('OIDC authentication configured for dashboard');
+    // }
 
     // Register all API routes with shared pool and redis instances
     registerRoutes(app, pool, redis);
