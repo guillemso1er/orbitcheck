@@ -63,6 +63,8 @@ export class ApiClient {
     if (token) {
       headers.Authorization = `Bearer ${token}`;
     }
+    // Ensure we have the correct content-type for JSON requests
+    headers['Content-Type'] = 'application/json';
     return headers;
   }
 
