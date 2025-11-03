@@ -90,11 +90,11 @@ export const env = cleanEnv(process.env, {
   SESSION_SECRET: isProd ? str() : str({ default: randomHex(CRYPTO_KEY_BYTES) }),
 
   // OIDC (optional)
-  OIDC_ENABLED: bool({ default: false }),
-  OIDC_CLIENT_ID: str({ default: '' }),
-  OIDC_CLIENT_SECRET: str({ default: '' }),
-  OIDC_PROVIDER_URL: url({ default: 'https://accounts.google.com' }), // e.g., https://accounts.google.com
-  OIDC_REDIRECT_URI: isProd ? url() : url({ default: 'http://localhost:8080/auth/callback' }),
+  // OIDC_ENABLED: bool({ default: false }),
+  // OIDC_CLIENT_ID: str({ default: '' }),
+  // OIDC_CLIENT_SECRET: str({ default: '' }),
+  // OIDC_PROVIDER_URL: url({ default: 'https://accounts.google.com' }), // e.g., https://accounts.google.com
+  // OIDC_REDIRECT_URI: isProd ? url() : url({ default: 'http://localhost:8080/auth/callback' }),
 
   // Stripe (optional)
   STRIPE_ENABLED: bool({ default: false }),
@@ -109,11 +109,11 @@ export const env = cleanEnv(process.env, {
 });
 
 // Cross-field checks (fail fast with clear errors)
-if (env.OIDC_ENABLED) {
-  if (!env.OIDC_CLIENT_ID || !env.OIDC_CLIENT_SECRET || !env.OIDC_PROVIDER_URL || !env.OIDC_REDIRECT_URI) {
-    throw new Error('When OIDC_ENABLED=true you must set OIDC_CLIENT_ID, OIDC_CLIENT_SECRET, OIDC_PROVIDER_URL, and OIDC_REDIRECT_URI');
-  }
-}
+// if (env.OIDC_ENABLED) {
+//   if (!env.OIDC_CLIENT_ID || !env.OIDC_CLIENT_SECRET || !env.OIDC_PROVIDER_URL || !env.OIDC_REDIRECT_URI) {
+//     throw new Error('When OIDC_ENABLED=true you must set OIDC_CLIENT_ID, OIDC_CLIENT_SECRET, OIDC_PROVIDER_URL, and OIDC_REDIRECT_URI');
+//   }
+// }
 
 if (env.STRIPE_ENABLED) {
   if (!env.STRIPE_SECRET_KEY || !env.STRIPE_BASE_PLAN_PRICE_ID || !env.STRIPE_USAGE_PRICE_ID || !env.STRIPE_STORE_ADDON_PRICE_ID) {
