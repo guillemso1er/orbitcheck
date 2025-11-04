@@ -2,15 +2,8 @@ import { API_V1_ROUTES, MGMT_V1_ROUTES } from "@orbitcheck/contracts";
 
 // API_BASE is defined conditionally to avoid import.meta.env issues during testing
 const getApiBase = () => {
-  try {
-    // In browser/Vite environment
-    if (typeof window !== 'undefined' && (globalThis as any).import?.meta?.env) {
-      return (globalThis as any).import.meta.env.VITE_API_BASE ?? '/_api';
-    }
-    return '/_api';
-  } catch {
-    return '/_api';
-  }
+  // Vite automatically replaces import.meta.env at build time
+  return import.meta.env?.VITE_API_BASE ?? '/_api';
 };
 
 export const API_BASE = getApiBase();
