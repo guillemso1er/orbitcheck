@@ -3,7 +3,7 @@
  * This is a top-level rule.
  */
 @import "tailwindcss";
-@variant dark (&:where(.dark, [data-theme="dark"]) &);
+@custom-variant dark (&:where(.dark, .dark *, [data-theme=dark], [data-theme=dark] *));
 
 /* 
  * 2. Configure your theme using the @theme directive.

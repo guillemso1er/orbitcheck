@@ -5,8 +5,7 @@ import bcrypt from 'bcryptjs';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import type { Pool } from "pg";
 
-import { API_KEY_NAMES, API_KEY_PREFIX, API_KEY_PREFIX_LENGTH, AUDIT_ACTION_PAT_USED, AUDIT_RESOURCE_API, AUTHORIZATION_HEADER, BCRYPT_ROUNDS, BEARER_PREFIX, CRYPTO_IV_BYTES, CRYPTO_KEY_BYTES, DEFAULT_PAT_NAME, ENCODING_HEX, ENCODING_UTF8, ENCRYPTION_ALGORITHM, HASH_ALGORITHM, LOGOUT_MESSAGE, PAT_PREFIX, PAT_SCOPES_ALL, PG_UNIQUE_VIOLATION, PLAN_TYPES, PROJECT_NAMES, RANDOM_BYTES_FOR_API_KEY, STATUS } from "../config.js";
-import { environment } from "../environment.js";
+import { AUDIT_ACTION_PAT_USED, AUDIT_RESOURCE_API, AUTHORIZATION_HEADER, BCRYPT_ROUNDS, BEARER_PREFIX, CRYPTO_KEY_BYTES, DEFAULT_PAT_NAME, HASH_ALGORITHM, LOGOUT_MESSAGE, PAT_PREFIX, PAT_SCOPES_ALL, PG_UNIQUE_VIOLATION, PLAN_TYPES, PROJECT_NAMES } from "../config.js";
 import { ERROR_CODES, ERROR_MESSAGES, HTTP_STATUS } from "../errors.js";
 import { errorSchema, generateRequestId, getDefaultProjectId, sendError, sendServerError } from "./utils.js";
 
@@ -143,7 +142,7 @@ export function registerAuthRoutes(app: FastifyInstance, pool: Pool): void {
             const request_id = generateRequestId();
             const body = request.body as any;
             const { email, password, confirm_password } = body;
-            request.log.info({ email: !!email, password: !!password, confirm_password: !!confirm_password, passwordType: typeof password, bodyKeys: Object.keys(body)}, 'Auth register body check');
+            request.log.info({ email: !!email, password: !!password, confirm_password: !!confirm_password, passwordType: typeof password, bodyKeys: Object.keys(body) }, 'Auth register body check');
             if (!password || typeof password !== 'string') {
                 return sendError(rep, HTTP_STATUS.BAD_REQUEST, ERROR_CODES.INVALID_INPUT, 'Valid password is required', request_id);
             }
@@ -168,63 +167,9 @@ export function registerAuthRoutes(app: FastifyInstance, pool: Pool): void {
             const user = userRows[0];
 
             // Create default project for user
-            const { rows: projectRows } = await pool.query(
+            await pool.query(
                 'INSERT INTO projects (name, plan, user_id) VALUES ($1, $2, $3) RETURNING id',
                 [PROJECT_NAMES.DEFAULT, PLAN_TYPES.DEV, user.id]
-            );
-
-            const projectId = projectRows[0].id;
-
-            // Generate API key for runtime endpoints
-            const buf = await new Promise<Buffer>((resolve, reject) => {
-                crypto.randomBytes(RANDOM_BYTES_FOR_API_KEY, (error, buf) => {
-                    if (error) reject(error);
-                    else resolve(buf);
-                });
-            });
-            const fullKey = API_KEY_PREFIX + buf.toString('hex');
-            const prefix = fullKey.slice(0, API_KEY_PREFIX_LENGTH);
-            const keyHash = crypto.createHash('sha256').update(fullKey).digest('hex');
-
-            // Encrypt the full key for HMAC verification
-            const iv = await new Promise<Buffer>((resolve, reject) => {
-                crypto.randomBytes(CRYPTO_IV_BYTES, (error, buf) => {
-                    if (error) reject(error);
-                    else resolve(buf);
-                });
-            });
-            const encryptedWithIv = await new Promise<string>((resolve, reject) => {
-                setImmediate(() => {
-                    try {
-                        const cipher = crypto.createCipheriv(ENCRYPTION_ALGORITHM, Buffer.from(environment.ENCRYPTION_KEY, ENCODING_HEX), iv);
-                        const updateResult = cipher.update(fullKey, ENCODING_UTF8, ENCODING_HEX);
-                        const finalResult = cipher.final(ENCODING_HEX);
-                        resolve(iv.toString('hex') + ':' + updateResult + finalResult);
-                    } catch (error) {
-                        reject(error);
-                    }
-                });
-            });
-
-            await pool.query(
-                "INSERT INTO api_keys (project_id, prefix, hash, encrypted_key, status, name) VALUES ($1, $2, $3, $4, $5, $6)",
-                [projectId, prefix, keyHash, encryptedWithIv, STATUS.ACTIVE, API_KEY_NAMES.DEFAULT]
-            );
-
-            // Generate PAT for management API access
-            const patBuf = await new Promise<Buffer>((resolve, reject) => {
-                crypto.randomBytes(CRYPTO_KEY_BYTES, (error, buf) => {
-                    if (error) reject(error);
-                    else resolve(buf);
-                });
-            });
-            const patToken = PAT_PREFIX + patBuf.toString('hex');
-            const patHash = crypto.createHash(HASH_ALGORITHM).update(patToken).digest('hex');
-            const tokenId = crypto.randomUUID();
-
-            await pool.query(
-                "INSERT INTO personal_access_tokens (user_id, name, token_id, token_hash, scopes, env, expires_at) VALUES ($1, $2, $3, $4, $5, $6, $7)",
-                [user.id, DEFAULT_PAT_NAME, tokenId, patHash, PAT_SCOPES_ALL, 'live', null]
             );
 
             // Set session cookie for dashboard access
@@ -232,8 +177,6 @@ export function registerAuthRoutes(app: FastifyInstance, pool: Pool): void {
 
             const response: any = {
                 user,
-                pat_token: patToken,
-                api_key: fullKey,
                 request_id
             };
             return rep.status(HTTP_STATUS.CREATED).send(response);
