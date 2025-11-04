@@ -22,7 +22,7 @@
         "start": "cross-env NODE_ENV=production NODE_OPTIONS=--enable-source-maps node dist/server.js",
         "migrate:local": "node-pg-migrate -m ./migrations --envPath .env.local up",
         "migrate:dev": "node-pg-migrate -m ./migrations --envPath .env.dev up",
-        "migrate:ci": "export DATABASE_URL=$MIGRATION_DATABASE_URL && node-pg-migrate -m ./migrations up",
+        "migrate:ci": "export DATABASE_URL=$MIGRATION_DATABASE_URL && node-pg-migrate -s api -m ./migrations up",
         "migrate:create": "node-pg-migrate create -m ./migrations",
         "db:init": "tsx ./src/jobs/refreshDisposable.ts",
         "generate:endpoints": "tsx src/generate-endpoints.ts",
