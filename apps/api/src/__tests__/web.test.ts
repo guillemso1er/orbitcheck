@@ -17,9 +17,9 @@ describe('Web Module', () => {
     const authModule = await import('../routes/auth.js');
     verifySession = authModule.verifySession;
     verifyPAT = authModule.verifyPAT;
+    auth = authModule.verifyAPIKey;
 
     const hooksModule = await import('../hooks.js');
-    auth = hooksModule.auth;
     rateLimit = hooksModule.rateLimit;
     idempotency = hooksModule.idempotency;
   });

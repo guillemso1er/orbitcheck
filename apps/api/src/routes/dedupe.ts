@@ -16,7 +16,10 @@ export function registerDedupeRoutes(app: FastifyInstance, pool: Pool): void {
             description: 'Searches for existing customers using deterministic (exact) and fuzzy matching on email, phone, and name.',
             tags: ['Deduplication'],
             headers: securityHeader,
-            security: [{ ApiKeyAuth: [] }],
+            security: [
+                { ApiKeyAuth: [] },
+                { BearerAuth: [] }
+            ],
             body: {
                 type: 'object',
                 required: ['email', 'first_name', 'last_name'],
@@ -77,7 +80,10 @@ export function registerDedupeRoutes(app: FastifyInstance, pool: Pool): void {
             description: 'Searches for existing addresses using deterministic (exact postal/city/country) and fuzzy matching on address components.',
             tags: ['Deduplication'],
             headers: securityHeader,
-            security: [{ ApiKeyAuth: [] }],
+            security: [
+                { ApiKeyAuth: [] },
+                { BearerAuth: [] }
+            ],
             body: {
                 type: 'object',
                 required: ['line1', 'city', 'postal_code', 'country'],
@@ -141,7 +147,10 @@ export function registerDedupeRoutes(app: FastifyInstance, pool: Pool): void {
             description: 'Merges multiple customer or address records into a canonical one. Updates the canonical with latest data, marks others as merged.',
             tags: ['Deduplication'],
             headers: securityHeader,
-            security: [{ ApiKeyAuth: [] }],
+            security: [
+                { ApiKeyAuth: [] },
+                { BearerAuth: [] }
+            ],
             body: {
                 type: 'object',
                 required: ['type', 'ids', 'canonical_id'],

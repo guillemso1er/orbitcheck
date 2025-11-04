@@ -23,9 +23,7 @@ export const errorSchema = {
 export const securityHeader = {
     type: 'object',
     properties: {
-        'authorization': { type: 'string' },
         'idempotency-key': { type: 'string' },
-        'Idempotency-Key': { type: 'string' }
     }
 };
 
@@ -33,9 +31,7 @@ export const securityHeader = {
 export const runtimeSecurityHeader = {
     type: 'object',
     properties: {
-        'authorization': { type: 'string' },
         'idempotency-key': { type: 'string' },
-        'Idempotency-Key': { type: 'string' }
     },
     required: ['authorization']
 };

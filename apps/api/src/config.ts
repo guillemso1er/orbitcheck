@@ -197,28 +197,4 @@ export const ROUTES = {
   REFERENCE: '/reference',
   METRICS: '/metrics',
 
-  // Auth routes (dashboard)
-  REGISTER: '/auth/register',
-  LOGIN: '/auth/login',
-  LOGOUT: '/auth/logout',
-
-  // Management API routes (v1)
-  API_KEYS: '/v1/api-keys',
-  DATA: '/v1/data',
-  LOGS: '/v1/logs',
-  RULES: '/v1/rules',
-  SETTINGS: '/v1/settings',
-  WEBHOOKS: '/v1/webhooks',
-
-  // Runtime API routes (v1)
-  DEDUPE: '/v1/dedupe',
-  ORDERS: '/v1/orders',
-  VALIDATE: '/v1/validate',
-  NORMALIZE: '/v1/normalize',
-  VERIFY: '/v1/verify',
-  BATCH: '/v1/batch',
-  JOBS: '/v1/jobs',
-
-  // Dashboard API routes
-  DASHBOARD: '/api/dashboard',
 } as const;

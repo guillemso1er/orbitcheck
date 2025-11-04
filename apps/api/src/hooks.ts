@@ -4,143 +4,13 @@ import type { FastifyReply, FastifyRequest } from "fastify";
 import { type Redis as IORedisType } from 'ioredis';
 import type { Pool } from "pg";
 
-import { API_KEY_PREFIX_LENGTH, CONTENT_TYPES, ENCODING_HEX, ENCODING_UTF8, ENCRYPTION_ALGORITHM, HASH_ALGORITHM, HMAC_VALIDITY_MINUTES, IDEMPOTENCY_TTL_SECONDS, RATE_LIMIT_TTL_SECONDS, STATUS, USER_AGENT_WEBHOOK } from "./config.js";
+import { CONTENT_TYPES, HASH_ALGORITHM, IDEMPOTENCY_TTL_SECONDS, RATE_LIMIT_TTL_SECONDS, USER_AGENT_WEBHOOK } from "./config.js";
 import { environment } from "./environment.js";
 import { ERROR_CODES, ERROR_MESSAGES, HTTP_STATUS } from "./errors.js";
 import { EVENT_TYPES } from "./validation.js";
 
 
-/**
- * Authentication hook for API requests using Bearer token or HMAC.
- * For Bearer: Extracts API key from Authorization header, computes SHA-256 hash for secure comparison.
- * For HMAC: Parses keyId, signature, ts, nonce; verifies ts is recent; looks up key by prefix.
- * Queries database for active key, attaches project_id to request.
- * Updates last_used_at timestamp on successful auth.
- *
- * @param req - Fastify request object with headers.
- * @param rep - Fastify reply object for sending responses.
- * @param pool - PostgreSQL connection pool for database queries.
- * @returns {Promise<void>} Resolves on success, sends 401 error on failure.
- */
-export async function auth(request: FastifyRequest, rep: FastifyReply, pool: Pool): Promise<void> {
-    const header = request.headers["authorization"];
-    if (!header) {
-        request.log.info('No Authorization header for runtime auth');
-        rep.status(HTTP_STATUS.BAD_REQUEST).send({ error: { code: ERROR_CODES.UNAUTHORIZED, message: ERROR_MESSAGES[ERROR_CODES.UNAUTHORIZED] } });
-        return;
-    }
 
-    if (header.startsWith("Bearer ")) {
-        request.log.info('Using Bearer API key auth for runtime');
-        // API key auth
-        const key = header.slice(7).trim();
-        const prefix = key.slice(0, API_KEY_PREFIX_LENGTH);
-
-        // Compute SHA-256 hash for secure storage and comparison (avoids storing plaintext keys)
-        const keyHash = crypto.createHash(HASH_ALGORITHM).update(key).digest('hex');
-
-        // Query for active key matching full hash and prefix (efficient indexing on hash/prefix)
-        const { rows } = await pool.query(
-            "select id, project_id from api_keys where hash=$1 and prefix=$2 and status=$3",
-            [keyHash, prefix, STATUS.ACTIVE]
-        );
-
-        if (rows.length === 0) {
-            rep.status(HTTP_STATUS.BAD_REQUEST).send({ error: { code: ERROR_CODES.UNAUTHORIZED, message: ERROR_MESSAGES[ERROR_CODES.UNAUTHORIZED] } });
-            return;
-        }
-
-        // Update usage timestamp for auditing and analytics
-        await pool.query(
-            "UPDATE api_keys SET last_used_at = now() WHERE id = $1",
-            [rows[0].id]
-        );
-
-        // Attach project_id to request for downstream route access
-        // eslint-disable-next-line require-atomic-updates
-        request.project_id = rows[0].project_id;
-    } else if (header.startsWith("HMAC ")) {
-        request.log.info('Using HMAC auth for runtime');
-        // HMAC auth
-        const header = request.headers.authorization || '';
-        if (!header.startsWith('HMAC ')) return;
-
-        const params = new URLSearchParams(header.slice(5).trim());
-        const keyId = params.get('keyId');
-        const signature = params.get('signature');
-        const ts = params.get('ts');
-        const nonce = params.get('nonce');
-
-        if (!keyId || !signature || !ts || !nonce) {
-            request.log.info('Missing HMAC parameters');
-            rep.status(HTTP_STATUS.BAD_REQUEST).send({ error: { code: ERROR_CODES.UNAUTHORIZED, message: ERROR_MESSAGES[ERROR_CODES.UNAUTHORIZED] } });
-            return;
-        }
-
-        // Check ts is recent (within 5 minutes)
-        const now = Date.now();
-        const requestTs = parseInt(ts);
-        if (Math.abs(now - requestTs) > HMAC_VALIDITY_MINUTES * 60 * 1000) {
-            request.log.info('HMAC ts too old');
-            rep.status(HTTP_STATUS.BAD_REQUEST).send({ error: { code: ERROR_CODES.UNAUTHORIZED, message: ERROR_MESSAGES[ERROR_CODES.UNAUTHORIZED] } });
-            return;
-        }
-
-        // Query for active key by prefix
-        const { rows } = await pool.query(
-            "select id, project_id, encrypted_key from api_keys where prefix=$1 and status=$2",
-            [keyId, STATUS.ACTIVE]
-        );
-
-        if (rows.length === 0) {
-            request.log.info('No active API key found for HMAC keyId');
-            rep.status(HTTP_STATUS.BAD_REQUEST).send({ error: { code: ERROR_CODES.UNAUTHORIZED, message: ERROR_MESSAGES[ERROR_CODES.UNAUTHORIZED] } });
-            return;
-        }
-
-        // Decrypt the full key
-        const encryptedWithIv = rows[0].encrypted_key;
-        const [ivHex, encrypted] = encryptedWithIv.split(':');
-        const iv = Buffer.from(ivHex, ENCODING_HEX);
-        const decipher = crypto.createDecipheriv(ENCRYPTION_ALGORITHM, Buffer.from(environment.ENCRYPTION_KEY, ENCODING_HEX), iv);
-        let decrypted = decipher.update(encrypted, ENCODING_HEX, ENCODING_UTF8);
-        decrypted += decipher.final(ENCODING_UTF8);
-        const fullKey = decrypted;
-
-        const message = request.method.toUpperCase() + request.url + ts + nonce;
-
-        const expectedSignature = crypto
-            .createHmac('sha256', fullKey)
-            .update(message, 'utf8')
-            .digest('hex');
-
-        // timing-safe compare
-        const ok =
-            signature.length === expectedSignature.length &&
-            crypto.timingSafeEqual(Buffer.from(signature, 'hex'), Buffer.from(expectedSignature, 'hex'));
-
-        if (!ok) {
-            request.log.info('HMAC signature mismatch');
-            return rep.status(400).send({ error: { code: ERROR_CODES.UNAUTHORIZED, message: ERROR_MESSAGES[ERROR_CODES.UNAUTHORIZED] } });
-        }
-
-        request.log.info('HMAC signature verified');
-
-        // Update usage timestamp
-        await pool.query(
-            "UPDATE api_keys SET last_used_at = now() WHERE id = $1",
-            [rows[0].id]
-        );
-
-        // Attach project_id
-        // eslint-disable-next-line require-atomic-updates
-        request.project_id = rows[0].project_id;
-    } else {
-        request.log.info('Invalid Authorization header format for runtime auth');
-        rep.status(HTTP_STATUS.BAD_REQUEST).send({ error: { code: ERROR_CODES.UNAUTHORIZED, message: ERROR_MESSAGES[ERROR_CODES.UNAUTHORIZED] } });
-        return;
-    }
-}
 
 /**
  * Rate limiting hook using Redis sliding window (per project + IP, 1-minute window).
@@ -296,3 +166,5 @@ export async function logEvent(project_id: string, type: string, endpoint: strin
         setImmediate(() => sendWebhooks(project_id, webhookEvent, payload, pool));
     }
 }
+
+

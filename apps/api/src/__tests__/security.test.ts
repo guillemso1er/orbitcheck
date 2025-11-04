@@ -2,7 +2,7 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import type { Pool } from "pg";
 import request from 'supertest';
 
-import { auth } from '../hooks.js';
+import { verifyAPIKey } from '../routes/auth.js';
 import { createApp, mockPool, setupBeforeAll } from './testSetup.js';
 
 describe('Security and Authentication', () => {
@@ -14,7 +14,7 @@ describe('Security and Authentication', () => {
     app = await createApp(); // Correctly await the async function
 
     app.addHook('preHandler', async (request_: FastifyRequest, rep: FastifyReply) => {
-      await auth(request_, rep, mockPool as unknown as Pool);
+      await verifyAPIKey(request_, rep, mockPool as unknown as Pool);
       return;
     });
 

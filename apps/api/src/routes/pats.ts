@@ -12,6 +12,7 @@ import {
 } from "../config.js";
 import { HTTP_STATUS, ERROR_CODES, ERROR_MESSAGES } from "../errors.js";
 import { errorSchema, generateRequestId, rateLimitResponse, securityHeader, sendError, sendServerError, unauthorizedResponse } from "./utils.js";
+import { MGMT_V1_ROUTES } from "@orbitcheck/contracts";
 
 // Token prefix for OrbitCheck PATs
 const OC_PAT_PREFIX = 'oc_pat_' as const;
@@ -117,8 +118,7 @@ export async function verifyPat(req: FastifyRequest, pool: Pool) {
 }
 
 export function registerPatRoutes(app: FastifyInstance, pool: Pool): void {
-  // POST /v1/pats - Create new PAT
-  app.post('/v1/pats', {
+  app.post(MGMT_V1_ROUTES.PATS.CREATE_PERSONAL_ACCESS_TOKEN, {
     schema: {
       summary: 'Create Personal Access Token',
       description: 'Creates a new personal access token for management API access',

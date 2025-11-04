@@ -2,13 +2,373 @@ import crypto from "node:crypto";
 
 import { DASHBOARD_ROUTES } from "@orbitcheck/contracts";
 import bcrypt from 'bcryptjs';
-import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
+import type { FastifyInstance, FastifyReply, FastifyRequest, RawServerBase, RouteGenericInterface } from "fastify";
 import type { Pool } from "pg";
 
-import { AUDIT_ACTION_PAT_USED, AUDIT_RESOURCE_API, AUTHORIZATION_HEADER, BCRYPT_ROUNDS, BEARER_PREFIX, CRYPTO_KEY_BYTES, DEFAULT_PAT_NAME, HASH_ALGORITHM, LOGOUT_MESSAGE, PAT_PREFIX, PAT_SCOPES_ALL, PG_UNIQUE_VIOLATION, PLAN_TYPES, PROJECT_NAMES } from "../config.js";
+import { API_KEY_PREFIX_LENGTH, AUDIT_ACTION_PAT_USED, AUDIT_RESOURCE_API, AUTHORIZATION_HEADER, BCRYPT_ROUNDS, BEARER_PREFIX, CRYPTO_KEY_BYTES, DEFAULT_PAT_NAME, ENCODING_HEX, ENCODING_UTF8, ENCRYPTION_ALGORITHM, HASH_ALGORITHM, HMAC_VALIDITY_MINUTES, LOGOUT_MESSAGE, PAT_PREFIX, PAT_SCOPES_ALL, PG_UNIQUE_VIOLATION, PLAN_TYPES, PROJECT_NAMES, STATUS } from "../config.js";
+import { environment } from "../environment.js";
 import { ERROR_CODES, ERROR_MESSAGES, HTTP_STATUS } from "../errors.js";
 import { errorSchema, generateRequestId, getDefaultProjectId, sendError, sendServerError } from "./utils.js";
 
+// Enum for authentication methods
+enum AuthMethod {
+    SESSION = 'session',
+    PAT = 'pat',
+    API_KEY = 'api_key',
+    HMAC = 'hmac',
+    NONE = 'none'
+}
+
+// Helper function to detect authentication method
+function detectAuthMethod<TServer extends RawServerBase = RawServerBase>(request: FastifyRequest<RouteGenericInterface, TServer>): AuthMethod {
+    const authHeader = request.headers["authorization"];
+
+    // Check for session
+    if (request.session?.user_id) {
+        return AuthMethod.SESSION;
+    }
+
+    // Check for Bearer token (could be PAT or API key)
+    if (authHeader?.startsWith("Bearer ")) {
+        // We'll determine if it's PAT or API key during verification
+        return AuthMethod.PAT; // Default to PAT, will fallback if needed
+    }
+
+    // Check for HMAC
+    if (authHeader?.startsWith("HMAC ")) {
+        return AuthMethod.HMAC;
+    }
+
+    return AuthMethod.NONE;
+}
+
+export async function verifyAPIKey<TServer extends RawServerBase = RawServerBase>(request: FastifyRequest<RouteGenericInterface, TServer>, rep: FastifyReply<RouteGenericInterface, TServer>, pool: Pool): Promise<void> {
+    const header = request.headers["authorization"];
+    if (!header || !header.startsWith("Bearer ")) {
+        request.log.info('No Bearer header for API key auth');
+        rep.status(HTTP_STATUS.BAD_REQUEST).send({
+            error: {
+                code: ERROR_CODES.UNAUTHORIZED,
+                message: ERROR_MESSAGES[ERROR_CODES.UNAUTHORIZED]
+            }
+        });
+        return;
+    }
+
+    const key = header.slice(7).trim();
+    const prefix = key.slice(0, API_KEY_PREFIX_LENGTH);
+
+    // Compute SHA-256 hash for secure storage and comparison
+    const keyHash = crypto.createHash(HASH_ALGORITHM).update(key).digest('hex');
+
+    // Query for active key matching full hash and prefix
+    const { rows } = await pool.query(
+        "select id, project_id from api_keys where hash=$1 and prefix=$2 and status=$3",
+        [keyHash, prefix, STATUS.ACTIVE]
+    );
+
+    if (rows.length === 0) {
+        rep.status(HTTP_STATUS.BAD_REQUEST).send({
+            error: {
+                code: ERROR_CODES.UNAUTHORIZED,
+                message: ERROR_MESSAGES[ERROR_CODES.UNAUTHORIZED]
+            }
+        });
+        return;
+    }
+
+    // Update usage timestamp for auditing and analytics
+    await pool.query(
+        "UPDATE api_keys SET last_used_at = now() WHERE id = $1",
+        [rows[0].id]
+    );
+
+    // Attach project_id to request for downstream route access
+    request.project_id = rows[0].project_id;
+}
+
+// Refactored HMAC verification (extracted from auth function)
+export async function verifyHMAC<TServer extends RawServerBase = RawServerBase>(request: FastifyRequest<RouteGenericInterface, TServer>, rep: FastifyReply<RouteGenericInterface, TServer>, pool: Pool): Promise<void> {
+    const header = request.headers.authorization || '';
+    if (!header.startsWith('HMAC ')) {
+        rep.status(HTTP_STATUS.BAD_REQUEST).send({
+            error: {
+                code: ERROR_CODES.UNAUTHORIZED,
+                message: ERROR_MESSAGES[ERROR_CODES.UNAUTHORIZED]
+            }
+        });
+        return;
+    }
+
+    const params = new URLSearchParams(header.slice(5).trim());
+    const keyId = params.get('keyId');
+    const signature = params.get('signature');
+    const ts = params.get('ts');
+    const nonce = params.get('nonce');
+
+    if (!keyId || !signature || !ts || !nonce) {
+        request.log.info('Missing HMAC parameters');
+        rep.status(HTTP_STATUS.BAD_REQUEST).send({
+            error: {
+                code: ERROR_CODES.UNAUTHORIZED,
+                message: ERROR_MESSAGES[ERROR_CODES.UNAUTHORIZED]
+            }
+        });
+        return;
+    }
+
+    // Check ts is recent (within 5 minutes)
+    const now = Date.now();
+    const requestTs = parseInt(ts);
+    if (Math.abs(now - requestTs) > HMAC_VALIDITY_MINUTES * 60 * 1000) {
+        request.log.info('HMAC ts too old');
+        rep.status(HTTP_STATUS.BAD_REQUEST).send({
+            error: {
+                code: ERROR_CODES.UNAUTHORIZED,
+                message: ERROR_MESSAGES[ERROR_CODES.UNAUTHORIZED]
+            }
+        });
+        return;
+    }
+
+    // Query for active key by prefix
+    const { rows } = await pool.query(
+        "select id, project_id, encrypted_key from api_keys where prefix=$1 and status=$2",
+        [keyId, STATUS.ACTIVE]
+    );
+
+    if (rows.length === 0) {
+        request.log.info('No active API key found for HMAC keyId');
+        rep.status(HTTP_STATUS.BAD_REQUEST).send({
+            error: {
+                code: ERROR_CODES.UNAUTHORIZED,
+                message: ERROR_MESSAGES[ERROR_CODES.UNAUTHORIZED]
+            }
+        });
+        return;
+    }
+
+    // Decrypt the full key
+    const encryptedWithIv = rows[0].encrypted_key;
+    const [ivHex, encrypted] = encryptedWithIv.split(':');
+    const iv = Buffer.from(ivHex, ENCODING_HEX);
+    const decipher = crypto.createDecipheriv(
+        ENCRYPTION_ALGORITHM,
+        Buffer.from(environment.ENCRYPTION_KEY, ENCODING_HEX),
+        iv
+    );
+    let decrypted = decipher.update(encrypted, ENCODING_HEX, ENCODING_UTF8);
+    decrypted += decipher.final(ENCODING_UTF8);
+    const fullKey = decrypted;
+
+    const message = request.method.toUpperCase() + request.url + ts + nonce;
+
+    const expectedSignature = crypto
+        .createHmac('sha256', fullKey)
+        .update(message, 'utf8')
+        .digest('hex');
+
+    // timing-safe compare
+    const ok =
+        signature.length === expectedSignature.length &&
+        crypto.timingSafeEqual(
+            Buffer.from(signature, 'hex'),
+            Buffer.from(expectedSignature, 'hex')
+        );
+
+    if (!ok) {
+        request.log.info('HMAC signature mismatch');
+        rep.status(HTTP_STATUS.BAD_REQUEST).send({
+            error: {
+                code: ERROR_CODES.UNAUTHORIZED,
+                message: ERROR_MESSAGES[ERROR_CODES.UNAUTHORIZED]
+            }
+        });
+        return;
+    }
+
+    request.log.info('HMAC signature verified');
+
+    // Update usage timestamp
+    await pool.query(
+        "UPDATE api_keys SET last_used_at = now() WHERE id = $1",
+        [rows[0].id]
+    );
+
+    // Attach project_id
+    request.project_id = rows[0].project_id;
+}
+
+export async function authenticateRouteRequest<TServer extends RawServerBase = RawServerBase>(
+    request: FastifyRequest<RouteGenericInterface, TServer>,
+    rep: FastifyReply<RouteGenericInterface, TServer>,
+    pool: Pool,
+    routeType: 'dashboard' | 'mgmt' | 'runtime' | 'public'
+): Promise<void> {
+    const authMethod = detectAuthMethod(request);
+
+    request.log.info(`Route type: ${routeType}, Auth method detected: ${authMethod}`);
+
+    // Handle public routes
+    if (routeType === 'public') {
+        request.log.info('No auth required for public route');
+        return;
+    }
+
+    // Dashboard routes require session authentication
+    if (routeType === 'dashboard') {
+        if (authMethod !== AuthMethod.SESSION) {
+            request.log.info('Dashboard route requires session auth');
+            rep.status(HTTP_STATUS.UNAUTHORIZED).send({
+                error: {
+                    code: ERROR_CODES.UNAUTHORIZED,
+                    message: 'Dashboard routes require session authentication'
+                }
+            });
+            return;
+        }
+        try {
+            await verifySession(request, pool);
+            return;
+        } catch (error) {
+            const err = error as any;
+            rep.status(err.status).send({ error: err.error });
+            return;
+        }
+    }
+
+    // Management routes: Allow session or PAT only
+    if (routeType === 'mgmt') {
+        switch (authMethod) {
+            case AuthMethod.SESSION:
+                request.log.info('Using session auth for management route');
+                try {
+                    await verifySession(request, pool);
+                    return;
+                } catch (error) {
+                    rep.status(HTTP_STATUS.UNAUTHORIZED).send({
+                        error: {
+                            code: ERROR_CODES.UNAUTHORIZED,
+                            message: 'Management routes require session or PAT authentication'
+                        }
+                    });
+                    return;
+                }
+
+            case AuthMethod.PAT:
+                request.log.info('Using PAT auth for management route');
+                try {
+                    await verifyPAT(request, pool);
+                    return;
+                } catch (error) {
+                    rep.status(HTTP_STATUS.UNAUTHORIZED).send({
+                        error: {
+                            code: ERROR_CODES.UNAUTHORIZED,
+                            message: 'Management routes require session or PAT authentication'
+                        }
+                    });
+                    return;
+                }
+
+            default:
+                request.log.info('Management route requires session or PAT auth');
+                rep.status(HTTP_STATUS.UNAUTHORIZED).send({
+                    error: {
+                        code: ERROR_CODES.UNAUTHORIZED,
+                        message: 'Management routes require session or PAT authentication'
+                    }
+                });
+                return;
+        }
+    }
+
+    // Runtime routes: Allow all authentication methods
+    if (routeType === 'runtime') {
+        switch (authMethod) {
+            case AuthMethod.SESSION:
+                request.log.info('Using session auth for runtime route');
+                try {
+                    await verifySession(request, pool);
+                    return;
+                } catch (error) {
+                    rep.status(HTTP_STATUS.UNAUTHORIZED).send({
+                        error: {
+                            code: ERROR_CODES.UNAUTHORIZED,
+                            message: 'Runtime routes require authentication'
+                        }
+                    });
+                    return;
+                }
+
+            case AuthMethod.PAT:
+                request.log.info('Attempting PAT auth for runtime route');
+                try {
+                    await verifyPAT(request, pool);
+                    return;
+                } catch (error) {
+                    // If PAT fails, might be an API key
+                    request.log.info('PAT auth failed, trying API key auth');
+                    try {
+                        await verifyAPIKey(request, rep, pool);
+                        return;
+                    } catch {
+                        rep.status(HTTP_STATUS.UNAUTHORIZED).send({
+                            error: {
+                                code: ERROR_CODES.UNAUTHORIZED,
+                                message: 'Runtime routes require authentication'
+                            }
+                        });
+                        return;
+                    }
+                }
+
+            case AuthMethod.HMAC:
+                request.log.info('Using HMAC auth for runtime route');
+                try {
+                    await verifyHMAC(request, rep, pool);
+                    return;
+                } catch {
+                    rep.status(HTTP_STATUS.UNAUTHORIZED).send({
+                        error: {
+                            code: ERROR_CODES.UNAUTHORIZED,
+                            message: 'Runtime routes require authentication'
+                        }
+                    });
+                    return;
+                }
+
+            default:
+                // For Bearer tokens on runtime routes, try PAT first, then API key
+                if (request.headers["authorization"]?.startsWith("Bearer ")) {
+                    try {
+                        await verifyPAT(request, pool);
+                    } catch {
+                        try {
+                            await verifyAPIKey(request, rep, pool);
+                        } catch {
+                            rep.status(HTTP_STATUS.UNAUTHORIZED).send({
+                                error: {
+                                    code: ERROR_CODES.UNAUTHORIZED,
+                                    message: 'Runtime routes require authentication'
+                                }
+                            });
+                            return;
+                        }
+                    }
+                    return;
+                }
+
+                request.log.info('Runtime route requires authentication');
+                rep.status(HTTP_STATUS.UNAUTHORIZED).send({
+                    error: {
+                        code: ERROR_CODES.UNAUTHORIZED,
+                        message: 'Runtime routes require authentication'
+                    }
+                });
+                return;
+        }
+    }
+}
 /**
  * Verifies session cookie for dashboard authentication.
  * Checks if user_id exists in session and validates against database.
@@ -19,10 +379,9 @@ import { errorSchema, generateRequestId, getDefaultProjectId, sendError, sendSer
  * @param pool - PostgreSQL connection pool
  * @returns {Promise<void>} Resolves on success, sends 401 on failure
  */
-export async function verifySession(request: FastifyRequest, rep: FastifyReply, pool: Pool): Promise<void> {
+export async function verifySession<TServer extends RawServerBase = RawServerBase>(request: FastifyRequest<RouteGenericInterface, TServer>, pool: Pool): Promise<void> {
     if (!request.session || !request.session.user_id) {
-        rep.status(HTTP_STATUS.BAD_REQUEST).send({ error: { code: ERROR_CODES.UNAUTHORIZED, message: ERROR_MESSAGES[ERROR_CODES.UNAUTHORIZED] } });
-        return;
+        throw { status: HTTP_STATUS.BAD_REQUEST, error: { code: ERROR_CODES.UNAUTHORIZED, message: ERROR_MESSAGES[ERROR_CODES.UNAUTHORIZED] } };
     }
 
     const user_id = request.session.user_id;
@@ -30,8 +389,7 @@ export async function verifySession(request: FastifyRequest, rep: FastifyReply, 
     if (rows.length === 0) {
         // Invalid session - clear it
         request.session.user_id = undefined;
-        rep.status(HTTP_STATUS.UNAUTHORIZED).send({ error: { code: ERROR_CODES.INVALID_TOKEN, message: ERROR_MESSAGES[ERROR_CODES.INVALID_TOKEN] } });
-        return;
+        throw { status: HTTP_STATUS.UNAUTHORIZED, error: { code: ERROR_CODES.INVALID_TOKEN, message: ERROR_MESSAGES[ERROR_CODES.INVALID_TOKEN] } };
     }
 
     // Get default project for user
@@ -40,8 +398,7 @@ export async function verifySession(request: FastifyRequest, rep: FastifyReply, 
         request.user_id = user_id;
         request.project_id = projectId;
     } catch (error) {
-        rep.status(HTTP_STATUS.FORBIDDEN).send({ error: { code: ERROR_CODES.NO_PROJECT, message: ERROR_MESSAGES[ERROR_CODES.NO_PROJECT] } });
-        return;
+        throw { status: HTTP_STATUS.FORBIDDEN, error: { code: ERROR_CODES.NO_PROJECT, message: ERROR_MESSAGES[ERROR_CODES.NO_PROJECT] } };
     }
 }
 
@@ -55,13 +412,12 @@ export async function verifySession(request: FastifyRequest, rep: FastifyReply, 
  * @param pool - PostgreSQL connection pool
  * @returns {Promise<void>} Resolves on success, sends 401 on failure
  */
-export async function verifyPAT(request: FastifyRequest, rep: FastifyReply, pool: Pool): Promise<void> {
+export async function verifyPAT<TServer extends RawServerBase = RawServerBase>(request: FastifyRequest<RouteGenericInterface, TServer>, pool: Pool): Promise<void> {
     const header = request.headers[AUTHORIZATION_HEADER];
     const authHeader = Array.isArray(header) ? header[0] : header;
     if (!authHeader || !authHeader.startsWith(BEARER_PREFIX)) {
         request.log.info('No or invalid Bearer header for PAT auth');
-        rep.status(HTTP_STATUS.BAD_REQUEST).send({ error: { code: ERROR_CODES.UNAUTHORIZED, message: ERROR_MESSAGES[ERROR_CODES.UNAUTHORIZED] } });
-        return;
+        throw { status: HTTP_STATUS.BAD_REQUEST, error: { code: ERROR_CODES.UNAUTHORIZED, message: ERROR_MESSAGES[ERROR_CODES.UNAUTHORIZED] } };
     }
     const token = authHeader.slice(7).trim();
     const tokenHash = crypto.createHash(HASH_ALGORITHM).update(token).digest('hex');
@@ -75,8 +431,7 @@ export async function verifyPAT(request: FastifyRequest, rep: FastifyReply, pool
     );
 
     if (rows.length === 0) {
-        rep.status(HTTP_STATUS.UNAUTHORIZED).send({ error: { code: ERROR_CODES.UNAUTHORIZED, message: ERROR_MESSAGES[ERROR_CODES.UNAUTHORIZED] } });
-        return;
+        throw { status: HTTP_STATUS.UNAUTHORIZED, error: { code: ERROR_CODES.UNAUTHORIZED, message: ERROR_MESSAGES[ERROR_CODES.UNAUTHORIZED] } };
     }
 
     // Update usage timestamp
@@ -93,8 +448,7 @@ export async function verifyPAT(request: FastifyRequest, rep: FastifyReply, pool
         request.pat_scopes = rows[0].scopes || [];
         request.project_id = projectId;
     } catch (error) {
-        rep.status(HTTP_STATUS.FORBIDDEN).send({ error: { code: ERROR_CODES.NO_PROJECT, message: ERROR_MESSAGES[ERROR_CODES.NO_PROJECT] } });
-        return;
+        throw { status: HTTP_STATUS.FORBIDDEN, error: { code: ERROR_CODES.NO_PROJECT, message: ERROR_MESSAGES[ERROR_CODES.NO_PROJECT] } };
     }
 
     // Audit PAT usage

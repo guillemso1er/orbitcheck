@@ -19,7 +19,10 @@ export function registerBatchRoutes(app: FastifyInstance, pool: Pool, redis: IOR
             description: 'Performs batch validation of emails, phones, addresses, or tax IDs asynchronously',
             tags: ['Batch Operations'],
             headers: securityHeader,
-            security: [{ ApiKeyAuth: [] }],
+            security: [
+                { ApiKeyAuth: [] },
+                { BearerAuth: [] }
+            ],
             body: {
                 type: 'object',
                 required: ['type', 'data'],
@@ -102,7 +105,10 @@ export function registerBatchRoutes(app: FastifyInstance, pool: Pool, redis: IOR
             description: 'Performs batch deduplication of customers or addresses asynchronously',
             tags: ['Batch Operations'],
             headers: securityHeader,
-            security: [{ ApiKeyAuth: [] }],
+            security: [
+                { ApiKeyAuth: [] },
+                { BearerAuth: [] }
+            ],
             body: {
                 type: 'object',
                 required: ['type', 'data'],

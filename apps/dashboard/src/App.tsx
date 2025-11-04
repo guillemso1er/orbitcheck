@@ -10,7 +10,7 @@ import Rules from './components/Rules';
 import ThemeToggle from './components/ThemeToggle';
 import UsageDashboard from './components/UsageDashboard';
 import WebhookTester from './components/WebhookTester';
-import { UI_STRINGS } from './constants';
+import { API_BASE, UI_STRINGS } from './constants';
 
 // Types
 interface NavItem {
@@ -154,10 +154,12 @@ const Sidebar = memo(({
             <div className="flex items-center space-x-3">
               {/* Better Logo */}
               <div className="relative">
-                <div className="w-11 h-11 bg-gradient-to-br from-blue-500 via-blue-600 to-purple-600 rounded-xl flex items-center justify-center shadow-lg transform rotate-3 hover:rotate-6 transition-transform duration-300">
-                  <svg className="w-6 h-6 text-white transform -rotate-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                  </svg>
+                <div className="w-11 h-11 bg-gray-200 dark:bg-gray-600 rounded-xl flex items-center justify-center shadow-lg transform rotate-3 hover:rotate-6 transition-transform duration-300">
+                  <img
+                    src="/favicon.svg"
+                    className="w-10 h-10 transform -rotate-3 "
+                    alt="OrbitCheck logo"
+                  />
                 </div>
                 <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-white dark:border-gray-900 animate-pulse"></div>
               </div>
@@ -176,14 +178,12 @@ const Sidebar = memo(({
 
           {/* Controls Section */}
           <div className="px-6 pb-4 flex items-center justify-between">
-            <ThemeToggle />
-
             {/* Close button - only on mobile */}
             {isMobile && (
               <button
                 className="
                   p-2.5 rounded-xl
-                  bg-gray-100 dark:bg-gray-800 
+                  bg-gray-100 dark:bg-gray-800
                   hover:bg-gray-200 dark:hover:bg-gray-700
                   text-gray-500 dark:text-gray-400
                   hover:text-gray-700 dark:hover:text-gray-200
@@ -230,7 +230,7 @@ const Sidebar = memo(({
 
                 {/* API Docs Link */}
                 <a
-                  href={`${window.location.origin}/api-reference`}
+                  href={`${API_BASE}/documentation`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="
@@ -251,6 +251,11 @@ const Sidebar = memo(({
                 </a>
               </div>
             </nav>
+
+            {/* Theme Toggle before user section */}
+            <div className="px-4 py-3 flex justify-center">
+              <ThemeToggle />
+            </div>
 
             {/* User section */}
             <div className="p-4 border-t border-gray-200 dark:border-gray-800">

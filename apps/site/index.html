@@ -20,8 +20,8 @@
   <meta name="twitter:description"
     content="Deep global validation: emails, phones, addresses, EU VAT, ES-LATAM IDs; dedupe; risk-driven controls. Platform-independent." />
   <meta name="twitter:image" content="https://orbitcheck.io/og-cover.png" />
-  <!-- Tailwind v2 CDN -->
-  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet" />
+  <!-- Tailwind v4 CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
   <!-- Custom styles that cannot be handled by Tailwind utilities -->
   <link rel="stylesheet" href="/css/common.css" />
   <script type="application/ld+json">
@@ -68,14 +68,30 @@
   <!-- Header -->
   <header class="bg-white border-b border-gray-100">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
-      <a href="/" class="flex items-center space-x-2">
-        <svg class="w-8 h-8 text-indigo-600" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-          <circle cx="12" cy="12" r="10" class="text-indigo-100" fill="currentColor" opacity="0.2"></circle>
-          <path d="M12 3a9 9 0 109 9h-9V3z" class="text-indigo-600" fill="currentColor"></path>
-        </svg>
+      <a href="/" class="flex items-center gap-2">
+        <div class="w-12 h-12 flex items-center justify-center">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="331.413 100.998 60 60" width="60px" height="60px">
+            <rect x="331.413" y="100.998" width="60" height="60" rx="16" ry="16"
+              fill="rgb(79 70 229 / var(--tw-bg-opacity, 1))" style="stroke-width: 1;"
+              transform="matrix(0.9999999999999999, 0, 0, 0.9999999999999999, 0, -1.4210854715202004e-14)" />
+            <ellipse cx="32" cy="32" rx="26" ry="10" fill="none" stroke="#ffffff" stroke-width="2" opacity="0.4"
+              transform="matrix(0.7071070075035094, -0.7071070075035095, 0.7071070075035094, 0.7071070075035095, 315.9268515173151, 130.70069974286685)"
+              style="stroke-width: 2;" />
+            <path d="M 353.904 125.234 L 361.904 133.234 L 377.904 117.234" fill="none" stroke="#ffffff"
+              stroke-width="6" stroke-linecap="round" stroke-linejoin="round" style="stroke-width: 6;"
+              transform="matrix(0.9999999999999999, 0, 0, 0.9999999999999999, 0, -1.4210854715202004e-14)" />
+            <ellipse cx="32" cy="32" rx="26" ry="10" fill="none" stroke="#ffffff" stroke-width="2.5"
+              transform="matrix(0.7071070075035094, 0.7071070075035095, -0.7071070075035094, 0.7071070075035095, 361.1302820010203, 85.49432431285257)"
+              style="stroke-width: 2.5;" />
+            <circle cx="360.206" cy="143.789" r="3" fill="#ffffff" style="stroke-width: 1;"
+              transform="matrix(0.9999999999999999, 0, 0, 0.9999999999999999, 0, -1.4210854715202004e-14)" />
+            <circle cx="360.703" cy="117.339" r="3" fill="#ffffff" style="stroke-width: 1;"
+              transform="matrix(0.9999999999999999, 0, 0, 0.9999999999999999, 0, -1.4210854715202004e-14)" />
+          </svg>
+        </div>
         <span class="font-extrabold text-xl">Orbitcheck</span>
       </a>
-      <nav class="hidden md:flex items-center space-x-6">
+      <nav class="hidden md:flex items-center gap-6">
         <a href="/#features" class="text-gray-700 hover:text-gray-900">Product</a>
         <a href="/pricing.html" class="text-gray-700 hover:text-gray-900">Pricing</a>
         <a href="/docs/index.html" class="text-gray-700 hover:text-gray-900">Docs</a>
@@ -83,7 +99,7 @@
         <a href="/tools/index.html" class="text-gray-700 hover:text-gray-900">Free Tools</a>
         <a href="https://status.orbitcheck.io" class="text-gray-700 hover:text-gray-900">Status</a>
       </nav>
-      <div class="hidden md:flex items-center space-x-3">
+      <div class="hidden md:flex items-center gap-3">
         <a href="/pricing.html"
           class="inline-flex items-center justify-center px-5 py-3 rounded-md font-semibold bg-white text-indigo-700 border border-indigo-200 hover:border-indigo-300">See
           pricing</a>
@@ -94,7 +110,7 @@
       </div>
       <!-- Mobile nav using details (no JS) -->
       <details class="md:hidden relative">
-        <summary class="list-none cursor-pointer inline-flex items-center space-x-2">
+        <summary class="list-none cursor-pointer inline-flex items-center gap-2">
           <span class="sr-only">Menu</span>
           <svg class="w-7 h-7 text-gray-700 rotate transition-transform">
             <path fill="currentColor" d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z" />
@@ -107,7 +123,7 @@
           <a href="/changelog.html" class="block px-3 py-2 rounded hover:bg-gray-50">Changelog</a>
           <a href="/tools/index.html" class="block px-3 py-2 rounded hover:bg-gray-50">Free Tools</a>
           <a href="https://status.orbitcheck.io" class="block px-3 py-2 rounded hover:bg-gray-50">Status</a>
-          <div class="border-t border-gray-100 pt-2 flex space-x-2">
+          <div class="border-t border-gray-100 pt-2 flex gap-2">
             <a href="/pricing.html"
               class="flex-1 w-full inline-flex items-center justify-center px-5 py-3 rounded-md font-semibold bg-white text-indigo-700 border border-indigo-200 hover:border-indigo-300">Pricing</a>
             <!-- Replace # with your actual signup URL -->
@@ -139,7 +155,7 @@
           <li>Platform-independent: own your billing and roadmap. Thin Shopify/Woo/BigCommerce/Magento connectors.</li>
         </ul>
 
-        <div class="mt-8 flex items-center space-x-3">
+        <div class="mt-8 flex items-center gap-3">
           <!-- Replace # with your actual signup URL -->
           <a href="#"
             class="inline-flex items-center justify-center px-5 py-3 rounded-md font-semibold bg-indigo-600 text-white hover:bg-indigo-700">Start
@@ -206,13 +222,13 @@
                 id="country" name="country" type="text" placeholder="ES, BR, MX, EU, ..." required>
             </div>
           </div>
-          <div class="flex items-start space-x-2">
+          <div class="flex items-start gap-2">
             <input id="consent" name="consent" type="checkbox" class="mt-1" required>
             <label for="consent" class="text-sm text-gray-600">I agree to the <a href="/legal/tos.html"
                 class="text-indigo-600 hover:underline">ToS</a> and <a href="/legal/privacy.html"
                 class="text-indigo-600 hover:underline">Privacy Policy</a>.</label>
           </div>
-          <div class="flex items-center space-x-3">
+          <div class="flex items-center gap-3">
             <button type="submit"
               class="inline-flex items-center justify-center px-5 py-3 rounded-md font-semibold bg-indigo-600 text-white hover:bg-indigo-700">Get
               ROI estimate</button>
@@ -403,7 +419,7 @@
           reason codes.</div>
       </details>
       <details class="bg-white shadow-sm rounded-lg border border-gray-100 p-4">
-        <summary class="font-semibold cursor-pointer">What’s the pricing model?</summary>
+        <summary class="font-semibold cursor-pointer">What's the pricing model?</summary>
         <div class="mt-2 text-gray-700">Transparent, usage-based plans with aggressive caching to keep margins
           predictable. See <a href="/pricing.html" class="text-indigo-700">pricing</a>.</div>
       </details>
@@ -418,7 +434,7 @@
       {"@type":"Question","name":"Does Orbitcheck work with Shopify/Woo/BigCommerce/Magento?","acceptedAnswer":{"@type":"Answer","text":"Yes. Thin connectors; keep billing and roadmap under your control."}},
       {"@type":"Question","name":"How fast is it?","acceptedAnswer":{"@type":"Answer","text":"Typical p95 under 150 ms; sub-50 ms cache hits."}},
       {"@type":"Question","name":"What about privacy and compliance?","acceptedAnswer":{"@type":"Answer","text":"DPA provided; enterprise data residency; reason-code audit logs."}},
-      {"@type":"Question","name":"What’s the pricing model?","acceptedAnswer":{"@type":"Answer","text":"Transparent, usage-based plans with caching; see pricing."}}
+      {"@type":"Question","name":"What's the pricing model?","acceptedAnswer":{"@type":"Answer","text":"Transparent, usage-based plans with caching; see pricing."}}
     ]
   }
   </script>
@@ -427,7 +443,7 @@
   <footer class="bg-white border-t border-gray-100">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 grid md:grid-cols-4 gap-8">
       <div>
-        <a href="/" class="flex items-center space-x-2">
+        <a href="/" class="flex items-center gap-2">
           <svg class="w-7 h-7 text-indigo-600" viewBox="0 0 24 24" fill="currentColor">
             <circle cx="12" cy="12" r="10" opacity="0.2"></circle>
             <path d="M12 3a9 9 0 109 9h-9V3z"></path>

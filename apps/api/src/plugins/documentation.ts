@@ -3,86 +3,80 @@ import fastifySwaggerUi from '@fastify/swagger-ui'
 import ScalarApiReference from '@scalar/fastify-api-reference'
 import type { FastifyInstance, RawServerBase } from 'fastify'
 
+import { DASHBOARD_ROUTES, MGMT_V1_ROUTES } from '@orbitcheck/contracts'
 import { API_VERSION, ROUTES } from '../config.js'
 import { environment } from '../environment.js'
+
+function shouldHideRoute(url: string): boolean {
+    return (
+        url.startsWith(ROUTES.REFERENCE) ||
+        url.startsWith(ROUTES.DOCUMENTATION) ||
+        url.startsWith(ROUTES.METRICS) ||
+        Object.values(MGMT_V1_ROUTES).some(group =>
+            typeof group === 'object' && group !== null &&
+            Object.values(group).some(route => url.startsWith(route))) ||
+        url.startsWith(ROUTES.STATUS) ||
+        url.startsWith(ROUTES.HEALTH) ||
+        url.startsWith(ROUTES.READY) ||
+        url.startsWith(DASHBOARD_ROUTES.REGISTER_NEW_USER) ||
+        url.startsWith(DASHBOARD_ROUTES.USER_LOGIN) ||
+        url.startsWith(DASHBOARD_ROUTES.USER_LOGOUT) ||
+        url.startsWith(MGMT_V1_ROUTES.DATA.ERASE))
+        && environment.NODE_ENV === 'production'
+}
+
+const apiFaviconSvg = `<?xml version="1.0" encoding="utf-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="331.413 100.998 60 60" width="60px" height="60px">
+  <rect x="331.413" y="100.998" width="60" height="60" rx="16" ry="16" fill="#19b6b5" style="stroke-width: 1;" transform="matrix(0.9999999999999999, 0, 0, 0.9999999999999999, 0, -1.4210854715202004e-14)"/>
+  <ellipse cx="32" cy="32" rx="26" ry="10" fill="none" stroke="#ffffff" stroke-width="2" opacity="0.4" transform="matrix(0.7071070075035094, -0.7071070075035095, 0.7071070075035094, 0.7071070075035095, 315.9268515173151, 130.70069974286685)" style="stroke-width: 2;"/>
+  <path d="M 353.904 125.234 L 361.904 133.234 L 377.904 117.234" fill="none" stroke="#ffffff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" style="stroke-width: 6;" transform="matrix(0.9999999999999999, 0, 0, 0.9999999999999999, 0, -1.4210854715202004e-14)"/>
+  <ellipse cx="32" cy="32" rx="26" ry="10" fill="none" stroke="#ffffff" stroke-width="2.5" transform="matrix(0.7071070075035094, 0.7071070075035095, -0.7071070075035094, 0.7071070075035095, 361.1302820010203, 85.49432431285257)" style="stroke-width: 2.5;"/>
+  <circle cx="360.206" cy="143.789" r="3" fill="#ffffff" style="stroke-width: 1;" transform="matrix(0.9999999999999999, 0, 0, 0.9999999999999999, 0, -1.4210854715202004e-14)"/>
+  <circle cx="360.703" cy="117.339" r="3" fill="#ffffff" style="stroke-width: 1;" transform="matrix(0.9999999999999999, 0, 0, 0.9999999999999999, 0, -1.4210854715202004e-14)"/>
+</svg>`
+
+const faviconDataUrl = `data:image/svg+xml;base64,${Buffer.from(apiFaviconSvg).toString('base64')}`
 
 export async function setupDocumentation<TServer extends RawServerBase = RawServerBase>(app: FastifyInstance<TServer>): Promise<void> {
 
     app.addHook('onRoute', (routeOptions) => {
         const url = routeOptions.url || ''
-        // Hide any route that contains 'internal' in the URL
-        if ((
-            url.startsWith(ROUTES.DASHBOARD) ||
-            url.startsWith(ROUTES.REFERENCE) ||
-            url.startsWith(ROUTES.DOCUMENTATION) ||
-            url.startsWith(ROUTES.METRICS) ||
-            url.startsWith(ROUTES.SETTINGS) ||
-            url.startsWith(ROUTES.STATUS) ||
-            url.startsWith(ROUTES.HEALTH) ||
-            url.startsWith(ROUTES.READY) ||
-            url.startsWith(ROUTES.REGISTER) ||
-            url.startsWith(ROUTES.LOGIN) ||
-            url.startsWith(ROUTES.LOGOUT) ||
-
-            url.startsWith(ROUTES.READY)) && environment.NODE_ENV !== 'local') {
+        if (shouldHideRoute(url)) {
             routeOptions.schema = routeOptions.schema || {};
             routeOptions.schema.hide = true;
-        }
-
-        // Hide specific endpoints in production
-        if (environment.NODE_ENV !== 'local') {
-            if (
-                url === ROUTES.REGISTER ||
-                url === ROUTES.LOGIN ||
-                url === ROUTES.LOGOUT ||
-                url === '/v1/data/erase'
-            ) {
-                routeOptions.schema = routeOptions.schema || {};
-                routeOptions.schema.hide = true;
-            }
         }
     });
 
     await app.register(fastifySwagger, {
         openapi: {
             info: {
-                title: 'Orbitcheck API',
+                title: 'Orbitcheck Docs',
                 description: 'API documentation',
                 version: API_VERSION,
             },
             components: {
                 securitySchemes: {
-                    // Match the names used in your route schemas exactly
-                    BearerAuth: {
-                        type: 'http',
-                        scheme: 'bearer',
-                        bearerFormat: 'PAT', // or leave out if you prefer
-                        description: 'Use your Personal Access Token (pat_xxx) for management routes ',
-                    },
-                    ApiKeyAuth: {
+                    ApiKeyAuth: {            // API Key in header
                         type: 'apiKey',
                         in: 'header',
-                        name: 'Authorization',
+                        name: 'X-API-Key',
                         description: 'Use your  API Key (ok_xxx) for runtime routes as an API Key',
+
                     },
-                },
+                    BearerAuth: {            // Personal Access Token (Bearer)
+                        type: 'http',
+                        scheme: 'bearer',
+                        bearerFormat: 'PAT',
+                        description: 'Use your Personal Access Token (pat_xxx) for management routes ',
+                        // documentation hint (e.g., JWT, PAT, opaque)
+                    }
+                }
             },
-            servers: [{ url: environment.BASE_URL, description: 'Development server' }],
+            servers: [{ url: environment.BASE_URL, description: `Environment: ${environment.NODE_ENV}` }],
         },
         transform: ({ schema, url }: { schema: any; url: string }) => {
             if (
-                url.startsWith('/dashboard') ||
-                url.startsWith(ROUTES.DASHBOARD) ||
-                url.startsWith(ROUTES.REFERENCE) ||
-                url.startsWith(ROUTES.DOCUMENTATION) ||
-                url.startsWith(ROUTES.METRICS) ||
-                url.startsWith(ROUTES.SETTINGS) ||
-                url.startsWith(ROUTES.STATUS) ||
-                url.startsWith(ROUTES.HEALTH) ||
-                url.startsWith(ROUTES.READY) ||
-                url.startsWith(ROUTES.REGISTER) ||
-                url.startsWith(ROUTES.LOGIN) ||
-                url.startsWith(ROUTES.LOGOUT)
+                shouldHideRoute(url)
             ) {
                 return { schema: null as any, url }
             }
@@ -94,6 +88,16 @@ export async function setupDocumentation<TServer extends RawServerBase = RawServ
     await app.register(fastifySwaggerUi, {
         routePrefix: '/documentation',
         uiConfig: { docExpansion: 'list', deepLinking: false },
+        theme: {
+            title: 'Orbitcheck Docs',
+            favicon: [{
+                filename: 'favicon.svg',
+                rel: 'icon',
+                sizes: '64x64',
+                type: 'image/svg+xml',
+                content: Buffer.from(apiFaviconSvg, 'utf8')
+            }]
+        },
         staticCSP: true,
         transformStaticCSP: (header) => {
             // Update CSP to allow Swagger UI to function properly
@@ -133,6 +137,9 @@ export async function setupDocumentation<TServer extends RawServerBase = RawServ
     // Public Scalar reference — no content/url; it will use app.swagger()
     await app.register(ScalarApiReference, {
         routePrefix: '/reference',
+        configuration: {
+            favicon: faviconDataUrl
+        }
         // configuration: { ... } // optional UI tweaks
     })
 }

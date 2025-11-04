@@ -327,7 +327,7 @@ jest.mock('@sentry/node', () => ({
 let registerAuthRoutesFunction: unknown;
 let verifySessionFunction: unknown;
 let verifyPATFunction: unknown;
-let authHookFunction: unknown;
+let verifyAPIKeyFunction: unknown;
 let rateLimitFunction: unknown;
 let idempotencyFunction: unknown;
 let registerRoutesFunction: unknown;
@@ -407,9 +407,9 @@ export const setupBeforeAll = async (): Promise<void> => {
   registerAuthRoutesFunction = authModule.registerAuthRoutes;
   verifySessionFunction = authModule.verifySession;
   verifyPATFunction = authModule.verifyPAT;
+  verifyAPIKeyFunction = authModule.verifyAPIKey;
 
   const hooksModule = await import('../hooks.js');
-  authHookFunction = hooksModule.auth;
   rateLimitFunction = hooksModule.rateLimit;
   idempotencyFunction = hooksModule.idempotency;
 
@@ -449,7 +449,7 @@ export const libphone = jest.requireMock('libphonenumber-js');
 
 // Export loaded functions for tests
 export {
-  authHookFunction, idempotencyFunction, rateLimitFunction, registerAuthRoutesFunction, registerRoutesFunction, verifyPATFunction, verifySessionFunction
+  verifyAPIKeyFunction, idempotencyFunction, rateLimitFunction, registerAuthRoutesFunction, registerRoutesFunction, verifyPATFunction, verifySessionFunction
 };
 
 describe('Test Setup', () => {

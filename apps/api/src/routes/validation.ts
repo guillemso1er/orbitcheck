@@ -300,6 +300,7 @@ export function registerValidationRoutes(app: FastifyInstance, pool: Pool, redis
             description: 'Verifies the OTP sent to the phone number using Twilio Verify.',
             tags: ['Validation'],
             headers: securityHeader,
+            security: [{ ApiKeyAuth: [] }, { BearerAuth: [] }],
             body: {
                 type: 'object',
                 required: ['verification_sid', 'code'],

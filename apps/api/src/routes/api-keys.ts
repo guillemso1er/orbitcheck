@@ -17,7 +17,7 @@ export function registerApiKeysRoutes(app: FastifyInstance, pool: Pool): void {
             description: 'Retrieves a list of API keys for the authenticated project, showing only the prefix (first 6 characters) for security.',
             tags: ['API Keys'],
             headers: securityHeader,
-            security: [{ ApiKeyAuth: [] }],
+            security: [{ BearerAuth: [] }],
             response: {
                 200: {
                     description: 'List of API keys',

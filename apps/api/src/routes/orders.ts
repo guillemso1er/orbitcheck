@@ -51,7 +51,10 @@ export function registerOrderRoutes(app: FastifyInstance, pool: Pool, redis: Red
             description: 'Evaluates an order for deduplication, validation, and applies business rules like P.O. box blocking, fraud scoring, and auto-hold/tagging. Returns risk assessment and action recommendations.',
             tags: ['Order Evaluation'],
             headers: securityHeader,
-            security: [{ ApiKeyAuth: [] }],
+            security: [
+                { ApiKeyAuth: [] },
+                { BearerAuth: [] }
+            ],
             body: {
                 type: 'object',
                 required: ['order_id', 'customer', 'shipping_address', 'total_amount', 'currency'],

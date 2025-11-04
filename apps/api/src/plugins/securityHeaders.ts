@@ -1,6 +1,6 @@
 import type { FastifyInstance, FastifyRequest, RawServerBase, RouteGenericInterface } from "fastify";
+import { DASHBOARD_ROUTES } from "@orbitcheck/contracts";
 
-import { ROUTES } from "../config.js";
 
 /**
  * Adds comprehensive security headers to all responses.
@@ -17,7 +17,8 @@ export async function setupSecurityHeaders<TServer extends RawServerBase = RawSe
         reply.header('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
 
         // Add CSP for dashboard routes
-        if (request.url.startsWith('/dashboard') || request.url.startsWith(ROUTES.DASHBOARD)) {
+        if (request.url.startsWith('/dashboard') ||
+            Object.values(DASHBOARD_ROUTES).some(route => request.url.startsWith(route))) {
             reply.header('Content-Security-Policy',
                 "default-src 'self'; " +
                 "script-src 'self' 'unsafe-inline' 'unsafe-eval'; " + // May need to adjust for your frontend

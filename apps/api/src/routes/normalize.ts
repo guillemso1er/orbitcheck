@@ -11,6 +11,7 @@ export function registerNormalizeRoutes(app: FastifyInstance, _pool: Pool): void
             description: 'Performs basic address normalization without geocoding or external lookups.',
             tags: ['Normalization'],
             headers: securityHeader,
+            security: [{ ApiKeyAuth: [] }, { BearerAuth: [] }],
             body: {
                 type: 'object',
                 required: ['address'],

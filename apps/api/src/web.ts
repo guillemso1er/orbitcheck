@@ -1,12 +1,12 @@
-import { DASHBOARD_ROUTES } from "@orbitcheck/contracts";
+import { API_V1_ROUTES, DASHBOARD_ROUTES, MGMT_V1_ROUTES } from "@orbitcheck/contracts";
 import type { FastifyInstance, FastifyReply, FastifyRequest, RawServerBase, RouteGenericInterface } from "fastify";
 import { type Redis as IORedisType } from 'ioredis';
 import type { Pool } from "pg";
 
 import { ROUTES } from "./config.js";
-import { auth, idempotency, rateLimit } from "./hooks.js";
+import { idempotency, rateLimit } from "./hooks.js";
 import { registerApiKeysRoutes } from './routes/api-keys.js';
-import { registerAuthRoutes, verifyPAT, verifySession } from "./routes/auth.js";
+import { authenticateRouteRequest, registerAuthRoutes } from "./routes/auth.js";
 import { registerBatchRoutes } from './routes/batch.js';
 import { registerBillingRoutes } from './routes/billing.js';
 import { registerDataRoutes } from './routes/data.js';
@@ -48,49 +48,32 @@ export async function authenticateRequest<TServer extends RawServerBase = RawSer
     }
 
     // Dashboard routes - use session-based authentication
-    const isDashboardRoute = url.startsWith('/dashboard') ||
-        url.startsWith(ROUTES.DASHBOARD);
+    const isDashboardRoute =
+        Object.values(DASHBOARD_ROUTES).some(route => url.startsWith(route));
 
     // Management routes - use PAT authentication, fallback to session
-    const isMgmtRoute = url.startsWith(ROUTES.API_KEYS) ||
-        url.startsWith(ROUTES.DATA) ||
-        url.startsWith(ROUTES.LOGS) ||
-        url.startsWith(ROUTES.RULES) ||
-        url.startsWith(ROUTES.SETTINGS) ||
-        url.startsWith(ROUTES.WEBHOOKS) ||
-        url.startsWith('/v1/pats');
+    const isMgmtRoute = Object.values(MGMT_V1_ROUTES).some(group =>
+        typeof group === 'object' && group !== null &&
+        Object.values(group).some(route => url.startsWith(route))
+    );
 
     // Runtime routes - use API key with HMAC
-    const isRuntimeRoute = url.startsWith(ROUTES.DEDUPE) ||
-        url.startsWith(ROUTES.ORDERS) ||
-        url.startsWith(ROUTES.VALIDATE) ||
-        url.startsWith(ROUTES.NORMALIZE) ||
-        url.startsWith(ROUTES.VERIFY) ||
-        url.startsWith(ROUTES.BATCH) ||
-        url.startsWith(ROUTES.JOBS);
+    const isRuntimeRoute = Object.values(API_V1_ROUTES).some(group =>
+        typeof group === 'object' && group !== null &&
+        Object.values(group).some(route => url.startsWith(route))
+    );
 
     // Log the auth method being used for debugging
     request.log.info({ url, isDashboardRoute, isMgmtRoute, isRuntimeRoute }, 'Auth method determination');
 
-    // Apply appropriate auth
     if (isDashboardRoute) {
-        request.log.info('Using session auth for dashboard route');
-        await verifySession(request as any, rep as any, pool);
+        await authenticateRouteRequest(request, rep, pool, 'dashboard');
     } else if (isMgmtRoute) {
-        request.log.info('Trying PAT auth for management route');
-        const header = request.headers["authorization"];
-        if (header && header.startsWith("Bearer ")) {
-            await verifyPAT(request as any, rep as any, pool);
-        } else {
-            request.log.info('No Bearer header, trying session auth for management route');
-            await verifySession(request as any, rep as any, pool);
-        }
+        await authenticateRouteRequest(request, rep, pool, 'mgmt');
     } else if (isRuntimeRoute) {
-        request.log.info('Using API key/HMAC auth for runtime route');
-        await auth(request as any, rep as any, pool); // Supports both Bearer API keys and HMAC
+        await authenticateRouteRequest(request, rep, pool, 'runtime');
     } else {
-        // Other public routes
-        request.log.info('No auth required for public route');
+        await authenticateRouteRequest(request, rep, pool, 'public');
     }
 }
 
@@ -118,13 +101,10 @@ export async function applyRateLimitingAndIdempotency<TServer extends RawServerB
     }
 
     // Only apply rate limiting and idempotency to runtime routes
-    const isRuntimeRoute = url.startsWith(ROUTES.DEDUPE) ||
-        url.startsWith(ROUTES.ORDERS) ||
-        url.startsWith(ROUTES.VALIDATE) ||
-        url.startsWith(ROUTES.NORMALIZE) ||
-        url.startsWith(ROUTES.VERIFY) ||
-        url.startsWith(ROUTES.BATCH) ||
-        url.startsWith(ROUTES.JOBS);
+    const isRuntimeRoute = Object.values(API_V1_ROUTES).some(group =>
+        typeof group === 'object' && group !== null &&
+        Object.values(group).some(route => url.startsWith(route))
+    );
 
     if (isRuntimeRoute) {
         await rateLimit(request as any, rep as any, redis);
