@@ -507,22 +507,28 @@ runtime_provision_database() {
     # Prepare the SQL script - avoiding psql variables inside DO blocks
     local sql_script
     sql_script=$(cat <<'EOSQL'
--- Create migration role if it doesn't exist
+-- Create or update the migration role to ensure it has LOGIN permission
 DO $proc$
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = current_setting('vars.migration_user')) THEN
-        EXECUTE format('CREATE ROLE %I LOGIN', current_setting('vars.migration_user'));
+        EXECUTE format('CREATE ROLE %I WITH LOGIN', current_setting('vars.migration_user'));
         RAISE NOTICE 'Created role: %', current_setting('vars.migration_user');
+    ELSE
+        EXECUTE format('ALTER ROLE %I WITH LOGIN', current_setting('vars.migration_user'));
+        RAISE NOTICE 'Ensured role % has LOGIN permission', current_setting('vars.migration_user');
     END IF;
 END
 $proc$;
 
--- Create app role if it doesn't exist
+-- Create or update the app role to ensure it has LOGIN permission
 DO $proc$
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = current_setting('vars.app_user')) THEN
-        EXECUTE format('CREATE ROLE %I LOGIN', current_setting('vars.app_user'));
+        EXECUTE format('CREATE ROLE %I WITH LOGIN', current_setting('vars.app_user'));
         RAISE NOTICE 'Created role: %', current_setting('vars.app_user');
+    ELSE
+        EXECUTE format('ALTER ROLE %I WITH LOGIN', current_setting('vars.app_user'));
+        RAISE NOTICE 'Ensured role % has LOGIN permission', current_setting('vars.app_user');
     END IF;
 END
 $proc$;
@@ -536,6 +542,7 @@ ALTER DATABASE :"APP_DB_NAME" OWNER TO :"MIGRATION_DB_USER";
 
 -- Revoke default PUBLIC privileges
 REVOKE CREATE ON SCHEMA public FROM PUBLIC;
+REVOKE CREATE ON SCHEMA public FROM :"MIGRATION_DB_USER";
 REVOKE ALL ON DATABASE :"APP_DB_NAME" FROM PUBLIC;
 
 -- Grant connection rights
