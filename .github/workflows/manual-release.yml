@@ -21,7 +21,7 @@ on:
 
 permissions:
     contents: write # needed to create tags and releases
-    actions: read # needed to trigger other workflows
+    actions: write # needed to trigger other workflows
 
 jobs:
     release:
