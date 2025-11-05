@@ -17,10 +17,8 @@ export async function registerHealthRoutes<TServer extends RawServerBase = RawSe
     }));
 
     // Health check endpoint (public, no auth required)
-    app.get(ROUTES.HEALTH, async (): Promise<{ ok: true; timestamp: string; environment: string }> => ({
-        ok: true,
-        timestamp: new Date().toISOString(),
-        environment: process.env.NODE_ENV || 'development'
+    app.get(ROUTES.HEALTH, async (): Promise<{ status: string }> => ({
+        status: 'ok'
     }));
 
     // Add a ready check that verifies all dependencies

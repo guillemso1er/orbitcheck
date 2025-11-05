@@ -155,7 +155,7 @@ describe('Data Routes', () => {
 
     it('should return unauthorized when PAT token is invalid', async () => {
       // Override the default mock to make PAT verification fail
-      mockPool.query.mockImplementation((queryText: string, values: unknown[]) => {
+      mockPool.query.mockImplementation((queryText: string, _values: unknown[]) => {
         const upperQuery = queryText.toUpperCase();
         // Make PAT queries fail by returning no rows
         if (upperQuery.includes('SELECT TOKEN_HASH FROM PERSONAL_ACCESS_TOKENS')) {
@@ -201,7 +201,7 @@ describe('Data Routes', () => {
 
     it('should return 404 for non-existent log', async () => {
       // Override the default mock to make DELETE return no rows affected
-      mockPool.query.mockImplementation((queryText: string, values: unknown[]) => {
+      mockPool.query.mockImplementation((queryText: string, _values: unknown[]) => {
         const upperQuery = queryText.toUpperCase();
         if (upperQuery.includes('DELETE FROM LOGS WHERE ID = $1 AND PROJECT_ID = $2')) {
           return Promise.resolve({ rowCount: 0, rows: [] }); // No rows deleted
@@ -219,7 +219,7 @@ describe('Data Routes', () => {
 
     it('should handle database errors', async () => {
       // Override the default mock to fail the DELETE query
-      mockPool.query.mockImplementation((queryText: string, values: unknown[]) => {
+      mockPool.query.mockImplementation((queryText: string, _values: unknown[]) => {
         const upperQuery = queryText.toUpperCase();
         if (upperQuery.includes('DELETE FROM LOGS WHERE ID = $1 AND PROJECT_ID = $2')) {
           return Promise.reject(new Error('DB error')); // DELETE query fails

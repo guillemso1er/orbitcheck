@@ -8,19 +8,21 @@ const shorthands = undefined;
  * @param run {() => void | undefined}
  * @returns {Promise<void> | void}
  */
-const up = (pgm) => {
-  pgm.createTable('webhooks', {
-    id: { type: 'uuid', primaryKey: true, default: pgm.func('gen_random_uuid()') },
-    project_id: { type: 'uuid', notNull: true, references: 'projects(id)', onDelete: 'CASCADE' },
-    url: { type: 'text', notNull: true },
-    events: { type: 'text[]', notNull: true, default: '{}' },
-    secret: { type: 'text', notNull: true },
-    status: { type: 'text', notNull: true, default: 'active' },
-    created_at: { type: 'timestamptz', notNull: true, default: pgm.func('now()') },
-    last_fired_at: { type: 'timestamptz' },
-  });
-  pgm.createIndex('webhooks', 'project_id');
-  pgm.createIndex('webhooks', 'status');
+const up = async (pgm) => {
+  await pgm.query(`
+    CREATE TABLE webhooks (
+      id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+      project_id uuid NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+      url text NOT NULL,
+      events text[] NOT NULL DEFAULT '{}',
+      secret text NOT NULL,
+      status text NOT NULL DEFAULT 'active',
+      created_at timestamptz NOT NULL DEFAULT now(),
+      last_fired_at timestamptz
+    );
+  `);
+  await pgm.query(`CREATE INDEX ON webhooks(project_id);`);
+  await pgm.query(`CREATE INDEX ON webhooks(status);`);
 };
 
 /**

@@ -81,16 +81,14 @@ import type { FastifyInstance } from 'fastify';
 import request from 'supertest';
 
 import * as hooks from '../hooks.js';
-import { verifyPAT } from '../routes/auth.js';
 import { createApp, mockPool, setupBeforeAll } from './testSetup.js';
 
 
 jest.mock('jsonwebtoken');
 
 jest.mock('../web', () => ({
-    authenticateRequest: jest.fn(async (request: any, rep: any, pool: any) => {
-        request.user_id = 'test_user';
-        request.project_id = 'test_project';
+    authenticateRequest: jest.fn(async (_request: any, _rep: any, _pool: any) => {
+        throw new Error('Should not be called in this context');
     }),
     applyRateLimitingAndIdempotency: jest.fn(),
 }));
@@ -419,7 +417,7 @@ describe('Webhook Test Routes (JWT Auth)', () => {
 
     it('should reject without a valid JWT', async () => {
         // Override the successful mock with a failure for this specific test
-        (authenticateRequest as jest.Mock).mockImplementationOnce(async (request: any, rep: any) => {
+        (authenticateRequest as jest.Mock).mockImplementationOnce(async (_request: any, rep: any) => {
             rep.status(401).send({ error: { code: 'unauthorized', message: 'Management routes require session or PAT authentication' } });
         });
 

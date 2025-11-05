@@ -71,7 +71,6 @@ describe('Web Module', () => {
         log: { info: jest.fn() },
         session: mockSession
       } as any;
-      const mockReply = {} as FastifyReply;
 
       // Mock successful session verification
       mockSession.user_id = 'user123';
@@ -91,7 +90,6 @@ describe('Web Module', () => {
         headers: { authorization: 'Bearer pat_token' },
         log: { info: jest.fn() }
       } as any;
-      const mockReply = {} as FastifyReply;
 
       // Mock PAT verification
       const crypto = await import('node:crypto');

@@ -235,26 +235,30 @@ export async function start(): Promise<void> {
             await closeResources(app, pool, appRedis);
             throw error; // Re-throw to be caught by the outer try/catch
         }
+        if (process.env.NODE_ENV !== 'test') {
 
-        const disposableQueue = new Queue('disposable', { connection: appRedis });
-        new Worker('disposable', disposableProcessor, { connection: appRedis });
 
-        // Batch operation workers
-        new Worker('batch_validation', async (job) => {
-            return batchValidationProcessor(job as any, pool!, appRedis!);
-        }, { connection: appRedis! });
+            const disposableQueue = new Queue('disposable', { connection: appRedis });
+            new Worker('disposable', disposableProcessor, { connection: appRedis });
 
-        new Worker('batch_dedupe', async (job) => {
-            return batchDedupeProcessor(job as any, pool!);
-        }, { connection: appRedis! });
+            // Batch operation workers
+            new Worker('batch_validation', async (job) => {
+                return batchValidationProcessor(job as any, pool!, appRedis!);
+            }, { connection: appRedis! });
 
-        await disposableQueue.add('refresh', {}, {
-            repeat: { pattern: '0 0 * * *' }
-        });
+            new Worker('batch_dedupe', async (job) => {
+                return batchDedupeProcessor(job as any, pool!);
+            }, { connection: appRedis! });
 
-        cron.schedule('0 0 * * *', async () => {
-            await runLogRetention(pool!);
-        });
+            await disposableQueue.add('refresh', {}, {
+                repeat: { pattern: '0 0 * * *' }
+            });
+
+            cron.schedule('0 0 * * *', async () => {
+                await runLogRetention(pool!);
+            });
+        }
+
 
         // --- Step 3: Start Listening ---
         const host = process.env.NODE_ENV === 'local' ? 'localhost' : '0.0.0.0';
@@ -262,7 +266,11 @@ export async function start(): Promise<void> {
         app.log.info(`Orbitcheck API server listening on http://${host}:${environment.PORT}`);
 
         // Run initial refresh job in the background now that everything is running
-        void disposableQueue.add('refresh', {});
+        if (process.env.NODE_ENV !== 'test') {
+            const disposableQueue = new Queue('disposable', { connection: appRedis });
+            void disposableQueue.add('refresh', {});
+        }
+
 
     } catch (error) {
         if (app?.log) {
