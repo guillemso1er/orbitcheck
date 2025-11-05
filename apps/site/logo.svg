@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="331.413 100.998 60 60" width="60px" height="60px">
+  <rect x="331.413" y="100.998" width="60" height="60" rx="16" ry="16"
+    fill="rgb(79 70 229 / var(--tw-bg-opacity, 1))" style="stroke-width: 1;"
+    transform="matrix(0.9999999999999999, 0, 0, 0.9999999999999999, 0, -1.4210854715202004e-14)" />
+  <ellipse cx="32" cy="32" rx="26" ry="10" fill="none" stroke="#ffffff" stroke-width="2" opacity="0.4"
+    transform="matrix(0.7071070075035094, -0.7071070075035095, 0.7071070075035094, 0.7071070075035095, 315.9268515173151, 130.70069974286685)"
+    style="stroke-width: 2;" />
+  <path d="M 353.904 125.234 L 361.904 133.234 L 377.904 117.234" fill="none" stroke="#ffffff"
+    stroke-width="6" stroke-linecap="round" stroke-linejoin="round" style="stroke-width: 6;"
+    transform="matrix(0.9999999999999999, 0, 0, 0.9999999999999999, 0, -1.4210854715202004e-14)" />
+  <ellipse cx="32" cy="32" rx="26" ry="10" fill="none" stroke="#ffffff" stroke-width="2.5"
+    transform="matrix(0.7071070075035094, 0.7071070075035095, -0.7071070075035094, 0.7071070075035095, 361.1302820010203, 85.49432431285257)"
+    style="stroke-width: 2.5;" />
+  <circle cx="360.206" cy="143.789" r="3" fill="#ffffff" style="stroke-width: 1;"
+    transform="matrix(0.9999999999999999, 0, 0, 0.9999999999999999, 0, -1.4210854715202004e-14)" />
+  <circle cx="360.703" cy="117.339" r="3" fill="#ffffff" style="stroke-width: 1;"
+    transform="matrix(0.9999999999999999, 0, 0, 0.9999999999999999, 0, -1.4210854715202004e-14)" />
+</svg>
