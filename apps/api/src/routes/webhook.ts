@@ -9,7 +9,7 @@ import { CONTENT_TYPES, CRYPTO_KEY_BYTES, MESSAGES, STRIPE_API_VERSION, STRIPE_D
 import { ERROR_CODES, ERROR_MESSAGES, HTTP_STATUS } from "../errors.js";
 import { logEvent } from "../hooks.js";
 import { EVENT_TYPES, ORDER_ACTIONS, PAYLOAD_TYPES, REASON_CODES } from "../validation.js";
-import { generateRequestId, rateLimitResponse, securityHeader, sendError, unauthorizedResponse } from "./utils.js";
+import { generateRequestId, MGMT_V1_SECURITY, rateLimitResponse, securityHeader, sendError, unauthorizedResponse } from "./utils.js";
 // Import route constants from contracts package
 const ROUTES = MGMT_V1_ROUTES.WEBHOOKS;
 
@@ -32,7 +32,7 @@ export function registerWebhookRoutes(app: FastifyInstance, pool: Pool): void {
             summary: 'List webhooks',
             description: 'Retrieves all webhooks for the authenticated project. Requires Personal Access Token (PAT) authentication.',
             tags: ['Webhooks'],
-            security: [{ BearerAuth: [] }],
+            security: MGMT_V1_SECURITY,
             response: {
                 200: {
                     description: 'List of webhooks',
@@ -87,7 +87,7 @@ export function registerWebhookRoutes(app: FastifyInstance, pool: Pool): void {
             summary: 'Create webhook',
             description: 'Creates a new webhook subscription for the authenticated project. Requires Personal Access Token (PAT) authentication.',
             tags: ['Webhooks'],
-            security: [{ BearerAuth: [] }],
+            security: MGMT_V1_SECURITY,
             body: {
                 type: 'object',
                 required: ['url', 'events'],
@@ -188,7 +188,7 @@ export function registerWebhookRoutes(app: FastifyInstance, pool: Pool): void {
             summary: 'Delete webhook',
             description: 'Deletes a webhook subscription. Requires Personal Access Token (PAT) authentication.',
             tags: ['Webhooks'],
-            security: [{ BearerAuth: [] }],
+            security: MGMT_V1_SECURITY,
             parameters: [
                 {
                     name: 'id',
@@ -249,7 +249,7 @@ export function registerWebhookRoutes(app: FastifyInstance, pool: Pool): void {
             description: 'Sends a sample payload to the provided webhook URL and returns the response. Useful for testing webhook configurations.',
             tags: ['Webhooks'],
             headers: securityHeader,
-            security: [{ BearerAuth: [] }],
+            security: MGMT_V1_SECURITY,
             body: {
                 type: 'object',
                 required: ['url', 'payload_type'],

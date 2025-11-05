@@ -7,7 +7,7 @@ import { dedupeAddress, dedupeCustomer } from "../dedupe.js";
 import { ERROR_CODES, ERROR_MESSAGES, HTTP_STATUS } from "../errors.js";
 import { logEvent } from "../hooks.js";
 import { MERGE_TYPES } from "../validation.js";
-import { generateRequestId, rateLimitResponse, runtimeSecurityHeader as securityHeader, sendServerError, unauthorizedResponse, validationErrorResponse } from "./utils.js";
+import { API_V1_SECURITY, generateRequestId, rateLimitResponse, runtimeSecurityHeader as securityHeader, sendServerError, unauthorizedResponse, validationErrorResponse } from "./utils.js";
 
 export function registerDedupeRoutes(app: FastifyInstance, pool: Pool): void {
     app.post(API_V1_ROUTES.DEDUPE.DEDUPLICATE_CUSTOMER, {
@@ -80,10 +80,7 @@ export function registerDedupeRoutes(app: FastifyInstance, pool: Pool): void {
             description: 'Searches for existing addresses using deterministic (exact postal/city/country) and fuzzy matching on address components.',
             tags: ['Deduplication'],
             headers: securityHeader,
-            security: [
-                { ApiKeyAuth: [] },
-                { BearerAuth: [] }
-            ],
+            security: API_V1_SECURITY,
             body: {
                 type: 'object',
                 required: ['line1', 'city', 'postal_code', 'country'],

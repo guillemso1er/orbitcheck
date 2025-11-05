@@ -1,11 +1,11 @@
 import { MGMT_V1_ROUTES } from "@orbitcheck/contracts";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
-import type { Pool } from "pg";
 import nodemailer from "nodemailer";
+import type { Pool } from "pg";
 
 import { CACHE_HIT_PLACEHOLDER, COMPLIANCE_REASONS, LOGS_DEFAULT_LIMIT, LOGS_MAX_LIMIT, MESSAGES, TOP_REASONS_LIMIT, USAGE_DAYS, USAGE_PERIOD } from "../config.js";
 import { ERROR_CODES, HTTP_STATUS } from "../errors.js";
-import { errorSchema, generateRequestId, rateLimitResponse, securityHeader, sendError, sendServerError, unauthorizedResponse } from "./utils.js";
+import { errorSchema, generateRequestId, MGMT_V1_SECURITY, rateLimitResponse, securityHeader, sendError, sendServerError, unauthorizedResponse } from "./utils.js";
 // Import route constants from contracts package
 // TODO: Update to use @orbitcheck/contracts export once build issues are resolved
 const ROUTES = {
@@ -23,7 +23,7 @@ export function registerDataRoutes(app: FastifyInstance, pool: Pool): void {
             description: 'Retrieves event logs for the project with optional filters by reason code, endpoint, and status. Supports pagination via limit and offset.',
             tags: ['Data Retrieval'],
             headers: securityHeader,
-            security: [{ BearerAuth: [] }],
+            security: MGMT_V1_SECURITY,
             querystring: {
                 type: 'object',
                 properties: {
@@ -136,7 +136,7 @@ export function registerDataRoutes(app: FastifyInstance, pool: Pool): void {
             description: 'Retrieves usage statistics for the last 31 days for the project associated with the API key.',
             tags: ['Data Retrieval'],
             headers: securityHeader,
-            security: [{ BearerAuth: [] }],
+            security: MGMT_V1_SECURITY,
             response: {
                 200: {
                     description: 'A summary of usage data.',
@@ -333,7 +333,7 @@ export function registerDataRoutes(app: FastifyInstance, pool: Pool): void {
             description: 'Deletes a specific log entry by ID',
             tags: ['Data Management'],
             headers: securityHeader,
-            security: [{ BearerAuth: [] }],
+            security: MGMT_V1_SECURITY,
             params: {
                 type: 'object',
                 required: ['id'],

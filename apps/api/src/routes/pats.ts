@@ -1,18 +1,18 @@
-import crypto from "node:crypto";
 import argon2 from 'argon2';
+import crypto from "node:crypto";
 
 import type { FastifyInstance, FastifyRequest } from "fastify";
 import type { Pool } from "pg";
 
+import { MGMT_V1_ROUTES } from "@orbitcheck/contracts";
 import {
-  PAT_DEFAULT_EXPIRY_DAYS,
-  PAT_SCOPES,
   AUTHORIZATION_HEADER,
   BEARER_PREFIX,
+  PAT_DEFAULT_EXPIRY_DAYS,
+  PAT_SCOPES,
 } from "../config.js";
-import { HTTP_STATUS, ERROR_CODES, ERROR_MESSAGES } from "../errors.js";
-import { errorSchema, generateRequestId, rateLimitResponse, securityHeader, sendError, sendServerError, unauthorizedResponse } from "./utils.js";
-import { MGMT_V1_ROUTES } from "@orbitcheck/contracts";
+import { ERROR_CODES, ERROR_MESSAGES, HTTP_STATUS } from "../errors.js";
+import { errorSchema, generateRequestId, MGMT_V1_SECURITY, rateLimitResponse, securityHeader, sendError, sendServerError, unauthorizedResponse } from "./utils.js";
 
 // Token prefix for OrbitCheck PATs
 const OC_PAT_PREFIX = 'oc_pat_' as const;
@@ -112,7 +112,7 @@ export async function verifyPat(req: FastifyRequest, pool: Pool) {
   pool.query(
     "UPDATE personal_access_tokens SET last_used_at = now(), last_used_ip = $1 WHERE id = $2",
     [req.ip, pat.id]
-  ).catch(() => {}); // Non-blocking
+  ).catch(() => { }); // Non-blocking
 
   return pat;
 }
@@ -124,7 +124,7 @@ export function registerPatRoutes(app: FastifyInstance, pool: Pool): void {
       description: 'Creates a new personal access token for management API access',
       tags: ['Personal Access Tokens'],
       headers: securityHeader,
-      security: [{ BearerAuth: [] }],
+      security: MGMT_V1_SECURITY,
       body: {
         type: 'object',
         required: ['name', 'scopes'],
@@ -255,7 +255,7 @@ export function registerPatRoutes(app: FastifyInstance, pool: Pool): void {
       description: 'Retrieves personal access tokens for the authenticated user',
       tags: ['Personal Access Tokens'],
       headers: securityHeader,
-      security: [{ BearerAuth: [] }],
+      security: MGMT_V1_SECURITY,
       response: {
         200: {
           description: 'List of PATs',
@@ -313,7 +313,7 @@ export function registerPatRoutes(app: FastifyInstance, pool: Pool): void {
       description: 'Revokes a personal access token by disabling it',
       tags: ['Personal Access Tokens'],
       headers: securityHeader,
-      security: [{ BearerAuth: [] }],
+      security: MGMT_V1_SECURITY,
       params: {
         type: 'object',
         properties: {

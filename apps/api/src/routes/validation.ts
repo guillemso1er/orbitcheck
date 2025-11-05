@@ -14,7 +14,7 @@ import { validateAddress } from "../validators/address.js";
 import { validateEmail } from "../validators/email.js";
 import { validatePhone } from "../validators/phone.js";
 import { validateTaxId } from "../validators/taxid.js";
-import { generateRequestId, rateLimitResponse, runtimeSecurityHeader as securityHeader, sendServerError, unauthorizedResponse, validationErrorResponse } from "./utils.js";
+import { API_V1_SECURITY, generateRequestId, rateLimitResponse, runtimeSecurityHeader, sendServerError, unauthorizedResponse, validationErrorResponse } from "./utils.js";
 
 export function registerValidationRoutes(app: FastifyInstance, pool: Pool, redis: IORedisType): void {
     app.post(API_V1_ROUTES.VALIDATE.VALIDATE_EMAIL_ADDRESS, {
@@ -22,7 +22,8 @@ export function registerValidationRoutes(app: FastifyInstance, pool: Pool, redis
             summary: 'Validate Email Address',
             description: 'Performs a comprehensive validation of an email address, checking for format, domain reachability (MX records), and whether it belongs to a disposable email provider.',
             tags: ['Validation'],
-            headers: securityHeader,
+            headers: runtimeSecurityHeader,
+            security: API_V1_SECURITY,
             body: {
                 type: 'object',
                 required: ['email'],
@@ -44,9 +45,48 @@ export function registerValidationRoutes(app: FastifyInstance, pool: Pool, redis
                         ttl_seconds: { type: 'integer' }
                     }
                 },
-                ...unauthorizedResponse,
-                ...rateLimitResponse,
-                ...validationErrorResponse,
+                400: {
+                    description: 'Validation Error',
+                    type: 'object',
+                    properties: {
+                        error: {
+                            type: 'object',
+                            properties: {
+                                code: { type: 'string' },
+                                message: { type: 'string' }
+                            }
+                        },
+                        request_id: { type: 'string' }
+                    }
+                },
+                401: {
+                    description: 'Unauthorized',
+                    type: 'object',
+                    properties: {
+                        error: {
+                            type: 'object',
+                            properties: {
+                                code: { type: 'string' },
+                                message: { type: 'string' }
+                            }
+                        },
+                        request_id: { type: 'string' }
+                    }
+                },
+                429: {
+                    description: 'Rate Limit Exceeded',
+                    type: 'object',
+                    properties: {
+                        error: {
+                            type: 'object',
+                            properties: {
+                                code: { type: 'string' },
+                                message: { type: 'string' }
+                            }
+                        },
+                        request_id: { type: 'string' }
+                    }
+                },
             }
         }
     }, async (request, rep) => {
@@ -76,7 +116,7 @@ export function registerValidationRoutes(app: FastifyInstance, pool: Pool, redis
             summary: 'Validate Phone Number',
             description: 'Validates a phone number and returns it in E.164 format. An optional country code can be provided as a hint.',
             tags: ['Validation'],
-            headers: securityHeader,
+            headers: runtimeSecurityHeader,
             body: {
                 type: 'object',
                 required: ['phone'],
@@ -145,7 +185,7 @@ export function registerValidationRoutes(app: FastifyInstance, pool: Pool, redis
             summary: 'Validate Physical Address',
             description: 'Validates a physical address by normalizing it, checking for P.O. boxes, and verifying the postal code and city combination.',
             tags: ['Validation'],
-            headers: securityHeader,
+            headers: runtimeSecurityHeader,
             body: {
                 type: 'object',
                 required: ['address'],
@@ -206,7 +246,7 @@ export function registerValidationRoutes(app: FastifyInstance, pool: Pool, redis
             summary: 'Validate Tax ID',
             description: 'Validates a given tax ID number for a specified type and country.',
             tags: ['Validation'],
-            headers: securityHeader,
+            headers: runtimeSecurityHeader,
             body: {
                 type: 'object',
                 required: ['type', 'value'],
@@ -255,7 +295,7 @@ export function registerValidationRoutes(app: FastifyInstance, pool: Pool, redis
             summary: 'Validate Name',
             description: 'Validates and normalizes a name string.',
             tags: ['Validation'],
-            headers: securityHeader,
+            headers: runtimeSecurityHeader,
             body: {
                 type: 'object',
                 required: ['name'],
@@ -299,8 +339,8 @@ export function registerValidationRoutes(app: FastifyInstance, pool: Pool, redis
             summary: 'Verify Phone OTP',
             description: 'Verifies the OTP sent to the phone number using Twilio Verify.',
             tags: ['Validation'],
-            headers: securityHeader,
-            security: [{ ApiKeyAuth: [] }, { BearerAuth: [] }],
+            headers: runtimeSecurityHeader,
+            security: API_V1_SECURITY,
             body: {
                 type: 'object',
                 required: ['verification_sid', 'code'],

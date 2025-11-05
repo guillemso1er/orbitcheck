@@ -7,7 +7,7 @@ import type { Pool } from "pg";
 import { API_KEY_PREFIX, CRYPTO_IV_BYTES, CRYPTO_KEY_BYTES, ENCODING_HEX, ENCODING_UTF8, ENCRYPTION_ALGORITHM, HASH_ALGORITHM, STATUS } from "../config.js";
 import { environment } from "../environment.js";
 import { ERROR_CODES, ERROR_MESSAGES, HTTP_STATUS } from "../errors.js";
-import { errorSchema, generateRequestId, rateLimitResponse, securityHeader, sendError, sendServerError, unauthorizedResponse } from "./utils.js";
+import { errorSchema, generateRequestId, MGMT_V1_SECURITY, rateLimitResponse, securityHeader, sendError, sendServerError, unauthorizedResponse } from "./utils.js";
 
 
 export function registerApiKeysRoutes(app: FastifyInstance, pool: Pool): void {
@@ -17,7 +17,7 @@ export function registerApiKeysRoutes(app: FastifyInstance, pool: Pool): void {
             description: 'Retrieves a list of API keys for the authenticated project, showing only the prefix (first 6 characters) for security.',
             tags: ['API Keys'],
             headers: securityHeader,
-            security: [{ BearerAuth: [] }],
+            security: MGMT_V1_SECURITY,
             response: {
                 200: {
                     description: 'List of API keys',
@@ -64,7 +64,7 @@ export function registerApiKeysRoutes(app: FastifyInstance, pool: Pool): void {
             description: 'Generates a new API key for the authenticated project.',
             tags: ['API Keys'],
             headers: securityHeader,
-            security: [{ BearerAuth: [] }],
+            security: MGMT_V1_SECURITY,
             body: {
                 type: 'object',
                 properties: {
@@ -158,7 +158,7 @@ export function registerApiKeysRoutes(app: FastifyInstance, pool: Pool): void {
             description: 'Revokes an API key by setting its status to revoked. Cannot be undone.',
             tags: ['API Keys'],
             headers: securityHeader,
-            security: [{ BearerAuth: [] }],
+            security: MGMT_V1_SECURITY,
             params: {
                 type: 'object',
                 properties: {

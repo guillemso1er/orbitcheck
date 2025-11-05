@@ -2,7 +2,7 @@ import { MGMT_V1_ROUTES } from '@orbitcheck/contracts';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import type { Pool } from 'pg';
 
-import { generateRequestId, sendServerError } from './utils.js';
+import { errorSchema, generateRequestId, MGMT_V1_SECURITY, sendServerError } from './utils.js';
 
 // Import route constants from contracts package
 const ROUTES = {
@@ -12,7 +12,28 @@ const ROUTES = {
 
 export function registerSettingsRoutes(app: FastifyInstance, pool: Pool): void {
     // GET /v1/settings - Get tenant settings
-    app.get(ROUTES.GET_SETTINGS, async (request: FastifyRequest, rep: FastifyReply) => {
+    app.get(ROUTES.GET_SETTINGS, {
+        schema: {
+            summary: 'Get Tenant Settings',
+            description: 'Retrieve the current settings for the tenant project.',
+            tags: ['Settings'],
+            security: MGMT_V1_SECURITY,
+            response: {
+                200: {
+                    description: 'Tenant settings retrieved successfully',
+                    type: 'object',
+                    properties: {
+                        country_defaults: { type: 'object' },
+                        formatting: { type: 'object' },
+                        risk_thresholds: { type: 'object' },
+                        request_id: { type: 'string' }
+                    }
+                },
+                401: { description: 'Unauthorized', ...errorSchema },
+                500: { description: 'Server Error', ...errorSchema }
+            }
+        }
+    }, async (request: FastifyRequest, rep: FastifyReply) => {
         const request_id = generateRequestId();
         const project_id = (request as any).project_id;
 
@@ -46,7 +67,35 @@ export function registerSettingsRoutes(app: FastifyInstance, pool: Pool): void {
     });
 
     // PUT /v1/settings - Update tenant settings
-    app.put(ROUTES.UPDATE_SETTINGS, async (request: FastifyRequest<{ Body: { country_defaults?: object; formatting?: object; risk_thresholds?: object } }>, rep: FastifyReply) => {
+    app.put(ROUTES.UPDATE_SETTINGS, {
+        schema: {
+            summary: 'Update Tenant Settings',
+            description: 'Update the settings for the tenant project.',
+            tags: ['Settings'],
+            security: MGMT_V1_SECURITY,
+            body: {
+                type: 'object',
+                properties: {
+                    country_defaults: { type: 'object' },
+                    formatting: { type: 'object' },
+                    risk_thresholds: { type: 'object' }
+                }
+            },
+            response: {
+                200: {
+                    description: 'Settings updated successfully',
+                    type: 'object',
+                    properties: {
+                        message: { type: 'string' },
+                        request_id: { type: 'string' }
+                    }
+                },
+                400: { description: 'Validation Error', ...errorSchema },
+                401: { description: 'Unauthorized', ...errorSchema },
+                500: { description: 'Server Error', ...errorSchema }
+            }
+        }
+    }, async (request: FastifyRequest<{ Body: { country_defaults?: object; formatting?: object; risk_thresholds?: object } }>, rep: FastifyReply) => {
         const request_id = generateRequestId();
         const project_id = (request as any).project_id;
         const { country_defaults = {}, formatting = {}, risk_thresholds = {} } = request.body;

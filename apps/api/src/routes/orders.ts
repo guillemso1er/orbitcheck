@@ -11,7 +11,7 @@ import { DEDUPE_ACTIONS, HIGH_VALUE_THRESHOLD, ORDER_ACTIONS, ORDER_TAGS, PAYMEN
 import { validateAddress } from "../validators/address.js";
 import { validateEmail } from "../validators/email.js";
 import { validatePhone } from "../validators/phone.js";
-import { generateRequestId, rateLimitResponse, runtimeSecurityHeader as securityHeader, sendServerError, unauthorizedResponse, validationErrorResponse } from "./utils.js";
+import { API_V1_SECURITY, generateRequestId, rateLimitResponse, runtimeSecurityHeader as securityHeader, sendServerError, unauthorizedResponse, validationErrorResponse } from "./utils.js";
 
 
 const customerMatchSchema = {
@@ -51,10 +51,7 @@ export function registerOrderRoutes(app: FastifyInstance, pool: Pool, redis: Red
             description: 'Evaluates an order for deduplication, validation, and applies business rules like P.O. box blocking, fraud scoring, and auto-hold/tagging. Returns risk assessment and action recommendations.',
             tags: ['Order Evaluation'],
             headers: securityHeader,
-            security: [
-                { ApiKeyAuth: [] },
-                { BearerAuth: [] }
-            ],
+            security: API_V1_SECURITY,
             body: {
                 type: 'object',
                 required: ['order_id', 'customer', 'shipping_address', 'total_amount', 'currency'],
@@ -319,6 +316,9 @@ export function registerOrderRoutes(app: FastifyInstance, pool: Pool, redis: Red
         } catch (error) {
             app.log.error({ err: error, request_id }, "An unhandled error occurred in /v1/orders/evaluate");
             return sendServerError(request, rep, error, API_V1_ROUTES.ORDERS.EVALUATE_ORDER_FOR_RISK_AND_RULES, request_id);
+        }
+    });
+}
         }
     });
 }

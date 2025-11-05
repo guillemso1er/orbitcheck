@@ -40,6 +40,14 @@ export const unauthorizedResponse = { 401: { description: 'Unauthorized', ...err
 export const rateLimitResponse = { 429: { description: 'Rate Limit Exceeded', ...errorSchema } };
 export const validationErrorResponse = { 400: { description: 'Validation Error', ...errorSchema } };
 
+// Security schemas for different route types
+export const API_V1_SECURITY: readonly { readonly [key: string]: readonly string[] }[] = [
+    { ApiKeyAuth: [] },
+    { BearerAuth: [] }
+];
+
+export const MGMT_V1_SECURITY: readonly { readonly [key: string]: readonly string[] }[] = [{ BearerAuth: [] }];
+
 export function generateRequestId(): string {
     return crypto.randomUUID();
 }

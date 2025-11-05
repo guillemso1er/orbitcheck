@@ -5,7 +5,7 @@ import Stripe from 'stripe';
 
 import { STRIPE_API_VERSION, STRIPE_DEFAULT_SECRET_KEY } from "../config.js";
 import { ERROR_CODES, HTTP_STATUS } from "../errors.js";
-import { generateRequestId, rateLimitResponse, sendError, unauthorizedResponse } from "./utils.js";
+import { generateRequestId, MGMT_V1_SECURITY, rateLimitResponse, sendError, unauthorizedResponse } from "./utils.js";
 
 // Stripe configuration - lazy initialization
 let stripe: Stripe | null = null;
@@ -26,7 +26,7 @@ export function registerBillingRoutes(app: FastifyInstance, pool: Pool): void {
             summary: 'Create Stripe Checkout session',
             description: 'Creates a Stripe Checkout session with base plan and usage-based line items',
             tags: ['Billing'],
-            security: [{ BearerAuth: [] }],
+            security: MGMT_V1_SECURITY,
             response: {
                 200: {
                     description: 'Checkout session created',
@@ -129,7 +129,7 @@ export function registerBillingRoutes(app: FastifyInstance, pool: Pool): void {
             summary: 'Create Stripe Customer Portal session',
             description: 'Creates a Stripe Customer Portal session for managing billing',
             tags: ['Billing'],
-            security: [{ BearerAuth: [] }],
+            security: MGMT_V1_SECURITY,
             response: {
                 200: {
                     description: 'Portal session created',

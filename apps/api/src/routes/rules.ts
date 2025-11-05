@@ -8,7 +8,7 @@ import { validateAddress } from "../validators/address.js";
 import { validateEmail } from "../validators/email.js";
 import { validateName } from "../validators/name.js";
 import { validatePhone } from "../validators/phone.js";
-import { buildAddressValidationResult, buildEmailValidationResult, buildNameValidationResult, buildPhoneValidationResult, generateRequestId, securityHeader, sendServerError } from "./utils.js";
+import { buildAddressValidationResult, buildEmailValidationResult, buildNameValidationResult, buildPhoneValidationResult, generateRequestId, MGMT_V1_SECURITY, securityHeader, sendServerError } from "./utils.js";
 
 const reasonCodes: any[] = Object.entries(REASON_CODES).map(([_key, code]) => {
   // Map from code to description, category, severity - this is a simplification; in practice, you'd have a full mapping
@@ -147,9 +147,7 @@ export function registerRulesRoutes(app: FastifyInstance, pool: Pool, redis?: an
       description: 'Returns a list of all available validation and risk assessment rules.',
       tags: ['Rules'],
       headers: securityHeader,
-      security: [
-        { BearerAuth: [] }
-      ],
+      security: MGMT_V1_SECURITY,
       response: {
         200: {
           description: 'List of rules',
@@ -193,9 +191,7 @@ export function registerRulesRoutes(app: FastifyInstance, pool: Pool, redis?: an
       description: 'Returns a comprehensive list of all possible reason codes with descriptions and severity levels.',
       tags: ['Rules'],
       headers: securityHeader,
-      security: [
-        { BearerAuth: [] }
-      ],
+      security: MGMT_V1_SECURITY,
       response: {
         200: {
           description: 'List of reason codes',
@@ -238,9 +234,7 @@ export function registerRulesRoutes(app: FastifyInstance, pool: Pool, redis?: an
       description: 'Returns a comprehensive list of all possible error codes with descriptions and severity levels.',
       tags: ['Rules'],
       headers: securityHeader,
-      security: [
-        { BearerAuth: [] }
-      ],
+      security: MGMT_V1_SECURITY,
       response: {
         200: {
           description: 'List of error codes',
@@ -283,9 +277,7 @@ export function registerRulesRoutes(app: FastifyInstance, pool: Pool, redis?: an
       description: 'Performs a dry-run evaluation of a payload against all enabled validation rules.',
       tags: ['Rules'],
       headers: securityHeader,
-      security: [
-        { BearerAuth: [] }
-      ],
+      security: MGMT_V1_SECURITY,
       body: {
         type: 'object',
         properties: {
@@ -367,9 +359,7 @@ export function registerRulesRoutes(app: FastifyInstance, pool: Pool, redis?: an
       description: 'Registers custom business rules for the project.',
       tags: ['Rules'],
       headers: securityHeader,
-      security: [
-        { BearerAuth: [] }
-      ],
+      security: MGMT_V1_SECURITY,
       body: {
         type: 'object',
         properties: {

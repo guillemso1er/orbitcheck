@@ -2578,6 +2578,24 @@ export interface operations {
                     };
                 };
             };
+            /** @description Rate limit exceeded */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error?: {
+                            /** @description Error code */
+                            code?: string;
+                            /** @description Error message */
+                            message?: string;
+                        };
+                        /** @description Request identifier */
+                        request_id?: string;
+                    };
+                };
+            };
         };
     };
     dedupeCustomer: {

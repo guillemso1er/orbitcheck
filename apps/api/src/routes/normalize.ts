@@ -2,7 +2,7 @@ import { API_V1_ROUTES } from "@orbitcheck/contracts";
 import type { FastifyInstance } from "fastify";
 import type { Pool } from "pg";
 
-import { generateRequestId, rateLimitResponse, runtimeSecurityHeader as securityHeader, sendServerError, unauthorizedResponse, validationErrorResponse } from "./utils.js";
+import { API_V1_SECURITY, generateRequestId, rateLimitResponse, runtimeSecurityHeader as securityHeader, sendServerError, unauthorizedResponse, validationErrorResponse } from "./utils.js";
 
 export function registerNormalizeRoutes(app: FastifyInstance, _pool: Pool): void {
     app.post(API_V1_ROUTES.NORMALIZE.NORMALIZE_ADDRESS_CHEAP, {
@@ -11,7 +11,7 @@ export function registerNormalizeRoutes(app: FastifyInstance, _pool: Pool): void
             description: 'Performs basic address normalization without geocoding or external lookups.',
             tags: ['Normalization'],
             headers: securityHeader,
-            security: [{ ApiKeyAuth: [] }, { BearerAuth: [] }],
+            security: API_V1_SECURITY,
             body: {
                 type: 'object',
                 required: ['address'],

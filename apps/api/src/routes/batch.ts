@@ -6,7 +6,7 @@ import type { Pool } from "pg";
 
 import { ERROR_CODES, ERROR_MESSAGES, HTTP_STATUS } from "../errors.js";
 import { logEvent } from "../hooks.js";
-import { generateRequestId, rateLimitResponse, runtimeSecurityHeader as securityHeader, sendServerError, unauthorizedResponse, validationErrorResponse } from "./utils.js";
+import { API_V1_SECURITY, generateRequestId, rateLimitResponse, runtimeSecurityHeader as securityHeader, sendServerError, unauthorizedResponse, validationErrorResponse } from "./utils.js";
 
 export function registerBatchRoutes(app: FastifyInstance, pool: Pool, redis: IORedisType): void {
     // Create queues
@@ -105,10 +105,7 @@ export function registerBatchRoutes(app: FastifyInstance, pool: Pool, redis: IOR
             description: 'Performs batch deduplication of customers or addresses asynchronously',
             tags: ['Batch Operations'],
             headers: securityHeader,
-            security: [
-                { ApiKeyAuth: [] },
-                { BearerAuth: [] }
-            ],
+            security: API_V1_SECURITY,
             body: {
                 type: 'object',
                 required: ['type', 'data'],
