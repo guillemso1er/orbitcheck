@@ -7,6 +7,8 @@ on:
     tags:
       - "v*.*.*"
       - "v*.*.*-*"
+  release:
+    types: [published]
   workflow_dispatch:
     inputs:
       # Optional: allow a manual deploy pass (e.g., re-deploy same tag).
@@ -109,6 +111,15 @@ jobs:
             else
               is_stable_release=true
             fi
+          elif [ "${{ github.event_name }}" = "release" ]; then
+            is_tag=true
+            version="${{ github.event.release.tag_name }}"
+            if [ "${{ github.event.release.prerelease }}" = "true" ]; then
+              is_prerelease=true
+            else
+              is_stable_release=true
+            fi
+          fi
           fi
           echo "is_tag=$is_tag" >> "$GITHUB_OUTPUT"
           echo "is_prerelease=$is_prerelease" >> "$GITHUB_OUTPUT"
