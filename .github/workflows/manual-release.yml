@@ -1,0 +1,109 @@
+name: Manual Release (auto next version)
+
+on:
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: Which part to bump? (examples show "patch")
+        required: false
+        default: patch
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+      prefix:
+        description: Tag prefix
+        required: false
+        default: v
+        type: string
+      target:
+        description: Target ref (branch, tag, or SHA). Defaults to this workflow's commit.
+        required: false
+        type: string
+
+permissions:
+  contents: write  # needed to create tags and releases
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout (fetch tags)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Compute next version
+        id: v
+        shell: bash
+        env:
+          BUMP: ${{ github.event.inputs.bump || 'patch' }}
+          PREFIX: ${{ github.event.inputs.prefix || 'v' }}
+        run: |
+          set -euo pipefail
+
+          # Find highest existing semver tag with the given prefix (e.g. v1.2.3)
+          latest_tag=$(git tag -l "${PREFIX}[0-9]*.[0-9]*.[0-9]*" --sort=-version:refname | head -n 1 || true)
+
+          if [[ -z "${latest_tag}" ]]; then
+            base="0.0.0"
+          else
+            base="${latest_tag#${PREFIX}}"
+          fi
+
+          if [[ ! "$base" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
+            echo "Existing tag '$latest_tag' is not ${PREFIX}MAJOR.MINOR.PATCH"; exit 1
+          fi
+
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$base"
+
+          case "$BUMP" in
+            patch) PATCH=$((PATCH+1));;
+            minor) MINOR=$((MINOR+1)); PATCH=0;;
+            major) MAJOR=$((MAJOR+1)); MINOR=0; PATCH=0;;
+            *) echo "Unknown bump '$BUMP'"; exit 1;;
+          esac
+
+          next="${MAJOR}.${MINOR}.${PATCH}"
+          tag="${PREFIX}${next}"
+
+          echo "previous=${latest_tag:-${PREFIX}0.0.0}" >> "$GITHUB_OUTPUT"
+          echo "version=$next" >> "$GITHUB_OUTPUT"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "Next tag: $tag (from ${latest_tag:-none})"
+
+      - name: Create GitHub release (also creates tag if missing)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          tag="${{ steps.v.outputs.tag }}"
+          target="${{ github.event.inputs.target || github.sha }}"
+          title="$tag"
+
+          # Create the release via REST API. If the tag doesn't exist, GitHub will create it at target_commitish.
+          resp=$(curl -sS -w "%{http_code}" -o /tmp/release.json \
+            -X POST \
+            -H "Authorization: Bearer $GITHUB_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/repos/${{ github.repository }}/releases \
+            -d @- <<JSON
+          {
+            "tag_name": "$tag",
+            "target_commitish": "$target",
+            "name": "$title",
+            "generate_release_notes": true,
+            "draft": false,
+            "prerelease": false
+          }
+            JSON
+          )
+
+          if [[ "$resp" != 20* ]]; then
+            echo "Failed to create release (HTTP $resp):"
+            cat /tmp/release.json
+            exit 1
+          fi
+
+          echo "Release created for $tag on $target"
