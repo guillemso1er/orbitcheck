@@ -319,6 +319,3 @@ export function registerOrderRoutes(app: FastifyInstance, pool: Pool, redis: Red
         }
     });
 }
-        }
-    });
-}
