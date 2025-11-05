@@ -69,21 +69,65 @@ jobs:
                   echo "tag=$tag" >> "$GITHUB_OUTPUT"
                   echo "Next tag: $tag (from ${latest_tag:-none})"
 
-            - name: Create GitHub release (also creates tag if missing)
+            - name: Create and push tag (annotated)
               env:
-                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }} # gh uses this
+                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
               run: |
                   set -euo pipefail
                   tag="${{ steps.v.outputs.tag }}"
-                  target="${{ github.event.inputs.target || github.sha }}"
 
-                  # If release already exists, exit gracefully
+                  # Resolve target: input -> repo default branch -> current commit
+                  target_input="${{ github.event.inputs.target || '' }}"
+                  if [ -n "$target_input" ]; then
+                      target="$target_input"
+                  else
+                      # Derive default branch reliably from remote
+                      target="$(git remote show origin | sed -n '/HEAD branch/s/.*: //p')"
+                      target="${target:-main}"
+                  fi
+
+                  echo "Target to tag: $target"
+                  git fetch --prune --tags origin "+refs/heads/*:refs/remotes/origin/*" >/dev/null
+                  git fetch --tags origin >/dev/null
+
+                  # Resolve commit for target (branch, tag, or SHA)
+                  if git show-ref --verify --quiet "refs/remotes/origin/${target}"; then
+                      commit="$(git rev-parse "refs/remotes/origin/${target}")"
+                  else
+                      commit="$(git rev-parse "${target}")" || true
+                  fi
+                  if [ -z "${commit:-}" ]; then
+                      echo "::error title=Invalid target::Target '$target' not found."
+                      exit 1
+                  fi
+
+                  # Create annotated tag locally if missing
+                  if git rev-parse -q --verify "refs/tags/$tag" >/dev/null; then
+                      echo "Tag $tag already exists locally."
+                  else
+                      git tag -a "$tag" -m "Release $tag" "$commit"
+                  fi
+
+                  # Push tag if not present on origin (this is what triggers your deploy workflow)
+                  if git ls-remote --tags origin "refs/tags/$tag" | grep -q .; then
+                      echo "Tag $tag already exists on origin."
+                  else
+                      git push origin "refs/tags/$tag"
+                      echo "Pushed tag $tag -> $commit"
+                  fi
+
+            - name: Create GitHub release (uses existing tag)
+              env:
+                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+              run: |
+                  set -euo pipefail
+                  tag="${{ steps.v.outputs.tag }}"
+
                   if gh release view "$tag" >/dev/null 2>&1; then
-                    echo "Release $tag already exists; nothing to do."
-                    exit 0
+                      echo "Release $tag already exists; nothing to do."
+                      exit 0
                   fi
 
                   gh release create "$tag" \
-                    --target "$target" \
-                    --title "$tag" \
-                    --generate-notes
+                      --title "$tag" \
+                      --generate-notes
