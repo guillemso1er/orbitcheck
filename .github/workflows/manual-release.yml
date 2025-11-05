@@ -21,6 +21,7 @@ on:
 
 permissions:
     contents: write # needed to create tags and releases
+    actions: read # needed to trigger other workflows
 
 jobs:
     release:
@@ -136,3 +137,15 @@ jobs:
                   gh release create "$tag" \
                       --title "$tag" \
                       --generate-notes
+
+            - name: Trigger Deploy workflow (workflow_dispatch)
+              env:
+                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+              run: |
+                  set -euo pipefail
+                  tag="${{ steps.v.outputs.tag }}"
+
+                  # Choose one of the two forms below:
+
+                  wf_file=".github/workflows/ci-cd.yml"
+                  gh workflow run "$wf_file" --ref main -f version="$tag" -f force_deploy=true
