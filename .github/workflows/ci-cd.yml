@@ -86,24 +86,45 @@ jobs:
     steps:
       - name: Derive version context
         id: vars
+        shell: bash
         run: |
           set -euo pipefail
-          ref_type="${{ github.ref_type }}"
-          ref_name="${{ github.ref_name }}"
+
+          # Pull context into vars (may be empty on some events)
+          ref_type="${{ github.ref_type || '' }}"
+          ref_name="${{ github.ref_name || '' }}"
+          event_name="${{ github.event_name }}"
+          version_input="${{ inputs.version || '' }}"
+          release_tag="${{ github.event.release.tag_name || '' }}"
+          release_prerelease="${{ github.event.release.prerelease || false }}"
+
           is_tag=false
           is_prerelease=false
           is_stable_release=false
           version=""
-          # Support manual 'version' input for workflow_dispatch (deploy-only)
-          if [ -n "${{ inputs.version || '' }}" ]; then
+
+          # 1) Manual deploy via workflow_dispatch input
+          if [[ -n "$version_input" ]]; then
             is_tag=true
-            version="${{ inputs.version }}"
+            version="$version_input"
             if [[ "$version" == *-* ]]; then
               is_prerelease=true
             else
               is_stable_release=true
             fi
-          elif [ "$ref_type" = "tag" ] && [[ "$ref_name" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z\.-]+)?$ ]]; then
+
+          # 2) Release event (published)
+          elif [[ "$event_name" == "release" && -n "$release_tag" ]]; then
+            is_tag=true
+            version="$release_tag"
+            if [[ "$release_prerelease" == "true" ]]; then
+              is_prerelease=true
+            else
+              is_stable_release=true
+            fi
+
+          # 3) Tag-driven run (push with a tag ref)
+          elif [[ "$ref_type" == "tag" && "$ref_name" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
             is_tag=true
             version="$ref_name"
             if [[ "$ref_name" == *-* ]]; then
@@ -111,16 +132,8 @@ jobs:
             else
               is_stable_release=true
             fi
-          elif [ "${{ github.event_name }}" = "release" ]; then
-            is_tag=true
-            version="${{ github.event.release.tag_name }}"
-            if [ "${{ github.event.release.prerelease }}" = "true" ]; then
-              is_prerelease=true
-            else
-              is_stable_release=true
-            fi
           fi
-          fi
+
           echo "is_tag=$is_tag" >> "$GITHUB_OUTPUT"
           echo "is_prerelease=$is_prerelease" >> "$GITHUB_OUTPUT"
           echo "is_stable_release=$is_stable_release" >> "$GITHUB_OUTPUT"
