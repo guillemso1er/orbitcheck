@@ -38,7 +38,7 @@ export const ERROR_MESSAGES = {
   [ERROR_CODES.INVALID_IDS]: 'Invalid or mismatched IDs',
   [ERROR_CODES.INVALID_INPUT]: 'Data must be an array with 1-10000 items',
   [ERROR_CODES.NOT_FOUND]: 'Resource not found',
-  [ERROR_CODES.UNAUTHORIZED]: 'Missing JWT token',
+  [ERROR_CODES.UNAUTHORIZED]: 'Authentication required',
   [ERROR_CODES.INVALID_TOKEN]: 'Invalid token',
   [ERROR_CODES.NO_PROJECT]: 'No default project found',
   [ERROR_CODES.USER_EXISTS]: 'User already exists',

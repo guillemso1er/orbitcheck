@@ -57,9 +57,8 @@ export async function setupDocumentation<TServer extends RawServerBase = RawServ
             components: {
                 securitySchemes: {
                     ApiKeyAuth: {            // API Key in header
-                        type: 'apiKey',
-                        in: 'header',
-                        name: 'X-API-Key',
+                        type: 'http',
+                        scheme: 'bearer',
                         description: 'Use your  API Key (ok_xxx) for runtime routes as an API Key',
 
                     },

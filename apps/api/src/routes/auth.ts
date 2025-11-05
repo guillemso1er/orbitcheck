@@ -5,7 +5,7 @@ import bcrypt from 'bcryptjs';
 import type { FastifyInstance, FastifyReply, FastifyRequest, RawServerBase, RouteGenericInterface } from "fastify";
 import type { Pool } from "pg";
 
-import { API_KEY_PREFIX_LENGTH, AUDIT_ACTION_PAT_USED, AUDIT_RESOURCE_API, AUTHORIZATION_HEADER, BCRYPT_ROUNDS, BEARER_PREFIX, CRYPTO_KEY_BYTES, DEFAULT_PAT_NAME, ENCODING_HEX, ENCODING_UTF8, ENCRYPTION_ALGORITHM, HASH_ALGORITHM, HMAC_VALIDITY_MINUTES, LOGOUT_MESSAGE, PAT_PREFIX, PAT_SCOPES_ALL, PG_UNIQUE_VIOLATION, PLAN_TYPES, PROJECT_NAMES, STATUS } from "../config.js";
+import { API_KEY_PREFIX, API_KEY_PREFIX_LENGTH, AUDIT_ACTION_PAT_USED, AUDIT_RESOURCE_API, AUTHORIZATION_HEADER, BCRYPT_ROUNDS, BEARER_PREFIX, CRYPTO_KEY_BYTES, DEFAULT_PAT_NAME, ENCODING_HEX, ENCODING_UTF8, ENCRYPTION_ALGORITHM, HASH_ALGORITHM, HMAC_VALIDITY_MINUTES, LOGOUT_MESSAGE, PAT_PREFIX, PAT_SCOPES_ALL, PG_UNIQUE_VIOLATION, PLAN_TYPES, PROJECT_NAMES, STATUS } from "../config.js";
 import { environment } from "../environment.js";
 import { ERROR_CODES, ERROR_MESSAGES, HTTP_STATUS } from "../errors.js";
 import { errorSchema, generateRequestId, getDefaultProjectId, sendError, sendServerError } from "./utils.js";
@@ -30,6 +30,12 @@ function detectAuthMethod<TServer extends RawServerBase = RawServerBase>(request
 
     // Check for Bearer token (could be PAT or API key)
     if (authHeader?.startsWith("Bearer ")) {
+
+        // Check if it's an API key
+        if (authHeader.slice(7).trim().startsWith(API_KEY_PREFIX)) {
+            return AuthMethod.API_KEY;
+        }
+
         // We'll determine if it's PAT or API key during verification
         return AuthMethod.PAT; // Default to PAT, will fallback if needed
     }
@@ -262,11 +268,11 @@ export async function authenticateRouteRequest<TServer extends RawServerBase = R
                     return;
                 } catch (error) {
                     rep.status(HTTP_STATUS.UNAUTHORIZED).send({
-                                error: {
-                                    code: ERROR_CODES.UNAUTHORIZED,
-                                    message: 'Management routes require session or PAT authentication'
-                                }
-                            });
+                        error: {
+                            code: ERROR_CODES.UNAUTHORIZED,
+                            message: 'Management routes require session or PAT authentication'
+                        }
+                    });
                     return;
                 }
 
