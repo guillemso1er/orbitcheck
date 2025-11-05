@@ -1,264 +1,197 @@
-import React, { useState } from 'react';
-import { API_BASE, API_ENDPOINTS, LOCAL_STORAGE_KEYS, UI_STRINGS } from '../constants';
+// src/Rules.tsx
+import React, { useMemo, useState } from 'react';
+import { Rule } from '../types';
+import { API_BASE, API_ENDPOINTS, LOCAL_STORAGE_KEYS } from '../constants';
+import { useDebounce } from '../hooks/useDebounce';
+import { useLocalStorage } from '../hooks/useLocalStorage';
+import { RuleTestResult, TestResult } from '../types';
+import { apiClient } from '../utils/api';
+import { ConditionEvaluator } from '../utils/ConditionEvaluator';
+import { RulesHeader } from './RulesHeader';
+import { RulesList } from './RulesList';
+import { TestHarness } from './TestHarness';
 
-interface Rule {
-  id: string;
-  condition: string;
-  action: 'approve' | 'hold' | 'block';
-  enabled: boolean;
-}
-
-interface TestResult {
-  results: {
-    email?: any;
-    phone?: any;
-    address?: any;
-    name?: any;
-  };
-  request_id: string;
-}
-
-interface RuleTestResult {
-  ruleId: string;
-  condition: string;
-  action: string;
-  triggered: boolean;
-  details: string;
-}
 
 const Rules: React.FC = () => {
-  const [rules, setRules] = useState<Rule[]>([
-    {
-      id: 'invalid_address_non_us',
-      condition: 'invalid_address AND country != "US"',
-      action: 'hold',
-      enabled: true,
-    },
-  ]);
-  const [testPayload, setTestPayload] = useState(`{
-  "email": "test@example.com",
-  "phone": "+1234567890",
-  "address": {
-    "line1": "123 Main St",
-    "city": "Anytown",
-    "state": "CA",
-    "postal_code": "12345",
-    "country": "US"
-  },
-  "name": "John Doe"
-}`);
+  const [rules, setRules] = useState<Rule[]>([]);
   const [testResult, setTestResult] = useState<TestResult | null>(null);
   const [ruleTestResults, setRuleTestResults] = useState<RuleTestResult[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [testingRules, setTestingRules] = useState(false);
+  const [testError, setTestError] = useState<string | null>(null);
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterAction, setFilterAction] = useState<'all' | Rule['action']>('all');
+  const [showOnlyEnabled, setShowOnlyEnabled] = useState(false);
 
-  const evaluateCondition = (condition: string, payload: TestResult['results']): boolean => {
-    // Simple condition evaluator for demo
-    // In production, this should be more robust
+  const [testPayload, setTestPayload] = useLocalStorage(LOCAL_STORAGE_KEYS.TEST_PAYLOAD, JSON.stringify({
+    email: "test@example.com",
+    phone: "+1234567890",
+    address: { line1: "123 Main St", city: "Anytown", state: "CA", postal_code: "12345", country: "US" },
+    name: "John Doe"
+  }, null, 2));
+  const debouncedTestPayload = useDebounce(testPayload, 500);
 
-    const conditions = condition.split(' AND ').map(c => c.trim());
+  const filteredRules = useMemo(() => {
+    return rules
+      .filter(rule => {
+        const search = searchTerm.toLowerCase();
+        const matchesSearch = searchTerm === '' || rule.name.toLowerCase().includes(search) || rule.condition.toLowerCase().includes(search) || rule.description?.toLowerCase().includes(search);
+        const matchesAction = filterAction === 'all' || rule.action === filterAction;
+        const matchesEnabled = !showOnlyEnabled || rule.enabled;
+        return matchesSearch && matchesAction && matchesEnabled;
+      })
+      .sort((a, b) => b.priority - a.priority);
+  }, [rules, searchTerm, filterAction, showOnlyEnabled]);
 
-    for (const cond of conditions) {
-      if (cond.includes('invalid_address')) {
-        const addressValid = payload.address?.valid ?? true;
-        if (addressValid) return false;
-      }
-      if (cond.includes('country != "US"')) {
-        const country = payload.address?.normalized?.country || payload.address?.country;
-        if (country === 'US') return false;
-      }
-      // Add more conditions as needed
-    }
-
-    return true;
+  const addRule = (newRuleData?: Partial<Rule>) => {
+    const newRule: Rule = {
+      id: `rule_${Date.now()}`,
+      name: `New Rule ${rules.length + 1}`,
+      description: '',
+      condition: '',
+      action: 'hold',
+      priority: 0,
+      enabled: false,
+      createdAt: new Date().toISOString(),
+      ...newRuleData,
+    };
+    setRules([newRule, ...rules]);
   };
 
-  const handleTestRule = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      let payload;
-      try {
-        payload = JSON.parse(testPayload);
-      } catch {
-        throw new Error(UI_STRINGS.INVALID_JSON);
-      }
+  const updateRule = (index: number, updatedRule: Rule) => {
+    const newRules = [...rules];
+    const originalIndex = rules.findIndex(r => r.id === filteredRules[index].id);
+    if (originalIndex !== -1) {
+      newRules[originalIndex] = { ...updatedRule, updatedAt: new Date().toISOString() };
+      setRules(newRules);
+    }
+  };
 
+  const deleteRule = (index: number) => {
+    if (window.confirm('Are you sure you want to delete this rule?')) {
+      const ruleId = filteredRules[index].id;
+      setRules(rules.filter(r => r.id !== ruleId));
+    }
+  };
+
+  const duplicateRule = (index: number) => {
+    const ruleToDuplicate = filteredRules[index];
+    const newRule: Rule = {
+      ...ruleToDuplicate,
+      id: `rule_${Date.now()}`,
+      name: `${ruleToDuplicate.name} (Copy)`,
+      createdAt: new Date().toISOString(),
+    };
+    setRules([newRule, ...rules]);
+  };
+
+  const handleTestRules = async () => {
+    setTestingRules(true);
+    setTestError(null);
+    try {
+      const payload = JSON.parse(debouncedTestPayload);
       const token = localStorage.getItem(LOCAL_STORAGE_KEYS.AUTH_TOKEN);
       const response = await fetch(`${API_BASE}${API_ENDPOINTS.TEST_RULES_AGAINST_PAYLOAD}`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        credentials: 'include',
+        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
         body: JSON.stringify(payload),
       });
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-
+      if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       const result: TestResult = await response.json();
       setTestResult(result);
-
-      // Evaluate rules against the results
-      const ruleResults: RuleTestResult[] = rules
-        .filter(rule => rule.enabled)
-        .map(rule => {
-          const triggered = evaluateCondition(rule.condition, result.results);
-          return {
-            ruleId: rule.id,
-            condition: rule.condition,
-            action: rule.action,
-            triggered,
-            details: triggered ? `Rule triggered: ${rule.condition}` : `Rule not triggered: ${rule.condition}`,
-          };
-        });
-
+      const ruleResults: RuleTestResult[] = rules.filter(rule => rule.enabled).map(rule => {
+        const startTime = performance.now();
+        const evaluation = ConditionEvaluator.evaluate(rule.condition, result.results);
+        const evaluationTime = performance.now() - startTime;
+        return {
+          ruleId: rule.id, ruleName: rule.name, condition: rule.condition, action: rule.action,
+          triggered: evaluation.result,
+          details: evaluation.error || (evaluation.result ? `✓ Rule triggered` : '✗ Rule not triggered'),
+          evaluationTime: Math.round(evaluationTime * 100) / 100,
+          error: evaluation.error,
+        };
+      });
       setRuleTestResults(ruleResults);
     } catch (err) {
-      setError(err instanceof Error ? err.message : UI_STRINGS.UNEXPECTED_ERROR);
+      setTestError(err instanceof Error ? err.message : 'An unexpected error occurred');
     } finally {
-      setLoading(false);
+      setTestingRules(false);
     }
   };
 
   const handleSaveRules = async () => {
+    setSaveStatus('saving');
     try {
-      const token = localStorage.getItem(LOCAL_STORAGE_KEYS.AUTH_TOKEN);
-      const response = await fetch(`${API_BASE}/rules`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        credentials: 'include',
-        body: JSON.stringify({ rules }),
+      await apiClient.registerCustomRules({
+        rules: rules.map(rule => ({
+          name: rule.name, description: rule.description, logic: rule.condition,
+          severity: 'high' as const, enabled: rule.enabled,
+        }))
       });
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-
-      alert(UI_STRINGS.RULE_SAVED);
+      setSaveStatus('saved');
     } catch (err) {
+      setSaveStatus('error');
       alert(`Failed to save rules: ${err instanceof Error ? err.message : 'Unknown error'}`);
+    } finally {
+      setTimeout(() => setSaveStatus('idle'), 2000);
     }
+  };
+
+  const exportRules = () => {
+    const dataStr = JSON.stringify(rules, null, 2);
+    const dataUri = 'data:application/json;charset=utf-8,' + encodeURIComponent(dataStr);
+    const linkElement = document.createElement('a');
+    linkElement.setAttribute('href', dataUri);
+    linkElement.setAttribute('download', `rules_${new Date().toISOString().split('T')[0]}.json`);
+    linkElement.click();
+  };
+
+  const importRules = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const importedRules: Rule[] = JSON.parse(e.target?.result as string);
+        if (Array.isArray(importedRules)) { // Add more validation here as needed
+          setRules(importedRules);
+          alert('Rules imported successfully!');
+        } else {
+          alert('Invalid rules format');
+        }
+      } catch {
+        alert('Failed to parse rules file');
+      }
+    };
+    reader.readAsText(file);
   };
 
   return (
     <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
-      <header className="mb-8">
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">{UI_STRINGS.RULES_EDITOR}</h2>
-        <p className="mt-2 text-gray-600 dark:text-gray-400 text-sm">
-          Configure automated decision rules for order evaluation. Define conditions and actions to approve, hold, or block orders based on validation results.
-        </p>
-      </header>
-
-      <div className="bg-white dark:bg-gray-800 shadow-lg rounded-lg p-6 mb-8">
-        <h3 className="text-base font-semibold text-gray-800 dark:text-white mb-6">{UI_STRINGS.RULE_EDITOR}</h3>
-        <div className="space-y-6 mb-6">
-          {rules.map((rule, index) => (
-            <div key={rule.id} className="grid grid-cols-1 md:grid-cols-[2fr_1fr_auto] gap-4 items-end p-4 border border-gray-200 dark:border-gray-600 rounded-md bg-gray-50 dark:bg-gray-700">
-              <div className="flex flex-col">
-                <label className="text-sm font-medium text-gray-700 mb-1">{UI_STRINGS.RULE_CONDITION}</label>
-                <input
-                  id={`rule-condition-${index}`}
-                  type="text"
-                  value={rule.condition}
-                  onChange={(e) => {
-                    const newRules = [...rules];
-                    newRules[index].condition = e.target.value;
-                    setRules(newRules);
-                  }}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                />
-              </div>
-              <div className="flex flex-col">
-                <label className="text-sm font-medium text-gray-700 mb-1">{UI_STRINGS.RULE_ACTION}</label>
-                <select
-                  value={rule.action}
-                  onChange={(e) => {
-                    const newRules = [...rules];
-                    newRules[index].action = e.target.value as 'approve' | 'hold' | 'block';
-                    setRules(newRules);
-                  }}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                >
-                  <option value="approve">Approve</option>
-                  <option value="hold">Hold</option>
-                  <option value="block">Block</option>
-                </select>
-              </div>
-              <div className="flex items-center h-10">
-                <label className="flex items-center space-x-2 text-sm text-gray-700">
-                  <input
-                    type="checkbox"
-                    checked={rule.enabled}
-                    onChange={(e) => {
-                      const newRules = [...rules];
-                      newRules[index].enabled = e.target.checked;
-                      setRules(newRules);
-                    }}
-                    className="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-300 focus:ring focus:ring-offset-0 focus:ring-indigo-200 focus:ring-opacity-50"
-                  />
-                  <span>Enabled</span>
-                </label>
-              </div>
-            </div>
-          ))}
-        </div>
-        <button onClick={handleSaveRules} className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-          {UI_STRINGS.SAVE_RULES}
-        </button>
-      </div>
-
-      <div className="bg-white dark:bg-gray-800 shadow-lg rounded-lg p-6">
-        <h3 className="text-base font-semibold text-gray-800 dark:text-white mb-6">{UI_STRINGS.TEST_HARNESS}</h3>
-        <div className="space-y-6">
-          <div>
-            <label htmlFor="test-payload" className="block text-sm font-medium text-gray-700">{UI_STRINGS.TEST_PAYLOAD} (JSON)</label>
-            <textarea
-              id="test-payload"
-              value={testPayload}
-              onChange={(e) => setTestPayload(e.target.value)}
-              rows={10}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm font-mono"
-            />
-          </div>
-          <button onClick={handleTestRule} className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed" disabled={loading}>
-            {loading ? 'Testing...' : UI_STRINGS.TEST_RULE}
-          </button>
-        </div>
-
-        {error && (
-          <div className="mt-6 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-md" role="alert">
-            <strong>Error:</strong> {error}
-          </div>
-        )}
-
-        {ruleTestResults.length > 0 && (
-          <div className="mt-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
-            <h4 className="text-base font-medium text-gray-900 mb-4">{UI_STRINGS.RULE_TEST_RESULT}</h4>
-            <div className="space-y-2">
-              {ruleTestResults.map((result, index) => (
-                <div key={index} className={`p-3 rounded-md text-sm ${result.triggered ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>
-                  <strong>{result.ruleId}:</strong> {result.details}
-                  {result.triggered && <span className="font-bold ml-2">→ {result.action}</span>}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {testResult && (
-          <div className="mt-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
-            <h4 className="text-base font-medium text-gray-900 mb-4">Validation Results</h4>
-            <pre className="bg-gray-800 text-white p-4 rounded-md overflow-x-auto text-sm">{JSON.stringify(testResult.results, null, 2)}</pre>
-          </div>
-        )}
-      </div>
+      <RulesHeader onSave={handleSaveRules} saveStatus={saveStatus} onExport={exportRules} onImport={importRules} />
+      <RulesList
+        filteredRules={filteredRules}
+        totalRulesCount={rules.length}
+        onUpdate={updateRule}
+        onDelete={deleteRule}
+        onDuplicate={duplicateRule}
+        onAdd={addRule}
+        searchTerm={searchTerm}
+        setSearchTerm={setSearchTerm}
+        filterAction={filterAction}
+        setFilterAction={setFilterAction}
+        showOnlyEnabled={showOnlyEnabled}
+        setShowOnlyEnabled={setShowOnlyEnabled}
+      />
+      <TestHarness
+        testPayload={testPayload}
+        setTestPayload={setTestPayload}
+        onTest={handleTestRules}
+        loading={testingRules}
+        error={testError}
+        ruleTestResults={ruleTestResults}
+        testResult={testResult}
+      />
     </div>
   );
 };

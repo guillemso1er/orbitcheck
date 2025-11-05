@@ -1,0 +1,790 @@
+import crypto from 'crypto';
+import { performance } from 'perf_hooks';
+export interface ValidationPayload {
+    email?: string;
+    phone?: string;
+    address?: {
+        line1?: string;
+        line2?: string;
+        city?: string;
+        state?: string;
+        postal_code?: string;
+        country?: string;
+    };
+    name?: string;
+    ip?: string;
+    user_agent?: string;
+    metadata?: Record<string, any>;
+    session_id?: string;
+    transaction_amount?: number;
+    currency?: string;
+}
+
+export interface RuleEvaluationResult {
+    rule_id: string;
+    rule_name: string;
+    description?: string;
+    condition: string;
+    triggered: boolean;
+    action: 'approve' | 'hold' | 'block';
+    priority: number;
+    evaluation_time_ms: number;
+    error?: string;
+    confidence_score?: number;
+    reason?: string;
+    metadata?: Record<string, any>;
+}
+
+interface ValidationFieldResult {
+    valid: boolean;
+    confidence: number;
+    reason_codes: string[];
+    risk_score: number;
+    processing_time_ms: number;
+    provider?: string;
+    raw_response?: any;
+    metadata?: Record<string, any>;
+}
+
+export interface TestRulesResponse {
+    results: {
+        email?: ValidationFieldResult & {
+            normalized?: string;
+            disposable?: boolean;
+            domain_reputation?: number;
+            mx_records?: boolean;
+            smtp_check?: boolean;
+            catch_all?: boolean;
+            role_account?: boolean;
+            free_provider?: boolean;
+        };
+        phone?: ValidationFieldResult & {
+            e164?: string;
+            country?: string;
+            carrier?: string;
+            line_type?: string;
+            reachable?: boolean;
+            ported?: boolean;
+            roaming?: boolean;
+        };
+        address?: ValidationFieldResult & {
+            normalized?: any;
+            po_box?: boolean;
+            residential?: boolean;
+            deliverable?: boolean;
+            dpv_confirmed?: boolean;
+            geocode?: { lat: number; lng: number };
+        };
+        name?: ValidationFieldResult & {
+            normalized?: string;
+            parts?: { first?: string; middle?: string; last?: string };
+            gender?: string;
+            salutation?: string;
+        };
+        ip?: ValidationFieldResult & {
+            country?: string;
+            region?: string;
+            city?: string;
+            is_vpn?: boolean;
+            is_proxy?: boolean;
+            is_tor?: boolean;
+            is_datacenter?: boolean;
+            asn?: string;
+            org?: string;
+        };
+        device?: ValidationFieldResult & {
+            type?: string;
+            os?: string;
+            browser?: string;
+            is_bot?: boolean;
+            fingerprint?: string;
+        };
+    };
+    rule_evaluations: RuleEvaluationResult[];
+    final_decision: {
+        action: 'approve' | 'hold' | 'block' | 'review';
+        confidence: number;
+        reasons: string[];
+        risk_score: number;
+        risk_level: 'low' | 'medium' | 'high' | 'critical';
+        recommended_actions?: string[];
+    };
+    performance_metrics: {
+        total_duration_ms: number;
+        validation_duration_ms: number;
+        rule_evaluation_duration_ms: number;
+        parallel_validations: boolean;
+        cache_hits: number;
+        cache_misses: number;
+    };
+    request_id: string;
+    timestamp: string;
+    project_id: string;
+    environment: 'test' | 'production';
+    debug_info?: {
+        rules_evaluated: number;
+        rules_triggered: number;
+        validation_providers_used: string[];
+        errors: Array<{ field: string; error: string }>;
+        warnings: string[];
+    };
+}
+
+// Validation Schema using Zod for better validation
+export const TestPayloadJsonSchema = {
+    $id: 'TestPayload', type: 'object', additionalProperties: true,
+    properties: {
+        email: { type: 'string', format: 'email' }, phone: { type: 'string' }, address: {
+            type: 'object', additionalProperties: false, properties: {
+                line1: { type: 'string' }, line2: { type: 'string' },
+                city: { type: 'string' }, state: { type: 'string' }, postal_code: { type: 'string' },
+                country: { type: 'string', minLength: 2, maxLength: 2 }
+            }
+        }, name: { type: 'string' }, ip: { type: 'string' }, user_agent: { type: 'string' }, metadata: { type: 'object', additionalProperties: true },
+        session_id: { type: 'string' }, transaction_amount: { type: 'number', exclusiveMinimum: 0 }, currency: { type: 'string', minLength: 3, maxLength: 3 }
+    }
+} as const;
+
+// Enhanced Rule Evaluator
+export class RuleEvaluator {
+    private static readonly MAX_EVALUATION_TIME_MS = 1000;
+    private static readonly OPERATOR_MAP: Record<string, string | null> = {
+        'AND': '&&',
+        'OR': '||',
+        'NOT': '!',
+        'IN': 'includes',
+        'CONTAINS': 'includes',
+        'STARTS_WITH': 'startsWith',
+        'ENDS_WITH': 'endsWith',
+        'MATCHES': 'match',
+        'BETWEEN': null, // Custom handler
+    };
+
+    static async evaluate(
+        rule: any,
+        context: any,
+        options: { timeout?: number; debug?: boolean } = {}
+    ): Promise<{ triggered: boolean; confidence: number; reason?: string; error?: string }> {
+        const startTime = performance.now();
+        const timeout = options.timeout || this.MAX_EVALUATION_TIME_MS;
+
+        try {
+            // Set up timeout promise
+            const timeoutPromise = new Promise((_, reject) =>
+                setTimeout(() => reject(new Error('Rule evaluation timeout')), timeout)
+            );
+
+            // Set up evaluation promise
+            const evaluationPromise = this.evaluateCondition(rule.condition || rule.logic, context);
+
+            // Race between evaluation and timeout
+            const result = await Promise.race([evaluationPromise, timeoutPromise]);
+
+            const evaluationTime = performance.now() - startTime;
+
+            if (options.debug) {
+                console.log(`Rule ${rule.id} evaluation took ${evaluationTime.toFixed(2)}ms`);
+            }
+
+            return result as any;
+        } catch (error) {
+            return {
+                triggered: false,
+                confidence: 0,
+                error: error instanceof Error ? error.message : 'Unknown evaluation error'
+            };
+        }
+    }
+
+    private static async evaluateCondition(
+        condition: string,
+        context: any
+    ): Promise<{ triggered: boolean; confidence: number; reason?: string }> {
+        try {
+            // Decode HTML entities
+            const decodedCondition = this.decodeHtmlEntities(condition);
+
+            // Parse and normalize the condition
+            const normalizedCondition = this.normalizeCondition(decodedCondition);
+
+            // Create safe evaluation context with helper functions
+            const evalContext = this.createEvaluationContext(context);
+
+            // Use a sandboxed evaluation approach
+            const result = await this.sandboxedEval(normalizedCondition, evalContext);
+
+            // Calculate confidence based on the evaluation
+            const confidence = this.calculateConfidence(result, context);
+
+            return {
+                triggered: Boolean(result),
+                confidence,
+                reason: result ? 'Condition met' : 'Condition not met'
+            };
+        } catch (error) {
+            throw new Error(`Failed to evaluate condition: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        }
+    }
+
+    private static decodeHtmlEntities(str: string): string {
+        const entities: Record<string, string> = {
+            '&amp;': '&',
+            '&lt;': '<',
+            '&gt;': '>',
+            '&quot;': '"',
+            '&#039;': "'",
+            '&#x27;': "'",
+            '&nbsp;': ' ',
+        };
+
+        return str.replace(/&[a-zA-Z0-9#]+;/g, (entity) => entities[entity] || entity);
+    }
+
+    private static normalizeCondition(condition: string): string {
+        let normalized = condition;
+
+        // Replace logical operators
+        Object.entries(this.OPERATOR_MAP).forEach(([from, to]) => {
+            if (to) {
+                const regex = new RegExp(`\\b${from}\\b`, 'gi');
+                normalized = normalized.replace(regex, to);
+            }
+        });
+
+        // Handle comparison operators
+        normalized = normalized
+            .replace(/\b==\b/g, '===')
+            .replace(/\b!=\b/g, '!==')
+            .replace(/\b<>\b/g, '!==')
+            .replace(/\bIS NULL\b/gi, '=== null')
+            .replace(/\bIS NOT NULL\b/gi, '!== null');
+
+        return normalized;
+    }
+
+    private static createEvaluationContext(context: any): any {
+        return {
+            ...context,
+            // Helper functions for rule evaluation
+            exists: (value: any) => value !== null && value !== undefined,
+            isEmpty: (value: any) => {
+                if (value === null || value === undefined) return true;
+                if (typeof value === 'string') return value.trim().length === 0;
+                if (Array.isArray(value)) return value.length === 0;
+                if (typeof value === 'object') return Object.keys(value).length === 0;
+                return false;
+            },
+            isEmail: (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value),
+            isPhone: (value: string) => /^\+?[1-9]\d{1,14}$/.test(value),
+            isPostalCode: (value: string, country: string = 'US') => {
+                const patterns: Record<string, RegExp> = {
+                    US: /^\d{5}(-\d{4})?$/,
+                    UK: /^[A-Z]{1,2}[0-9][0-9A-Z]?\s?[0-9][A-Z]{2}$/i,
+                    CA: /^[A-Z]\d[A-Z]\s?\d[A-Z]\d$/i,
+                };
+                return patterns[country]?.test(value) || false;
+            },
+            between: (value: number, min: number, max: number) => value >= min && value <= max,
+            inList: (value: any, list: any[]) => list.includes(value),
+            matches: (value: string, pattern: string) => new RegExp(pattern).test(value),
+            daysSince: (dateStr: string) => {
+                const date = new Date(dateStr);
+                const now = new Date();
+                return Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
+            },
+            // Math functions
+            Math: Math,
+            parseInt: parseInt,
+            parseFloat: parseFloat,
+            // Date functions
+            Date: Date,
+            now: () => new Date(),
+        };
+    }
+
+    private static async sandboxedEval(expression: string, context: any): Promise<boolean> {
+        try {
+            // Create a function with limited scope
+            const func = new Function(
+                ...Object.keys(context),
+                `
+        "use strict";
+        try {
+          return Boolean(${expression});
+        } catch (e) {
+          return false;
+        }
+        `
+            );
+
+            return func(...Object.values(context));
+        } catch (error) {
+            console.error('Sandboxed evaluation failed:', error);
+            return false;
+        }
+    }
+
+    private static calculateConfidence(result: boolean, context: any): number {
+        let confidence = result ? 80 : 20; // Base confidence
+
+        // Adjust confidence based on data quality
+        if (context.email?.valid) confidence += 5;
+        if (context.phone?.valid) confidence += 5;
+        if (context.address?.valid) confidence += 5;
+
+        // Adjust based on risk scores
+        const avgRiskScore = [
+            context.email?.risk_score,
+            context.phone?.risk_score,
+            context.address?.risk_score,
+        ].filter(Boolean).reduce((a, b) => a + b, 0) / 3;
+
+        if (avgRiskScore > 70) confidence -= 10;
+        if (avgRiskScore < 30) confidence += 10;
+
+        return Math.max(0, Math.min(100, confidence));
+    }
+}
+
+// Risk Score Calculator
+export class RiskScoreCalculator {
+    private static readonly RISK_FACTORS = {
+        email: {
+            invalid: 30,
+            disposable: 25,
+            role_account: 15,
+            free_provider: 10,
+            no_mx_records: 20,
+            catch_all: 10,
+        },
+        phone: {
+            invalid: 30,
+            unreachable: 25,
+            voip: 15,
+            recent_port: 20,
+        },
+        address: {
+            invalid: 35,
+            po_box: 15,
+            non_deliverable: 30,
+            apartment_missing: 10,
+        },
+        ip: {
+            vpn: 20,
+            proxy: 25,
+            tor: 40,
+            datacenter: 15,
+            country_mismatch: 25,
+        },
+        device: {
+            bot: 50,
+            emulator: 40,
+            modified: 30,
+        },
+        behavioral: {
+            velocity_high: 30,
+            unusual_time: 15,
+            multiple_attempts: 20,
+        }
+    };
+
+    static calculate(validationResults: any): {
+        score: number;
+        level: 'low' | 'medium' | 'high' | 'critical';
+        factors: string[];
+    } {
+        let totalScore = 0;
+        const factors: string[] = [];
+
+        // Email risk factors
+        if (validationResults.email) {
+            const email = validationResults.email;
+            if (!email.valid) {
+                totalScore += this.RISK_FACTORS.email.invalid;
+                factors.push('Invalid email');
+            }
+            if (email.disposable) {
+                totalScore += this.RISK_FACTORS.email.disposable;
+                factors.push('Disposable email');
+            }
+            if (email.role_account) {
+                totalScore += this.RISK_FACTORS.email.role_account;
+                factors.push('Role account email');
+            }
+            if (email.free_provider) {
+                totalScore += this.RISK_FACTORS.email.free_provider;
+                factors.push('Free email provider');
+            }
+            if (email.mx_records === false) {
+                totalScore += this.RISK_FACTORS.email.no_mx_records;
+                factors.push('No MX records');
+            }
+            if (email.catch_all) {
+                totalScore += this.RISK_FACTORS.email.catch_all;
+                factors.push('Catch-all domain');
+            }
+        }
+
+        // Phone risk factors
+        if (validationResults.phone) {
+            const phone = validationResults.phone;
+            if (!phone.valid) {
+                totalScore += this.RISK_FACTORS.phone.invalid;
+                factors.push('Invalid phone');
+            }
+            if (phone.reachable === false) {
+                totalScore += this.RISK_FACTORS.phone.unreachable;
+                factors.push('Phone unreachable');
+            }
+            if (phone.line_type === 'voip') {
+                totalScore += this.RISK_FACTORS.phone.voip;
+                factors.push('VoIP number');
+            }
+            if (phone.ported) {
+                totalScore += this.RISK_FACTORS.phone.recent_port;
+                factors.push('Recently ported number');
+            }
+        }
+
+        // Address risk factors
+        if (validationResults.address) {
+            const address = validationResults.address;
+            if (!address.valid) {
+                totalScore += this.RISK_FACTORS.address.invalid;
+                factors.push('Invalid address');
+            }
+            if (address.po_box) {
+                totalScore += this.RISK_FACTORS.address.po_box;
+                factors.push('PO Box address');
+            }
+            if (address.deliverable === false) {
+                totalScore += this.RISK_FACTORS.address.non_deliverable;
+                factors.push('Non-deliverable address');
+            }
+        }
+
+        // IP risk factors
+        if (validationResults.ip) {
+            const ip = validationResults.ip;
+            if (ip.is_vpn) {
+                totalScore += this.RISK_FACTORS.ip.vpn;
+                factors.push('VPN detected');
+            }
+            if (ip.is_proxy) {
+                totalScore += this.RISK_FACTORS.ip.proxy;
+                factors.push('Proxy detected');
+            }
+            if (ip.is_tor) {
+                totalScore += this.RISK_FACTORS.ip.tor;
+                factors.push('Tor network');
+            }
+            if (ip.is_datacenter) {
+                totalScore += this.RISK_FACTORS.ip.datacenter;
+                factors.push('Datacenter IP');
+            }
+        }
+
+        // Device risk factors
+        if (validationResults.device) {
+            const device = validationResults.device;
+            if (device.is_bot) {
+                totalScore += this.RISK_FACTORS.device.bot;
+                factors.push('Bot detected');
+            }
+        }
+
+        // Normalize score to 0-100
+        const normalizedScore = Math.min(100, totalScore);
+
+        // Determine risk level
+        let level: 'low' | 'medium' | 'high' | 'critical';
+        if (normalizedScore >= 75) {
+            level = 'critical';
+        } else if (normalizedScore >= 50) {
+            level = 'high';
+        } else if (normalizedScore >= 25) {
+            level = 'medium';
+        } else {
+            level = 'low';
+        }
+
+        return {
+            score: normalizedScore,
+            level,
+            factors
+        };
+    }
+}
+
+// Cache Manager for better performance
+export class ValidationCacheManager {
+    private static readonly CACHE_TTL = 300; // 5 minutes
+
+    static async get(redis: any, key: string): Promise<any | null> {
+        try {
+            const cached = await redis.get(key);
+            return cached ? JSON.parse(cached) : null;
+        } catch {
+            return null;
+        }
+    }
+
+    static async set(redis: any, key: string, value: any, ttl?: number): Promise<void> {
+        try {
+            await redis.setex(
+                key,
+                ttl || this.CACHE_TTL,
+                JSON.stringify(value)
+            );
+        } catch (error) {
+            console.error('Cache set error:', error);
+        }
+    }
+
+    static generateKey(type: string, value: string, projectId: string): string {
+        const hash = crypto
+            .createHash('md5')
+            .update(`${type}:${value}:${projectId}`)
+            .digest('hex');
+        return `validation:${hash}`;
+    }
+}
+
+// Enhanced validation result builders
+export function buildEnhancedEmailValidationResult(result: any): any {
+    const processingStart = performance.now();
+
+    const enhanced = {
+        valid: result.valid || false,
+        confidence: calculateFieldConfidence(result),
+        reason_codes: result.reason_codes || [],
+        risk_score: 0,
+        processing_time_ms: 0,
+        provider: result.provider || 'internal',
+        normalized: result.normalized,
+        disposable: result.disposable || false,
+        domain_reputation: result.domain_reputation,
+        mx_records: result.mx_records,
+        smtp_check: result.smtp_check,
+        catch_all: result.catch_all,
+        role_account: result.role_account || false,
+        free_provider: result.free_provider || false,
+        metadata: {
+            domain: result.domain,
+            suggestion: result.suggestion,
+            checked_at: new Date().toISOString()
+        }
+    };
+
+    // Calculate risk score
+    if (!enhanced.valid) enhanced.risk_score += 30;
+    if (enhanced.disposable) enhanced.risk_score += 25;
+    if (enhanced.role_account) enhanced.risk_score += 15;
+    if (enhanced.free_provider) enhanced.risk_score += 10;
+    if (!enhanced.mx_records) enhanced.risk_score += 20;
+    if (enhanced.catch_all) enhanced.risk_score += 10;
+
+    enhanced.processing_time_ms = performance.now() - processingStart;
+
+    return enhanced;
+}
+
+export function buildEnhancedPhoneValidationResult(result: any): any {
+    const processingStart = performance.now();
+
+    const enhanced = {
+        valid: result.valid || false,
+        confidence: calculateFieldConfidence(result),
+        reason_codes: result.reason_codes || [],
+        risk_score: 0,
+        processing_time_ms: 0,
+        provider: result.provider || 'internal',
+        e164: result.e164,
+        country: result.country,
+        carrier: result.carrier,
+        line_type: result.line_type,
+        reachable: result.reachable,
+        ported: result.ported || false,
+        roaming: result.roaming || false,
+        metadata: {
+            timezone: result.timezone,
+            checked_at: new Date().toISOString()
+        }
+    };
+
+    // Calculate risk score
+    if (!enhanced.valid) enhanced.risk_score += 30;
+    if (enhanced.reachable === false) enhanced.risk_score += 25;
+    if (enhanced.line_type === 'voip') enhanced.risk_score += 15;
+    if (enhanced.ported) enhanced.risk_score += 20;
+
+    enhanced.processing_time_ms = performance.now() - processingStart;
+
+    return enhanced;
+}
+
+export function buildEnhancedAddressValidationResult(result: any, input?: any): any {
+    const processingStart = performance.now();
+
+    const enhanced = {
+        valid: result.valid || false,
+        confidence: calculateFieldConfidence(result),
+        reason_codes: result.reason_codes || [],
+        risk_score: 0,
+        processing_time_ms: 0,
+        provider: result.provider || 'internal',
+        normalized: result.normalized,
+        po_box: result.po_box || false,
+        residential: result.residential,
+        deliverable: result.deliverable,
+        dpv_confirmed: result.dpv_confirmed,
+        geocode: result.geocode,
+        country: input?.country || undefined,
+        metadata: {
+            components: result.components,
+            checked_at: new Date().toISOString()
+        }
+    };
+
+    // Calculate risk score
+    if (!enhanced.valid) enhanced.risk_score += 35;
+    if (enhanced.po_box) enhanced.risk_score += 15;
+    if (enhanced.deliverable === false) enhanced.risk_score += 30;
+    if (!enhanced.dpv_confirmed) enhanced.risk_score += 20;
+
+    enhanced.processing_time_ms = performance.now() - processingStart;
+
+    return enhanced;
+}
+
+export function buildEnhancedNameValidationResult(result: any): any {
+    const processingStart = performance.now();
+
+    const enhanced = {
+        valid: result.valid || false,
+        confidence: calculateFieldConfidence(result),
+        reason_codes: result.reason_codes || [],
+        risk_score: result.valid ? 0 : 10,
+        processing_time_ms: 0,
+        provider: 'internal',
+        normalized: result.normalized,
+        parts: result.parts,
+        gender: result.gender,
+        salutation: result.salutation,
+        metadata: {
+            original: result.original,
+            checked_at: new Date().toISOString()
+        }
+    };
+
+    enhanced.processing_time_ms = performance.now() - processingStart;
+
+    return enhanced;
+}
+
+export function calculateFieldConfidence(result: any): number {
+    let confidence = 50; // Base confidence
+
+    if (result.valid) confidence += 30;
+    if (!result.reason_codes || result.reason_codes.length === 0) confidence += 10;
+    if (result.provider === 'trusted') confidence += 10;
+
+    return Math.min(100, confidence);
+}
+
+// Placeholder functions for additional validations (implement as needed)
+export async function validateIP(ip: string, redis?: any): Promise<any> {
+    // Check cache first if redis is available
+    if (redis) {
+        try {
+            const cacheKey = `ip_validation:${ip}`;
+            const cached = await redis.get(cacheKey);
+            if (cached) {
+                return JSON.parse(cached);
+            }
+        } catch (error) {
+            // Continue with validation if cache fails
+        }
+    }
+
+    // Implement IP validation logic
+    const result = {
+        valid: true,
+        confidence: 80,
+        reason_codes: [],
+        risk_score: 0,
+        processing_time_ms: 10,
+        provider: 'ipapi',
+        country: 'US',
+        region: 'CA',
+        city: 'San Francisco',
+        is_vpn: false,
+        is_proxy: false,
+        is_tor: false,
+        is_datacenter: false,
+        asn: 'AS15169',
+        org: 'Google LLC',
+        metadata: {
+            checked_at: new Date().toISOString()
+        }
+    };
+
+    // Cache the result if redis is available
+    if (redis) {
+        try {
+            const cacheKey = `ip_validation:${ip}`;
+            await redis.setex(cacheKey, 3600, JSON.stringify(result)); // Cache for 1 hour
+        } catch (error) {
+            // Don't fail if caching fails
+        }
+    }
+
+    return result;
+}
+
+export async function validateDevice(userAgent: string, redis?: any): Promise<any> {
+    // Check cache first if redis is available
+    if (redis) {
+        try {
+            const fingerprint = crypto.createHash('md5').update(userAgent).digest('hex');
+            const cacheKey = `device_validation:${fingerprint}`;
+            const cached = await redis.get(cacheKey);
+            if (cached) {
+                return JSON.parse(cached);
+            }
+        } catch (error) {
+            // Continue with validation if cache fails
+        }
+    }
+
+    // Implement device validation logic
+    const fingerprint = crypto.createHash('md5').update(userAgent).digest('hex');
+    const result = {
+        valid: true,
+        confidence: 75,
+        reason_codes: [],
+        risk_score: 0,
+        processing_time_ms: 5,
+        provider: 'internal',
+        type: 'desktop',
+        os: 'Windows 10',
+        browser: 'Chrome',
+        is_bot: false,
+        fingerprint,
+        metadata: {
+            checked_at: new Date().toISOString()
+        }
+    };
+
+    // Cache the result if redis is available
+    if (redis) {
+        try {
+            const cacheKey = `device_validation:${fingerprint}`;
+            await redis.setex(cacheKey, 3600, JSON.stringify(result)); // Cache for 1 hour
+        } catch (error) {
+            // Don't fail if caching fails
+        }
+    }
+
+    return result;
+}

@@ -15,7 +15,7 @@ import { registerJobRoutes } from './routes/jobs.js';
 import { registerNormalizeRoutes } from './routes/normalize.js';
 import { registerOrderRoutes } from './routes/orders.js';
 import { registerPatRoutes } from './routes/pats.js';
-import { registerRulesRoutes } from './routes/rules.js';
+import { registerRulesRoutes } from './routes/rules/rules.js';
 import { registerSettingsRoutes } from './routes/settings.js';
 import { registerValidationRoutes } from './routes/validation.js';
 import { registerWebhookRoutes } from './routes/webhook.js';

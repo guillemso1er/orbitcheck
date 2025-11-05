@@ -77,16 +77,20 @@ export default function () {
     console.log('Starting k6 comprehensive journey test with new auth...');
 
     // Step 1: Register a new user
-    const { patToken, defaultApiKey, email: userEmail } = testRegister(check);
+    const {  email: userEmail } = testRegister(check);
 
     // Step 2: Login
-    const { res: resLogin } = testLogin(userEmail, check);
+    const { res: resLogin, patToken } = testLogin(userEmail, check);
     const sessionCookie = resLogin.cookies['orbitcheck_session'] || [];
+
+    console.log('Obtained PAT token:', patToken);
+
+    const {apiKey } = testCreateApiKey(patToken, check);
 
     // --- Define Headers ---
     const HEADERS = { 'Content-Type': 'application/json' };
     const mgmtHeaders = Object.assign({}, HEADERS, { 'Authorization': `Bearer ${patToken}`, 'Cache-Control': 'no-cache' });
-    const runtimeHeaders = Object.assign({}, HEADERS, { 'Authorization': `Bearer ${defaultApiKey}`, 'Cache-Control': 'no-cache' });
+    const runtimeHeaders = Object.assign({}, HEADERS, { 'Authorization': `Bearer ${apiKey}`, 'Cache-Control': 'no-cache' });
 
     // Step 3: List PATs
     testListPats(patToken, check);

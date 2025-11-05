@@ -38,15 +38,9 @@ export function testRegister(check) {
 
     check(res, {
         '[Register] status 201': (r) => r.status === 201,
-        '[Register] has credentials': (r) => {
-            return body && body.user && body.pat_token && body.api_key;
-        }
     });
 
-    const patToken = body ? body.pat_token : null;
-    const defaultApiKey = body ? body.api_key : null;
-
-    return { res, body, email, patToken, defaultApiKey };
+    return { res, body, email };
 }
 
 export function testLogin(email, check) {
@@ -69,11 +63,11 @@ export function testLogin(email, check) {
     check(res, {
         '[Login] status 200': (r) => r.status === 200,
         '[Login] has user': (r) => {
-            return body && body.user && !body.token; // No token in new system
+            return body && body.user && body.pat_token
         }
     });
 
-    return { res, body };
+    return { res, body, patToken: body.pat_token };
 }
 
 export function testListApiKeys(patToken, check) {
@@ -311,16 +305,18 @@ export default function (check) {
     check = check || k6check;
 
     // Scenario 1: Register a new user
-    const { email, patToken, defaultApiKey } = testRegister(check);
+    const { email, } = testRegister(check);
 
     // Scenario 2: Login with the registered user
-    testLogin(email, check);
+    const { patToken, } = testLogin(email, check);
+
+    // Scenario 4: Create API key (Management API - use PAT)
+    const { newApiKey, keyId } = testCreateApiKey(patToken, check);
+
 
     // Scenario 3: List API keys (Management API - use PAT)
     const initialKeys = testListApiKeys(patToken, check);
 
-    // Scenario 4: Create API key (Management API - use PAT)
-    const { newApiKey, keyId } = testCreateApiKey(patToken, check);
 
     // Scenario 5: List API keys again (Management API - use PAT)
     testListApiKeysAfterCreate(patToken, check);

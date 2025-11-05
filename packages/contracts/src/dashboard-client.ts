@@ -13,6 +13,7 @@ import type {
   CreatePersonalAccessTokenBody,
   EvaluateOrder200,
   EvaluateOrderBody,
+  GetAvailableRules200,
   GetJobStatus200,
   GetLogs200,
   GetUsage200,
@@ -20,6 +21,8 @@ import type {
   ListPersonalAccessTokens200,
   LoginUser200,
   LoginUserBody,
+  RegisterCustomRules201,
+  RegisterCustomRulesBody,
   RegisterUser201,
   RegisterUserBody,
   RevokeApiKey200,
@@ -34,12 +37,14 @@ import {
   createApiKey,
   createPersonalAccessToken,
   evaluateOrder,
+  getAvailableRules as getAvailableRulesApi,
   getJobStatus,
   getLogs,
   getUsage,
   listApiKeys,
   listPersonalAccessTokens,
   loginUser,
+  registerCustomRules,
   registerUser,
   revokeApiKey,
   revokePersonalAccessToken,
@@ -217,7 +222,29 @@ export class ApiClient {
     });
     return response.data;
   }
+
+  // Rules API
+  async registerCustomRules(body: RegisterCustomRulesBody): Promise<RegisterCustomRules201> {
+    const response = await registerCustomRules(body, {
+      baseURL: this.baseURL,
+      withCredentials: true,
+      headers: this.getHeaders()
+    });
+    return response.data;
+  }
+
+  async getAvailableRules(): Promise<GetAvailableRules200> {
+    const response = await getAvailableRulesApi({
+      baseURL: this.baseURL,
+      withCredentials: true,
+      headers: this.getHeaders()
+    });
+    return response.data;
+  }
 }
+
+
+
 
 // Factory function to create API client
 export function createApiClient(config: ApiClientConfig): ApiClient {

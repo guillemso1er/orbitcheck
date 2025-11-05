@@ -356,7 +356,7 @@ export const createApp = async (): Promise<FastifyInstance> => {
   const { registerDedupeRoutes } = await import('../routes/dedupe.js');
   const { registerJobRoutes } = await import('../routes/jobs.js');
   const { registerOrderRoutes } = await import('../routes/orders.js');
-  const { registerRulesRoutes } = await import('../routes/rules.js');
+  const { registerRulesRoutes } = await import('../routes/rules/rules.js');
   const { registerValidationRoutes } = await import('../routes/validation.js');
   const { registerWebhookRoutes } = await import('../routes/webhook.js');
   const { registerSettingsRoutes } = await import('../routes/settings.js');
@@ -453,9 +453,7 @@ export const mockValidatePhone = jest.requireMock('../validators/phone.js').vali
 export const libphone = jest.requireMock('libphonenumber-js');
 
 // Export loaded functions for tests
-export {
-  verifyAPIKeyFunction, idempotencyFunction, rateLimitFunction, registerAuthRoutesFunction, registerRoutesFunction, verifyPATFunction, verifySessionFunction
-};
+export { idempotencyFunction, rateLimitFunction, registerAuthRoutesFunction, registerRoutesFunction, verifyAPIKeyFunction, verifyPATFunction, verifySessionFunction };
 
 describe('Test Setup', () => {
   it('should setup tests', () => {

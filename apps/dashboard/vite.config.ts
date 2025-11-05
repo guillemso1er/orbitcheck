@@ -9,6 +9,7 @@ export default defineConfig({
   resolve: {
     alias: {
       '@orbitcheck/contracts': path.resolve(__dirname, '../../packages/contracts/src'),
+      'src': path.resolve(__dirname, './src'),
     },
   },
   server: {

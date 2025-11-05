@@ -42,6 +42,12 @@ describe('Rules Endpoints', () => {
             if (upperQuery.includes('API_KEYS')) {
                 return Promise.resolve({ rows: [{ id: 'test_key_id', project_id: 'test_project' }] });
             }
+            if (upperQuery.includes('SELECT * FROM RULES')) {
+                return Promise.resolve({ rows: [] });
+            }
+            if (upperQuery.includes('INSERT INTO RULES')) {
+                return Promise.resolve({ rows: [{ id: 'test_rule_id' }] });
+            }
             return Promise.resolve({ rows: [] });
         });
     });
@@ -83,10 +89,9 @@ describe('Rules Endpoints', () => {
                 .send({
                     rules: [
                         {
-                            id: 'custom_rule_1',
                             name: 'Custom Rule',
                             description: 'Test custom rule',
-                            reason_code: 'custom.invalid',
+                            logic: 'email.valid == true',
                             severity: 'medium',
                             enabled: true
                         }
@@ -99,7 +104,8 @@ describe('Rules Endpoints', () => {
                 expect.stringContaining('Rules registered for project test_project:'),
                 expect.any(Array)
             );
-            expect(body.registered_rules).toEqual(['custom_rule_1']);
+            expect(body.registered_rules).toHaveLength(1);
+            expect(body.registered_rules[0]).toBe('test_rule_id');
             expect(body.message).toBe('Rules registered successfully');
 
             mockConsoleWarn.mockRestore();

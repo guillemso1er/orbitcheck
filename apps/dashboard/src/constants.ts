@@ -1,4 +1,5 @@
 import { API_V1_ROUTES, MGMT_V1_ROUTES } from "@orbitcheck/contracts";
+import { ConditionTemplate } from "./types";
 
 // API_BASE is defined conditionally to avoid import.meta.env issues during testing
 const getApiBase = () => {
@@ -181,4 +182,14 @@ export const LOCAL_STORAGE_KEYS = {
   AUTH_TOKEN: 'auth_token',
   USER: 'user',
   THEME: 'theme',
+  TEST_PAYLOAD: 'test_payload',
 } as const;
+
+
+export const CONDITION_TEMPLATES: ConditionTemplate[] = [
+  { label: 'Invalid US Address', value: 'address.valid == false AND address.country == "US"', description: 'Checks for invalid US addresses' },
+  { label: 'High Risk Email', value: 'email.risk_score > 0.7', description: 'Email risk score above threshold' },
+  { label: 'Phone Not Reachable', value: 'phone.reachable == false', description: 'Phone number cannot be reached' },
+  { label: 'Name Mismatch', value: 'name.confidence < 0.5', description: 'Low confidence in name matching' },
+  { label: 'International Order', value: 'address.country != "US"', description: 'Non-US addresses' },
+];
