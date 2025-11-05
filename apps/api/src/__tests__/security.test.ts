@@ -71,7 +71,7 @@ describe('Security and Authentication', () => {
         .set('Authorization', 'Bearer invalid_key')
         .send({ email: 'test@example.com' });
 
-      expect(result.statusCode).toBe(400);
+      expect(result.statusCode).toBe(401);
       expect((result.body as { error: { code: string } }).error.code).toBe('unauthorized');
     });
   });

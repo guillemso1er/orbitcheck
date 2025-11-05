@@ -50,6 +50,13 @@ describe('Web Module', () => {
         environment: process.env.NODE_ENV || 'development'
       }));
 
+      // Mock the config to avoid undefined error
+      const originalConfig = await import('../config.js');
+      Object.defineProperty(originalConfig, 'PAT_SCOPES', {
+        value: originalConfig.PAT_SCOPES,
+        writable: false,
+      });
+
       const response = await app.inject({
         method: 'GET',
         url: '/health'
@@ -72,7 +79,7 @@ describe('Web Module', () => {
         .mockResolvedValueOnce({ rows: [{ id: 'user123' }] })
         .mockResolvedValueOnce({ rows: [{ project_id: 'project123' }] });
 
-      await verifySession(mockRequest, mockReply, mockPool as any);
+      await verifySession(mockRequest, mockPool as any);
 
       expect(mockRequest.user_id).toBe('user123');
       expect(mockRequest.project_id).toBe('project123');
@@ -99,7 +106,7 @@ describe('Web Module', () => {
         .mockResolvedValueOnce({ rows: [{ project_id: 'project123' }] })
         .mockResolvedValueOnce({ rows: [{ value: 1 }] });
 
-      await verifyPAT(mockRequest, mockReply, mockPool as any);
+      await verifyPAT(mockRequest, mockPool as any);
 
       expect(mockRequest.user_id).toBe('user123');
       expect(mockRequest.pat_scopes).toEqual(['*']);
@@ -109,7 +116,8 @@ describe('Web Module', () => {
       const mockRequest = {
         url: '/v1/orders',
         headers: { authorization: 'Bearer sk_test_key' },
-        log: { info: jest.fn() }
+        log: { info: jest.fn() },
+        routeType: 'runtime'
       } as any;
       const mockReply = {} as FastifyReply;
 
@@ -168,7 +176,7 @@ describe('Web Module', () => {
 
       await auth(mockRequest, mockReply, mockPool as any);
 
-      expect(mockReply.status).toHaveBeenCalledWith(400);
+      expect(mockReply.status).toHaveBeenCalledWith(401);
     });
   });
 
@@ -209,7 +217,8 @@ describe('Web Module', () => {
         url: '/v1/validate',
         project_id: 'project123',
         ip: '127.0.0.1',
-        log: { info: jest.fn() }
+        log: { info: jest.fn() },
+        routeType: 'runtime'
       } as any;
       const mockReply = {
         header: jest.fn(),
@@ -230,7 +239,8 @@ describe('Web Module', () => {
         url: '/v1/validate',
         project_id: 'project123',
         ip: '127.0.0.1',
-        log: { info: jest.fn() }
+        log: { info: jest.fn() },
+        routeType: 'runtime'
       } as any;
       const mockReply = {
         status: jest.fn().mockReturnThis(),
@@ -252,7 +262,8 @@ describe('Web Module', () => {
         url: '/v1/orders',
         headers: { 'idempotency-key': 'test-key' },
         project_id: 'project123',
-        log: { info: jest.fn() }
+        log: { info: jest.fn() },
+        routeType: 'runtime'
       } as any;
       const mockReply = {
         status: jest.fn().mockReturnThis(),
@@ -332,15 +343,16 @@ describe('Web Module', () => {
         method: 'GET',
         url: '/v1/api-keys'
       });
-      expect(mgmtResponse.statusCode).toBe(400); // Missing required auth header
+      expect(mgmtResponse.statusCode).toBe(401); // Missing required auth header
 
       // Test runtime route - requires API key
       const runtimeResponse = await app.inject({
         method: 'POST',
         url: '/v1/validate/email',
-        payload: { email: 'test@example.com' }
+        payload: { email: 'test@example.com' },
+        headers: { authorization: 'Bearer invalid' }
       });
-      expect(runtimeResponse.statusCode).toBe(400); // Missing required auth header
+      expect(runtimeResponse.statusCode).toBe(401); // Invalid auth header
     });
   });
 });

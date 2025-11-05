@@ -120,6 +120,9 @@ describe('Auth Routes', () => {
       if (queryText.includes('INSERT INTO api_keys')) {
         return Promise.resolve({ rows: [{ id: 'default_key_id', created_at: new Date().toISOString() }] });
       }
+      if (queryText.includes('INSERT INTO personal_access_tokens')) {
+        return Promise.resolve({ rows: [{ id: 'pat_1', created_at: new Date().toISOString() }] });
+      }
       return Promise.resolve({ rows: [] });
     });
 
@@ -130,10 +133,9 @@ describe('Auth Routes', () => {
     });
 
     expect(response.statusCode).toBe(201);
-    const body = response.json<{ pat_token: string; api_key: string; user: { id: string } }>();
-    expect(body.pat_token).toBeDefined();
-    expect(body.api_key).toBeDefined();
+    const body = response.json<{ user: { id: string; email: string }; request_id: string }>();
     expect(body.user.id).toBe('user_1');
+    expect(body.user.email).toBe('test@example.com');
   });
 
   it('should login a user successfully', async () => {

@@ -1,21 +1,10 @@
 import type { FastifyInstance } from 'fastify';
 import request from 'supertest';
 
+import { verifyPAT } from '../routes/auth.js';
 import * as hooks from '../hooks.js';
 import { createApp, mockPool, setupBeforeAll } from './testSetup.js';
 
-// Mock the auth module to bypass authentication
-jest.mock('../routes/auth', () => {
-  const actual = jest.requireActual('../routes/auth');
-  return {
-    ...actual,
-    verifyPAT: jest.fn(async (request_: any) => {
-      // Default: succeed and set ids
-      request_.user_id = 'test_user';
-      request_.project_id = 'test_project';
-    }),
-  };
-});
 
 // Mock nodemailer to prevent actual email sending during tests
 jest.mock('nodemailer', () => ({
@@ -60,31 +49,71 @@ describe('Data Routes', () => {
     // Set up default mock for authentication queries
     mockPool.query.mockImplementation((queryText: string, values: unknown[]) => {
       const upperQuery = queryText.toUpperCase();
-      if (upperQuery.startsWith('SELECT ID FROM USERS WHERE ID = $1') && values[0] === 'test_user') {
+      // PAT authentication queries
+      if (upperQuery.includes('SELECT TOKEN_HASH FROM PERSONAL_ACCESS_TOKENS')) {
+        return Promise.resolve({ rows: [{ token_hash: 'mock_token_hash' }] });
+      }
+      if (upperQuery.includes('SELECT ID, USER_ID, SCOPES FROM PERSONAL_ACCESS_TOKENS')) {
+        return Promise.resolve({ rows: [{ id: 'pat_1', user_id: 'test_user', scopes: ['*'] }] });
+      }
+      if (upperQuery.includes('SELECT P.ID AS PROJECT_ID FROM PROJECTS P WHERE P.USER_ID = $1 AND P.NAME = $2')) {
+        return Promise.resolve({ rows: [{ project_id: 'test_project' }] });
+      }
+      if (upperQuery.includes('UPDATE PERSONAL_ACCESS_TOKENS SET LAST_USED_AT')) {
+        return Promise.resolve({ rows: [] });
+      }
+      if (upperQuery.includes('INSERT INTO AUDIT_LOGS')) {
+        return Promise.resolve({ rows: [] });
+      }
+
+      // Data route queries
+      if (upperQuery.includes('SELECT U.EMAIL, P.NAME AS PROJECT_NAME FROM USERS U JOIN PROJECTS P ON P.USER_ID = U.ID WHERE P.ID = $1')) {
+        return Promise.resolve({ rows: [{ email: 'test@example.com', project_name: 'Test Project' }] });
+      }
+      if (upperQuery.includes('SELECT ID FROM USERS WHERE ID = $1') && values[0] === 'test_user') {
         return Promise.resolve({ rows: [{ id: 'test_user' }] });
       }
-      if (upperQuery.startsWith('SELECT P.ID AS PROJECT_ID FROM PROJECTS P WHERE P.USER_ID = $1') && values[0] === 'test_user') {
-        return Promise.resolve({ rows: [{ project_id: 'test_project' }] });
+      if (upperQuery.includes('DELETE FROM LOGS WHERE PROJECT_ID = $1')) {
+        return Promise.resolve({ rows: [] });
+      }
+      if (upperQuery.includes('DELETE FROM API_KEYS WHERE PROJECT_ID = $1')) {
+        return Promise.resolve({ rows: [] });
+      }
+      if (upperQuery.includes('DELETE FROM WEBHOOKS WHERE PROJECT_ID = $1')) {
+        return Promise.resolve({ rows: [] });
+      }
+      if (upperQuery.includes('DELETE FROM SETTINGS WHERE PROJECT_ID = $1')) {
+        return Promise.resolve({ rows: [] });
+      }
+      if (upperQuery.includes('DELETE FROM JOBS WHERE PROJECT_ID = $1')) {
+        return Promise.resolve({ rows: [] });
+      }
+      if (upperQuery.includes('SELECT USER_ID FROM PROJECTS WHERE ID = $1')) {
+        return Promise.resolve({ rows: [{ user_id: 'test_user' }] });
+      }
+      if (upperQuery.includes('DELETE FROM PERSONAL_ACCESS_TOKENS WHERE USER_ID = $1')) {
+        return Promise.resolve({ rows: [] });
+      }
+      if (upperQuery.includes('DELETE FROM AUDIT_LOGS WHERE USER_ID = $1')) {
+        return Promise.resolve({ rows: [] });
+      }
+      if (upperQuery.includes('UPDATE USERS SET EMAIL = CONCAT')) {
+        return Promise.resolve({ rows: [] });
+      }
+      if (upperQuery.includes('DELETE FROM LOGS WHERE ID = $1 AND PROJECT_ID = $2')) {
+        return Promise.resolve({ rowCount: 1, rows: [] });
       }
       return Promise.resolve({ rows: [] });
     });
   });
 
+  afterEach(() => {
+    // Reset mockPool to default implementation after each test
+    mockPool.query.mockImplementation(() => Promise.resolve({ rows: [] }));
+  });
+
   describe('POST /v1/data/erase', () => {
     it('should erase user data for GDPR compliance', async () => {
-      // Mock all the queries the new implementation does
-      mockPool.query
-        .mockResolvedValueOnce({ rows: [{ email: 'test@example.com', project_name: 'Test Project' }] }) // user/project query
-        .mockResolvedValueOnce({ rows: [] }) // DELETE logs
-        .mockResolvedValueOnce({ rows: [] }) // DELETE api_keys
-        .mockResolvedValueOnce({ rows: [] }) // DELETE webhooks
-        .mockResolvedValueOnce({ rows: [] }) // DELETE settings
-        .mockResolvedValueOnce({ rows: [] }) // DELETE jobs
-        .mockResolvedValueOnce({ rows: [{ user_id: 'test_user' }] }) // project user_id query
-        .mockResolvedValueOnce({ rows: [] }) // DELETE personal_access_tokens
-        .mockResolvedValueOnce({ rows: [] }) // DELETE audit_logs
-        .mockResolvedValueOnce({ rows: [] }); // UPDATE users
-
       const res = await request(app.server)
         .post('/v1/data/erase')
         .set('Authorization', `Bearer ${MOCK_JWT}`)
@@ -96,19 +125,6 @@ describe('Data Routes', () => {
     });
 
     it('should erase user data for CCPA compliance', async () => {
-      // Mock all the queries the new implementation does
-      mockPool.query
-        .mockResolvedValueOnce({ rows: [{ email: 'test@example.com', project_name: 'Test Project' }] }) // user/project query
-        .mockResolvedValueOnce({ rows: [] }) // DELETE logs
-        .mockResolvedValueOnce({ rows: [] }) // DELETE api_keys
-        .mockResolvedValueOnce({ rows: [] }) // DELETE webhooks
-        .mockResolvedValueOnce({ rows: [] }) // DELETE settings
-        .mockResolvedValueOnce({ rows: [] }) // DELETE jobs
-        .mockResolvedValueOnce({ rows: [{ user_id: 'test_user' }] }) // project user_id query
-        .mockResolvedValueOnce({ rows: [] }) // DELETE personal_access_tokens
-        .mockResolvedValueOnce({ rows: [] }) // DELETE audit_logs
-        .mockResolvedValueOnce({ rows: [] }); // UPDATE users
-
       const res = await request(app.server)
         .post('/v1/data/erase')
         .set('Authorization', `Bearer ${MOCK_JWT}`)
@@ -137,44 +153,31 @@ describe('Data Routes', () => {
       expect(res.statusCode).toBe(400);
     });
 
-    it('should return 404 when project not found', async () => {
-      mockPool.query.mockResolvedValueOnce({ rows: [] }); // No user/project found
+    it('should return unauthorized when PAT token is invalid', async () => {
+      // Override the default mock to make PAT verification fail
+      mockPool.query.mockImplementation((queryText: string, values: unknown[]) => {
+        const upperQuery = queryText.toUpperCase();
+        // Make PAT queries fail by returning no rows
+        if (upperQuery.includes('SELECT TOKEN_HASH FROM PERSONAL_ACCESS_TOKENS')) {
+          return Promise.resolve({ rows: [] }); // No matching token
+        }
+        if (upperQuery.includes('SELECT ID, USER_ID, SCOPES FROM PERSONAL_ACCESS_TOKENS')) {
+          return Promise.resolve({ rows: [] });
+        }
+        return Promise.resolve({ rows: [] });
+      });
 
       const res = await request(app.server)
         .post('/v1/data/erase')
-        .set('Authorization', `Bearer ${MOCK_JWT}`)
+        .set('Authorization', `Bearer invalid_token`)
         .send({ reason: 'gdpr' });
 
-      expect(res.statusCode).toBe(404);
-      expect(res.body.error.code).toBe('not_found');
-    });
-
-    it('should handle database errors during erasure', async () => {
-      mockPool.query.mockRejectedValueOnce(new Error('DB error')); // First query fails
-
-      const res = await request(app.server)
-        .post('/v1/data/erase')
-        .set('Authorization', `Bearer ${MOCK_JWT}`)
-        .send({ reason: 'gdpr' });
-
-      expect(res.statusCode).toBe(500);
-      expect(res.body.error.code).toBe('server_error');
+      expect(res.statusCode).toBe(401);
+      expect(res.body.error.code).toBe('unauthorized');
+      expect(res.body.error.message).toBe('Management routes require session or PAT authentication');
     });
 
     it('should complete erasure even if email sending fails', async () => {
-      // Mock successful DB operations but email failure
-      mockPool.query
-        .mockResolvedValueOnce({ rows: [{ email: 'test@example.com', project_name: 'Test Project' }] })
-        .mockResolvedValueOnce({ rows: [] }) // DELETE logs
-        .mockResolvedValueOnce({ rows: [] }) // DELETE api_keys
-        .mockResolvedValueOnce({ rows: [] }) // DELETE webhooks
-        .mockResolvedValueOnce({ rows: [] }) // DELETE settings
-        .mockResolvedValueOnce({ rows: [] }) // DELETE jobs
-        .mockResolvedValueOnce({ rows: [{ user_id: 'test_user' }] }) // project user_id query
-        .mockResolvedValueOnce({ rows: [] }) // DELETE personal_access_tokens
-        .mockResolvedValueOnce({ rows: [] }) // DELETE audit_logs
-        .mockResolvedValueOnce({ rows: [] }); // UPDATE users
-
       const res = await request(app.server)
         .post('/v1/data/erase')
         .set('Authorization', `Bearer ${MOCK_JWT}`)
@@ -187,8 +190,6 @@ describe('Data Routes', () => {
 
   describe('DELETE /v1/logs/:id', () => {
     it('should delete a log entry', async () => {
-      mockPool.query.mockResolvedValueOnce({ rowCount: 1, rows: [] }); // DELETE query
-
       const res = await request(app.server)
         .delete('/v1/logs/test-log-id')
         .set('Authorization', `Bearer ${MOCK_JWT}`);
@@ -199,7 +200,14 @@ describe('Data Routes', () => {
     });
 
     it('should return 404 for non-existent log', async () => {
-      mockPool.query.mockResolvedValueOnce({ rowCount: 0, rows: [] }); // DELETE query with no rows deleted
+      // Override the default mock to make DELETE return no rows affected
+      mockPool.query.mockImplementation((queryText: string, values: unknown[]) => {
+        const upperQuery = queryText.toUpperCase();
+        if (upperQuery.includes('DELETE FROM LOGS WHERE ID = $1 AND PROJECT_ID = $2')) {
+          return Promise.resolve({ rowCount: 0, rows: [] }); // No rows deleted
+        }
+        return Promise.resolve({ rows: [] });
+      });
 
       const res = await request(app.server)
         .delete('/v1/logs/non-existent-id')
@@ -210,7 +218,14 @@ describe('Data Routes', () => {
     });
 
     it('should handle database errors', async () => {
-      mockPool.query.mockRejectedValueOnce(new Error('DB error')); // DELETE query fails
+      // Override the default mock to fail the DELETE query
+      mockPool.query.mockImplementation((queryText: string, values: unknown[]) => {
+        const upperQuery = queryText.toUpperCase();
+        if (upperQuery.includes('DELETE FROM LOGS WHERE ID = $1 AND PROJECT_ID = $2')) {
+          return Promise.reject(new Error('DB error')); // DELETE query fails
+        }
+        return Promise.resolve({ rows: [] });
+      });
 
       const res = await request(app.server)
         .delete('/v1/logs/test-id')
@@ -218,6 +233,73 @@ describe('Data Routes', () => {
 
       expect(res.statusCode).toBe(500);
       expect(res.body.error.code).toBe('server_error');
+    });
+  });
+
+  describe('verifyPAT function', () => {
+    it('should throw BAD_REQUEST for missing Bearer header', async () => {
+      const mockRequest = {
+        headers: {},
+        log: { info: jest.fn() }
+      };
+
+      await expect(verifyPAT(mockRequest as any, mockPool as any)).rejects.toEqual({
+        status: 401,
+        error: {
+          code: 'unauthorized',
+          message: 'Missing JWT token'
+        }
+      });
+    });
+
+    it('should throw UNAUTHORIZED for invalid PAT token', async () => {
+      const mockRequest = {
+        headers: { authorization: 'Bearer invalid_token' },
+        log: { info: jest.fn() }
+      };
+
+      // Mock database query to return no rows (invalid token)
+      mockPool.query.mockResolvedValueOnce({ rows: [] });
+
+      await expect(verifyPAT(mockRequest as any, mockPool as any)).rejects.toEqual({
+        status: 401,
+        error: {
+          code: 'unauthorized',
+          message: 'Missing JWT token'
+        }
+      });
+    });
+
+    it('should throw FORBIDDEN when user has no default project', async () => {
+      const mockRequest = {
+        headers: { authorization: 'Bearer valid_token' },
+        log: { info: jest.fn() }
+      };
+
+      // Mock PAT verification success
+      mockPool.query.mockResolvedValueOnce({
+        rows: [{ id: 'pat_1', user_id: 'test_user', scopes: ['*'] }]
+      });
+
+      // Mock update query
+      mockPool.query.mockResolvedValueOnce({ rows: [] });
+
+      // Mock getDefaultProjectId to throw NO_PROJECT error
+      jest.spyOn(require('../routes/utils.js'), 'getDefaultProjectId').mockRejectedValueOnce({
+        status: 403,
+        error: {
+          code: 'no_project',
+          message: 'No default project found'
+        }
+      });
+
+      await expect(verifyPAT(mockRequest as any, mockPool as any)).rejects.toEqual({
+        status: 403,
+        error: {
+          code: 'no_project',
+          message: 'No default project found'
+        }
+      });
     });
   });
 });

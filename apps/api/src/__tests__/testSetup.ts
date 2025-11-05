@@ -159,6 +159,9 @@ jest.mock('@orbitcheck/contracts', () => ({
     USER_LOGOUT: '/auth/logout',
   },
   MGMT_V1_ROUTES: {
+    PATS: {
+      CREATE_PERSONAL_ACCESS_TOKEN: '/v1/pats',
+    },
     API_KEYS: {
       CREATE_API_KEY: '/v1/api-keys',
       LIST_API_KEYS: '/v1/api-keys',
@@ -357,6 +360,7 @@ export const createApp = async (): Promise<FastifyInstance> => {
   const { registerValidationRoutes } = await import('../routes/validation.js');
   const { registerWebhookRoutes } = await import('../routes/webhook.js');
   const { registerSettingsRoutes } = await import('../routes/settings.js');
+  const { registerPatRoutes } = await import('../routes/pats.js');
 
 
 
@@ -371,6 +375,7 @@ export const createApp = async (): Promise<FastifyInstance> => {
   registerSettingsRoutes(app, mockPool as any);
   registerValidationRoutes(app, mockPool as any, mockRedisInstance as any);
   registerWebhookRoutes(app, mockPool as any);
+  registerPatRoutes(app, mockPool as any);
   const { registerBillingRoutes } = await import('../routes/billing.js');
   registerBillingRoutes(app, mockPool as any);
 

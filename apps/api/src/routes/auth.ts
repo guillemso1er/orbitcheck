@@ -46,7 +46,7 @@ export async function verifyAPIKey<TServer extends RawServerBase = RawServerBase
     const header = request.headers["authorization"];
     if (!header || !header.startsWith("Bearer ")) {
         request.log.info('No Bearer header for API key auth');
-        rep.status(HTTP_STATUS.BAD_REQUEST).send({
+        rep.status(HTTP_STATUS.UNAUTHORIZED).send({
             error: {
                 code: ERROR_CODES.UNAUTHORIZED,
                 message: ERROR_MESSAGES[ERROR_CODES.UNAUTHORIZED]
@@ -68,7 +68,7 @@ export async function verifyAPIKey<TServer extends RawServerBase = RawServerBase
     );
 
     if (rows.length === 0) {
-        rep.status(HTTP_STATUS.BAD_REQUEST).send({
+        rep.status(HTTP_STATUS.UNAUTHORIZED).send({
             error: {
                 code: ERROR_CODES.UNAUTHORIZED,
                 message: ERROR_MESSAGES[ERROR_CODES.UNAUTHORIZED]
@@ -91,7 +91,7 @@ export async function verifyAPIKey<TServer extends RawServerBase = RawServerBase
 export async function verifyHMAC<TServer extends RawServerBase = RawServerBase>(request: FastifyRequest<RouteGenericInterface, TServer>, rep: FastifyReply<RouteGenericInterface, TServer>, pool: Pool): Promise<void> {
     const header = request.headers.authorization || '';
     if (!header.startsWith('HMAC ')) {
-        rep.status(HTTP_STATUS.BAD_REQUEST).send({
+        rep.status(HTTP_STATUS.UNAUTHORIZED).send({
             error: {
                 code: ERROR_CODES.UNAUTHORIZED,
                 message: ERROR_MESSAGES[ERROR_CODES.UNAUTHORIZED]
@@ -108,7 +108,7 @@ export async function verifyHMAC<TServer extends RawServerBase = RawServerBase>(
 
     if (!keyId || !signature || !ts || !nonce) {
         request.log.info('Missing HMAC parameters');
-        rep.status(HTTP_STATUS.BAD_REQUEST).send({
+        rep.status(HTTP_STATUS.UNAUTHORIZED).send({
             error: {
                 code: ERROR_CODES.UNAUTHORIZED,
                 message: ERROR_MESSAGES[ERROR_CODES.UNAUTHORIZED]
@@ -122,7 +122,7 @@ export async function verifyHMAC<TServer extends RawServerBase = RawServerBase>(
     const requestTs = parseInt(ts);
     if (Math.abs(now - requestTs) > HMAC_VALIDITY_MINUTES * 60 * 1000) {
         request.log.info('HMAC ts too old');
-        rep.status(HTTP_STATUS.BAD_REQUEST).send({
+        rep.status(HTTP_STATUS.UNAUTHORIZED).send({
             error: {
                 code: ERROR_CODES.UNAUTHORIZED,
                 message: ERROR_MESSAGES[ERROR_CODES.UNAUTHORIZED]
@@ -139,7 +139,7 @@ export async function verifyHMAC<TServer extends RawServerBase = RawServerBase>(
 
     if (rows.length === 0) {
         request.log.info('No active API key found for HMAC keyId');
-        rep.status(HTTP_STATUS.BAD_REQUEST).send({
+        rep.status(HTTP_STATUS.UNAUTHORIZED).send({
             error: {
                 code: ERROR_CODES.UNAUTHORIZED,
                 message: ERROR_MESSAGES[ERROR_CODES.UNAUTHORIZED]
@@ -178,7 +178,7 @@ export async function verifyHMAC<TServer extends RawServerBase = RawServerBase>(
 
     if (!ok) {
         request.log.info('HMAC signature mismatch');
-        rep.status(HTTP_STATUS.BAD_REQUEST).send({
+        rep.status(HTTP_STATUS.UNAUTHORIZED).send({
             error: {
                 code: ERROR_CODES.UNAUTHORIZED,
                 message: ERROR_MESSAGES[ERROR_CODES.UNAUTHORIZED]
@@ -262,11 +262,11 @@ export async function authenticateRouteRequest<TServer extends RawServerBase = R
                     return;
                 } catch (error) {
                     rep.status(HTTP_STATUS.UNAUTHORIZED).send({
-                        error: {
-                            code: ERROR_CODES.UNAUTHORIZED,
-                            message: 'Management routes require session or PAT authentication'
-                        }
-                    });
+                                error: {
+                                    code: ERROR_CODES.UNAUTHORIZED,
+                                    message: 'Management routes require session or PAT authentication'
+                                }
+                            });
                     return;
                 }
 
@@ -381,7 +381,7 @@ export async function authenticateRouteRequest<TServer extends RawServerBase = R
  */
 export async function verifySession<TServer extends RawServerBase = RawServerBase>(request: FastifyRequest<RouteGenericInterface, TServer>, pool: Pool): Promise<void> {
     if (!request.session || !request.session.user_id) {
-        throw { status: HTTP_STATUS.BAD_REQUEST, error: { code: ERROR_CODES.UNAUTHORIZED, message: ERROR_MESSAGES[ERROR_CODES.UNAUTHORIZED] } };
+        throw { status: HTTP_STATUS.UNAUTHORIZED, error: { code: ERROR_CODES.UNAUTHORIZED, message: ERROR_MESSAGES[ERROR_CODES.UNAUTHORIZED] } };
     }
 
     const user_id = request.session.user_id;
@@ -417,7 +417,7 @@ export async function verifyPAT<TServer extends RawServerBase = RawServerBase>(r
     const authHeader = Array.isArray(header) ? header[0] : header;
     if (!authHeader || !authHeader.startsWith(BEARER_PREFIX)) {
         request.log.info('No or invalid Bearer header for PAT auth');
-        throw { status: HTTP_STATUS.BAD_REQUEST, error: { code: ERROR_CODES.UNAUTHORIZED, message: ERROR_MESSAGES[ERROR_CODES.UNAUTHORIZED] } };
+        throw { status: HTTP_STATUS.UNAUTHORIZED, error: { code: ERROR_CODES.UNAUTHORIZED, message: ERROR_MESSAGES[ERROR_CODES.UNAUTHORIZED] } };
     }
     const token = authHeader.slice(7).trim();
     const tokenHash = crypto.createHash(HASH_ALGORITHM).update(token).digest('hex');
