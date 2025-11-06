@@ -55,7 +55,19 @@ files.forEach(file => {
 
   // Merge components
   if (spec.components) {
-    Object.assign(mergedSpec.components, spec.components);
+    if (spec.components.schemas) {
+      if (!mergedSpec.components.schemas) {
+        mergedSpec.components.schemas = {};
+      }
+      Object.assign(mergedSpec.components.schemas, spec.components.schemas);
+    }
+    if (spec.components.securitySchemes) {
+      if (!mergedSpec.components.securitySchemes) {
+        mergedSpec.components.securitySchemes = {};
+      }
+      Object.assign(mergedSpec.components.securitySchemes, spec.components.securitySchemes);
+    }
+    // Add other component types if needed
   }
 
   // Merge paths, but exclude non-path keys like 'components' that might be at the same level
@@ -84,7 +96,7 @@ if (!fs.existsSync(distDir)) {
 }
 
 // Write the merged spec to dist/openapi.yaml
-fs.writeFileSync(path.join(distDir, 'openapi.yaml'), yaml.dump(mergedSpec, { indent: 2, noRefs: true }));
+fs.writeFileSync(path.join(distDir, 'openapi.yaml'), yaml.dump(mergedSpec, { indent: 2 }));
 
 console.log('Merged openapi.yaml created successfully.');
 

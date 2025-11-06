@@ -11,6 +11,31 @@ import type {
   AxiosResponse
 } from 'axios';
 
+/**
+ * Current plan details
+ */
+export type UserPlanResponsePlan = { [key: string]: unknown };
+
+export interface UserPlanResponse {
+  /** User ID */
+  id?: string;
+  /** User email */
+  email?: string;
+  /** Current plan details */
+  plan?: UserPlanResponsePlan;
+  /** Number of validations used this month */
+  monthlyValidationsUsed?: number;
+  /** Subscription status */
+  subscriptionStatus?: string;
+  /**
+   * Trial end date if applicable
+   * @nullable
+   */
+  trialEndDate?: string | null;
+  /** Number of projects */
+  projectsCount?: number;
+}
+
 export type ErrorError = {
   /** Error code */
   code?: string;
@@ -22,6 +47,93 @@ export interface Error {
   error?: ErrorError;
   /** Request identifier */
   request_id?: string;
+}
+
+export type UnauthorizedErrorErrorCode = typeof UnauthorizedErrorErrorCode[keyof typeof UnauthorizedErrorErrorCode];
+
+
+// eslint-disable-next-line @typescript-eslint/no-redeclare
+export const UnauthorizedErrorErrorCode = {
+  UNAUTHORIZED: 'UNAUTHORIZED',
+} as const;
+
+export type UnauthorizedErrorError = {
+  code?: UnauthorizedErrorErrorCode;
+  /** Error message */
+  message?: string;
+};
+
+export interface UnauthorizedError {
+  error?: UnauthorizedErrorError;
+}
+
+export type ValidationErrorErrorCode = typeof ValidationErrorErrorCode[keyof typeof ValidationErrorErrorCode];
+
+
+// eslint-disable-next-line @typescript-eslint/no-redeclare
+export const ValidationErrorErrorCode = {
+  INVALID_INPUT: 'INVALID_INPUT',
+  INVALID_PLAN: 'INVALID_PLAN',
+} as const;
+
+export type ValidationErrorError = {
+  code?: ValidationErrorErrorCode;
+  /** Error message */
+  message?: string;
+};
+
+export interface ValidationError {
+  error?: ValidationErrorError;
+}
+
+export type NotFoundErrorErrorCode = typeof NotFoundErrorErrorCode[keyof typeof NotFoundErrorErrorCode];
+
+
+// eslint-disable-next-line @typescript-eslint/no-redeclare
+export const NotFoundErrorErrorCode = {
+  NOT_FOUND: 'NOT_FOUND',
+} as const;
+
+export type NotFoundErrorError = {
+  code?: NotFoundErrorErrorCode;
+  /** Error message */
+  message?: string;
+};
+
+export interface NotFoundError {
+  error?: NotFoundErrorError;
+}
+
+export type LimitExceededErrorCode = typeof LimitExceededErrorCode[keyof typeof LimitExceededErrorCode];
+
+
+// eslint-disable-next-line @typescript-eslint/no-redeclare
+export const LimitExceededErrorCode = {
+  LIMIT_EXCEEDED: 'LIMIT_EXCEEDED',
+} as const;
+
+export interface LimitExceededError {
+  code?: LimitExceededErrorCode;
+  /** Error message */
+  message?: string;
+}
+
+export type ServerErrorErrorCode = typeof ServerErrorErrorCode[keyof typeof ServerErrorErrorCode];
+
+
+// eslint-disable-next-line @typescript-eslint/no-redeclare
+export const ServerErrorErrorCode = {
+  INTERNAL_SERVER_ERROR: 'INTERNAL_SERVER_ERROR',
+} as const;
+
+export type ServerErrorError = {
+  code?: ServerErrorErrorCode;
+  /** Error message */
+  message?: string;
+};
+
+export interface ServerError {
+  error?: ServerErrorError;
 }
 
 /**
@@ -323,6 +435,151 @@ export interface CustomRule {
   /** Whether the rule is enabled */
   enabled?: boolean;
 }
+
+export type GetUserProjects200ProjectsItem = {
+  /** Project ID */
+  id?: string;
+  /** Project name */
+  name?: string;
+  /** Project creation timestamp */
+  created_at?: string;
+};
+
+export type GetUserProjects200Plan = {
+  /** Plan slug */
+  slug?: string;
+  /** Maximum number of projects allowed */
+  projectsLimit?: number;
+  /** Current number of projects */
+  currentProjects?: number;
+  /** Whether user can create more projects */
+  canCreateMore?: boolean;
+};
+
+export type GetUserProjects200 = {
+  projects?: GetUserProjects200ProjectsItem[];
+  plan?: GetUserProjects200Plan;
+};
+
+export type CreateProjectBody = {
+  /** Project name */
+  name: string;
+};
+
+export type CreateProject201 = {
+  /** Project ID */
+  id?: string;
+  /** Project name */
+  name?: string;
+  /** Project creation timestamp */
+  created_at?: string;
+};
+
+export type CreateProject402Plan = {
+  slug?: string;
+  projectsLimit?: number;
+  currentProjects?: number;
+};
+
+export type CreateProject402 = {
+  error?: LimitExceededError;
+  plan?: CreateProject402Plan;
+};
+
+export type DeleteProject200 = {
+  /** Success message */
+  message?: string;
+};
+
+/**
+ * Plan slug to update to
+ */
+export type UpdateUserPlanBodyPlanSlug = typeof UpdateUserPlanBodyPlanSlug[keyof typeof UpdateUserPlanBodyPlanSlug];
+
+
+// eslint-disable-next-line @typescript-eslint/no-redeclare
+export const UpdateUserPlanBodyPlanSlug = {
+  free: 'free',
+  starter: 'starter',
+  growth: 'growth',
+  scale: 'scale',
+  enterprise: 'enterprise',
+} as const;
+
+export type UpdateUserPlanBody = {
+  /** Plan slug to update to */
+  planSlug: UpdateUserPlanBodyPlanSlug;
+  /**
+   * Days for trial period (optional)
+   * @minimum 1
+   * @maximum 30
+   * @nullable
+   */
+  trialDays?: number | null;
+};
+
+/**
+ * Plan features
+ */
+export type GetAvailablePlans200ItemFeatures = { [key: string]: unknown };
+
+export type GetAvailablePlans200Item = {
+  /** Plan ID */
+  id?: string;
+  /** Plan name */
+  name?: string;
+  /** Plan slug */
+  slug?: string;
+  /** Plan price */
+  price?: number;
+  /** Monthly validation limit */
+  validationsLimit?: number;
+  /** Project limit */
+  projectsLimit?: number;
+  /** Log retention days */
+  logsRetentionDays?: number;
+  /** Plan features */
+  features?: GetAvailablePlans200ItemFeatures;
+  /** Overage rate per validation */
+  overageRate?: number;
+  /**
+   * Maximum overage allowed
+   * @nullable
+   */
+  maxOverage?: number | null;
+  /**
+   * SLA percentage
+   * @nullable
+   */
+  sla?: string | null;
+  /** Whether this is a custom plan */
+  isCustom?: boolean;
+  /** Plan creation timestamp */
+  createdAt?: string;
+  /** Plan update timestamp */
+  updatedAt?: string;
+};
+
+export type CheckValidationLimitsBody = {
+  /**
+   * Number of validations to check
+   * @minimum 1
+   */
+  count: number;
+};
+
+export type CheckValidationLimits200 = {
+  /** Whether the user can proceed with the requested validations */
+  canProceed?: boolean;
+  /** Remaining validations in current period */
+  remainingValidations?: number;
+  /** Whether overage is allowed on current plan */
+  overageAllowed?: boolean;
+  /** Validations used this month */
+  monthlyValidationsUsed?: number;
+  /** Plan validation limit */
+  planValidationsLimit?: number;
+};
 
 export type RegisterUserBody = {
   /** User email address */
@@ -2013,6 +2270,93 @@ export type GetJobStatus404 = {
 };
 
 /**
+ * Retrieves the list of projects for the authenticated user along with plan information
+ * @summary List user's projects
+ */
+export const getUserProjects = <TData = AxiosResponse<GetUserProjects200>>(
+     options?: AxiosRequestConfig
+ ): Promise<TData> => {
+    return axios.get(
+      `/projects`,options
+    );
+  }
+
+/**
+ * Creates a new project for the authenticated user
+ * @summary Create new project
+ */
+export const createProject = <TData = AxiosResponse<CreateProject201>>(
+    createProjectBody: CreateProjectBody, options?: AxiosRequestConfig
+ ): Promise<TData> => {
+    return axios.post(
+      `/projects`,
+      createProjectBody,options
+    );
+  }
+
+/**
+ * Deletes a project by ID for the authenticated user
+ * @summary Delete project
+ */
+export const deleteProject = <TData = AxiosResponse<DeleteProject200>>(
+    id: string, options?: AxiosRequestConfig
+ ): Promise<TData> => {
+    return axios.delete(
+      `/projects/${id}`,options
+    );
+  }
+
+/**
+ * Retrieves the current plan and usage information for the authenticated user
+ * @summary Get current user plan
+ */
+export const getUserPlan = <TData = AxiosResponse<UserPlanResponse>>(
+     options?: AxiosRequestConfig
+ ): Promise<TData> => {
+    return axios.get(
+      `/user/plan`,options
+    );
+  }
+
+/**
+ * Updates the user's subscription plan
+ * @summary Update user plan
+ */
+export const updateUserPlan = <TData = AxiosResponse<UserPlanResponse>>(
+    updateUserPlanBody: UpdateUserPlanBody, options?: AxiosRequestConfig
+ ): Promise<TData> => {
+    return axios.patch(
+      `/user/plan`,
+      updateUserPlanBody,options
+    );
+  }
+
+/**
+ * Returns all available subscription plans
+ * @summary Get available plans
+ */
+export const getAvailablePlans = <TData = AxiosResponse<GetAvailablePlans200Item[]>>(
+     options?: AxiosRequestConfig
+ ): Promise<TData> => {
+    return axios.get(
+      `/public/plans`,options
+    );
+  }
+
+/**
+ * Checks if the user has enough validation quota remaining
+ * @summary Check validation limits
+ */
+export const checkValidationLimits = <TData = AxiosResponse<CheckValidationLimits200>>(
+    checkValidationLimitsBody: CheckValidationLimitsBody, options?: AxiosRequestConfig
+ ): Promise<TData> => {
+    return axios.post(
+      `/user/plan/usage/check`,
+      checkValidationLimitsBody,options
+    );
+  }
+
+/**
  * Creates a new user account with default project and API key
  * @summary Register new user
  */
@@ -2529,6 +2873,13 @@ export const getJobStatus = <TData = AxiosResponse<GetJobStatus200>>(
     );
   }
 
+export type GetUserProjectsResult = AxiosResponse<GetUserProjects200>
+export type CreateProjectResult = AxiosResponse<CreateProject201>
+export type DeleteProjectResult = AxiosResponse<DeleteProject200>
+export type GetUserPlanResult = AxiosResponse<UserPlanResponse>
+export type UpdateUserPlanResult = AxiosResponse<UserPlanResponse>
+export type GetAvailablePlansResult = AxiosResponse<GetAvailablePlans200Item[]>
+export type CheckValidationLimitsResult = AxiosResponse<CheckValidationLimits200>
 export type RegisterUserResult = AxiosResponse<RegisterUser201>
 export type LoginUserResult = AxiosResponse<LoginUser200>
 export type LogoutUserResult = AxiosResponse<LogoutUser200>

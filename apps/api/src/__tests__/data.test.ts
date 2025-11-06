@@ -247,7 +247,7 @@ describe('Data Routes', () => {
         status: 401,
         error: {
           code: 'unauthorized',
-          message: 'Missing JWT token'
+          message: 'Authentication required'
         }
       });
     });
@@ -265,7 +265,7 @@ describe('Data Routes', () => {
         status: 401,
         error: {
           code: 'unauthorized',
-          message: 'Missing JWT token'
+          message: 'Authentication required'
         }
       });
     });

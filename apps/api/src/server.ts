@@ -254,9 +254,17 @@ export async function start(): Promise<void> {
                 repeat: { pattern: '0 0 * * *' }
             });
 
-            cron.schedule('0 0 * * *', async () => {
-                await runLogRetention(pool!);
-            });
+cron.schedule('0 0 * * *', async () => {
+    await runLogRetention(pool!);
+});
+
+// Monthly usage reset on 1st of each month at midnight
+cron.schedule('0 0 1 * *', async () => {
+    const { rows } = await pool!.query('UPDATE users SET monthly_validations_used = 0 RETURNING id');
+    if (app) {
+        app.log.info(`Reset monthly validation usage for ${rows.length} users`);
+    }
+});
         }
 
 

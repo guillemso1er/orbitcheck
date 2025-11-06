@@ -4,6 +4,8 @@ import { type Redis as IORedisType } from 'ioredis';
 import type { Pool } from "pg";
 
 import { ROUTES } from "./config.js";
+import { HTTP_STATUS } from "./errors.js";
+import { createPlansService } from './services/plans.js';
 import { idempotency, rateLimit } from "./hooks.js";
 import { registerApiKeysRoutes } from './routes/api-keys.js';
 import { authenticateRouteRequest, registerAuthRoutes } from "./routes/auth.js";
@@ -18,6 +20,8 @@ import { registerPatRoutes } from './routes/pats.js';
 import { registerRulesRoutes } from './routes/rules/rules.js';
 import { registerSettingsRoutes } from './routes/settings.js';
 import { registerValidationRoutes } from './routes/validation.js';
+import { registerPlanRoutes } from './routes/plans.js';
+import { registerProjectRoutes } from './routes/projects.js';
 import { registerWebhookRoutes } from './routes/webhook.js';
 
 const AUTH_REGISTER = DASHBOARD_ROUTES.REGISTER_NEW_USER;
@@ -78,6 +82,40 @@ export async function authenticateRequest<TServer extends RawServerBase = RawSer
 }
 
 /**
+ * Applies validation limits for users on validation endpoints.
+ * Checks and increments usage for authenticated users only.
+ *
+ * @param request - Fastify request object
+ * @param rep - Fastify reply object
+ * @param pool - PostgreSQL connection pool
+ * @returns {Promise<void>} Resolves after limit check or sends payment required error
+ */
+export async function applyValidationLimits<TServer extends RawServerBase = RawServerBase>(request: FastifyRequest<RouteGenericInterface, TServer>, rep: FastifyReply<RouteGenericInterface, TServer>, pool: Pool): Promise<void> {
+    const url = request.url;
+
+    // Only apply to validation routes
+    const isValidationRoute = Object.values(API_V1_ROUTES.VALIDATE).some(route => url.startsWith(route));
+
+    if (!isValidationRoute) return;
+
+    // Only for users, not API keys
+    const userId = (request as any).user_id;
+    if (!userId) return;
+
+    try {
+        const plansService = createPlansService(pool);
+        await plansService.checkValidationLimit(userId, 1);
+        await plansService.incrementValidationUsage(userId, 1);
+    } catch (limitError: any) {
+        if (limitError.status === HTTP_STATUS.PAYMENT_REQUIRED) {
+            rep.status(HTTP_STATUS.PAYMENT_REQUIRED).send(limitError);
+            return;
+        }
+        throw limitError;
+    }
+}
+
+/**
  * Applies rate limiting and idempotency checks for runtime API routes only.
  * Skips for dashboard and management routes to avoid unnecessary overhead.
  * Calls rateLimit hook (project+IP per minute) and idempotency hook (replay if key exists).
@@ -123,9 +161,10 @@ export async function applyRateLimitingAndIdempotency<TServer extends RawServerB
  * @param redis - Shared Redis client for caching, rate limiting, and idempotency in routes.
  */
 export function registerRoutes<TServer extends RawServerBase = RawServerBase>(app: FastifyInstance<TServer>, pool: Pool, redis: IORedisType): void {
-    // Global preHandler hook chain: authentication + rate limiting/idempotency middleware
+    // Global preHandler hook chain: authentication + validation limits + rate limiting/idempotency middleware
     app.addHook("preHandler", async (request, rep) => {
         await authenticateRequest(request, rep, pool);
+        await applyValidationLimits(request, rep, pool);
         await applyRateLimitingAndIdempotency(request, rep, redis);
         return;
     });
@@ -134,6 +173,8 @@ export function registerRoutes<TServer extends RawServerBase = RawServerBase>(ap
     registerAuthRoutes(app as any, pool);
     registerApiKeysRoutes(app as any, pool);
     registerValidationRoutes(app as any, pool, redis);
+    registerPlanRoutes(app as any, pool);
+    registerProjectRoutes(app as any, pool);
     registerNormalizeRoutes(app as any, pool);
     registerDedupeRoutes(app as any, pool);
     registerOrderRoutes(app as any, pool, redis);

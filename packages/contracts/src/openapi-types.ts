@@ -4,6 +4,114 @@
  */
 
 export interface paths {
+    "/projects": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List user's projects
+         * @description Retrieves the list of projects for the authenticated user along with plan information
+         */
+        get: operations["getUserProjects"];
+        put?: never;
+        /**
+         * Create new project
+         * @description Creates a new project for the authenticated user
+         */
+        post: operations["createProject"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/projects/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete project
+         * @description Deletes a project by ID for the authenticated user
+         */
+        delete: operations["deleteProject"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/user/plan": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get current user plan
+         * @description Retrieves the current plan and usage information for the authenticated user
+         */
+        get: operations["getUserPlan"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Update user plan
+         * @description Updates the user's subscription plan
+         */
+        patch: operations["updateUserPlan"];
+        trace?: never;
+    };
+    "/public/plans": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get available plans
+         * @description Returns all available subscription plans
+         */
+        get: operations["getAvailablePlans"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/user/plan/usage/check": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Check validation limits
+         * @description Checks if the user has enough validation quota remaining
+         */
+        post: operations["checkValidationLimits"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/auth/register": {
         parameters: {
             query?: never;
@@ -764,6 +872,25 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        UserPlanResponse: {
+            /** @description User ID */
+            id?: string;
+            /** @description User email */
+            email?: string;
+            /** @description Current plan details */
+            plan?: Record<string, never>;
+            /** @description Number of validations used this month */
+            monthlyValidationsUsed?: number;
+            /** @description Subscription status */
+            subscriptionStatus?: string;
+            /**
+             * Format: date-time
+             * @description Trial end date if applicable
+             */
+            trialEndDate?: string | null;
+            /** @description Number of projects */
+            projectsCount?: number;
+        };
         Error: {
             error?: {
                 /** @description Error code */
@@ -773,6 +900,44 @@ export interface components {
             };
             /** @description Request identifier */
             request_id?: string;
+        };
+        UnauthorizedError: {
+            error?: {
+                /** @enum {string} */
+                code?: "UNAUTHORIZED";
+                /** @description Error message */
+                message?: string;
+            };
+        };
+        ValidationError: {
+            error?: {
+                /** @enum {string} */
+                code?: "INVALID_INPUT" | "INVALID_PLAN";
+                /** @description Error message */
+                message?: string;
+            };
+        };
+        NotFoundError: {
+            error?: {
+                /** @enum {string} */
+                code?: "NOT_FOUND";
+                /** @description Error message */
+                message?: string;
+            };
+        };
+        LimitExceededError: {
+            /** @enum {string} */
+            code?: "LIMIT_EXCEEDED";
+            /** @description Error message */
+            message?: string;
+        };
+        ServerError: {
+            error?: {
+                /** @enum {string} */
+                code?: "INTERNAL_SERVER_ERROR";
+                /** @description Error message */
+                message?: string;
+            };
         };
         ApiKey: {
             /** @description API key ID */
@@ -987,6 +1152,425 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    getUserProjects: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description List of projects and plan information */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        projects?: {
+                            /** @description Project ID */
+                            id?: string;
+                            /** @description Project name */
+                            name?: string;
+                            /**
+                             * Format: date-time
+                             * @description Project creation timestamp
+                             */
+                            created_at?: string;
+                        }[];
+                        plan?: {
+                            /** @description Plan slug */
+                            slug?: string;
+                            /** @description Maximum number of projects allowed */
+                            projectsLimit?: number;
+                            /** @description Current number of projects */
+                            currentProjects?: number;
+                            /** @description Whether user can create more projects */
+                            canCreateMore?: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedError"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ServerError"];
+                };
+            };
+        };
+    };
+    createProject: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Project name */
+                    name: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Project created successfully */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Project ID */
+                        id?: string;
+                        /** @description Project name */
+                        name?: string;
+                        /**
+                         * Format: date-time
+                         * @description Project creation timestamp
+                         */
+                        created_at?: string;
+                    };
+                };
+            };
+            /** @description Invalid input */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedError"];
+                };
+            };
+            /** @description Project limit exceeded */
+            402: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error?: components["schemas"]["LimitExceededError"];
+                        plan?: {
+                            slug?: string;
+                            projectsLimit?: number;
+                            currentProjects?: number;
+                        };
+                    };
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ServerError"];
+                };
+            };
+        };
+    };
+    deleteProject: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Project ID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Project deleted successfully */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Success message */
+                        message?: string;
+                    };
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedError"];
+                };
+            };
+            /** @description Project not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundError"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ServerError"];
+                };
+            };
+        };
+    };
+    getUserPlan: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description User plan information */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserPlanResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedError"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ServerError"];
+                };
+            };
+        };
+    };
+    updateUserPlan: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /**
+                     * @description Plan slug to update to
+                     * @enum {string}
+                     */
+                    planSlug: "free" | "starter" | "growth" | "scale" | "enterprise";
+                    /** @description Days for trial period (optional) */
+                    trialDays?: number | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Plan updated successfully */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserPlanResponse"];
+                };
+            };
+            /** @description Invalid plan slug */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationError"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedError"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ServerError"];
+                };
+            };
+        };
+    };
+    getAvailablePlans: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description List of available plans */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Plan ID */
+                        id?: string;
+                        /** @description Plan name */
+                        name?: string;
+                        /** @description Plan slug */
+                        slug?: string;
+                        /** @description Plan price */
+                        price?: number;
+                        /** @description Monthly validation limit */
+                        validationsLimit?: number;
+                        /** @description Project limit */
+                        projectsLimit?: number;
+                        /** @description Log retention days */
+                        logsRetentionDays?: number;
+                        /** @description Plan features */
+                        features?: Record<string, never>;
+                        /** @description Overage rate per validation */
+                        overageRate?: number;
+                        /** @description Maximum overage allowed */
+                        maxOverage?: number | null;
+                        /** @description SLA percentage */
+                        sla?: string | null;
+                        /** @description Whether this is a custom plan */
+                        isCustom?: boolean;
+                        /**
+                         * Format: date-time
+                         * @description Plan creation timestamp
+                         */
+                        createdAt?: string;
+                        /**
+                         * Format: date-time
+                         * @description Plan update timestamp
+                         */
+                        updatedAt?: string;
+                    }[];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ServerError"];
+                };
+            };
+        };
+    };
+    checkValidationLimits: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Number of validations to check */
+                    count: number;
+                };
+            };
+        };
+        responses: {
+            /** @description Usage check result */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Whether the user can proceed with the requested validations */
+                        canProceed?: boolean;
+                        /** @description Remaining validations in current period */
+                        remainingValidations?: number;
+                        /** @description Whether overage is allowed on current plan */
+                        overageAllowed?: boolean;
+                        /** @description Validations used this month */
+                        monthlyValidationsUsed?: number;
+                        /** @description Plan validation limit */
+                        planValidationsLimit?: number;
+                    };
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedError"];
+                };
+            };
+            /** @description Payment required (limit exceeded) */
+            402: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LimitExceededError"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ServerError"];
+                };
+            };
+        };
+    };
     registerUser: {
         parameters: {
             query?: never;

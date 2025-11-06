@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: OrbitCheck API
-  description: API for validation, deduplication, and risk assessment services
+  description: A unified API for OrbitCheck services, including dashboard management, validation, deduplication, and risk assessment.
   version: 1.0.0
   contact:
     name: OrbitCheck Team
@@ -17,8 +17,404 @@ tags:
   - name: UI Endpoints
     description: >-
       Endpoints used exclusively by the web application UI, such as user
-      authentication.
+      authentication and project/plan management.
 paths:
+  /projects:
+    get:
+      tags:
+        - UI Endpoints
+      summary: List user's projects
+      description: Retrieves the list of projects for the authenticated user along with plan information
+      operationId: getUserProjects
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: List of projects and plan information
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  projects:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          description: Project ID
+                        name:
+                          type: string
+                          description: Project name
+                        created_at:
+                          type: string
+                          format: date-time
+                          description: Project creation timestamp
+                  plan:
+                    type: object
+                    properties:
+                      slug:
+                        type: string
+                        description: Plan slug
+                      projectsLimit:
+                        type: integer
+                        description: Maximum number of projects allowed
+                      currentProjects:
+                        type: integer
+                        description: Current number of projects
+                      canCreateMore:
+                        type: boolean
+                        description: Whether user can create more projects
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnauthorizedError'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServerError'
+    post:
+      tags:
+        - UI Endpoints
+      summary: Create new project
+      description: Creates a new project for the authenticated user
+      operationId: createProject
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+              properties:
+                name:
+                  type: string
+                  description: Project name
+      responses:
+        '201':
+          description: Project created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    description: Project ID
+                  name:
+                    type: string
+                    description: Project name
+                  created_at:
+                    type: string
+                    format: date-time
+                    description: Project creation timestamp
+        '400':
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnauthorizedError'
+        '402':
+          description: Project limit exceeded
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    $ref: '#/components/schemas/LimitExceededError'
+                  plan:
+                    type: object
+                    properties:
+                      slug:
+                        type: string
+                      projectsLimit:
+                        type: integer
+                      currentProjects:
+                        type: integer
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServerError'
+  /projects/{id}:
+    delete:
+      tags:
+        - UI Endpoints
+      summary: Delete project
+      description: Deletes a project by ID for the authenticated user
+      operationId: deleteProject
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Project ID
+      responses:
+        '200':
+          description: Project deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    description: Success message
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnauthorizedError'
+        '404':
+          description: Project not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotFoundError'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServerError'
+  /user/plan:
+    get:
+      tags:
+        - UI Endpoints
+      summary: Get current user plan
+      description: Retrieves the current plan and usage information for the authenticated user
+      operationId: getUserPlan
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: User plan information
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserPlanResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnauthorizedError'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServerError'
+    patch:
+      tags:
+        - UI Endpoints
+      summary: Update user plan
+      description: Updates the user's subscription plan
+      operationId: updateUserPlan
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - planSlug
+              properties:
+                planSlug:
+                  type: string
+                  enum:
+                    - free
+                    - starter
+                    - growth
+                    - scale
+                    - enterprise
+                  description: Plan slug to update to
+                trialDays:
+                  type: integer
+                  minimum: 1
+                  maximum: 30
+                  nullable: true
+                  description: Days for trial period (optional)
+      responses:
+        '200':
+          description: Plan updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserPlanResponse'
+        '400':
+          description: Invalid plan slug
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnauthorizedError'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServerError'
+  /public/plans:
+    get:
+      tags:
+        - UI Endpoints
+      summary: Get available plans
+      description: Returns all available subscription plans
+      operationId: getAvailablePlans
+      security: []
+      responses:
+        '200':
+          description: List of available plans
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                      description: Plan ID
+                    name:
+                      type: string
+                      description: Plan name
+                    slug:
+                      type: string
+                      description: Plan slug
+                    price:
+                      type: number
+                      description: Plan price
+                    validationsLimit:
+                      type: integer
+                      description: Monthly validation limit
+                    projectsLimit:
+                      type: integer
+                      description: Project limit
+                    logsRetentionDays:
+                      type: integer
+                      description: Log retention days
+                    features:
+                      type: object
+                      description: Plan features
+                    overageRate:
+                      type: number
+                      description: Overage rate per validation
+                    maxOverage:
+                      type: integer
+                      nullable: true
+                      description: Maximum overage allowed
+                    sla:
+                      type: string
+                      nullable: true
+                      description: SLA percentage
+                    isCustom:
+                      type: boolean
+                      description: Whether this is a custom plan
+                    createdAt:
+                      type: string
+                      format: date-time
+                      description: Plan creation timestamp
+                    updatedAt:
+                      type: string
+                      format: date-time
+                      description: Plan update timestamp
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServerError'
+  /user/plan/usage/check:
+    post:
+      tags:
+        - UI Endpoints
+      summary: Check validation limits
+      description: Checks if the user has enough validation quota remaining
+      operationId: checkValidationLimits
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - count
+              properties:
+                count:
+                  type: integer
+                  minimum: 1
+                  description: Number of validations to check
+      responses:
+        '200':
+          description: Usage check result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  canProceed:
+                    type: boolean
+                    description: Whether the user can proceed with the requested validations
+                  remainingValidations:
+                    type: integer
+                    description: Remaining validations in current period
+                  overageAllowed:
+                    type: boolean
+                    description: Whether overage is allowed on current plan
+                  monthlyValidationsUsed:
+                    type: integer
+                    description: Validations used this month
+                  planValidationsLimit:
+                    type: integer
+                    description: Plan validation limit
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnauthorizedError'
+        '402':
+          description: Payment required (limit exceeded)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LimitExceededError'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServerError'
   /auth/register:
     post:
       tags:
@@ -164,8 +560,34 @@ components:
       type: http
       scheme: bearer
       bearerFormat: JWT
-      description: Session-based JWT token for dashboard authentication
+      description: JWT token for authentication
   schemas:
+    UserPlanResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          description: User ID
+        email:
+          type: string
+          description: User email
+        plan:
+          type: object
+          description: Current plan details
+        monthlyValidationsUsed:
+          type: integer
+          description: Number of validations used this month
+        subscriptionStatus:
+          type: string
+          description: Subscription status
+        trialEndDate:
+          type: string
+          nullable: true
+          format: date-time
+          description: Trial end date if applicable
+        projectsCount:
+          type: integer
+          description: Number of projects
     Error:
       type: object
       properties:
@@ -181,6 +603,69 @@ components:
         request_id:
           type: string
           description: Request identifier
+    UnauthorizedError:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+              enum:
+                - UNAUTHORIZED
+            message:
+              type: string
+              description: Error message
+    ValidationError:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+              enum:
+                - INVALID_INPUT
+                - INVALID_PLAN
+            message:
+              type: string
+              description: Error message
+    NotFoundError:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+              enum:
+                - NOT_FOUND
+            message:
+              type: string
+              description: Error message
+    LimitExceededError:
+      type: object
+      properties:
+        code:
+          type: string
+          enum:
+            - LIMIT_EXCEEDED
+        message:
+          type: string
+          description: Error message
+    ServerError:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+              enum:
+                - INTERNAL_SERVER_ERROR
+            message:
+              type: string
+              description: Error message
     ApiKey:
       type: object
       properties:

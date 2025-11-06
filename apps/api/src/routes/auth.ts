@@ -1,11 +1,12 @@
 import crypto from "node:crypto";
 
 import { DASHBOARD_ROUTES } from "@orbitcheck/contracts";
+import { createPlansService } from '../services/plans.js';
 import bcrypt from 'bcryptjs';
 import type { FastifyInstance, FastifyReply, FastifyRequest, RawServerBase, RouteGenericInterface } from "fastify";
 import type { Pool } from "pg";
 
-import { API_KEY_PREFIX, API_KEY_PREFIX_LENGTH, AUDIT_ACTION_PAT_USED, AUDIT_RESOURCE_API, AUTHORIZATION_HEADER, BCRYPT_ROUNDS, BEARER_PREFIX, CRYPTO_KEY_BYTES, DEFAULT_PAT_NAME, ENCODING_HEX, ENCODING_UTF8, ENCRYPTION_ALGORITHM, HASH_ALGORITHM, HMAC_VALIDITY_MINUTES, LOGOUT_MESSAGE, PAT_PREFIX, PAT_SCOPES_ALL, PG_UNIQUE_VIOLATION, PLAN_TYPES, PROJECT_NAMES, STATUS } from "../config.js";
+import { API_KEY_PREFIX, API_KEY_PREFIX_LENGTH, AUDIT_ACTION_PAT_USED, AUDIT_RESOURCE_API, AUTHORIZATION_HEADER, BCRYPT_ROUNDS, BEARER_PREFIX, CRYPTO_KEY_BYTES, DEFAULT_PAT_NAME, ENCODING_HEX, ENCODING_UTF8, ENCRYPTION_ALGORITHM, HASH_ALGORITHM, HMAC_VALIDITY_MINUTES, LOGOUT_MESSAGE, PAT_PREFIX, PAT_SCOPES_ALL, PG_UNIQUE_VIOLATION, PROJECT_NAMES, STATUS } from "../config.js";
 import { environment } from "../environment.js";
 import { ERROR_CODES, ERROR_MESSAGES, HTTP_STATUS } from "../errors.js";
 import { errorSchema, generateRequestId, getDefaultProjectId, sendError, sendServerError } from "./utils.js";
@@ -526,11 +527,14 @@ export function registerAuthRoutes(app: FastifyInstance, pool: Pool): void {
 
             const user = userRows[0];
 
-            // Create default project for user
-            await pool.query(
-                'INSERT INTO projects (name, plan, user_id) VALUES ($1, $2, $3) RETURNING id',
-                [PROJECT_NAMES.DEFAULT, PLAN_TYPES.DEV, user.id]
-            );
+// Assign default Free plan to user
+    await createPlansService(pool).assignDefaultPlan(user.id);
+
+    // Create default project for user
+    await pool.query(
+        'INSERT INTO projects (name, user_id) VALUES ($1, $2) RETURNING id',
+        [PROJECT_NAMES.DEFAULT, user.id]
+    );
 
             // Set session cookie for dashboard access
             request.session.user_id = user.id;

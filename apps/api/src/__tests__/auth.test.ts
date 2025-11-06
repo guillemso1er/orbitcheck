@@ -123,6 +123,12 @@ describe('Auth Routes', () => {
       if (queryText.includes('INSERT INTO personal_access_tokens')) {
         return Promise.resolve({ rows: [{ id: 'pat_1', created_at: new Date().toISOString() }] });
       }
+      if (queryText.includes('SELECT * FROM plans WHERE slug')) {
+        return Promise.resolve({ rows: [{ id: 'plan_free', slug: 'free', name: 'Free Plan' }] });
+      }
+      if (queryText.includes('UPDATE users SET plan_id')) {
+        return Promise.resolve({ rowCount: 1 });
+      }
       return Promise.resolve({ rows: [] });
     });
 

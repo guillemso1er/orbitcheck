@@ -56,6 +56,11 @@ async function validateEndpointCoverage<TServer extends RawServerBase = RawServe
     '/auth/register',
     '/auth/login',
     '/auth/logout',
+    '/projects',
+    '/projects/:id',
+    '/user/plan',
+    '/public/plans',
+    '/user/plan/usage/check',
   ];
 
   const missingEndpoints: string[] = [];

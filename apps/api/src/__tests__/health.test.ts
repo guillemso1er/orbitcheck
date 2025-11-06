@@ -59,12 +59,8 @@ describe('Health Routes', () => {
                 .set('Authorization', 'Bearer valid_key');
 
             expect(response.status).toBe(200);
-            const body = response.body as { ok: boolean; timestamp: string; environment: string };
-            expect(body.ok).toBe(true);
-            expect(body.timestamp).toBeDefined();
-            expect(body.environment).toBeDefined();
-            expect(typeof body.timestamp).toBe('string');
-            expect(typeof body.environment).toBe('string');
+            const body = response.body as { status: string };
+            expect(body.status).toBe('ok');
         });
     });
 

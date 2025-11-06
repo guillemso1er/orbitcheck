@@ -97,6 +97,7 @@ export async function resetDb() {
 
 async function runMigrations(db: Pool) {
   const migrationsDir = path.join(process.cwd(), 'migrations');
+  // This log is fine to confirm the directory, but the rest can be silenced.
   console.log(`[Migrations] Looking for migrations in: ${migrationsDir}`);
 
   try {
@@ -110,17 +111,21 @@ async function runMigrations(db: Pool) {
       throw new Error('No migration files found in migrations directory.');
     }
 
-    console.log(`[Migrations] Found ${migrationFiles.length} migration files:`, migrationFiles);
+    // Only log details if not in test environment
+    if (process.env.NODE_ENV !== 'test') {
+      console.log(`[Migrations] Found ${migrationFiles.length} migration files:`, migrationFiles);
+    }
 
     for (const file of migrationFiles) {
       const migrationPath = path.join(migrationsDir, file);
-      console.log(`[Migrations] Running migration: ${file}`);
+      if (process.env.NODE_ENV !== 'test') {
+        console.log(`[Migrations] Running migration: ${file}`);
+      }
       const migration = require(migrationPath);
 
       if (migration.up) {
         await db.query('BEGIN');
         try {
-          // You can simplify the pgm object creation as it seems to be the same for both cases
           const pgm = {
             query: (sql: string, params?: any[]) => db.query(sql, params),
             sql: (sql: string) => db.query(sql)
@@ -128,11 +133,13 @@ async function runMigrations(db: Pool) {
 
           await migration.up(pgm);
           await db.query('COMMIT');
-          console.log(`[Migrations] Successfully committed ${file}`);
+          if (process.env.NODE_ENV !== 'test') {
+            console.log(`[Migrations] Successfully committed ${file}`);
+          }
         } catch (error) {
           await db.query('ROLLBACK');
           console.error(`[Migrations] Failed to run migration ${file}:`, error);
-          throw error; // Re-throw the error to fail the test setup
+          throw error;
         }
       }
     }

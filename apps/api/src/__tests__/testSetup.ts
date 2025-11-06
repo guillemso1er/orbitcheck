@@ -154,6 +154,13 @@ jest.mock('node:fs', () => ({
 // Mock contracts
 jest.mock('@orbitcheck/contracts', () => ({
   DASHBOARD_ROUTES: {
+    LIST_USERS_PROJECTS: '/projects',
+    CREATE_NEW_PROJECT: '/projects',
+    DELETE_PROJECT: '/projects/:id',
+    GET_CURRENT_USER_PLAN: '/user/plan',
+    UPDATE_USER_PLAN: '/user/plan',
+    GET_AVAILABLE_PLANS: '/public/plans',
+    CHECK_VALIDATION_LIMITS: '/user/plan/usage/check',
     REGISTER_NEW_USER: '/auth/register',
     USER_LOGIN: '/auth/login',
     USER_LOGOUT: '/auth/logout',
@@ -161,6 +168,8 @@ jest.mock('@orbitcheck/contracts', () => ({
   MGMT_V1_ROUTES: {
     PATS: {
       CREATE_PERSONAL_ACCESS_TOKEN: '/v1/pats',
+      LIST_PERSONAL_ACCESS_TOKENS: '/v1/pats',
+      REVOKE_PERSONAL_ACCESS_TOKEN: '/v1/pats/:token_id',
     },
     API_KEYS: {
       CREATE_API_KEY: '/v1/api-keys',

@@ -5,6 +5,7 @@ declare module 'fastify' {
     project_id?: string;
     user_id?: string;
     pat_scopes?: string[];
+    plansService?: import('./services/plans').PlansService;
   }
 
   interface FastifyReply {

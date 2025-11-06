@@ -41,21 +41,14 @@ describe('Web Module', () => {
         }
       });
 
-      const webModule = await import('../web.js');
-      webModule.registerRoutes(app, mockPool as any, mockRedisInstance as any);
+      const { registerRoutes } = await import('../web.js');
+      registerRoutes(app, mockPool as any, mockRedisInstance as any);
 
       app.get("/health", async (): Promise<{ ok: true; timestamp: string; environment: string }> => ({
         ok: true,
         timestamp: new Date().toISOString(),
         environment: process.env.NODE_ENV || 'development'
       }));
-
-      // Mock the config to avoid undefined error
-      const originalConfig = await import('../config.js');
-      Object.defineProperty(originalConfig, 'PAT_SCOPES', {
-        value: originalConfig.PAT_SCOPES,
-        writable: false,
-      });
 
       const response = await app.inject({
         method: 'GET',
@@ -192,7 +185,6 @@ describe('Web Module', () => {
       });
 
       const { registerRoutes } = await import('../web.js');
-
       registerRoutes(app, mockPool as any, mockRedisInstance as any);
 
       app.get("/health", async (): Promise<{ ok: true; timestamp: string; environment: string }> => ({
@@ -297,7 +289,6 @@ describe('Web Module', () => {
       });
 
       const { registerRoutes } = await import('../web.js');
-
       registerRoutes(app, mockPool as any, mockRedisInstance as any);
 
       // Verify hooks are registered
@@ -319,8 +310,30 @@ describe('Web Module', () => {
         }
       });
 
-      const { registerRoutes } = await import('../web.js');
+      // Mock the contracts module to prevent import errors
+      jest.doMock('@orbitcheck/contracts', () => ({
+        DASHBOARD_ROUTES: {
+          GET_CURRENT_USER_PLAN: '/user/plan',
+          UPDATE_USER_PLAN: '/user/plan',
+          GET_AVAILABLE_PLANS: '/public/plans',
+          CHECK_VALIDATION_LIMITS: '/user/plan/usage/check',
+          REGISTER_NEW_USER: '/auth/register',
+          USER_LOGIN: '/auth/login',
+          USER_LOGOUT: '/auth/logout',
+        },
+        API_V1_ROUTES: {
+          VALIDATE: {
+            VALIDATE_EMAIL: '/v1/validate/email',
+          },
+        },
+        MGMT_V1_ROUTES: {
+          API_KEYS: {
+            CREATE_API_KEY: '/v1/api-keys',
+          },
+        },
+      }));
 
+      const { registerRoutes } = await import('../web.js');
       registerRoutes(app, mockPool as any, mockRedisInstance as any);
 
       app.get("/health", async (): Promise<{ ok: true; timestamp: string; environment: string }> => ({

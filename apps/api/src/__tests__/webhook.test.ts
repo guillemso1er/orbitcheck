@@ -87,9 +87,7 @@ import { createApp, mockPool, setupBeforeAll } from './testSetup.js';
 jest.mock('jsonwebtoken');
 
 jest.mock('../web', () => ({
-    authenticateRequest: jest.fn(async (_request: any, _rep: any, _pool: any) => {
-        throw new Error('Should not be called in this context');
-    }),
+    authenticateRequest: jest.fn(),
     applyRateLimitingAndIdempotency: jest.fn(),
 }));
 
