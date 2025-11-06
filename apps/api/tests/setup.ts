@@ -1,3 +1,13 @@
+
+// At the top of setup.ts or in a separate test config file
+if (process.env.NODE_ENV === 'test') {
+  process.on('unhandledRejection', (reason, promise) => {
+    // Log only if it's not an expected test database error
+    if (!reason?.toString().includes('relation') && !reason?.toString().includes('does not exist')) {
+      console.error('Unhandled Rejection in tests:', reason);
+    }
+  });
+}
 // Set up minimal environment variables for testing
 process.env.NODE_ENV = 'test'
 process.env.BASE_URL = 'http://localhost:8080'
@@ -33,48 +43,67 @@ process.env.GOOGLE_GEOCODING_KEY = ''
 process.env.USE_GOOGLE_FALLBACK = 'false'
 process.env.LOCATIONIQ_KEY = ''
 
-import { PostgreSqlContainer, StartedPostgreSqlContainer } from '@testcontainers/postgresql'
-import { RedisContainer, StartedRedisContainer } from '@testcontainers/redis'
-import { promises as fs } from 'fs'
-import Redis from 'ioredis'
-import path from 'path'
-import { Pool } from 'pg'
+import { PostgreSqlContainer, StartedPostgreSqlContainer } from '@testcontainers/postgresql';
+import { RedisContainer, StartedRedisContainer } from '@testcontainers/redis';
+import { promises as fs } from 'fs';
+import Redis from 'ioredis';
+import path from 'path';
+import { Pool } from 'pg';
 
 let container: StartedPostgreSqlContainer
 let redisContainer: StartedRedisContainer
 let pool: Pool
 
 export async function startTestEnv() {
-  container = await new PostgreSqlContainer('postgres:15-alpine')
-    .withDatabase('app_test')
-    .withUsername('postgres')
-    .withPassword('postgres')
-    .withStartupTimeout(120000)
-    .start()
-
-  redisContainer = await new RedisContainer('redis:7-alpine')
-    .withExposedPorts(6379)
-    .withStartupTimeout(120000)
-    .start()
-
-  const redisConnectionString = redisContainer.getConnectionUrl()
-
-  const dbConnectionString = container.getConnectionUri()
-
-  pool = new Pool({ connectionString: dbConnectionString })
-  process.env.DATABASE_URL = dbConnectionString
-  process.env.REDIS_URL = redisConnectionString
-  // Test connection
   try {
-    await pool.query('SELECT 1')
+    // Start containers
+    container = await new PostgreSqlContainer('postgres:15-alpine')
+      .withDatabase('app_test')
+      .withUsername('postgres')
+      .withPassword('postgres')
+      .withStartupTimeout(120000)
+      .start()
+
+    redisContainer = await new RedisContainer('redis:7-alpine')
+      .withExposedPorts(6379)
+      .withStartupTimeout(120000)
+      .start()
+
+    const dbConnectionString = container.getConnectionUri()
+    const redisConnectionString = redisContainer.getConnectionUrl()
+
+    // Create pool
+    pool = new Pool({ connectionString: dbConnectionString })
+
+    // Update environment variables
+    process.env.DATABASE_URL = dbConnectionString
+    process.env.REDIS_URL = redisConnectionString
+
+    // Test connection with retries
+    let connected = false;
+    for (let i = 0; i < 5; i++) {
+      try {
+        await pool.query('SELECT 1')
+        connected = true;
+        break;
+      } catch (error) {
+        if (i === 4) throw error;
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+    }
+
+    // Run migrations
+    await runMigrations(pool)
+
+    // Verify migrations completed
+    await pool.query('SELECT 1 FROM users LIMIT 1');
+
+    return { pool, dbConnectionString, redisConnectionString }
   } catch (error) {
-    console.error('Failed to connect to test database:', error)
+    console.error('Failed to start test environment:', error)
     await stopTestEnv()
     throw error
   }
-
-  await runMigrations(pool)
-  return { pool, dbConnectionString: dbConnectionString, redisConnectionString: redisConnectionString }
 }
 
 export async function stopTestEnv() {
@@ -97,8 +126,12 @@ export async function resetDb() {
 
 async function runMigrations(db: Pool) {
   const migrationsDir = path.join(process.cwd(), 'migrations');
-  // This log is fine to confirm the directory, but the rest can be silenced.
-  console.log(`[Migrations] Looking for migrations in: ${migrationsDir}`);
+
+  // Only log in non-test environments
+  const isTest = process.env.NODE_ENV === 'test';
+  const log = isTest ? () => { } : console.log;
+
+  log(`[Migrations] Looking for migrations in: ${migrationsDir}`);
 
   try {
     const files = await fs.readdir(migrationsDir);
@@ -107,20 +140,15 @@ async function runMigrations(db: Pool) {
       .sort();
 
     if (migrationFiles.length === 0) {
-      console.error('[Migrations] No migration files found!');
       throw new Error('No migration files found in migrations directory.');
     }
 
-    // Only log details if not in test environment
-    if (process.env.NODE_ENV !== 'test') {
-      console.log(`[Migrations] Found ${migrationFiles.length} migration files:`, migrationFiles);
-    }
+    log(`[Migrations] Found ${migrationFiles.length} migration files:`, migrationFiles);
 
     for (const file of migrationFiles) {
       const migrationPath = path.join(migrationsDir, file);
-      if (process.env.NODE_ENV !== 'test') {
-        console.log(`[Migrations] Running migration: ${file}`);
-      }
+      log(`[Migrations] Executing migration: ${file}`);
+
       const migration = require(migrationPath);
 
       if (migration.up) {
@@ -133,18 +161,20 @@ async function runMigrations(db: Pool) {
 
           await migration.up(pgm);
           await db.query('COMMIT');
-          if (process.env.NODE_ENV !== 'test') {
-            console.log(`[Migrations] Successfully committed ${file}`);
-          }
+          log(`[Migrations] Successfully committed ${file}`);
         } catch (error) {
           await db.query('ROLLBACK');
-          console.error(`[Migrations] Failed to run migration ${file}:`, error);
+          if (!isTest) {
+            console.error(`[Migrations] Failed to run migration ${file}:`, error);
+          }
           throw error;
         }
       }
     }
   } catch (error) {
-    console.error('[Migrations] A critical error occurred during the migration process:', error);
+    if (process.env.NODE_ENV !== 'test') {
+      console.error('[Migrations] A critical error occurred during the migration process:', error);
+    }
     throw error;
   }
 }

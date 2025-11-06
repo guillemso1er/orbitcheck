@@ -470,7 +470,6 @@ export function registerAuthRoutes(app: FastifyInstance, pool: Pool): void {
         schema: {
             body: {
                 type: 'object',
-                required: ['email', 'password', 'confirm_password'],
                 properties: {
                     email: { type: 'string', format: 'email' },
                     password: { type: 'string', minLength: 8 },
@@ -504,8 +503,16 @@ export function registerAuthRoutes(app: FastifyInstance, pool: Pool): void {
             const body = request.body as any;
             const { email, password, confirm_password } = body;
             request.log.info({ email: !!email, password: !!password, confirm_password: !!confirm_password, passwordType: typeof password, bodyKeys: Object.keys(body) }, 'Auth register body check');
+            
+            // Custom validation with consistent error format
+            if (!email || typeof email !== 'string' || !email.includes('@')) {
+                return sendError(rep, HTTP_STATUS.BAD_REQUEST, ERROR_CODES.INVALID_INPUT, 'Valid email is required', request_id);
+            }
             if (!password || typeof password !== 'string') {
                 return sendError(rep, HTTP_STATUS.BAD_REQUEST, ERROR_CODES.INVALID_INPUT, 'Valid password is required', request_id);
+            }
+            if (password.length < 8) {
+                return sendError(rep, HTTP_STATUS.BAD_REQUEST, ERROR_CODES.INVALID_INPUT, 'Password must be at least 8 characters', request_id);
             }
             if (!confirm_password || typeof confirm_password !== 'string') {
                 return sendError(rep, HTTP_STATUS.BAD_REQUEST, ERROR_CODES.INVALID_INPUT, 'Valid confirm_password is required', request_id);

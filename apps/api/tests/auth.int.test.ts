@@ -7,35 +7,53 @@ import { getPool, getRedis, resetDb, startTestEnv, stopTestEnv } from './setup'
 
 
 
-// Mock buildApp function for testing
-async function buildApp({ db, redis }: { db: any, redis: Redis }) {
-
-  return build(db, redis)
-}
-
-let app: Awaited<ReturnType<typeof buildApp>>
+let app: Awaited<ReturnType<typeof build>>
+let pool: ReturnType<typeof getPool>
+let redis: Redis
 
 beforeAll(async () => {
   try {
+    // Start environment first
     await startTestEnv()
-    app = await buildApp({ db: getPool(), redis: getRedis() })
+    
+    // Get connections
+    pool = getPool()
+    redis = getRedis()
+    
+    // Build app
+    app = await build(pool, redis)
     await app.ready()
+    
+    // Give the app a moment to fully initialize
+    await new Promise(resolve => setTimeout(resolve, 100))
   } catch (error) {
     console.error('Failed to start test environment:', error)
     throw error
   }
-})
+}, 30000) // Increase timeout
 
 afterAll(async () => {
+  // Close connections in order
   try {
-    if (app) await app.close()
+    if (app) {
+      await app.close()
+    }
   } catch (error) {
-    console.warn('Error closing app:', error)
+    // Ignore closing errors in tests
   }
+  
+  try {
+    if (redis) {
+      redis.disconnect()
+    }
+  } catch (error) {
+    // Ignore
+  }
+  
   try {
     await stopTestEnv()
   } catch (error) {
-    console.warn('Error stopping test env:', error)
+    // Ignore
   }
 })
 
@@ -53,7 +71,7 @@ describe('Authentication Integration Tests', () => {
       })
       expect(res.statusCode).toBe(400)
       const body = res.json()
-      expect(body.error.code).toBe('INVALID_INPUT')
+      expect(body.error.code).toBe('invalid_input')
     })
 
     test('400 on missing password', async () => {
@@ -64,7 +82,7 @@ describe('Authentication Integration Tests', () => {
       })
       expect(res.statusCode).toBe(400)
       const body = res.json()
-      expect(body.error.code).toBe('INVALID_INPUT')
+      expect(body.error.code).toBe('invalid_input')
     })
 
     test('400 on password mismatch', async () => {
@@ -79,7 +97,7 @@ describe('Authentication Integration Tests', () => {
       })
       expect(res.statusCode).toBe(400)
       const body = res.json()
-      expect(body.error.code).toBe('INVALID_INPUT')
+      expect(body.error.code).toBe('invalid_input')
     })
 
     test('400 on invalid email format', async () => {

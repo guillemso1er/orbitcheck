@@ -9,7 +9,7 @@ describe('PlansService', () => {
   let mockPlanId: string;
 
   beforeEach(async () => {
-    // Mock pool setup
+    // Mock pool setup with proper typing
     pool = {
       query: vi.fn()
     } as any;
@@ -21,11 +21,12 @@ describe('PlansService', () => {
   describe('getUserPlan', () => {
     it('should return user plan information', async () => {
       const mockRow = {
-        id: mockUserId,
+        user_id: mockUserId,
         email: 'test@example.com',
         monthly_validations_used: 1200,
         subscription_status: 'active',
         trial_end_date: null,
+        id: 'plan-id',
         name: 'Free (Developer)',
         slug: 'free',
         price: '0.00',
@@ -33,7 +34,7 @@ describe('PlansService', () => {
         projects_limit: 2,
         logs_retention_days: 7,
         features: { basic_rules: true },
-        overage_rate: 0,
+        overage_rate: '0.0000',
         max_overage: 0,
         sla: 'none',
         is_custom: false,
@@ -42,18 +43,16 @@ describe('PlansService', () => {
         projects_count: 1
       };
 
-      vi.mocked(pool.query).mockResolvedValue({ rows: [mockRow] });
+      (pool.query as any).mockResolvedValue({ rows: [mockRow] });
 
-      await expect(plansService.checkValidationLimit(mockUserId, 1)).rejects.toMatchObject({
-        status: 402,
-        error: { code: 'LIMIT_EXCEEDED' }
-      });
-    });
+      const result = await plansService.getUserPlan(mockUserId);
 
-    it('should throw error if user not found', async () => {
-      (pool.query as any).mockResolvedValue({ rows: [] });
-
-      await expect(plansService.getUserPlan(mockUserId)).rejects.toThrow('User not found');
+      expect(result.id).toBe(mockUserId);
+      expect(result.email).toBe('test@example.com');
+      expect(result.monthlyValidationsUsed).toBe(1200);
+      expect(result.subscriptionStatus).toBe('active');
+      expect(result.plan.name).toBe('Free (Developer)');
+      expect(result.plan.validationsLimit).toBe(1000);
     });
 
     it('should throw error if user not found', async () => {
@@ -64,13 +63,14 @@ describe('PlansService', () => {
   });
 
   describe('checkValidationLimit', () => {
-    it('should allow validation within limits', async () => {
+    it('should throw LIMIT_EXCEEDED error when over limit without overage', async () => {
       const mockRow = {
-        id: mockUserId,
+        user_id: mockUserId,
         email: 'test@example.com',
-        monthly_validations_used: 500,
+        monthly_validations_used: 1200,
         subscription_status: 'active',
         trial_end_date: null,
+        id: 'plan-id',
         name: 'Free (Developer)',
         slug: 'free',
         price: '0.00',
@@ -78,47 +78,14 @@ describe('PlansService', () => {
         projects_limit: 2,
         logs_retention_days: 7,
         features: { basic_rules: true },
-        overage_rate: '0.0100',
-        max_overage: 2000,
+        overage_rate: '0.0000',
+        max_overage: 0,
         sla: 'none',
         is_custom: false,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
         projects_count: 1
       };
-
-      vi.mocked(pool.query).mockResolvedValue({ rows: [mockRow] });
-
-      const result = await plansService.checkValidationLimit(mockUserId, 100);
-
-      expect(result.remainingValidations).toBe(500);
-      expect(result.overageAllowed).toBe(true);
-    });
-
-    it('should throw limit exceeded error when over limit without overage', async () => {
-      const mockRow = {
-        id: mockUserId,
-        email: 'test@example.com',
-        monthly_validations_used: 500,
-        subscription_status: 'active',
-        trial_end_date: null,
-        name: 'Free (Developer)',
-        slug: 'free',
-        price: '0.00',
-        validations_limit: 1000,
-        projects_limit: 2,
-        logs_retention_days: 7,
-        features: { basic_rules: true },
-        overage_rate: '0.0100',
-        max_overage: 2000,
-        sla: 'none',
-        is_custom: false,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        projects_count: 1
-      };
-
-      vi.mocked(pool.query).mockResolvedValue({ rows: [mockRow] });
 
       (pool.query as any).mockResolvedValue({ rows: [mockRow] });
 
@@ -127,16 +94,15 @@ describe('PlansService', () => {
         error: { code: 'LIMIT_EXCEEDED' }
       });
     });
-  });
 
-  describe('incrementValidationUsage', () => {
-    it('should increment usage counter', async () => {
+    it('should allow validation within limits', async () => {
       const mockRow = {
-        id: mockUserId,
+        user_id: mockUserId,
         email: 'test@example.com',
         monthly_validations_used: 500,
         subscription_status: 'active',
         trial_end_date: null,
+        id: 'plan-id',
         name: 'Free (Developer)',
         slug: 'free',
         price: '0.00',
@@ -153,19 +119,59 @@ describe('PlansService', () => {
         projects_count: 1
       };
 
-      vi.mocked(pool.query)
-        .mockResolvedValueOnce({ rows: [mockRow] }) // getUserPlan
-        .mockResolvedValueOnce({ rows: [] }); // update
+      (pool.query as any).mockResolvedValue({ rows: [mockRow] });
+
+      const result = await plansService.checkValidationLimit(mockUserId, 100);
+
+      expect(result.remainingValidations).toBe(500);
+      expect(result.overageAllowed).toBe(true);
+    });
+  });
+
+  describe('incrementValidationUsage', () => {
+    it('should increment usage counter', async () => {
+      const mockRow = {
+        user_id: mockUserId,
+        email: 'test@example.com',
+        monthly_validations_used: 500,
+        subscription_status: 'active',
+        trial_end_date: null,
+        id: 'plan-id',
+        name: 'Free (Developer)',
+        slug: 'free',
+        price: '0.00',
+        validations_limit: 1000,
+        projects_limit: 2,
+        logs_retention_days: 7,
+        features: { basic_rules: true },
+        overage_rate: '0.0100',
+        max_overage: 2000,
+        sla: 'none',
+        is_custom: false,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        projects_count: 1
+      };
+
+      (pool.query as any)
+        .mockResolvedValueOnce({ rows: [mockRow] }) // getUserPlan (before update)
+        .mockResolvedValueOnce({ rowCount: 1 }) // update result
+        .mockResolvedValueOnce({
+          rows: [{
+            ...mockRow,
+            monthly_validations_used: 510
+          }]
+        }); // getUserPlan (after update)
 
       const result = await plansService.incrementValidationUsage(mockUserId, 10);
 
       expect(result.monthlyValidationsUsed).toBe(510);
-      expect(vi.mocked(pool.query)).toHaveBeenNthCalledWith(
+      expect((pool.query as any)).toHaveBeenNthCalledWith(
         1,
         expect.stringContaining('SELECT'),
         [mockUserId]
       );
-      expect(vi.mocked(pool.query)).toHaveBeenNthCalledWith(
+      expect((pool.query as any)).toHaveBeenNthCalledWith(
         2,
         'UPDATE users SET monthly_validations_used = monthly_validations_used + $1 WHERE id = $2',
         [10, mockUserId]
@@ -185,7 +191,7 @@ describe('PlansService', () => {
     });
 
     it('should return false if at project limit', async () => {
-      vi.mocked(pool.query).mockResolvedValue({
+      (pool.query as any).mockResolvedValue({
         rows: [{ project_count: 5, projects_limit: 5 }]
       });
 
@@ -215,11 +221,11 @@ describe('PlansService', () => {
       };
 
       vi.spyOn(plansService as any, 'getPlanBySlug').mockResolvedValue(mockDefaultPlan);
-      vi.mocked(pool.query).mockResolvedValueOnce({ rows: [] });
+      (pool.query as any).mockResolvedValueOnce({ rows: [] });
 
       await plansService.assignDefaultPlan(mockUserId);
 
-      expect(vi.mocked(pool.query)).toHaveBeenCalledWith(
+      expect((pool.query as any)).toHaveBeenCalledWith(
         'UPDATE users SET plan_id = $1, monthly_validations_used = 0, subscription_status = $2 WHERE id = $3',
         [mockDefaultPlan.id, 'active', mockUserId]
       );
