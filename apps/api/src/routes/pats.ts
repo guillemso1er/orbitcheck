@@ -1,15 +1,14 @@
 import argon2 from 'argon2';
 import crypto from "node:crypto";
 
-import type { FastifyInstance, FastifyRequest } from "fastify";
+import type { FastifyInstance } from "fastify";
 import type { Pool } from "pg";
 
 import { MGMT_V1_ROUTES } from "@orbitcheck/contracts";
 import {
-  AUTHORIZATION_HEADER,
   BEARER_PREFIX,
   PAT_DEFAULT_EXPIRY_DAYS,
-  PAT_SCOPES,
+  PAT_SCOPES
 } from "../config.js";
 import { ERROR_CODES, ERROR_MESSAGES, HTTP_STATUS } from "../errors.js";
 import { errorSchema, generateRequestId, MGMT_V1_SECURITY, rateLimitResponse, securityHeader, sendError, sendServerError, unauthorizedResponse } from "./utils.js";
@@ -31,11 +30,23 @@ function b64url(bytes: number): string {
 export function parsePat(bearer?: string) {
   if (!bearer?.startsWith(BEARER_PREFIX)) return null;
   const raw = bearer.slice(7).trim();
-  const parts = raw.split('_');
-  if (parts.length < 4 || parts[0] !== 'oc' || parts[1] !== 'pat') return null;
-  const env = parts[2];
-  const tokenId = parts[3];
-  const secret = parts.slice(4).join('_'); // Rejoin in case underscores exist in secret
+  
+  // PAT format: oc_pat_{env}:{tokenId}:{secret}
+  // We need to handle the 'oc_pat_' prefix specially
+  if (!raw.startsWith('oc_pat_')) return null;
+  
+  const remaining = raw.slice(7); // Remove 'oc_pat_' prefix
+  const parts = remaining.split(':');
+  if (parts.length < 3) return null;
+  
+  // The format is env:tokenId:secret
+  // We can safely split on ':' since it's not in base64url alphabet
+  const env = parts[0];
+  const tokenId = parts[1];
+  const secret = parts.slice(2).join(':');
+  
+  if (!env || !tokenId || !secret) return null;
+  
   return { raw, env, tokenId, secret };
 }
 
@@ -43,7 +54,6 @@ export function parsePat(bearer?: string) {
  * Create a new Personal Access Token
  */
 export async function createPat({
-  orgId,
   userId,
   name,
   scopes,
@@ -52,7 +62,6 @@ export async function createPat({
   ipAllowlist,
   projectId
 }: {
-  orgId: string;
   userId: string;
   name: string;
   scopes: string[];
@@ -62,10 +71,11 @@ export async function createPat({
   projectId?: string | null;
 }): Promise<{ token: string; tokenId: string; hashedSecret: string }> {
   // Use parameters to satisfy TypeScript (values are used in return object)
-  void orgId, userId, name, scopes, expiresAt, ipAllowlist, projectId;
+  void userId, name, scopes, expiresAt, ipAllowlist, projectId;
   const tokenId = b64url(9);       // ~12 chars
   const secret = b64url(24);       // ~32 chars
-  const token = `${OC_PAT_PREFIX}${env}_${tokenId}_${secret}`;
+  // Use ':' as separator to avoid conflicts with base64url content (no colons in b64url)
+  const token = `${OC_PAT_PREFIX}${env}:${tokenId}:${secret}`;
 
   const hashedSecret = await argon2.hash(secret + PAT_PEPPER, {
     type: argon2.argon2id,
@@ -77,47 +87,6 @@ export async function createPat({
   return { token, tokenId, hashedSecret };
 }
 
-/**
- * Verify a Personal Access Token
- */
-export async function verifyPat(req: FastifyRequest, pool: Pool) {
-  // Node lowercases header keys
-  const authHeader = req.headers['authorization'] as string | undefined;
-  const parsed = parsePat(authHeader);
-  if (!parsed) return null;
-
-  const { rows } = await pool.query(
-    "SELECT id, org_id, user_id, scopes, ip_allowlist, expires_at, disabled FROM personal_access_tokens WHERE token_id = $1 AND token_hash IS NOT NULL",
-    [parsed.tokenId]
-  );
-
-  if (rows.length === 0) return null;
-
-  const pat = rows[0];
-  if (pat.disabled) return null;
-  if (pat.expires_at && pat.expires_at < new Date()) return null;
-
-  const ok = await argon2.verify(pat.token_hash, parsed.secret + PAT_PEPPER);
-  if (!ok) return null;
-
-  // Check IP allowlist if specified
-  if (pat.ip_allowlist && pat.ip_allowlist.length > 0) {
-    const clientIP = req.ip;
-    const allowed = pat.ip_allowlist.some((cidr: string) => {
-      // Simple CIDR check - in production you'd use a proper IP range library
-      return cidr === clientIP || cidr === `${clientIP}/32`;
-    });
-    if (!allowed) return null;
-  }
-
-  // Update last_used_at and last_used_ip asynchronously
-  pool.query(
-    "UPDATE personal_access_tokens SET last_used_at = now(), last_used_ip = $1 WHERE id = $2",
-    [req.ip, pat.id]
-  ).catch(() => { }); // Non-blocking
-
-  return pat;
-}
 
 export function registerPatRoutes(app: FastifyInstance, pool: Pool): void {
   app.post(MGMT_V1_ROUTES.PATS.CREATE_PERSONAL_ACCESS_TOKEN, {
@@ -234,7 +203,6 @@ export function registerPatRoutes(app: FastifyInstance, pool: Pool): void {
 
       // Create token
       const { token, tokenId, hashedSecret } = await createPat({
-        orgId: userId,
         userId,
         name,
         scopes: finalScopes,

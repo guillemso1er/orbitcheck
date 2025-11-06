@@ -42,6 +42,7 @@ process.env.TWILIO_PHONE_NUMBER = ''
 process.env.GOOGLE_GEOCODING_KEY = ''
 process.env.USE_GOOGLE_FALLBACK = 'false'
 process.env.LOCATIONIQ_KEY = ''
+process.env.PAT_PEPPER = 'test-pat-pepper-for-orbitcheck'
 
 import { PostgreSqlContainer, StartedPostgreSqlContainer } from '@testcontainers/postgresql';
 import { RedisContainer, StartedRedisContainer } from '@testcontainers/redis';

@@ -3,6 +3,39 @@ import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'vitest'
 import { build } from '../src/server';
 import { getPool, getRedis, resetDb, startTestEnv, stopTestEnv } from './setup';
 
+// Helper function to extract token ID from PAT format: oc_pat_{env}:{tokenId}:{secret}
+// This should match the logic in the parsePat function in src/routes/pats.ts
+function extractTokenId(pat: string): string {
+  // PAT format: oc_pat_{env}:{tokenId}:{secret}
+  // We use ':' as separator to avoid conflicts with b64url content
+  // The env is either 'live' or 'test', and tokenId is generated as b64url(9)
+  // The secret is generated as b64url(24) and can contain underscores/hyphens
+  // The format is: oc_pat_{env}:{tokenId}:{secret}
+  
+  if (!pat.startsWith('oc_pat_')) {
+    throw new Error(`Invalid PAT prefix: ${pat}`);
+  }
+
+  const raw = pat.slice(7).trim(); // Remove 'oc_pat_' prefix
+  const parts = raw.split(':');
+  if (parts.length < 3) {
+    throw new Error(`Invalid PAT format: ${pat}`);
+  }
+
+  const env = parts[0];
+  
+  // The format is env:tokenId:secret
+  // We can safely split on ':' since it's not in base64url alphabet
+  const tokenId = parts[1];
+  const secret = parts.slice(2).join(':');
+
+  if (!tokenId) {
+    throw new Error(`Could not extract tokenId from PAT: ${pat}`);
+  }
+
+  return tokenId;
+}
+
 let app: Awaited<ReturnType<typeof build>>;
 let pool: ReturnType<typeof getPool>;
 let redis: Redis;
@@ -82,6 +115,7 @@ beforeEach(async () => {
     headers: { authorization: `Bearer ${authToken}` },
     payload: { name: 'PAT for PAT-to-PAT Auth' }
   });
+
   expect(createSecondPatRes.statusCode).toBe(201);
   patForPatAuth = createSecondPatRes.json().token;
 });
@@ -124,13 +158,14 @@ describe('PATs Integration Tests', () => {
 
   describe('Revoke Personal Access Token (DELETE /v1/pats/:token_id)', () => {
     test('204 revokes PAT successfully', async () => {
-      const tokenIdToRevoke = patForPatAuth.split('_')[3]; // Extract ID from the token
+      const tokenIdToRevoke = extractTokenId(patForPatAuth);
 
       const revokeRes = await app.inject({
         method: 'DELETE',
         url: `/v1/pats/${tokenIdToRevoke}`,
         headers: { authorization: `Bearer ${authToken}` },
       });
+
       expect(revokeRes.statusCode).toBe(204);
     });
   });
@@ -146,7 +181,7 @@ describe('PATs Integration Tests', () => {
     });
 
     test('revoked PAT is rejected', async () => {
-      const tokenIdToRevoke = patForPatAuth.split('_')[3];
+      const tokenIdToRevoke = extractTokenId(patForPatAuth);
 
       // Revoke the PAT
       await app.inject({

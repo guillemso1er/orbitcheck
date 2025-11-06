@@ -7,7 +7,7 @@ import type { FastifyInstance, FastifyReply, FastifyRequest, RawServerBase, Rout
 import type { Pool } from "pg";
 import { createPlansService } from '../services/plans.js';
 
-import { API_KEY_PREFIX, API_KEY_PREFIX_LENGTH, AUTHORIZATION_HEADER, BCRYPT_ROUNDS, DEFAULT_PAT_NAME, ENCODING_HEX, ENCODING_UTF8, ENCRYPTION_ALGORITHM, HASH_ALGORITHM, HMAC_VALIDITY_MINUTES, LOGOUT_MESSAGE, PAT_SCOPES_ALL, PG_UNIQUE_VIOLATION, PROJECT_NAMES, STATUS } from "../config.js";
+import { API_KEY_PREFIX, API_KEY_PREFIX_LENGTH, BCRYPT_ROUNDS, DEFAULT_PAT_NAME, ENCODING_HEX, ENCODING_UTF8, ENCRYPTION_ALGORITHM, HASH_ALGORITHM, HMAC_VALIDITY_MINUTES, LOGOUT_MESSAGE, PAT_SCOPES_ALL, PG_UNIQUE_VIOLATION, PROJECT_NAMES, STATUS } from "../config.js";
 import { environment } from "../environment.js";
 import { ERROR_CODES, ERROR_MESSAGES, HTTP_STATUS } from "../errors.js";
 import { createPat, parsePat } from "./pats.js";
@@ -54,17 +54,11 @@ function detectAuthMethod<TServer extends RawServerBase = RawServerBase>(request
     return AuthMethod.NONE;
 }
 
-export async function verifyAPIKey<TServer extends RawServerBase = RawServerBase>(request: FastifyRequest<RouteGenericInterface, TServer>, rep: FastifyReply<RouteGenericInterface, TServer>, pool: Pool): Promise<void> {
+export async function verifyAPIKey<TServer extends RawServerBase = RawServerBase>(request: FastifyRequest<RouteGenericInterface, TServer>, rep: FastifyReply<RouteGenericInterface, TServer>, pool: Pool): Promise<boolean> {
     const header = request.headers["authorization"];
     if (!header || !header.startsWith("Bearer ")) {
         request.log.info('No Bearer header for API key auth');
-        rep.status(HTTP_STATUS.UNAUTHORIZED).send({
-            error: {
-                code: ERROR_CODES.UNAUTHORIZED,
-                message: ERROR_MESSAGES[ERROR_CODES.UNAUTHORIZED]
-            }
-        });
-        return;
+        return false;
     }
 
     const key = header.slice(7).trim();
@@ -80,13 +74,8 @@ export async function verifyAPIKey<TServer extends RawServerBase = RawServerBase
     );
 
     if (rows.length === 0) {
-        rep.status(HTTP_STATUS.UNAUTHORIZED).send({
-            error: {
-                code: ERROR_CODES.UNAUTHORIZED,
-                message: ERROR_MESSAGES[ERROR_CODES.UNAUTHORIZED]
-            }
-        });
-        return;
+        request.log.info('Invalid API key provided');
+        return false;
     }
 
     // Update usage timestamp for auditing and analytics
@@ -97,19 +86,15 @@ export async function verifyAPIKey<TServer extends RawServerBase = RawServerBase
 
     // Attach project_id to request for downstream route access
     request.project_id = rows[0].project_id;
+    return true;
 }
 
 // Refactored HMAC verification (extracted from auth function)
-export async function verifyHMAC<TServer extends RawServerBase = RawServerBase>(request: FastifyRequest<RouteGenericInterface, TServer>, rep: FastifyReply<RouteGenericInterface, TServer>, pool: Pool): Promise<void> {
+export async function verifyHMAC<TServer extends RawServerBase = RawServerBase>(request: FastifyRequest<RouteGenericInterface, TServer>, rep: FastifyReply<RouteGenericInterface, TServer>, pool: Pool): Promise<boolean> {
     const header = request.headers.authorization || '';
     if (!header.startsWith('HMAC ')) {
-        rep.status(HTTP_STATUS.UNAUTHORIZED).send({
-            error: {
-                code: ERROR_CODES.UNAUTHORIZED,
-                message: ERROR_MESSAGES[ERROR_CODES.UNAUTHORIZED]
-            }
-        });
-        return;
+        request.log.info('No HMAC header provided');
+        return false;
     }
 
     const params = new URLSearchParams(header.slice(5).trim());
@@ -120,13 +105,7 @@ export async function verifyHMAC<TServer extends RawServerBase = RawServerBase>(
 
     if (!keyId || !signature || !ts || !nonce) {
         request.log.info('Missing HMAC parameters');
-        rep.status(HTTP_STATUS.UNAUTHORIZED).send({
-            error: {
-                code: ERROR_CODES.UNAUTHORIZED,
-                message: ERROR_MESSAGES[ERROR_CODES.UNAUTHORIZED]
-            }
-        });
-        return;
+        return false;
     }
 
     // Check ts is recent (within 5 minutes)
@@ -134,13 +113,7 @@ export async function verifyHMAC<TServer extends RawServerBase = RawServerBase>(
     const requestTs = parseInt(ts);
     if (Math.abs(now - requestTs) > HMAC_VALIDITY_MINUTES * 60 * 1000) {
         request.log.info('HMAC ts too old');
-        rep.status(HTTP_STATUS.UNAUTHORIZED).send({
-            error: {
-                code: ERROR_CODES.UNAUTHORIZED,
-                message: ERROR_MESSAGES[ERROR_CODES.UNAUTHORIZED]
-            }
-        });
-        return;
+        return false;
     }
 
     // Query for active key by prefix
@@ -151,13 +124,7 @@ export async function verifyHMAC<TServer extends RawServerBase = RawServerBase>(
 
     if (rows.length === 0) {
         request.log.info('No active API key found for HMAC keyId');
-        rep.status(HTTP_STATUS.UNAUTHORIZED).send({
-            error: {
-                code: ERROR_CODES.UNAUTHORIZED,
-                message: ERROR_MESSAGES[ERROR_CODES.UNAUTHORIZED]
-            }
-        });
-        return;
+        return false;
     }
 
     // Decrypt the full key
@@ -190,13 +157,7 @@ export async function verifyHMAC<TServer extends RawServerBase = RawServerBase>(
 
     if (!ok) {
         request.log.info('HMAC signature mismatch');
-        rep.status(HTTP_STATUS.UNAUTHORIZED).send({
-            error: {
-                code: ERROR_CODES.UNAUTHORIZED,
-                message: ERROR_MESSAGES[ERROR_CODES.UNAUTHORIZED]
-            }
-        });
-        return;
+        return false;
     }
 
     request.log.info('HMAC signature verified');
@@ -209,6 +170,7 @@ export async function verifyHMAC<TServer extends RawServerBase = RawServerBase>(
 
     // Attach project_id
     request.project_id = rows[0].project_id;
+    return true;
 }
 
 export async function authenticateRouteRequest<TServer extends RawServerBase = RawServerBase>(
@@ -271,23 +233,23 @@ export async function authenticateRouteRequest<TServer extends RawServerBase = R
             case AuthMethod.PAT:
                 request.log.info('Using PAT auth for management route');
                 {
-                  const pat = await verifyPAT(request, pool);
-                  if (!pat) {
-                    rep.status(HTTP_STATUS.UNAUTHORIZED).send({
-                      error: {
-                        code: ERROR_CODES.UNAUTHORIZED,
-                        message: 'Management routes require session or PAT authentication'
-                      }
-                    });
+                    const pat = await verifyPAT(request, pool);
+                    if (!pat) {
+                        rep.status(HTTP_STATUS.UNAUTHORIZED).send({
+                            error: {
+                                code: ERROR_CODES.UNAUTHORIZED,
+                                message: 'Management routes require session or PAT authentication'
+                            }
+                        });
+                        return;
+                    }
+                    // Attach identity for downstream handlers
+                    request.user_id = pat.user_id;
+                    // If your routes use project_id, try to set a default (ignore errors)
+                    try {
+                        request.project_id = request.project_id ?? await getDefaultProjectId(pool, pat.user_id);
+                    } catch { }
                     return;
-                  }
-                  // Attach identity for downstream handlers
-                  request.user_id = pat.user_id;
-                  // If your routes use project_id, try to set a default (ignore errors)
-                  try {
-                    request.project_id = request.project_id ?? await getDefaultProjectId(pool, pat.user_id);
-                  } catch {}
-                  return;
                 }
                 break;
 
@@ -323,32 +285,33 @@ export async function authenticateRouteRequest<TServer extends RawServerBase = R
 
             case AuthMethod.PAT:
                 request.log.info('Attempting PAT auth for runtime route');
-                try {
-                    await verifyPAT(request, pool);
-                    return;
-                } catch (error) {
-                    // If PAT fails, might be an API key
-                    request.log.info('PAT auth failed, trying API key auth');
-                    try {
-                        await verifyAPIKey(request, rep, pool);
-                        return;
-                    } catch {
-                        rep.status(HTTP_STATUS.UNAUTHORIZED).send({
-                            error: {
-                                code: ERROR_CODES.UNAUTHORIZED,
-                                message: 'Runtime routes require authentication'
-                            }
-                        });
+                {
+                    const pat = await verifyPAT(request, pool);
+                    if (pat) {
                         return;
                     }
+                    // If PAT fails, try API key
+                    request.log.info('PAT auth failed, trying API key auth');
+                    const apiKeyValid = await verifyAPIKey(request, rep, pool);
+                    if (apiKeyValid) {
+                        return;
+                    }
+                    rep.status(HTTP_STATUS.UNAUTHORIZED).send({
+                        error: {
+                            code: ERROR_CODES.UNAUTHORIZED,
+                            message: 'Runtime routes require authentication'
+                        }
+                    });
+                    return;
                 }
 
             case AuthMethod.HMAC:
                 request.log.info('Using HMAC auth for runtime route');
-                try {
-                    await verifyHMAC(request, rep, pool);
-                    return;
-                } catch {
+                {
+                    const hmacValid = await verifyHMAC(request, rep, pool);
+                    if (hmacValid) {
+                        return;
+                    }
                     rep.status(HTTP_STATUS.UNAUTHORIZED).send({
                         error: {
                             code: ERROR_CODES.UNAUTHORIZED,
@@ -361,21 +324,20 @@ export async function authenticateRouteRequest<TServer extends RawServerBase = R
             default:
                 // For Bearer tokens on runtime routes, try PAT first, then API key
                 if (request.headers["authorization"]?.startsWith("Bearer ")) {
-                    try {
-                        await verifyPAT(request, pool);
-                    } catch {
-                        try {
-                            await verifyAPIKey(request, rep, pool);
-                        } catch {
-                            rep.status(HTTP_STATUS.UNAUTHORIZED).send({
-                                error: {
-                                    code: ERROR_CODES.UNAUTHORIZED,
-                                    message: 'Runtime routes require authentication'
-                                }
-                            });
-                            return;
-                        }
+                    const pat = await verifyPAT(request, pool);
+                    if (pat) {
+                        return;
                     }
+                    const apiKeyValid = await verifyAPIKey(request, rep, pool);
+                    if (apiKeyValid) {
+                        return;
+                    }
+                    rep.status(HTTP_STATUS.UNAUTHORIZED).send({
+                        error: {
+                            code: ERROR_CODES.UNAUTHORIZED,
+                            message: 'Runtime routes require authentication'
+                        }
+                    });
                     return;
                 }
 
@@ -437,23 +399,42 @@ export async function verifyPAT<TServer extends RawServerBase = RawServerBase>(r
     // Node lowercases header names
     const authHeader = req.headers['authorization'] as string | undefined;
     const parsed = parsePat(authHeader);
-    if (!parsed) return null;
+    
+    if (!parsed) {
+        req.log.info({ authHeader, reason: 'Failed to parse PAT' }, 'PAT verification failed');
+        return null;
+    }
 
     // FIX: Added 'token_hash' to the SELECT query
     const { rows } = await pool.query(
-        "SELECT id, org_id, user_id, scopes, ip_allowlist, expires_at, disabled, token_hash FROM personal_access_tokens WHERE token_id = $1 AND token_hash IS NOT NULL",
+        "SELECT id,  user_id, scopes, ip_allowlist, expires_at, disabled, token_hash FROM personal_access_tokens WHERE token_id = $1 AND token_hash IS NOT NULL",
         [parsed.tokenId]
     );
 
-    if (rows.length === 0) return null;
+    if (rows.length === 0) {
+        req.log.info({ tokenId: parsed.tokenId, reason: 'Not found in database' }, 'PAT verification failed');
+        return null;
+    }
 
     const pat = rows[0];
-    if (pat.disabled) return null;
-    if (pat.expires_at && pat.expires_at < new Date()) return null;
+    
+    if (pat.disabled) {
+        req.log.info({ tokenId: parsed.tokenId, reason: 'PAT is disabled' }, 'PAT verification failed');
+        return null;
+    }
+    if (pat.expires_at && pat.expires_at < new Date()) {
+        req.log.info({ tokenId: parsed.tokenId, reason: 'PAT is expired' }, 'PAT verification failed');
+        return null;
+    }
 
     // This will now work correctly
     const ok = await argon2.verify(pat.token_hash, parsed.secret + PAT_PEPPER);
-    if (!ok) return null;
+    if (!ok) {
+        req.log.info({ tokenId: parsed.tokenId, reason: 'Hash verification failed' }, 'PAT verification failed');
+        return null;
+    }
+
+    req.log.info({ tokenId: parsed.tokenId }, 'PAT verification successful');
 
     // Check IP allowlist if specified
     if (pat.ip_allowlist && pat.ip_allowlist.length > 0) {
@@ -461,7 +442,10 @@ export async function verifyPAT<TServer extends RawServerBase = RawServerBase>(r
         const allowed = pat.ip_allowlist.some((cidr: string) => {
             return cidr === clientIP || cidr === `${clientIP}/32`;
         });
-        if (!allowed) return null;
+        if (!allowed) {
+            req.log.info({ tokenId: parsed.tokenId, reason: 'IP not allowed' }, 'PAT verification failed');
+            return null;
+        }
     }
 
     // Update last_used_at and last_used_ip asynchronously
@@ -470,6 +454,9 @@ export async function verifyPAT<TServer extends RawServerBase = RawServerBase>(r
         [req.ip, pat.id]
     ).catch(() => { }); // Non-blocking
 
+    // Attach identity for downstream handlers
+    (req as any).user_id = pat.user_id;
+    
     return pat;
 }
 
@@ -612,7 +599,6 @@ export function registerAuthRoutes(app: FastifyInstance, pool: Pool): void {
 
             // Generate PAT for dashboard access
             const { token: patToken, tokenId, hashedSecret } = await createPat({
-                orgId: user.id, // or actual org_id if you have one
                 userId: user.id,
                 name: DEFAULT_PAT_NAME,
                 scopes: [...PAT_SCOPES_ALL],

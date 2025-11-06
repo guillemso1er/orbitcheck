@@ -313,9 +313,17 @@ describe('Authentication Integration Tests', () => {
   describe('API Key Authentication', () => {
     test('401 on invalid API key', async () => {
       const res = await app.inject({
-        method: 'GET',
+        method: 'POST',
         url: '/v1/validate/address',
-        headers: { authorization: 'Bearer invalid-api-key' }
+        headers: { authorization: 'Bearer invalid-api-key' },
+        payload: {
+          address: {
+            line1: '123 Main St',
+            city: 'New York',
+            postal_code: '10001',
+            country: 'US'
+          }
+        }
       })
       expect(res.statusCode).toBe(401)
     })
