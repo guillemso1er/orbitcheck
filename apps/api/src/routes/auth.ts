@@ -270,19 +270,26 @@ export async function authenticateRouteRequest<TServer extends RawServerBase = R
 
             case AuthMethod.PAT:
                 request.log.info('Using PAT auth for management route');
-                try {
-                    await verifyPAT(request, pool);
-                    return;
-                } catch (error) {
+                {
+                  const pat = await verifyPAT(request, pool);
+                  if (!pat) {
                     rep.status(HTTP_STATUS.UNAUTHORIZED).send({
-                        error: {
-                            code: ERROR_CODES.UNAUTHORIZED,
-                            message: 'Management routes require session or PAT authentication'
-                        }
+                      error: {
+                        code: ERROR_CODES.UNAUTHORIZED,
+                        message: 'Management routes require session or PAT authentication'
+                      }
                     });
                     return;
+                  }
+                  // Attach identity for downstream handlers
+                  request.user_id = pat.user_id;
+                  // If your routes use project_id, try to set a default (ignore errors)
+                  try {
+                    request.project_id = request.project_id ?? await getDefaultProjectId(pool, pat.user_id);
+                  } catch {}
+                  return;
                 }
-                break; // Good practice to have it here too
+                break;
 
             default:
                 request.log.info('Management route requires session or PAT auth');
@@ -427,7 +434,9 @@ export async function verifySession<TServer extends RawServerBase = RawServerBas
  * @returns {Promise<void>} Resolves on success, sends 401 on failure
  */
 export async function verifyPAT<TServer extends RawServerBase = RawServerBase>(req: FastifyRequest<RouteGenericInterface, TServer>, pool: Pool) {
-    const parsed = parsePat(req.headers[AUTHORIZATION_HEADER]);
+    // Node lowercases header names
+    const authHeader = req.headers['authorization'] as string | undefined;
+    const parsed = parsePat(authHeader);
     if (!parsed) return null;
 
     // FIX: Added 'token_hash' to the SELECT query

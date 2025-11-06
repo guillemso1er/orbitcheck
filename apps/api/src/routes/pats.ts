@@ -81,7 +81,9 @@ export async function createPat({
  * Verify a Personal Access Token
  */
 export async function verifyPat(req: FastifyRequest, pool: Pool) {
-  const parsed = parsePat(req.headers[AUTHORIZATION_HEADER]);
+  // Node lowercases header keys
+  const authHeader = req.headers['authorization'] as string | undefined;
+  const parsed = parsePat(authHeader);
   if (!parsed) return null;
 
   const { rows } = await pool.query(

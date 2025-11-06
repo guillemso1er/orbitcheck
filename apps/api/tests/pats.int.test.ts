@@ -56,22 +56,26 @@ beforeEach(async () => {
     }
   });
 
-  const loginCookies = loginRes.cookies;
+  // Build a cookie jar from whatever the server set (secure-session uses "orbitcheck_session")
+  const cookieJar: Record<string, string> = {};
+  for (const c of loginRes.cookies ?? []) {
+    cookieJar[c.name] = c.value;
+  }
+  // Optional: sanity check
+  // console.log('login cookies:', loginRes.cookies);
 
   // 3. Use the session to create a valid PAT. This tests session-based auth.
   const createPatRes = await app.inject({
     method: 'POST',
     url: '/v1/pats',
     payload: { name: 'Auth Token For Tests' },
-    cookies: {
-      session: loginCookies[0].value
-    }
+    cookies: cookieJar
   });
 
-  expect(createPatRes.statusCode).toBe(201); // Add a check here
+  expect(createPatRes.statusCode).toBe(201);
   authToken = createPatRes.json().token;
 
-  // 4. Use the new PAT to create a second one for PAT-to-PAT auth tests
+  // 4. Use the new PAT to create a second one for PAT-to-PAT auth
   const createSecondPatRes = await app.inject({
     method: 'POST',
     url: '/v1/pats',
@@ -107,7 +111,14 @@ describe('PATs Integration Tests', () => {
       });
       expect(listRes.statusCode).toBe(200);
       const body = listRes.json();
-      expect(body.pats).toHaveLength(2); // The two PATs from beforeEach
+      // Login creates a default PAT; beforeEach creates one via session; then we create a second via PAT.
+      // So we expect at least those two named PATs to exist.
+      expect(Array.isArray(body.pats)).toBe(true);
+      expect(body.pats.length).toBeGreaterThanOrEqual(2);
+      const names = body.pats.map((p: any) => p.name);
+      expect(names).toEqual(
+        expect.arrayContaining(['Auth Token For Tests', 'PAT for PAT-to-PAT Auth'])
+      );
     });
   });
 
