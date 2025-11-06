@@ -15,6 +15,8 @@ const up = (pgm) => {
         id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
         email text UNIQUE NOT NULL,
         password_hash text NOT NULL,
+        first_name text,
+        last_name text,
         created_at timestamptz NOT NULL DEFAULT now(),
         updated_at timestamptz NOT NULL DEFAULT now()
     );

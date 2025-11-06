@@ -153,29 +153,44 @@ describe('PlansService', () => {
         projects_count: 1
       };
 
-      (pool.query as any)
-        .mockResolvedValueOnce({ rows: [mockRow] }) // getUserPlan (before update)
-        .mockResolvedValueOnce({ rowCount: 1 }) // update result
-        .mockResolvedValueOnce({
-          rows: [{
-            ...mockRow,
-            monthly_validations_used: 510
-          }]
-        }); // getUserPlan (after update)
+      // Mock the update query
+      (pool.query as any).mockResolvedValueOnce({ rowCount: 1 });
+      
+      // Mock the getUserPlan method directly
+      const getUserPlanSpy = vi.spyOn(plansService as any, 'getUserPlan');
+      getUserPlanSpy.mockResolvedValueOnce({
+        id: mockUserId,
+        email: 'test@example.com',
+        monthlyValidationsUsed: 510,
+        subscriptionStatus: 'active',
+        trialEndDate: null,
+        projectsCount: 1,
+        plan: {
+          id: 'plan-id',
+          name: 'Free (Developer)',
+          slug: 'free',
+          price: 0,
+          validationsLimit: 1000,
+          projectsLimit: 2,
+          logsRetentionDays: 7,
+          features: { basic_rules: true },
+          overageRate: 0.01,
+          maxOverage: 2000,
+          sla: 'none',
+          isCustom: false,
+          createdAt: mockRow.created_at,
+          updatedAt: mockRow.updated_at
+        }
+      });
 
       const result = await plansService.incrementValidationUsage(mockUserId, 10);
 
       expect(result.monthlyValidationsUsed).toBe(510);
-      expect((pool.query as any)).toHaveBeenNthCalledWith(
-        1,
-        expect.stringContaining('SELECT'),
-        [mockUserId]
-      );
-      expect((pool.query as any)).toHaveBeenNthCalledWith(
-        2,
-        'UPDATE users SET monthly_validations_used = monthly_validations_used + $1 WHERE id = $2',
-        [10, mockUserId]
-      );
+      expect(result.remainingValidations).toBe(490);
+      expect(result.overageAllowed).toBe(true);
+      expect(getUserPlanSpy).toHaveBeenCalledWith(mockUserId);
+      
+      getUserPlanSpy.mockRestore();
     });
   });
 

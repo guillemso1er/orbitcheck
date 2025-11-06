@@ -34,12 +34,12 @@ const up = (pgm) => {
   pgm.sql(`CREATE INDEX IF NOT EXISTS idx_plans_name ON plans(name);`);
 
   // Add plan_id to users table
-  pgm.sql(`ALTER TABLE users ADD COLUMN plan_id uuid REFERENCES plans(id);`);
+  pgm.sql(`ALTER TABLE users ADD COLUMN IF NOT EXISTS plan_id uuid REFERENCES plans(id);`);
 
   // Add usage tracking columns to users
-  pgm.sql(`ALTER TABLE users ADD COLUMN monthly_validations_used integer DEFAULT 0 NOT NULL;`);
-  pgm.sql(`ALTER TABLE users ADD COLUMN subscription_status text DEFAULT 'active' NOT NULL;`);
-  pgm.sql(`ALTER TABLE users ADD COLUMN trial_end_date timestamptz;`);
+  pgm.sql(`ALTER TABLE users ADD COLUMN IF NOT EXISTS monthly_validations_used integer DEFAULT 0 NOT NULL;`);
+  pgm.sql(`ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_status text DEFAULT 'active' NOT NULL;`);
+  pgm.sql(`ALTER TABLE users ADD COLUMN IF NOT EXISTS trial_end_date timestamptz;`);
 
   // Add indexes for user plan fields
   pgm.sql(`CREATE INDEX IF NOT EXISTS idx_users_plan_id ON users(plan_id);`);
@@ -58,7 +58,7 @@ const up = (pgm) => {
     ON CONFLICT (slug) DO NOTHING;
   `);
 
-  // Set default plan for existing users
+  // Set default plan for existing users if they exist
   pgm.sql(`
     UPDATE users
     SET plan_id = (SELECT id FROM plans WHERE slug = 'free')

@@ -27,7 +27,7 @@ export class PlansService {
       [userId]
     );
 
-    if (rows.length === 0) {
+    if (!rows || rows.length === 0) {
       throw new Error('User not found');
     }
 
@@ -81,7 +81,7 @@ export class PlansService {
 
     const userPlan = await this.getUserPlan(userId);
     const limit = userPlan.plan.validationsLimit;
-    const used = userPlan.monthlyValidationsUsed + count;
+    const used = userPlan.monthlyValidationsUsed; // Already incremented by the UPDATE
     const maxTotal = limit + (userPlan.plan.maxOverage || 0);
     const remaining = Math.max(0, limit - used);
     const overageAllowed = used <= maxTotal && userPlan.plan.overageRate > 0;
@@ -127,7 +127,7 @@ export class PlansService {
       [userId]
     );
 
-    if (rows.length === 0) {
+    if (!rows || rows.length === 0) {
       throw new Error('User not found');
     }
 
