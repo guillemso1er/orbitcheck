@@ -9,7 +9,7 @@ const shorthands = undefined;
  * @returns {Promise<void> | void}
  */
 const up = async (pgm) => {
-  await pgm.query(`
+  pgm.sql(`
     CREATE TABLE webhooks (
       id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
       project_id uuid NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
@@ -21,8 +21,8 @@ const up = async (pgm) => {
       last_fired_at timestamptz
     );
   `);
-  await pgm.query(`CREATE INDEX ON webhooks(project_id);`);
-  await pgm.query(`CREATE INDEX ON webhooks(status);`);
+  pgm.sql(`CREATE INDEX ON webhooks(project_id);`);
+  pgm.sql(`CREATE INDEX ON webhooks(status);`);
 };
 
 /**

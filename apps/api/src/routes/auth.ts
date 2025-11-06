@@ -1,15 +1,20 @@
+import argon2 from 'argon2';
 import crypto from "node:crypto";
 
 import { DASHBOARD_ROUTES } from "@orbitcheck/contracts";
-import { createPlansService } from '../services/plans.js';
 import bcrypt from 'bcryptjs';
 import type { FastifyInstance, FastifyReply, FastifyRequest, RawServerBase, RouteGenericInterface } from "fastify";
 import type { Pool } from "pg";
+import { createPlansService } from '../services/plans.js';
 
-import { API_KEY_PREFIX, API_KEY_PREFIX_LENGTH, AUDIT_ACTION_PAT_USED, AUDIT_RESOURCE_API, AUTHORIZATION_HEADER, BCRYPT_ROUNDS, BEARER_PREFIX, CRYPTO_KEY_BYTES, DEFAULT_PAT_NAME, ENCODING_HEX, ENCODING_UTF8, ENCRYPTION_ALGORITHM, HASH_ALGORITHM, HMAC_VALIDITY_MINUTES, LOGOUT_MESSAGE, PAT_PREFIX, PAT_SCOPES_ALL, PG_UNIQUE_VIOLATION, PROJECT_NAMES, STATUS } from "../config.js";
+import { API_KEY_PREFIX, API_KEY_PREFIX_LENGTH, AUTHORIZATION_HEADER, BCRYPT_ROUNDS, DEFAULT_PAT_NAME, ENCODING_HEX, ENCODING_UTF8, ENCRYPTION_ALGORITHM, HASH_ALGORITHM, HMAC_VALIDITY_MINUTES, LOGOUT_MESSAGE, PAT_SCOPES_ALL, PG_UNIQUE_VIOLATION, PROJECT_NAMES, STATUS } from "../config.js";
 import { environment } from "../environment.js";
 import { ERROR_CODES, ERROR_MESSAGES, HTTP_STATUS } from "../errors.js";
+import { createPat, parsePat } from "./pats.js";
 import { errorSchema, generateRequestId, getDefaultProjectId, sendError, sendServerError } from "./utils.js";
+
+// PAT pepper constant (same as in pats.ts)
+const PAT_PEPPER = process.env.PAT_PEPPER || '';
 
 // Enum for authentication methods
 enum AuthMethod {
@@ -261,6 +266,7 @@ export async function authenticateRouteRequest<TServer extends RawServerBase = R
                     });
                     return;
                 }
+                break;
 
             case AuthMethod.PAT:
                 request.log.info('Using PAT auth for management route');
@@ -276,6 +282,7 @@ export async function authenticateRouteRequest<TServer extends RawServerBase = R
                     });
                     return;
                 }
+                break; // Good practice to have it here too
 
             default:
                 request.log.info('Management route requires session or PAT auth');
@@ -419,50 +426,42 @@ export async function verifySession<TServer extends RawServerBase = RawServerBas
  * @param pool - PostgreSQL connection pool
  * @returns {Promise<void>} Resolves on success, sends 401 on failure
  */
-export async function verifyPAT<TServer extends RawServerBase = RawServerBase>(request: FastifyRequest<RouteGenericInterface, TServer>, pool: Pool): Promise<void> {
-    const header = request.headers[AUTHORIZATION_HEADER];
-    const authHeader = Array.isArray(header) ? header[0] : header;
-    if (!authHeader || !authHeader.startsWith(BEARER_PREFIX)) {
-        request.log.info('No or invalid Bearer header for PAT auth');
-        throw { status: HTTP_STATUS.UNAUTHORIZED, error: { code: ERROR_CODES.UNAUTHORIZED, message: ERROR_MESSAGES[ERROR_CODES.UNAUTHORIZED] } };
-    }
-    const token = authHeader.slice(7).trim();
-    const tokenHash = crypto.createHash(HASH_ALGORITHM).update(token).digest('hex');
+export async function verifyPAT<TServer extends RawServerBase = RawServerBase>(req: FastifyRequest<RouteGenericInterface, TServer>, pool: Pool) {
+    const parsed = parsePat(req.headers[AUTHORIZATION_HEADER]);
+    if (!parsed) return null;
 
-    request.log.info('Verifying PAT with hash');
-
-    // Query for active PAT matching hash and not expired
+    // FIX: Added 'token_hash' to the SELECT query
     const { rows } = await pool.query(
-        "select id, user_id, scopes from personal_access_tokens where token_hash=$1 and (expires_at is null or expires_at > now())",
-        [tokenHash]
+        "SELECT id, org_id, user_id, scopes, ip_allowlist, expires_at, disabled, token_hash FROM personal_access_tokens WHERE token_id = $1 AND token_hash IS NOT NULL",
+        [parsed.tokenId]
     );
 
-    if (rows.length === 0) {
-        throw { status: HTTP_STATUS.UNAUTHORIZED, error: { code: ERROR_CODES.UNAUTHORIZED, message: ERROR_MESSAGES[ERROR_CODES.UNAUTHORIZED] } };
+    if (rows.length === 0) return null;
+
+    const pat = rows[0];
+    if (pat.disabled) return null;
+    if (pat.expires_at && pat.expires_at < new Date()) return null;
+
+    // This will now work correctly
+    const ok = await argon2.verify(pat.token_hash, parsed.secret + PAT_PEPPER);
+    if (!ok) return null;
+
+    // Check IP allowlist if specified
+    if (pat.ip_allowlist && pat.ip_allowlist.length > 0) {
+        const clientIP = req.ip;
+        const allowed = pat.ip_allowlist.some((cidr: string) => {
+            return cidr === clientIP || cidr === `${clientIP}/32`;
+        });
+        if (!allowed) return null;
     }
 
-    // Update usage timestamp
-    await pool.query(
-        "UPDATE personal_access_tokens SET last_used_at = now() WHERE id = $1",
-        [rows[0].id]
-    );
+    // Update last_used_at and last_used_ip asynchronously
+    pool.query(
+        "UPDATE personal_access_tokens SET last_used_at = now(), last_used_ip = $1 WHERE id = $2",
+        [req.ip, pat.id]
+    ).catch(() => { }); // Non-blocking
 
-    // Get default project for user and attach all properties atomically
-    try {
-        const userId = rows[0].user_id;
-        const projectId = await getDefaultProjectId(pool, userId);
-        request.user_id = userId;
-        request.pat_scopes = rows[0].scopes || [];
-        request.project_id = projectId;
-    } catch (error) {
-        throw { status: HTTP_STATUS.FORBIDDEN, error: { code: ERROR_CODES.NO_PROJECT, message: ERROR_MESSAGES[ERROR_CODES.NO_PROJECT] } };
-    }
-
-    // Audit PAT usage
-    await pool.query(
-        "INSERT INTO audit_logs (user_id, action, resource, details) VALUES ($1, $2, $3, $4)",
-        [rows[0].user_id, AUDIT_ACTION_PAT_USED, AUDIT_RESOURCE_API, JSON.stringify({ token_id: rows[0].id, url: request.url })]
-    );
+    return pat;
 }
 
 export function registerAuthRoutes(app: FastifyInstance, pool: Pool): void {
@@ -503,7 +502,7 @@ export function registerAuthRoutes(app: FastifyInstance, pool: Pool): void {
             const body = request.body as any;
             const { email, password, confirm_password } = body;
             request.log.info({ email: !!email, password: !!password, confirm_password: !!confirm_password, passwordType: typeof password, bodyKeys: Object.keys(body) }, 'Auth register body check');
-            
+
             // Custom validation with consistent error format
             if (!email || typeof email !== 'string' || !email.includes('@')) {
                 return sendError(rep, HTTP_STATUS.BAD_REQUEST, ERROR_CODES.INVALID_INPUT, 'Valid email is required', request_id);
@@ -534,14 +533,14 @@ export function registerAuthRoutes(app: FastifyInstance, pool: Pool): void {
 
             const user = userRows[0];
 
-// Assign default Free plan to user
-    await createPlansService(pool).assignDefaultPlan(user.id);
+            // Assign default Free plan to user
+            await createPlansService(pool).assignDefaultPlan(user.id);
 
-    // Create default project for user
-    await pool.query(
-        'INSERT INTO projects (name, user_id) VALUES ($1, $2) RETURNING id',
-        [PROJECT_NAMES.DEFAULT, user.id]
-    );
+            // Create default project for user
+            await pool.query(
+                'INSERT INTO projects (name, user_id) VALUES ($1, $2) RETURNING id',
+                [PROJECT_NAMES.DEFAULT, user.id]
+            );
 
             // Set session cookie for dashboard access
             request.session.user_id = user.id;
@@ -603,19 +602,20 @@ export function registerAuthRoutes(app: FastifyInstance, pool: Pool): void {
             const user = rows[0];
 
             // Generate PAT for dashboard access
-            const patBuf = await new Promise<Buffer>((resolve, reject) => {
-                crypto.randomBytes(CRYPTO_KEY_BYTES, (error, buf) => {
-                    if (error) reject(error);
-                    else resolve(buf);
-                });
+            const { token: patToken, tokenId, hashedSecret } = await createPat({
+                orgId: user.id, // or actual org_id if you have one
+                userId: user.id,
+                name: DEFAULT_PAT_NAME,
+                scopes: [...PAT_SCOPES_ALL],
+                env: 'live',
+                expiresAt: null,
+                ipAllowlist: undefined,
+                projectId: undefined
             });
-            const patToken = PAT_PREFIX + patBuf.toString('hex');
-            const patHash = crypto.createHash(HASH_ALGORITHM).update(patToken).digest('hex');
-            const tokenId = crypto.randomUUID();
 
             await pool.query(
-                "INSERT INTO personal_access_tokens (user_id, name, token_id, token_hash, scopes, env, expires_at) VALUES ($1, $2, $3, $4, $5, $6, $7)",
-                [user.id, DEFAULT_PAT_NAME, tokenId, patHash, PAT_SCOPES_ALL, 'live', null]
+                "INSERT INTO personal_access_tokens (user_id, token_id, token_hash, name, scopes, env, expires_at) VALUES ($1, $2, $3, $4, $5, $6, $7)",
+                [user.id, tokenId, hashedSecret, DEFAULT_PAT_NAME, [...PAT_SCOPES_ALL], 'live', null]
             );
 
             // Set session cookie for dashboard access

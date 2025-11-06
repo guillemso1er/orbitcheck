@@ -46,6 +46,7 @@ process.env.LOCATIONIQ_KEY = ''
 import { PostgreSqlContainer, StartedPostgreSqlContainer } from '@testcontainers/postgresql';
 import { RedisContainer, StartedRedisContainer } from '@testcontainers/redis';
 import { promises as fs } from 'fs';
+import { exec } from 'child_process';
 import Redis from 'ioredis';
 import path from 'path';
 import { Pool } from 'pg';
@@ -92,8 +93,8 @@ export async function startTestEnv() {
       }
     }
 
-    // Run migrations
-    await runMigrations(pool)
+    // Run migrations using node-pg-migrate CLI
+    await runMigrations()
 
     // Verify migrations completed
     await pool.query('SELECT 1 FROM users LIMIT 1');
@@ -139,57 +140,69 @@ export async function resetDb() {
 }
 
 
-async function runMigrations(db: Pool) {
+async function runMigrations() {
   const migrationsDir = path.join(process.cwd(), 'migrations');
+  const dbUrl = process.env.DATABASE_URL!;
 
-  // Only log in non-test environments
-  const isTest = process.env.NODE_ENV === 'test';
-  const log = isTest ? () => { } : console.log;
-
-  log(`[Migrations] Looking for migrations in: ${migrationsDir}`);
+  console.log(`[Migrations] Running migrations from: ${migrationsDir}`);
+  console.log(`[Migrations] Database URL: ${dbUrl.replace(/:\/\/.*@/, '://***@')}`);
 
   try {
-    const files = await fs.readdir(migrationsDir);
-    const migrationFiles = files
-      .filter(file => file.endsWith('.cjs'))
-      .sort();
-
-    if (migrationFiles.length === 0) {
-      throw new Error('No migration files found in migrations directory.');
-    }
-
-    log(`[Migrations] Found ${migrationFiles.length} migration files:`, migrationFiles);
-
-    for (const file of migrationFiles) {
-      const migrationPath = path.join(migrationsDir, file);
-      log(`[Migrations] Executing migration: ${file}`);
-
-      const migration = require(migrationPath);
-
-      if (migration.up) {
-        await db.query('BEGIN');
-        try {
-          const pgm = {
-            query: (sql: string, params?: any[]) => db.query(sql, params),
-            sql: (sql: string) => db.query(sql)
-          };
-
-          await migration.up(pgm);
-          await db.query('COMMIT');
-          log(`[Migrations] Successfully committed ${file}`);
-        } catch (error) {
-          await db.query('ROLLBACK');
-          if (!isTest) {
-            console.error(`[Migrations] Failed to run migration ${file}:`, error);
-          }
-          throw error;
+    // Use node-pg-migrate CLI to run migrations
+    const command = `DATABASE_URL="${dbUrl}" node-pg-migrate -m "${migrationsDir}" up --no-check-order`;
+    
+    console.log(`[Migrations] Executing: ${command.replace(/:\/\/.*@/, '://***@')}`);
+    
+    await new Promise<void>((resolve, reject) => {
+      exec(command, (error, stdout, stderr) => {
+        if (stdout) {
+          console.log('[Migrations] stdout:', stdout);
         }
+        if (stderr) {
+          console.log('[Migrations] stderr:', stderr);
+        }
+        
+        if (error) {
+          console.error(`[Migrations] Command failed:`, error);
+          reject(new Error(`Migration failed: ${error.message}`));
+        } else {
+          console.log('[Migrations] Migrations completed successfully');
+          resolve();
+        }
+      });
+    });
+
+    // List all tables after migrations
+    const tableResult = await pool.query(`
+      SELECT table_name FROM information_schema.tables
+      WHERE table_schema = 'public' AND table_type = 'BASE TABLE'
+      ORDER BY table_name
+    `);
+    console.log(`[Migrations] Tables after migrations:`, tableResult.rows.map(r => r.table_name));
+
+    // Verify critical tables exist
+    console.log(`[Migrations] Verifying tables exist...`);
+    const criticalTables = ['users', 'plans', 'personal_access_tokens'];
+    for (const table of criticalTables) {
+      try {
+        // Check if table exists by querying information_schema
+        const result = await pool.query(`
+          SELECT 1 FROM information_schema.tables
+          WHERE table_name = $1 AND table_schema = 'public' AND table_type = 'BASE TABLE'
+        `, [table]);
+        
+        if (result.rows.length > 0) {
+          console.log(`[Migrations] Table ${table} exists and is accessible`);
+        } else {
+          throw new Error(`Table not found in information_schema`);
+        }
+      } catch (error) {
+        console.error(`[Migrations] Table ${table} does not exist or is not accessible:`, error.message);
+        throw new Error(`Critical table ${table} is missing after migrations`);
       }
     }
   } catch (error) {
-    if (process.env.NODE_ENV !== 'test') {
-      console.error('[Migrations] A critical error occurred during the migration process:', error);
-    }
+    console.error('[Migrations] A critical error occurred during the migration process:', error);
     throw error;
   }
 }

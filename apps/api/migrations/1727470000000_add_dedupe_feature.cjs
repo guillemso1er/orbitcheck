@@ -10,10 +10,10 @@ const shorthands = undefined;
  */
 const up = async (pgm) => {
   // Enable extensions for fuzzy matching
-  await pgm.query(`CREATE EXTENSION IF NOT EXISTS pg_trgm;`);
+  pgm.sql(`CREATE EXTENSION IF NOT EXISTS pg_trgm;`);
 
   // Customers table for deduplication
-  await pgm.query(`
+  pgm.sql(`
     CREATE TABLE IF NOT EXISTS customers (
         id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
         project_id uuid NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
@@ -26,13 +26,13 @@ const up = async (pgm) => {
     );
   `);
 
-  await pgm.query(`CREATE INDEX IF NOT EXISTS idx_customers_project ON customers(project_id);`);
-  await pgm.query(`CREATE INDEX IF NOT EXISTS idx_customers_email_gin ON customers USING gin(email gin_trgm_ops);`);
-  await pgm.query(`CREATE INDEX IF NOT EXISTS idx_customers_phone_gin ON customers USING gin(phone gin_trgm_ops);`);
-  await pgm.query(`CREATE INDEX IF NOT EXISTS idx_customers_name_gin ON customers USING gin((first_name || ' ' || last_name) gin_trgm_ops);`);
+  pgm.sql(`CREATE INDEX IF NOT EXISTS idx_customers_project ON customers(project_id);`);
+  pgm.sql(`CREATE INDEX IF NOT EXISTS idx_customers_email_gin ON customers USING gin(email gin_trgm_ops);`);
+  pgm.sql(`CREATE INDEX IF NOT EXISTS idx_customers_phone_gin ON customers USING gin(phone gin_trgm_ops);`);
+  pgm.sql(`CREATE INDEX IF NOT EXISTS idx_customers_name_gin ON customers USING gin((first_name || ' ' || last_name) gin_trgm_ops);`);
 
   // Addresses table for deduplication
-  await pgm.query(`
+  pgm.sql(`
     CREATE TABLE IF NOT EXISTS addresses (
         id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
         project_id uuid NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
@@ -49,11 +49,11 @@ const up = async (pgm) => {
     );
   `);
 
-  await pgm.query(`CREATE INDEX IF NOT EXISTS idx_addresses_project ON addresses(project_id);`);
-  await pgm.query(`CREATE INDEX IF NOT EXISTS idx_addresses_normalized_gin ON addresses USING gin((line1 || ' ' || city || ' ' || postal_code || ' ' || country) gin_trgm_ops);`);
+  pgm.sql(`CREATE INDEX IF NOT EXISTS idx_addresses_project ON addresses(project_id);`);
+  pgm.sql(`CREATE INDEX IF NOT EXISTS idx_addresses_normalized_gin ON addresses USING gin((line1 || ' ' || city || ' ' || postal_code || ' ' || country) gin_trgm_ops);`);
 
   // Orders table for deduplication
-  await pgm.query(`
+  pgm.sql(`
     CREATE TABLE IF NOT EXISTS orders (
         id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
         project_id uuid NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
@@ -70,29 +70,29 @@ const up = async (pgm) => {
     );
   `);
 
-  await pgm.query(`CREATE INDEX IF NOT EXISTS idx_orders_project ON orders(project_id);`);
-  await pgm.query(`CREATE INDEX IF NOT EXISTS idx_orders_customer_gin ON orders USING gin((customer_email || ' ' || customer_phone) gin_trgm_ops);`);
-  await pgm.query(`CREATE INDEX IF NOT EXISTS idx_orders_order_id ON orders(order_id);`);
+  pgm.sql(`CREATE INDEX IF NOT EXISTS idx_orders_project ON orders(project_id);`);
+  pgm.sql(`CREATE INDEX IF NOT EXISTS idx_orders_customer_gin ON orders USING gin((customer_email || ' ' || customer_phone) gin_trgm_ops);`);
+  pgm.sql(`CREATE INDEX IF NOT EXISTS idx_orders_order_id ON orders(order_id);`);
 
   // Add normalized fields and hashes for deterministic deduplication
-  await pgm.query(`ALTER TABLE customers ADD COLUMN IF NOT EXISTS normalized_email text;`);
-  await pgm.query(`ALTER TABLE customers ADD COLUMN IF NOT EXISTS normalized_phone text;`);
-  await pgm.query(`CREATE INDEX IF NOT EXISTS idx_customers_normalized_email ON customers(normalized_email) WHERE normalized_email IS NOT NULL;`);
-  await pgm.query(`CREATE INDEX IF NOT EXISTS idx_customers_normalized_phone ON customers(normalized_phone) WHERE normalized_phone IS NOT NULL;`);
+  pgm.sql(`ALTER TABLE customers ADD COLUMN IF NOT EXISTS normalized_email text;`);
+  pgm.sql(`ALTER TABLE customers ADD COLUMN IF NOT EXISTS normalized_phone text;`);
+  pgm.sql(`CREATE INDEX IF NOT EXISTS idx_customers_normalized_email ON customers(normalized_email) WHERE normalized_email IS NOT NULL;`);
+  pgm.sql(`CREATE INDEX IF NOT EXISTS idx_customers_normalized_phone ON customers(normalized_phone) WHERE normalized_phone IS NOT NULL;`);
 
-  await pgm.query(`ALTER TABLE addresses ADD COLUMN IF NOT EXISTS address_hash text;`);
-  await pgm.query(`CREATE INDEX IF NOT EXISTS idx_addresses_address_hash ON addresses(address_hash) WHERE address_hash IS NOT NULL;`);
+  pgm.sql(`ALTER TABLE addresses ADD COLUMN IF NOT EXISTS address_hash text;`);
+  pgm.sql(`CREATE INDEX IF NOT EXISTS idx_addresses_address_hash ON addresses(address_hash) WHERE address_hash IS NOT NULL;`);
 
   // For fuzzy, ensure GIN indexes on specific fields
-  await pgm.query(`CREATE INDEX IF NOT EXISTS idx_customers_name_trgm ON customers USING gin((first_name || ' ' || last_name) gin_trgm_ops);`);
-  await pgm.query(`CREATE INDEX IF NOT EXISTS idx_addresses_line1_trgm ON addresses USING gin(line1 gin_trgm_ops);`);
-  await pgm.query(`CREATE INDEX IF NOT EXISTS idx_addresses_city_trgm ON addresses USING gin(city gin_trgm_ops);`);
+  pgm.sql(`CREATE INDEX IF NOT EXISTS idx_customers_name_trgm ON customers USING gin((first_name || ' ' || last_name) gin_trgm_ops);`);
+  pgm.sql(`CREATE INDEX IF NOT EXISTS idx_addresses_line1_trgm ON addresses USING gin(line1 gin_trgm_ops);`);
+  pgm.sql(`CREATE INDEX IF NOT EXISTS idx_addresses_city_trgm ON addresses USING gin(city gin_trgm_ops);`);
 
-  await pgm.query(`ALTER TABLE customers ADD COLUMN IF NOT EXISTS merged_to uuid REFERENCES customers(id);`);
-  await pgm.query(`ALTER TABLE addresses ADD COLUMN IF NOT EXISTS merged_to uuid REFERENCES addresses(id);`);
+  pgm.sql(`ALTER TABLE customers ADD COLUMN IF NOT EXISTS merged_to uuid REFERENCES customers(id);`);
+  pgm.sql(`ALTER TABLE addresses ADD COLUMN IF NOT EXISTS merged_to uuid REFERENCES addresses(id);`);
 
   // Create function to normalize email and phone
-  await pgm.query(`
+  pgm.sql(`
     CREATE OR REPLACE FUNCTION normalize_customer_fields() RETURNS trigger AS $$
     BEGIN
       NEW.normalized_email = lower(trim(NEW.email));
@@ -103,13 +103,13 @@ const up = async (pgm) => {
   `);
 
   // Create trigger
-  await pgm.query(`
+  pgm.sql(`
     CREATE TRIGGER normalize_customer_trigger BEFORE INSERT OR UPDATE ON customers
     FOR EACH ROW EXECUTE FUNCTION normalize_customer_fields();
   `);
 
   // Update existing customers
-  await pgm.query(`
+  pgm.sql(`
     UPDATE customers SET email = email WHERE normalized_email IS NULL;
   `);
 };

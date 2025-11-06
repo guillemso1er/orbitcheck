@@ -28,7 +28,7 @@ function b64url(bytes: number): string {
 /**
  * Parse PAT from Authorization header
  */
-function parsePat(bearer?: string) {
+export function parsePat(bearer?: string) {
   if (!bearer?.startsWith(BEARER_PREFIX)) return null;
   const raw = bearer.slice(7).trim();
   const parts = raw.split('_');
@@ -216,9 +216,14 @@ export function registerPatRoutes(app: FastifyInstance, pool: Pool): void {
 
       // Calculate expiration
       let expiresAt = null;
-      if (expires_at) {
+      if (expires_at !== null && expires_at !== undefined) {
         expiresAt = new Date(expires_at);
-      } else if (!expires_at) {
+        // Validate that the date is not in the past
+        if (expiresAt < new Date()) {
+          return sendError(rep, HTTP_STATUS.BAD_REQUEST, ERROR_CODES.INVALID_INPUT,
+            'Expiration date cannot be in the past', request_id);
+        }
+      } else {
         // Default 90 days unless explicitly set to null for no expiration
         const defaultExpiry = new Date();
         defaultExpiry.setDate(defaultExpiry.getDate() + PAT_DEFAULT_EXPIRY_DAYS);
@@ -230,7 +235,7 @@ export function registerPatRoutes(app: FastifyInstance, pool: Pool): void {
         orgId: userId,
         userId,
         name,
-        scopes,
+        scopes: finalScopes,
         env: env as 'live' | 'test',
         expiresAt,
         ipAllowlist: ip_allowlist,
@@ -250,7 +255,7 @@ export function registerPatRoutes(app: FastifyInstance, pool: Pool): void {
         token, // Only returned once
         token_id: tokenId,
         name,
-        scopes,
+        scopes: finalScopes,
         env,
         expires_at: expiresAt,
         created_at: rows[0].created_at,
@@ -276,7 +281,7 @@ export function registerPatRoutes(app: FastifyInstance, pool: Pool): void {
           description: 'List of PATs',
           type: 'object',
           properties: {
-            data: {
+            pats: {
               type: 'array',
               items: {
                 type: 'object',
@@ -314,7 +319,7 @@ export function registerPatRoutes(app: FastifyInstance, pool: Pool): void {
         [userId]
       );
 
-      const response = { data: rows, request_id };
+      const response = { pats: rows, request_id };
       return rep.send(response);
     } catch (error) {
       return sendServerError(request, rep, error, '/v1/pats', generateRequestId());
@@ -337,15 +342,8 @@ export function registerPatRoutes(app: FastifyInstance, pool: Pool): void {
         required: ['token_id']
       },
       response: {
-        200: {
-          description: 'PAT revoked successfully',
-          type: 'object',
-          properties: {
-            id: { type: 'string' },
-            token_id: { type: 'string' },
-            disabled: { type: 'boolean' },
-            request_id: { type: 'string' }
-          }
+        204: {
+          description: 'PAT revoked successfully'
         },
         ...unauthorizedResponse,
         ...rateLimitResponse,
@@ -358,26 +356,30 @@ export function registerPatRoutes(app: FastifyInstance, pool: Pool): void {
       const { token_id } = request.params as { token_id: string };
       const request_id = generateRequestId();
 
-      const { rowCount } = await pool.query(
+      // First check if the PAT exists and belongs to the user
+      const { rows } = await pool.query(
+        `SELECT id, disabled FROM personal_access_tokens
+         WHERE token_id = $1 AND user_id = $2`,
+        [token_id, userId]
+      );
+
+      if (rows.length === 0) {
+        return sendError(rep, HTTP_STATUS.NOT_FOUND, ERROR_CODES.NOT_FOUND,
+          ERROR_MESSAGES[ERROR_CODES.NOT_FOUND], request_id);
+      }
+
+      const wasAlreadyDisabled = rows[0].disabled;
+
+      // Update the PAT
+      await pool.query(
         `UPDATE personal_access_tokens
          SET disabled = true
          WHERE token_id = $1 AND user_id = $2`,
         [token_id, userId]
       );
 
-      if (rowCount === 0) {
-        return sendError(rep, HTTP_STATUS.NOT_FOUND, ERROR_CODES.NOT_FOUND,
-          ERROR_MESSAGES[ERROR_CODES.NOT_FOUND], request_id);
-      }
-
-      const response = {
-        id: token_id,
-        token_id,
-        disabled: true,
-        request_id
-      };
-
-      return rep.send(response);
+      // Return different status codes based on whether it was already disabled
+      return rep.status(wasAlreadyDisabled ? 200 : 204).send();
     } catch (error) {
       return sendServerError(request, rep, error, `/v1/pats/${(request.params as any)?.token_id || ''}`, generateRequestId());
     }

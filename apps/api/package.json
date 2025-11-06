@@ -30,6 +30,7 @@
         "test": " NODE_ENV=test jest",
         "test:watch": "jest --watch",
         "test:int": "export DOCKER_HOST=\"unix://$(podman info --format '{{.Host.RemoteSocket.Path}}')\" && vitest ./tests/*.int.test.ts --run",
+        "test:int:single": "export DOCKER_HOST=\"unix://$(podman info --format '{{.Host.RemoteSocket.Path}}')\" && vitest --run",
         "test:int:watch": "vitest tests/tasks.int.test.ts",
         "lint": "eslint src/ --max-warnings=0",
         "lint:fix": "eslint src/ --fix",

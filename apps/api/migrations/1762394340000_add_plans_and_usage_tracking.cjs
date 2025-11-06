@@ -9,6 +9,9 @@ const shorthands = undefined;
  * @returns {Promise<void> | void}
  */
 const up = (pgm) => {
+  // Ensure pgcrypto extension is available
+  pgm.sql(`CREATE EXTENSION IF NOT EXISTS pgcrypto;`);
+
   // Create plans table
   pgm.sql(`
     CREATE TABLE plans (
@@ -33,20 +36,7 @@ const up = (pgm) => {
   pgm.sql(`CREATE INDEX IF NOT EXISTS idx_plans_slug ON plans(slug);`);
   pgm.sql(`CREATE INDEX IF NOT EXISTS idx_plans_name ON plans(name);`);
 
-  // Add plan_id to users table
-  pgm.sql(`ALTER TABLE users ADD COLUMN IF NOT EXISTS plan_id uuid REFERENCES plans(id);`);
-
-  // Add usage tracking columns to users
-  pgm.sql(`ALTER TABLE users ADD COLUMN IF NOT EXISTS monthly_validations_used integer DEFAULT 0 NOT NULL;`);
-  pgm.sql(`ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_status text DEFAULT 'active' NOT NULL;`);
-  pgm.sql(`ALTER TABLE users ADD COLUMN IF NOT EXISTS trial_end_date timestamptz;`);
-
-  // Add indexes for user plan fields
-  pgm.sql(`CREATE INDEX IF NOT EXISTS idx_users_plan_id ON users(plan_id);`);
-  pgm.sql(`CREATE INDEX IF NOT EXISTS idx_users_monthly_validations_used ON users(monthly_validations_used);`);
-  pgm.sql(`CREATE INDEX IF NOT EXISTS idx_users_subscription_status ON users(subscription_status);`);
-
-  // Seed default Free plan
+  // Seed default plans first
   pgm.sql(`
     INSERT INTO plans (name, slug, price, validations_limit, projects_limit, logs_retention_days, features, overage_rate, max_overage, sla)
     VALUES
@@ -58,15 +48,53 @@ const up = (pgm) => {
     ON CONFLICT (slug) DO NOTHING;
   `);
 
-  // Set default plan for existing users if they exist
+  // Add plan_id to users table (nullable initially)
+  pgm.sql(`ALTER TABLE users ADD COLUMN IF NOT EXISTS plan_id uuid;`);
+
+  // Add usage tracking columns to users
+  pgm.sql(`ALTER TABLE users ADD COLUMN IF NOT EXISTS monthly_validations_used integer DEFAULT 0 NOT NULL;`);
+  pgm.sql(`ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_status text DEFAULT 'active' NOT NULL;`);
+  pgm.sql(`ALTER TABLE users ADD COLUMN IF NOT EXISTS trial_end_date timestamptz;`);
+
+  // Add indexes for user plan fields
+  pgm.sql(`CREATE INDEX IF NOT EXISTS idx_users_plan_id ON users(plan_id);`);
+  pgm.sql(`CREATE INDEX IF NOT EXISTS idx_users_monthly_validations_used ON users(monthly_validations_used);`);
+  pgm.sql(`CREATE INDEX IF NOT EXISTS idx_users_subscription_status ON users(subscription_status);`);
+
+  // Set default plan for all existing users to free plan
   pgm.sql(`
     UPDATE users
     SET plan_id = (SELECT id FROM plans WHERE slug = 'free')
     WHERE plan_id IS NULL;
   `);
 
-  // Make plan_id not null for existing users
+  // Create a function to set default plan for new users
+  pgm.sql(`
+    CREATE OR REPLACE FUNCTION set_default_user_plan()
+    RETURNS TRIGGER AS $$
+    BEGIN
+      IF NEW.plan_id IS NULL THEN
+        SELECT id INTO NEW.plan_id FROM plans WHERE slug = 'free' LIMIT 1;
+      END IF;
+      RETURN NEW;
+    END;
+    $$ LANGUAGE plpgsql;
+  `);
+
+  // Create trigger to set default plan for new users
+  pgm.sql(`
+    DROP TRIGGER IF EXISTS set_default_plan_on_user_insert ON users;
+    CREATE TRIGGER set_default_plan_on_user_insert
+      BEFORE INSERT ON users
+      FOR EACH ROW
+      EXECUTE FUNCTION set_default_user_plan();
+  `);
+
+  // Update the column definition to set NOT NULL
   pgm.sql(`ALTER TABLE users ALTER COLUMN plan_id SET NOT NULL;`);
+
+  // Add foreign key constraint separately after plans table exists
+  pgm.sql(`ALTER TABLE users ADD CONSTRAINT fk_users_plan_id FOREIGN KEY (plan_id) REFERENCES plans(id);`);
 };
 
 /**
@@ -75,6 +103,13 @@ const up = (pgm) => {
  * @returns {Promise<void> | void}
  */
 const down = (pgm) => {
+  // Drop foreign key constraint first
+  pgm.sql(`ALTER TABLE users DROP CONSTRAINT IF EXISTS fk_users_plan_id;`);
+
+  // Drop trigger and function
+  pgm.sql(`DROP TRIGGER IF EXISTS set_default_plan_on_user_insert ON users;`);
+  pgm.sql(`DROP FUNCTION IF EXISTS set_default_user_plan();`);
+
   // Drop usage tracking columns
   pgm.dropColumn('users', 'monthly_validations_used');
   pgm.dropColumn('users', 'subscription_status');
