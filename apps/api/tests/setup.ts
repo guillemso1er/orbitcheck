@@ -112,17 +112,32 @@ export async function stopTestEnv() {
 }
 
 export async function resetDb() {
-  // TRUNCATE all tables to reset database state between tests
-  await pool.query(`
-    DO $$ DECLARE
-      r RECORD;
-    BEGIN
-      FOR r IN (SELECT tablename FROM pg_tables WHERE schemaname = current_schema()) LOOP
-        EXECUTE 'TRUNCATE TABLE ' || quote_ident(r.tablename) || ' CASCADE';
-      END LOOP;
-    END $$;
-  `)
+  try {
+    // Disable foreign key checks during deletion
+    await pool.query('SET session_replication_role = replica;');
+
+    // Delete all data but keep schema
+    const dataTables = [
+      'users', 'projects', 'api_keys', 'personal_access_tokens',
+      'audit_logs', 'webhooks', 'rules', 'order_logs', 'jobs',
+      'settings', 'country_bounding_boxes', 'usage_counts'
+    ];
+
+    for (const tableName of dataTables) {
+      try {
+        await pool.query(`DELETE FROM ${tableName};`);
+      } catch (error) {
+        // Table might not exist, continue
+        console.warn(`Failed to delete from ${tableName}:`, error.message);
+      }
+    }
+
+  } finally {
+    // Re-enable foreign key checks
+    await pool.query('SET session_replication_role = DEFAULT;');
+  }
 }
+
 
 async function runMigrations(db: Pool) {
   const migrationsDir = path.join(process.cwd(), 'migrations');
