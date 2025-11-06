@@ -188,7 +188,7 @@ export function testCreatePat(patToken, check) {
 
     const createPatPayload = JSON.stringify({
         name: 'k6-test-pat',
-        scopes: ['keys:read', 'keys:write', 'webhooks:manage', 'logs:read', 'usage:read']
+        scopes: ['keys:read', 'keys:write', 'webhooks:manage', 'logs:read', 'usage:read', 'pats:manage', 'rules:manage']
     });
 
     const res = http.post(`${API_V1_URL}/pats`, createPatPayload, { headers: mgmtHeaders });

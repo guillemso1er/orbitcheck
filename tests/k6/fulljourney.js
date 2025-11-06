@@ -125,6 +125,7 @@ export default function () {
     // Step 11-14: Batch Jobs
     const validateJobId = testBatchValidate(newRuntimeHeaders, check);
     const dedupeJobId = testBatchDedupe(newRuntimeHeaders, check);
+    sleep(2); // Wait for batch jobs to start processing
     if (validateJobId) {
         testGetValidateJobStatus(validateJobId, newRuntimeHeaders, check);
     }

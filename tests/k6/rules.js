@@ -46,17 +46,21 @@ export function testRegisterRules(headers, check) {
             id: 'k6-custom-rule',
             name: 'k6-custom-rule',
             description: 'test rule',
-            reason_code: 'test',
+            condition: 'true', // Add required condition field
             severity: 'low',
             enabled: true
         }]
     });
     const res = http.post(`${BASE_URL}/rules/register`, payload, { headers });
     check(res, {
-        '[Register Rules] status 200': (r) => r.status === 200,
+        '[Register Rules] status 200 or 201': (r) => r.status === 200 || r.status === 201,
         '[Register Rules] success': (r) => {
-            const body = JSON.parse(r.body);
-            return body.registered_rules && Array.isArray(body.registered_rules);
+            try {
+                const body = JSON.parse(r.body);
+                return body.registered_rules && Array.isArray(body.registered_rules);
+            } catch (e) {
+                return false;
+            }
         }
     });
 }

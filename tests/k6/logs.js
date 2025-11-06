@@ -35,15 +35,23 @@ export function testGetLogsForDelete(headers, check) {
 }
 
 export function testDeleteLog(log, headers, check) {
-    if (!log || !log.id) return;
+    if (!log || !log.id) {
+        console.log('No log available to delete, skipping test');
+        return;
+    }
     const delHeaders = Object.assign({}, headers);
     delete delHeaders['Content-Type'];
     const res = http.del(`${BASE_URL}/v1/logs/${log.id}`, null, { headers: delHeaders });
     check(res, {
         '[Delete Log] status 200': (r) => r.status === 200,
         '[Delete Log] success message': (r) => {
-            const body = JSON.parse(r.body);
-            return body.message && body.message.includes('deleted');
+            if (r.status !== 200) return false;
+            try {
+                const body = JSON.parse(r.body);
+                return body.message && body.message.includes('deleted');
+            } catch (e) {
+                return false;
+            }
         }
     });
 }

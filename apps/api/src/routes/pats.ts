@@ -127,13 +127,13 @@ export function registerPatRoutes(app: FastifyInstance, pool: Pool): void {
       security: MGMT_V1_SECURITY,
       body: {
         type: 'object',
-        required: ['name', 'scopes'],
+        required: ['name'],
         properties: {
           name: { type: 'string', description: 'Token name' },
           scopes: {
             type: 'array',
             items: { type: 'string' },
-            description: 'Access scopes for the token'
+            description: 'Access scopes for the token (optional, defaults to all scopes if empty)'
           },
           env: {
             type: 'string',
@@ -193,10 +193,25 @@ export function registerPatRoutes(app: FastifyInstance, pool: Pool): void {
 
       // Validate scopes
       const validScopes = Object.values(PAT_SCOPES);
-      const invalidScopes = scopes.filter((s: string) => !validScopes.includes(s as any));
-      if (invalidScopes.length > 0) {
+      let finalScopes = scopes;
+
+      if (scopes === undefined || scopes === null) {
+        // Default to all scopes if not provided
+        finalScopes = validScopes;
+      } else if (!Array.isArray(scopes)) {
         return sendError(rep, HTTP_STATUS.BAD_REQUEST, ERROR_CODES.INVALID_INPUT,
-          `Invalid scopes: ${invalidScopes.join(', ')}`, request_id);
+          'scopes must be an array of strings', request_id);
+      } else if (scopes.length === 0) {
+        // Default to all scopes if empty array provided
+        finalScopes = validScopes;
+      } else {
+        // Validate provided scopes
+        const invalidScopes = scopes.filter((s: string) => !validScopes.includes(s as any));
+        if (invalidScopes.length > 0) {
+          return sendError(rep, HTTP_STATUS.BAD_REQUEST, ERROR_CODES.INVALID_INPUT,
+            `Invalid scopes: ${invalidScopes.join(', ')}`, request_id);
+        }
+        finalScopes = scopes;
       }
 
       // Calculate expiration
@@ -228,7 +243,7 @@ export function registerPatRoutes(app: FastifyInstance, pool: Pool): void {
          (user_id, token_id, token_hash, name, scopes, env, expires_at, ip_allowlist, project_id)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
          RETURNING id, created_at`,
-        [userId, tokenId, hashedSecret, name, scopes, env, expiresAt, ip_allowlist || [], project_id]
+        [userId, tokenId, hashedSecret, name, finalScopes, env, expiresAt, ip_allowlist || [], project_id]
       );
 
       const response = {

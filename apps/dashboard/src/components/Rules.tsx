@@ -1,5 +1,5 @@
 // src/Rules.tsx
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Rule } from '../types';
 import { API_BASE, API_ENDPOINTS, LOCAL_STORAGE_KEYS } from '../constants';
 import { useDebounce } from '../hooks/useDebounce';
@@ -14,6 +14,31 @@ import { TestHarness } from './TestHarness';
 
 const Rules: React.FC = () => {
   const [rules, setRules] = useState<Rule[]>([]);
+
+  useEffect(() => {
+    const loadRules = async () => {
+      try {
+        const response = await apiClient.getAvailableRules();
+        const customRules = (response.rules || [])
+          .filter(rule => rule.category === 'custom' && rule.id && rule.name)
+          .map(rule => ({
+            id: rule.id!,
+            name: rule.name!,
+            description: rule.description || '',
+            condition: (rule as any).condition || '',
+            action: 'hold' as const,
+            priority: 0,
+            enabled: rule.enabled || false,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          }));
+        setRules(customRules);
+      } catch (err) {
+        console.error('Failed to load rules:', err);
+      }
+    };
+    loadRules();
+  }, []);
   const [testResult, setTestResult] = useState<TestResult | null>(null);
   const [ruleTestResults, setRuleTestResults] = useState<RuleTestResult[]>([]);
   const [testingRules, setTestingRules] = useState(false);

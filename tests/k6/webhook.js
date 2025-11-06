@@ -73,7 +73,7 @@ export function testDeleteWebhook(headers, check, webhookId) {
 
 export function testTestWebhook(headers, check) {
     const webhookPayload = JSON.stringify({
-        url: 'http://host.containers.internal:8054/post', // Use the local container
+        url: 'http://localhost:8054/post', // Use the local container
         payload_type: 'validation'
     });
     const res = http.post(`${API_V1_URL}/webhooks/test`, webhookPayload, { headers });

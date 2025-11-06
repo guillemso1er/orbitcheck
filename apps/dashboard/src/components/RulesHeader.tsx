@@ -25,7 +25,7 @@ export const RulesHeader: React.FC<RulesHeaderProps> = ({ onExport, onImport, on
                     </label>
                     <button
                         onClick={onSave}
-                        className={`px - 4 py-2 text-sm font-medium rounded-md text-white transition-colors ${saveStatus === 'saving' ? 'bg-gray-400' : saveStatus === 'saved' ? 'bg-green-600' : saveStatus === 'error' ? 'bg-red-600' : 'bg-indigo-600 hover:bg-indigo-700'}`}
+                        className={`px-4 py-2 text-sm font-medium rounded-md text-white transition-colors ${saveStatus === 'saving' ? 'bg-gray-400' : saveStatus === 'saved' ? 'bg-green-600' : saveStatus === 'error' ? 'bg-red-600' : 'bg-indigo-600 hover:bg-indigo-700'}`}
                         disabled={saveStatus === 'saving'}
                     >
                         {saveStatus === 'saving' ? 'Saving...' :

@@ -84,7 +84,7 @@ export const RulesList: React.FC<RulesListProps> = ({
                         </div>
                     ) : (
                         filteredRules.map((rule, index) => (
-                            <RuleEditor key={rule.id} rule={rule} index={index} onUpdate={onUpdate} onDelete={onDelete} onDuplicate={onDuplicate} />
+                            <RuleEditor key={`${rule.id}-${index}`} rule={rule} index={index} onUpdate={onUpdate} onDelete={onDelete} onDuplicate={onDuplicate} />
                         ))
                     )}
                 </div>

@@ -70,14 +70,47 @@ export function testBatchValidateWithHeaders(check) {
 
 export function testGetValidateJobStatus(jobId, headers, check) {
     if (!jobId) return;
-    const res = http.get(`${API_V1_URL}/jobs/${jobId}`, { headers });
-    check(res, {
-        '[Get Validate Job Status] status 200': (r) => r.status === 200,
-        '[Get Validate Job Status] has status': (r) => {
-            const body = JSON.parse(r.body);
-            return body.status && body.job_id === jobId;
+
+    // Poll for job completion (up to 10 seconds)
+    let attempts = 0;
+    const maxAttempts = 20;
+    let jobCompleted = false;
+
+    while (attempts < maxAttempts && !jobCompleted) {
+        const res = http.get(`${API_V1_URL}/jobs/${jobId}`, { headers });
+        if (res.status === 200) {
+            try {
+                const body = JSON.parse(res.body);
+                if (body.status === 'completed' || body.status === 'failed') {
+                    jobCompleted = true;
+                    check(res, {
+                        '[Get Validate Job Status] status 200': (r) => r.status === 200,
+                        '[Get Validate Job Status] has status': (r) => {
+                            const body = JSON.parse(r.body);
+                            return body.status && body.job_id === jobId;
+                        }
+                    });
+                    break;
+                }
+            } catch (e) {
+                // ignore parse errors
+            }
         }
-    });
+        attempts++;
+        sleep(0.5); // Wait 500ms between polls
+    }
+
+    // If we didn't get a completed job, still check what we have
+    if (!jobCompleted) {
+        const res = http.get(`${API_V1_URL}/jobs/${jobId}`, { headers });
+        check(res, {
+            '[Get Validate Job Status] status 200': (r) => r.status === 200,
+            '[Get Validate Job Status] has status': (r) => {
+                const body = JSON.parse(r.body);
+                return body.status && body.job_id === jobId;
+            }
+        });
+    }
 }
 
 export function testGetValidateJobStatusWithHeaders(jobId, check) {
