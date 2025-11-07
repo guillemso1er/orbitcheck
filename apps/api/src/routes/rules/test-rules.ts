@@ -258,8 +258,20 @@ export class RuleEvaluator {
     }
 
     private static createEvaluationContext(context: any): any {
+
+        const enhancedContext = JSON.parse(JSON.stringify(context));
+        if (enhancedContext.email?.metadata?.domain) {
+            enhancedContext.email.domain = enhancedContext.email.metadata.domain;
+        }
+        if (enhancedContext.phone?.metadata) {
+            Object.assign(enhancedContext.phone, enhancedContext.phone.metadata);
+        }
+        if (enhancedContext.address?.metadata) {
+            Object.assign(enhancedContext.address, enhancedContext.address.metadata);
+        }
+
         return {
-            ...context,
+            ...enhancedContext,
             // Helper functions for rule evaluation
             exists: (value: any) => value !== null && value !== undefined,
             isEmpty: (value: any) => {
@@ -295,8 +307,13 @@ export class RuleEvaluator {
                     const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
                     return !emailPattern.test(value);
                 }
+                /**
+                 * FIX: Addresses 'triggers email format validation on invalid email formats' test failure.
+                 * The original logic (`|| !value.mx_records`) incorrectly mixed deliverability (MX records)
+                 * with format validation. The `email_format` rule should only trigger on format issues.
+                 */
                 return value.valid === false && value.reason_codes &&
-                    (value.reason_codes.includes('EMAIL_INVALID_FORMAT') || !value.mx_records);
+                    (value.reason_codes.includes('EMAIL_INVALID_FORMAT'));
             },
             emailHasFormatIssue: (value: any) => {
                 if (!value) return false;
@@ -369,7 +386,7 @@ export class RiskScoreCalculator {
     private static readonly RISK_FACTORS = {
         email: {
             invalid: 30,
-            disposable: 25,
+            disposable: 35,
             role_account: 15,
             free_provider: 10,
             no_mx_records: 20,
@@ -467,18 +484,18 @@ export class RiskScoreCalculator {
         // Address risk factors
         if (validationResults.address) {
             const address = validationResults.address;
-            
+
             // Check for specific address issues with appropriate risk levels
             if (address.po_box) {
                 totalScore += this.RISK_FACTORS.address.po_box;
                 factors.push('PO Box address');
             }
-            
+
             // Check for postal code/city mismatch - should be medium risk (20-25 points)
             const isPostalMismatch = address.reason_codes &&
                 (address.reason_codes as string[]).some((code: string) =>
                     code.includes('POSTAL') || code.includes('CITY_MISMATCH') || code.includes('ADDRESS_POSTAL_CITY_MISMATCH'));
-            
+
             if (isPostalMismatch) {
                 totalScore += 25; // Medium risk - should not escalate to critical
                 factors.push('Address postal/city mismatch');
@@ -486,7 +503,7 @@ export class RiskScoreCalculator {
                 totalScore += this.RISK_FACTORS.address.invalid;
                 factors.push('Invalid address');
             }
-            
+
             if (address.deliverable === false) {
                 totalScore += this.RISK_FACTORS.address.non_deliverable;
                 factors.push('Non-deliverable address');
@@ -713,20 +730,31 @@ export function buildEnhancedNameValidationResult(result: any): any {
 }
 
 export function calculateFieldConfidence(result: any): number {
+
     let confidence = 50; // Base confidence
 
-    if (result.valid) confidence += 30;
+    if (result.valid) {
+        confidence += 30;
+    } else if (result.mx_found) {
+        // If validation failed but MX records exist, it's not a total loss of confidence.
+        confidence += 10;
+    }
+
     if (!result.reason_codes || result.reason_codes.length === 0) confidence += 10;
     if (result.provider === 'trusted') confidence += 10;
 
-    return Math.min(100, confidence);
+    // Penalize for negative signals
+    if (result.disposable) confidence -= 20;
+
+
+    return Math.max(0, Math.min(100, confidence));
 }
 
 // Import the actual validation functions from the validators
-import { validateEmail } from '../../validators/email.js';
-import { validatePhone } from '../../validators/phone.js';
 import { validateAddress } from '../../validators/address.js';
+import { validateEmail } from '../../validators/email.js';
 import { validateName } from '../../validators/name.js';
+import { validatePhone } from '../../validators/phone.js';
 
 export interface ValidationOrchestratorOptions {
     mode?: 'test' | 'live';
@@ -800,12 +828,12 @@ export async function validatePayload(
                 const emailResult = await validateEmail(payload.email!, redis);
                 const enhancedResult = buildEnhancedEmailValidationResult(emailResult);
                 results.email = enhancedResult;
-                
+
                 if (useCache && redis) {
                     const cacheKey = ValidationCacheManager.generateKey('email', payload.email!, projectId);
                     await ValidationCacheManager.set(redis, cacheKey, enhancedResult);
                 }
-                
+
                 debug_info.validation_providers_used.push('email');
             } catch (error) {
                 debug_info.errors.push({ field: 'email', error: error instanceof Error ? error.message : 'Unknown error' });
@@ -855,12 +883,12 @@ export async function validatePayload(
                 const phoneResult = await validatePhone(payload.phone!, phoneCountry, redis);
                 const enhancedResult = buildEnhancedPhoneValidationResult(phoneResult);
                 results.phone = enhancedResult;
-                
+
                 if (useCache && redis) {
                     const cacheKey = ValidationCacheManager.generateKey('phone', payload.phone!, projectId);
                     await ValidationCacheManager.set(redis, cacheKey, enhancedResult);
                 }
-                
+
                 debug_info.validation_providers_used.push('phone');
             } catch (error) {
                 debug_info.errors.push({ field: 'phone', error: error instanceof Error ? error.message : 'Unknown error' });
@@ -891,7 +919,7 @@ export async function validatePayload(
     // Address validation - run in parallel
     if (payload.address) {
         const hasRequiredFields = payload.address.line1 && payload.address.city && payload.address.postal_code && payload.address.country;
-        
+
         if (hasRequiredFields) {
             const addressPromise = (async () => {
                 try {
@@ -911,13 +939,13 @@ export async function validatePayload(
                     const addressResult = await validateAddress(payload.address as any, pool, redis);
                     const enhancedResult = buildEnhancedAddressValidationResult(addressResult, payload.address);
                     results.address = enhancedResult;
-                    
+
                     if (useCache && redis) {
                         const addressString = JSON.stringify(payload.address);
                         const cacheKey = ValidationCacheManager.generateKey('address', addressString, projectId);
                         await ValidationCacheManager.set(redis, cacheKey, enhancedResult);
                     }
-                    
+
                     debug_info.validation_providers_used.push('address');
                 } catch (error) {
                     debug_info.errors.push({ field: 'address', error: error instanceof Error ? error.message : 'Unknown error' });
