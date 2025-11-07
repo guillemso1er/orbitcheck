@@ -30,8 +30,9 @@ function b64url(bytes: number): string {
 export function parsePat(bearer?: string) {
   if (!bearer?.startsWith(BEARER_PREFIX)) return null;
   const raw = bearer.slice(7).trim();
+
   
-  // PAT format: oc_pat_{env}:{tokenId}:{secret}
+  // Real PAT format: oc_pat_{env}:{tokenId}:{secret}
   // We need to handle the 'oc_pat_' prefix specially
   if (!raw.startsWith('oc_pat_')) return null;
   

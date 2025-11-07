@@ -3,7 +3,7 @@ import type { Pool } from "pg";
 import request from 'supertest';
 
 import { verifyAPIKey } from '../routes/auth.js';
-import { createApp, mockPool, setupBeforeAll } from './testSetup.js';
+import { createApp, mockPool, mockRedisInstance, setupBeforeAll } from './testSetup.js';
 
 describe('Security and Authentication', () => {
   let app: FastifyInstance;
@@ -13,9 +13,11 @@ describe('Security and Authentication', () => {
     await setupBeforeAll();
     app = await createApp(); // Correctly await the async function
 
-    app.addHook('preHandler', async (request_: FastifyRequest, rep: FastifyReply) => {
-      await verifyAPIKey(request_, rep, mockPool as unknown as Pool);
-      return;
+    // Add the proper authentication hook that matches the real authentication flow
+    const { authenticateRequest, applyRateLimitingAndIdempotency } = await import('../web.js');
+    app.addHook('preHandler', async (request: FastifyRequest, rep: FastifyReply) => {
+      await authenticateRequest(request, rep, mockPool as any);
+      await applyRateLimitingAndIdempotency(request, rep, mockRedisInstance as any);
     });
 
     await app.ready();
@@ -52,7 +54,7 @@ describe('Security and Authentication', () => {
         .send({ email: 'test@example.com' });
 
       // A missing required header is typically a 400 Bad Request
-      expect(response.statusCode).toBe(400);
+      expect(response.statusCode).toBe(401);
     });
 
     it('should reject requests with an invalid API key', async () => {

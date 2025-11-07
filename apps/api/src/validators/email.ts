@@ -85,6 +85,19 @@ export async function validateEmail(
     email: string,
     redis?: Redis
 ): Promise<ValidationResult> {
+    // Handle undefined or null email
+    if (!email) {
+        return {
+            valid: false,
+            normalized: '',
+            reason_codes: ['email.invalid_format'],
+            disposable: false,
+            mx_found: false,
+            request_id: crypto.randomUUID(),
+            ttl_seconds: 30 * 24 * 3600
+        };
+    }
+
     const normalizedEmail = email.trim().toLowerCase();
     const input = normalizedEmail;
     const hash = crypto.createHash('sha1').update(input).digest('hex');

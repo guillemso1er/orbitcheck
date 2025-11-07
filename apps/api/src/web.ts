@@ -151,7 +151,7 @@ export async function applyValidationLimits<TServer extends RawServerBase = RawS
 export async function applyRateLimitingAndIdempotency<TServer extends RawServerBase = RawServerBase>(request: FastifyRequest<RouteGenericInterface, TServer>, rep: FastifyReply<RouteGenericInterface, TServer>, redis: IORedisType): Promise<void> {
     const url = request.url;
 
-    // Skip middleware for health, docs, metrics, and auth
+    // Skip middleware for health, docs, metrics, auth, and management routes
     if (url.startsWith(ROUTES.HEALTH) ||
         url.startsWith(ROUTES.DOCUMENTATION) ||
         url.startsWith(ROUTES.METRICS) ||
@@ -161,10 +161,36 @@ export async function applyRateLimitingAndIdempotency<TServer extends RawServerB
         return;
     }
 
+    // Skip middleware for management routes
+    const isMgmtRoute = Object.values(MGMT_V1_ROUTES).some(group =>
+        typeof group === 'object' && group !== null &&
+        Object.values(group).some(route => {
+            // Handle parameterized routes like '/v1/api-keys/:id'
+            if (route.includes(':')) {
+                const routePattern = route.replace(/:[^/]+/g, '[^/]+');
+                const regex = new RegExp(`^${routePattern}`);
+                return regex.test(url);
+            }
+            return url.startsWith(route);
+        })
+    );
+
+    if (isMgmtRoute) {
+        return;
+    }
+
     // Only apply rate limiting and idempotency to runtime routes
     const isRuntimeRoute = Object.values(API_V1_ROUTES).some(group =>
         typeof group === 'object' && group !== null &&
-        Object.values(group).some(route => url.startsWith(route))
+        Object.values(group).some(route => {
+            // Handle parameterized routes like '/v1/jobs/:id'
+            if (route.includes(':')) {
+                const routePattern = route.replace(/:[^/]+/g, '[^/]+');
+                const regex = new RegExp(`^${routePattern}`);
+                return regex.test(url);
+            }
+            return url.startsWith(route);
+        })
     );
 
     if (isRuntimeRoute) {

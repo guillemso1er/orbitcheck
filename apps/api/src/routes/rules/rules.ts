@@ -4,12 +4,9 @@ import type { Pool } from "pg";
 
 import { ERROR_CODE_DESCRIPTIONS } from "../../errors.js";
 import { REASON_CODES } from "../../validation.js";
-import { validateAddress } from "../../validators/address.js";
-import { validateEmail } from "../../validators/email.js";
-import { validateName } from "../../validators/name.js";
-import { validatePhone } from "../../validators/phone.js";
+// Validation functions are now imported and used through the validation orchestrator
 import { generateRequestId, MGMT_V1_SECURITY, securityHeader, sendServerError } from "../utils.js";
-import { buildEnhancedAddressValidationResult, buildEnhancedEmailValidationResult, buildEnhancedNameValidationResult, buildEnhancedPhoneValidationResult, RiskScoreCalculator, RuleEvaluationResult, RuleEvaluator, TestPayloadJsonSchema, TestRulesResponse, validateDevice, validateIP, ValidationCacheManager, ValidationPayload } from "./test-rules.js";
+import { RiskScoreCalculator, RuleEvaluationResult, RuleEvaluator, TestPayloadJsonSchema, TestRulesResponse, ValidationPayload, validatePayload } from "./test-rules.js";
 
 // Custom rules are now stored in the database
 
@@ -766,221 +763,31 @@ export function registerRulesRoutes(app: FastifyInstance, pool: Pool, redis?: an
         });
       }
       
-      // Parallel validation with caching
-      metrics.validation_start = performance.now();
-      const validationPromises = [];
-
-      // Email validation
-      if (body.email) {
-        const cacheKey = ValidationCacheManager.generateKey('email', body.email, project_id);
-        const cached = await ValidationCacheManager.get(redis, cacheKey);
-
-        if (cached) {
-          metrics.cache_hits++;
-          results.email = cached;
-        } else {
-          metrics.cache_misses++;
-          validationPromises.push(
-            validateEmail(body.email, redis).then(async (emailResult) => {
-              const result = buildEnhancedEmailValidationResult(emailResult);
-              results.email = result;
-              await ValidationCacheManager.set(redis, cacheKey, result);
-              debug_info.validation_providers_used.push('email');
-              return result;
-            }).catch(error => {
-              debug_info.errors.push({ field: 'email', error: error.message });
-              // Ensure results are populated even on error
-              results.email = {
-                valid: false,
-                confidence: 0,
-                reason_codes: ['EMAIL_VALIDATION_ERROR'],
-                risk_score: 30,
-                processing_time_ms: 0,
-                provider: 'error',
-                disposable: false,
-                metadata: { error: error.message }
-              };
-              return null;
-            })
-          );
+      // Use the shared validation orchestrator for consistent validation
+      const { results: orchestratorResults, metrics: orchestratorMetrics, debug_info: orchestratorDebugInfo } = await validatePayload(
+        body,
+        redis,
+        pool,
+        {
+          mode: 'test',
+          fillMissingResults: true,
+          useCache: true,
+          timeoutMs: 30000,
+          projectId: project_id
         }
-      } else {
-        // Ensure email results are populated even when no email is provided
-        results.email = {
-          valid: false,
-          confidence: 0,
-          reason_codes: ['NO_EMAIL_PROVIDED'],
-          risk_score: 0,
-          processing_time_ms: 0,
-          provider: 'none',
-          disposable: false,
-          metadata: {}
-        };
-      }
+      );
 
-      // Phone validation - ensure results are always populated
-      if (body.phone) {
-        const cacheKey = ValidationCacheManager.generateKey('phone', body.phone, project_id);
-        const cached = await ValidationCacheManager.get(redis, cacheKey);
+      // Merge results from orchestrator
+      Object.assign(results, orchestratorResults);
+      metrics.cache_hits += orchestratorMetrics.cache_hits;
+      metrics.cache_misses += orchestratorMetrics.cache_misses;
+      metrics.validation_start = orchestratorMetrics.validation_start;
+      metrics.validation_end = orchestratorMetrics.validation_end;
 
-        if (cached) {
-          metrics.cache_hits++;
-          results.phone = cached;
-        } else {
-          metrics.cache_misses++;
-          const phoneCountry = body.address?.country || 'US';
-          
-          try {
-            const phoneResult = await validatePhone(body.phone, phoneCountry, redis);
-            const result = buildEnhancedPhoneValidationResult(phoneResult);
-            results.phone = result;
-            await ValidationCacheManager.set(redis, cacheKey, result);
-            debug_info.validation_providers_used.push('phone');
-          } catch (error) {
-            debug_info.errors.push({ field: 'phone', error: error instanceof Error ? error.message : 'Unknown error' });
-            results.phone = {
-              valid: false,
-              confidence: 0,
-              reason_codes: ['PHONE_VALIDATION_ERROR'],
-              risk_score: 30,
-              processing_time_ms: 0,
-              provider: 'error',
-              metadata: { error: error instanceof Error ? error.message : 'Unknown error' }
-            };
-          }
-        }
-      } else {
-        // Always provide phone results when phone is provided
-        results.phone = {
-          valid: false,
-          confidence: 0,
-          reason_codes: ['NO_PHONE_PROVIDED'],
-          risk_score: 0,
-          processing_time_ms: 0,
-          provider: 'none',
-          metadata: {}
-        };
-      }
-
-      // Address validation - ensure results are always populated when address data is provided
-      if (body.address) {
-        const hasRequiredFields = body.address.line1 && body.address.city && body.address.postal_code && body.address.country;
-        
-        if (hasRequiredFields) {
-          const addressString = JSON.stringify(body.address);
-          const cacheKey = ValidationCacheManager.generateKey('address', addressString, project_id);
-          const cached = await ValidationCacheManager.get(redis, cacheKey);
-
-          if (cached) {
-            metrics.cache_hits++;
-            results.address = cached;
-          } else {
-            metrics.cache_misses++;
-            validationPromises.push(
-              validateAddress(body.address as any, pool, redis).then(async (addressResult) => {
-                const result = buildEnhancedAddressValidationResult(addressResult, body.address);
-                results.address = result;
-                await ValidationCacheManager.set(redis, cacheKey, result);
-                debug_info.validation_providers_used.push('address');
-                return result;
-              }).catch(error => {
-                debug_info.errors.push({ field: 'address', error: error instanceof Error ? error.message : 'Unknown error' });
-                return null;
-              })
-            );
-          }
-        } else {
-          // Provide empty address results when address data is incomplete
-          results.address = {
-            valid: false,
-            confidence: 0,
-            reason_codes: ['INCOMPLETE_ADDRESS_DATA'],
-            risk_score: 20,
-            processing_time_ms: 0,
-            provider: 'none',
-            metadata: { message: 'Address validation skipped due to incomplete data' }
-          };
-        }
-      } else {
-        // Always provide address results when no address is provided
-        results.address = {
-          valid: false,
-          confidence: 0,
-          reason_codes: ['NO_ADDRESS_PROVIDED'],
-          risk_score: 0,
-          processing_time_ms: 0,
-          provider: 'none',
-          metadata: {}
-        };
-      }
-
-      // Name validation
-      if (body.name) {
-        const nameResult = validateName(body.name);
-        results.name = buildEnhancedNameValidationResult(nameResult);
-        debug_info.validation_providers_used.push('name');
-      }
-
-      // IP validation (if provided)
-      if (body.ip) {
-        try {
-          results.ip = await validateIP(body.ip, redis);
-          debug_info.validation_providers_used.push('ip');
-        } catch (error) {
-          debug_info.errors.push({ field: 'ip', error: error instanceof Error ? error.message : 'Unknown error' });
-        }
-      }
-
-      // Device validation (if user_agent provided)
-      if (body.user_agent) {
-        try {
-          results.device = await validateDevice(body.user_agent, redis);
-          debug_info.validation_providers_used.push('device');
-        } catch (error) {
-          debug_info.errors.push({ field: 'device', error: error instanceof Error ? error.message : 'Unknown error' });
-        }
-      }
-
-      // Wait for all validations to complete
-      await Promise.allSettled(validationPromises);
-      metrics.validation_end = performance.now();
-
-      // Ensure results are populated even if validation failed
-      if (body.email && !results.email) {
-        results.email = {
-          valid: false,
-          confidence: 0,
-          reason_codes: ['EMAIL_VALIDATION_FAILED'],
-          risk_score: 30,
-          processing_time_ms: 0,
-          provider: 'error',
-          disposable: false,
-          metadata: { error: 'Email validation failed' }
-        };
-      }
-      if (body.phone && !results.phone) {
-        results.phone = {
-          valid: false,
-          confidence: 0,
-          reason_codes: ['PHONE_VALIDATION_FAILED'],
-          risk_score: 30,
-          processing_time_ms: 0,
-          provider: 'error',
-          metadata: { error: 'Phone validation failed' }
-        };
-      }
-      if (body.address && !results.address) {
-        results.address = {
-          valid: false,
-          confidence: 0,
-          reason_codes: ['ADDRESS_VALIDATION_FAILED'],
-          risk_score: 30,
-          processing_time_ms: 0,
-          provider: 'error',
-          po_box: false,
-          metadata: { error: 'Address validation failed' }
-        };
-      }
+      // Merge debug info
+      debug_info.validation_providers_used.push(...orchestratorDebugInfo.validation_providers_used);
+      debug_info.errors.push(...orchestratorDebugInfo.errors);
+      debug_info.warnings.push(...orchestratorDebugInfo.warnings);
 
       // Calculate comprehensive risk score
       const riskAnalysis = RiskScoreCalculator.calculate(results);

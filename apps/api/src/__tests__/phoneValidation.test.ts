@@ -94,13 +94,18 @@ describe('Phone Validation Endpoints', () => {
         });
 
         it('should invalidate phone with invalid format', async () => {
-            libphone.parsePhoneNumberWithError.mockReturnValueOnce(null);
+            libphone.parsePhoneNumberWithError.mockReturnValueOnce({
+                isValid: () => false,
+                number: '',
+                country: null,
+                phone: '',
+            } as any);
 
             const result = await validatePhone('invalid');
 
             expect(result.valid).toBe(false);
             expect(result.e164).toBe('');
-            expect(result.country).toBe(null);
+            expect(result.country).toBe('');
             expect(result.reason_codes).toContain('phone.invalid_format');
         });
 
@@ -110,6 +115,7 @@ describe('Phone Validation Endpoints', () => {
             const result = await validatePhone('unparseable');
 
             expect(result.valid).toBe(false);
+            expect(result.e164).toBe('');
             expect(result.reason_codes).toContain('phone.unparseable');
         });
 
@@ -161,6 +167,164 @@ describe('Phone Validation Endpoints', () => {
             const result = await validatePhone('+44 1234 567890');
 
             expect(result.country).toBe('GB');
+        });
+    });
+
+    describe('validatePhone function - non-obvious invalid cases', () => {
+        it('should invalidate phone with all same digits', async () => {
+            libphone.parsePhoneNumberWithError.mockImplementation(() => { throw new Error('Invalid number'); });
+
+            const result = await validatePhone('11111111111');
+
+            expect(result.valid).toBe(false);
+            expect(result.e164).toBe('');
+            expect(result.country).toBe('');
+            expect(result.reason_codes).toContain('phone.unparseable');
+        });
+
+        it('should invalidate phone with extension mixed in main number', async () => {
+            libphone.parsePhoneNumberWithError.mockImplementation(() => { throw new Error('Extension error'); });
+
+            const result = await validatePhone('+1 555 123 4567 ext 123');
+
+            expect(result.valid).toBe(false);
+            expect(result.reason_codes).toContain('phone.unparseable');
+        });
+
+        it('should invalidate phone with excessive leading zeros', async () => {
+            libphone.parsePhoneNumberWithError.mockImplementation(() => { throw new Error('Invalid format'); });
+
+            const result = await validatePhone('0000000000001');
+
+            expect(result.valid).toBe(false);
+            expect(result.reason_codes).toContain('phone.unparseable');
+        });
+
+        it('should invalidate phone with mixed country codes and hints', async () => {
+            libphone.parsePhoneNumberWithError.mockImplementation(() => {
+                throw new Error('Country code conflict');
+            });
+
+            const result = await validatePhone('+44 1234 567890', 'US');
+
+            expect(result.valid).toBe(false);
+            expect(result.reason_codes).toContain('phone.unparseable');
+        });
+
+        it('should invalidate very long phone number', async () => {
+            libphone.parsePhoneNumberWithError.mockImplementation(() => {
+                throw new Error('Number too long');
+            });
+
+            const longNumber = '+123456789012345678901234567890';
+            const result = await validatePhone(longNumber);
+
+            expect(result.valid).toBe(false);
+            expect(result.reason_codes).toContain('phone.unparseable');
+        });
+
+        it('should invalidate phone with only non-numeric characters', async () => {
+            libphone.parsePhoneNumberWithError.mockImplementation(() => {
+                throw new Error('No digits found');
+            });
+
+            const result = await validatePhone('abc-def-ghi');
+
+            expect(result.valid).toBe(false);
+            expect(result.reason_codes).toContain('phone.unparseable');
+        });
+
+        it('should invalidate phone with whitespace in country code', async () => {
+            libphone.parsePhoneNumberWithError.mockImplementation(() => {
+                throw new Error('Invalid country format');
+            });
+
+            const result = await validatePhone('+ 1 555 123 4567');
+
+            expect(result.valid).toBe(false);
+            expect(result.reason_codes).toContain('phone.unparseable');
+        });
+
+        it('should invalidate phone with parenthesized country code only', async () => {
+            libphone.parsePhoneNumberWithError.mockImplementation(() => {
+                throw new Error('Invalid parentheses usage');
+            });
+
+            const result = await validatePhone('(1) 555 123 4567');
+
+            expect(result.valid).toBe(false);
+            expect(result.reason_codes).toContain('phone.unparseable');
+        });
+
+        it('should invalidate phone with duplicate plus signs', async () => {
+            libphone.parsePhoneNumberWithError.mockImplementation(() => {
+                throw new Error('Multiple plus signs');
+            });
+
+            const result = await validatePhone('++1 555 123 4567');
+
+            expect(result.valid).toBe(false);
+            expect(result.reason_codes).toContain('phone.unparseable');
+        });
+
+        it('should invalidate phone with null input', async () => {
+            const result = await validatePhone(null as any);
+
+            expect(result.valid).toBe(false);
+            expect(result.e164).toBe('');
+            expect(result.country).toBe('');
+            expect(result.reason_codes).toContain('phone.invalid_format');
+        });
+
+        it('should invalidate phone with undefined input', async () => {
+            const result = await validatePhone(undefined as any);
+
+            expect(result.valid).toBe(false);
+            expect(result.e164).toBe('');
+            expect(result.country).toBe('');
+            expect(result.reason_codes).toContain('phone.invalid_format');
+        });
+
+        it('should invalidate phone with empty string', async () => {
+            const result = await validatePhone('');
+
+            expect(result.valid).toBe(false);
+            expect(result.e164).toBe('');
+            expect(result.country).toBe('');
+            expect(result.reason_codes).toContain('phone.invalid_format');
+        });
+
+        it('should invalidate phone with only plus sign', async () => {
+            libphone.parsePhoneNumberWithError.mockImplementation(() => {
+                throw new Error('Plus sign only');
+            });
+
+            const result = await validatePhone('+');
+
+            expect(result.valid).toBe(false);
+            expect(result.reason_codes).toContain('phone.unparseable');
+        });
+
+        it('should handle country code with invalid length but still attempt parsing', async () => {
+            libphone.parsePhoneNumberWithError.mockImplementation(() => {
+                throw new Error('Invalid country code');
+            });
+
+            const result = await validatePhone('+999 555 123 4567');
+
+            expect(result.valid).toBe(false);
+            expect(result.reason_codes).toContain('phone.unparseable');
+        });
+
+        it('should invalidate phone number with embedded quotes', async () => {
+            libphone.parsePhoneNumberWithError.mockImplementation(() => {
+                throw new Error('Quote characters');
+            });
+
+            const result = await validatePhone('+1 "555" 123-4567');
+
+            expect(result.valid).toBe(false);
+            expect(result.reason_codes).toContain('phone.unparseable');
         });
     });
 

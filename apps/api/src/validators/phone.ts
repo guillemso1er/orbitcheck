@@ -41,6 +41,18 @@ export async function validatePhone(
         }
     }
 
+    // Handle null, undefined, or empty phone input
+    if (!phone || typeof phone !== 'string' || phone.trim() === '') {
+        return {
+            valid: false,
+            e164: "",
+            country: country ? country.toUpperCase() : '',
+            reason_codes: ['phone.invalid_format'],
+            request_id: crypto.randomUUID(),
+            ttl_seconds: 30 * 24 * 3600,
+        };
+    }
+
     const reason_codes: string[] = [];
     let e164 = "";
     let cc = country?.toUpperCase();
@@ -49,19 +61,19 @@ export async function validatePhone(
         const parsed = cc ? parsePhoneNumberWithError(phone, cc as CountryCode) : parsePhoneNumberWithError(phone);
         if (parsed && parsed.isValid()) {
             e164 = parsed.number;
-            cc = parsed.country || cc;
+            cc = parsed.country ? String(parsed.country) : cc;
         } else {
-            reason_codes.push(REASON_CODES.PHONE_INVALID_FORMAT);
+            reason_codes.push('phone.invalid_format');
         }
     } catch {
-        reason_codes.push(REASON_CODES.PHONE_UNPARSEABLE);
+        reason_codes.push('phone.unparseable');
     }
 
     const valid = reason_codes.length === 0;
     result = {
         valid,
         e164,
-        country: cc || null,
+        country: cc || '',
         reason_codes,
         request_id: crypto.randomUUID(),
         ttl_seconds: 30 * 24 * 3600,

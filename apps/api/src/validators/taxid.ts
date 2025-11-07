@@ -292,8 +292,17 @@ export function validateES(value: string): { valid: boolean; reason_codes: strin
  * @returns {Object} Validation result with valid flag and reason codes (format errors only).
  */
 export function validateEIN(value: string): { valid: boolean; reason_codes: string[] } {
+    // EIN must be in format XX-XXXXXXX (with dash after first 2 digits)
+    const einRegex = /^\d{2}-\d{7}$/;
     const v = onlyDigits(value);
-    return { valid: v.length === 9, reason_codes: v.length === 9 ? [] : ["taxid.invalid_format"] };
+    
+    // Must have exactly 9 digits and match the dash format
+    const isValid = v.length === 9 && einRegex.test(value);
+    
+    return {
+        valid: isValid,
+        reason_codes: isValid ? [] : ["taxid.invalid_format"]
+    };
 }
 
 // VIES SOAP
@@ -421,12 +430,12 @@ async function dispatchValidation(
     return { valid: result.valid, reason_codes: result.reason_codes, source: result.source };
   }
   default: {
-    return { valid: false, reason_codes: ["taxid.invalid_format"] };
+    return { valid: false, reason_codes: ["tax_id.invalid"] };
   }
   }
 }
 
-export async function validateTaxId({ type, value, country, redis }: { type: string, value: string, country: string, redis?: Redis }): Promise<{ valid: boolean; normalized: string; reason_codes: string[]; source: string; request_id: string; ttl?: number }> {
+export async function validateTaxId({ type, value, country, redis }: { type: string, value: string, country: string, redis?: Redis }): Promise<{ valid: boolean; normalized: string; reason_codes: string[]; source: string; request_id: string; type: string; ttl?: number }> {
   const t = type.toUpperCase();
   const normalizedValue = value.replaceAll(/\s/g, "");
   const input = { type: t, value: normalizedValue, country: country || "" };
@@ -436,7 +445,7 @@ export async function validateTaxId({ type, value, country, redis }: { type: str
 
   const cached = await getCachedResult(redis, cacheKey);
   if (cached) {
-    return cached;
+    return { ...cached, type: t.toLowerCase() };
   }
 
   const base = createBaseResult(normalizedValue);
@@ -446,6 +455,7 @@ export async function validateTaxId({ type, value, country, redis }: { type: str
     ...base,
     valid: validationResult.valid,
     reason_codes: validationResult.reason_codes,
+    type: t.toLowerCase(),
     ...(validationResult.source && { source: validationResult.source })
   };
 

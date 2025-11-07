@@ -119,8 +119,9 @@ beforeEach(async () => {
   
   const keyRes = await app.inject({
     method: 'POST',
-    url: '/v1/keys',
-    headers: { authorization: `Bearer ${loginRes.json().pat_token}` }
+    url: '/v1/api-keys',
+    headers: { authorization: `Bearer ${loginRes.json().pat_token}` },
+    payload: { name: 'Test API Key' }
   })
   apiKey = keyRes.json().full_key
 })
@@ -140,7 +141,7 @@ describe('Validation Integration Tests', () => {
       const res = await app.inject({
         method: 'POST',
         url: '/v1/validate/email',
-        headers: { authorization: 'API-Key invalid-key' },
+        headers: { authorization: 'Bearer invalid-key' },
         payload: { email: 'test@example.com' }
       })
       expect(res.statusCode).toBe(401)
@@ -177,7 +178,7 @@ describe('Validation Integration Tests', () => {
       const res = await app.inject({
         method: 'POST',
         url: '/v1/validate/email',
-        headers: { authorization: `API-Key ${apiKey}` },
+        headers: { authorization: `Bearer ${apiKey}` },
         payload: { email: 'user@gmail.com' }
       })
       expect(res.statusCode).toBe(200)
@@ -195,7 +196,7 @@ describe('Validation Integration Tests', () => {
       const res = await app.inject({
         method: 'POST',
         url: '/v1/validate/email',
-        headers: { authorization: `API-Key ${apiKey}` },
+        headers: { authorization: `Bearer ${apiKey}` },
         payload: { email: 'invalid-email' }
       })
       expect(res.statusCode).toBe(200)
@@ -208,7 +209,7 @@ describe('Validation Integration Tests', () => {
       const res = await app.inject({
         method: 'POST',
         url: '/v1/validate/email',
-        headers: { authorization: `API-Key ${apiKey}` },
+        headers: { authorization: `Bearer ${apiKey}` },
         payload: { email: 'USER@EXAMPLE.COM' }
       })
       expect(res.statusCode).toBe(200)
@@ -220,7 +221,7 @@ describe('Validation Integration Tests', () => {
       const res = await app.inject({
         method: 'POST',
         url: '/v1/validate/email',
-        headers: { authorization: `API-Key ${apiKey}` },
+        headers: { authorization: `Bearer ${apiKey}` },
         payload: { email: 'user@tempmail.com' }
       })
       expect(res.statusCode).toBe(200)
@@ -232,7 +233,7 @@ describe('Validation Integration Tests', () => {
       const res = await app.inject({
         method: 'POST',
         url: '/v1/validate/email',
-        headers: { authorization: `API-Key ${apiKey}` },
+        headers: { authorization: `Bearer ${apiKey}` },
         payload: {}
       })
       expect(res.statusCode).toBe(400)
@@ -242,7 +243,7 @@ describe('Validation Integration Tests', () => {
       const res = await app.inject({
         method: 'POST',
         url: '/v1/validate/email',
-        headers: { authorization: `API-Key ${apiKey}` },
+        headers: { authorization: `Bearer ${apiKey}` },
         payload: { email: '' }
       })
       expect(res.statusCode).toBe(400)
@@ -254,7 +255,7 @@ describe('Validation Integration Tests', () => {
       const res = await app.inject({
         method: 'POST',
         url: '/v1/validate/phone',
-        headers: { authorization: `API-Key ${apiKey}` },
+        headers: { authorization: `Bearer ${apiKey}` },
         payload: { phone: '+1234567890' }
       })
       expect(res.statusCode).toBe(200)
@@ -270,7 +271,7 @@ describe('Validation Integration Tests', () => {
       const res = await app.inject({
         method: 'POST',
         url: '/v1/validate/phone',
-        headers: { authorization: `API-Key ${apiKey}` },
+        headers: { authorization: `Bearer ${apiKey}` },
         payload: { phone: '020 1234 5678', country: 'GB' }
       })
       expect(res.statusCode).toBe(200)
@@ -283,7 +284,7 @@ describe('Validation Integration Tests', () => {
       const res = await app.inject({
         method: 'POST',
         url: '/v1/validate/phone',
-        headers: { authorization: `API-Key ${apiKey}` },
+        headers: { authorization: `Bearer ${apiKey}` },
         payload: { phone: 'invalid-phone' }
       })
       expect(res.statusCode).toBe(200)
@@ -296,7 +297,7 @@ describe('Validation Integration Tests', () => {
       const res = await app.inject({
         method: 'POST',
         url: '/v1/validate/phone',
-        headers: { authorization: `API-Key ${apiKey}` },
+        headers: { authorization: `Bearer ${apiKey}` },
         payload: { 
           phone: '+1234567890',
           request_otp: true
@@ -311,7 +312,7 @@ describe('Validation Integration Tests', () => {
       const res = await app.inject({
         method: 'POST',
         url: '/v1/validate/phone',
-        headers: { authorization: `API-Key ${apiKey}` },
+        headers: { authorization: `Bearer ${apiKey}` },
         payload: {}
       })
       expect(res.statusCode).toBe(400)
@@ -323,7 +324,7 @@ describe('Validation Integration Tests', () => {
       const res = await app.inject({
         method: 'POST',
         url: '/v1/validate/address',
-        headers: { authorization: `API-Key ${apiKey}` },
+        headers: { authorization: `Bearer ${apiKey}` },
         payload: {
           address: {
             line1: '123 Main Street',
@@ -347,7 +348,7 @@ describe('Validation Integration Tests', () => {
       const res = await app.inject({
         method: 'POST',
         url: '/v1/validate/address',
-        headers: { authorization: `API-Key ${apiKey}` },
+        headers: { authorization: `Bearer ${apiKey}` },
         payload: {
           address: {
             line1: 'P.O. Box 123',
@@ -367,7 +368,7 @@ describe('Validation Integration Tests', () => {
       const res = await app.inject({
         method: 'POST',
         url: '/v1/validate/address',
-        headers: { authorization: `API-Key ${apiKey}` },
+        headers: { authorization: `Bearer ${apiKey}` },
         payload: {
           address: {
             line1: '123 Main Street',
@@ -387,7 +388,7 @@ describe('Validation Integration Tests', () => {
       const res = await app.inject({
         method: 'POST',
         url: '/v1/validate/address',
-        headers: { authorization: `API-Key ${apiKey}` },
+        headers: { authorization: `Bearer ${apiKey}` },
         payload: {
           address: {
             line1: '10 Downing Street',
@@ -406,7 +407,7 @@ describe('Validation Integration Tests', () => {
       const res = await app.inject({
         method: 'POST',
         url: '/v1/validate/address',
-        headers: { authorization: `API-Key ${apiKey}` },
+        headers: { authorization: `Bearer ${apiKey}` },
         payload: {
           address: {
             line1: '123 Main St'
@@ -421,7 +422,7 @@ describe('Validation Integration Tests', () => {
       const res = await app.inject({
         method: 'POST',
         url: '/v1/validate/address',
-        headers: { authorization: `API-Key ${apiKey}` },
+        headers: { authorization: `Bearer ${apiKey}` },
         payload: {}
       })
       expect(res.statusCode).toBe(400)
@@ -433,7 +434,7 @@ describe('Validation Integration Tests', () => {
       const res = await app.inject({
         method: 'POST',
         url: '/v1/validate/tax-id',
-        headers: { authorization: `API-Key ${apiKey}` },
+        headers: { authorization: `Bearer ${apiKey}` },
         payload: { 
           tax_id: '123-45-6789',
           country: 'US',
@@ -453,7 +454,7 @@ describe('Validation Integration Tests', () => {
       const res = await app.inject({
         method: 'POST',
         url: '/v1/validate/tax-id',
-        headers: { authorization: `API-Key ${apiKey}` },
+        headers: { authorization: `Bearer ${apiKey}` },
         payload: { 
           tax_id: '12-3456789',
           country: 'US',
@@ -470,7 +471,7 @@ describe('Validation Integration Tests', () => {
       const res = await app.inject({
         method: 'POST',
         url: '/v1/validate/tax-id',
-        headers: { authorization: `API-Key ${apiKey}` },
+        headers: { authorization: `Bearer ${apiKey}` },
         payload: { 
           tax_id: 'invalid-tax-id',
           country: 'US',
@@ -487,7 +488,7 @@ describe('Validation Integration Tests', () => {
       const res = await app.inject({
         method: 'POST',
         url: '/v1/validate/tax-id',
-        headers: { authorization: `API-Key ${apiKey}` },
+        headers: { authorization: `Bearer ${apiKey}` },
         payload: { tax_id: '123-45-6789' }
         // Missing country and type
       })
@@ -500,7 +501,7 @@ describe('Validation Integration Tests', () => {
       const res = await app.inject({
         method: 'POST',
         url: '/v1/validate/name',
-        headers: { authorization: `API-Key ${apiKey}` },
+        headers: { authorization: `Bearer ${apiKey}` },
         payload: { name: 'John Doe' }
       })
       expect(res.statusCode).toBe(200)
@@ -515,7 +516,7 @@ describe('Validation Integration Tests', () => {
       const res = await app.inject({
         method: 'POST',
         url: '/v1/validate/name',
-        headers: { authorization: `API-Key ${apiKey}` },
+        headers: { authorization: `Bearer ${apiKey}` },
         payload: { name: "Jean-Pierre O'Connor" }
       })
       expect(res.statusCode).toBe(200)
@@ -527,7 +528,7 @@ describe('Validation Integration Tests', () => {
       const res = await app.inject({
         method: 'POST',
         url: '/v1/validate/name',
-        headers: { authorization: `API-Key ${apiKey}` },
+        headers: { authorization: `Bearer ${apiKey}` },
         payload: { name: 'A' }
       })
       expect(res.statusCode).toBe(200)
@@ -539,7 +540,7 @@ describe('Validation Integration Tests', () => {
       const res = await app.inject({
         method: 'POST',
         url: '/v1/validate/name',
-        headers: { authorization: `API-Key ${apiKey}` },
+        headers: { authorization: `Bearer ${apiKey}` },
         payload: { name: 'A'.repeat(200) }
       })
       expect(res.statusCode).toBe(200)
@@ -551,7 +552,7 @@ describe('Validation Integration Tests', () => {
       const res = await app.inject({
         method: 'POST',
         url: '/v1/validate/name',
-        headers: { authorization: `API-Key ${apiKey}` },
+        headers: { authorization: `Bearer ${apiKey}` },
         payload: { name: '' }
       })
       expect(res.statusCode).toBe(400)
@@ -561,7 +562,7 @@ describe('Validation Integration Tests', () => {
       const res = await app.inject({
         method: 'POST',
         url: '/v1/validate/name',
-        headers: { authorization: `API-Key ${apiKey}` },
+        headers: { authorization: `Bearer ${apiKey}` },
         payload: {}
       })
       expect(res.statusCode).toBe(400)
@@ -574,7 +575,7 @@ describe('Validation Integration Tests', () => {
       const emailRes = await app.inject({
         method: 'POST',
         url: '/v1/validate/email',
-        headers: { authorization: `API-Key ${apiKey}` },
+        headers: { authorization: `Bearer ${apiKey}` },
         payload: { email: 'test@example.com' }
       })
       expect(emailRes.statusCode).toBe(200)
@@ -582,7 +583,7 @@ describe('Validation Integration Tests', () => {
       const phoneRes = await app.inject({
         method: 'POST',
         url: '/v1/validate/phone',
-        headers: { authorization: `API-Key ${apiKey}` },
+        headers: { authorization: `Bearer ${apiKey}` },
         payload: { phone: '+1234567890' }
       })
       expect(phoneRes.statusCode).toBe(200)
@@ -603,7 +604,7 @@ describe('Validation Integration Tests', () => {
           app.inject({
             method: 'POST',
             url: '/v1/validate/email',
-            headers: { authorization: `API-Key ${apiKey}` },
+            headers: { authorization: `Bearer ${apiKey}` },
             payload: { email: `test${i}@example.com` }
           })
         )
@@ -622,7 +623,7 @@ describe('Validation Integration Tests', () => {
         method: 'POST',
         url: '/v1/validate/email',
         headers: { 
-          authorization: `API-Key ${apiKey}`,
+          authorization: `Bearer ${apiKey}`,
           'content-type': 'application/json'
         },
         payload: 'invalid json'
@@ -635,7 +636,7 @@ describe('Validation Integration Tests', () => {
         method: 'POST',
         url: '/v1/validate/email',
         headers: { 
-          authorization: `API-Key ${apiKey}`,
+          authorization: `Bearer ${apiKey}`,
           'content-type': 'text/plain'
         },
         payload: 'test@example.com'
@@ -644,11 +645,12 @@ describe('Validation Integration Tests', () => {
     })
 
     test('handles extremely large payloads', async () => {
-      const largeEmail = 'a'.repeat(10000) + '@example.com'
+      // Create a payload that exceeds 100KB (server limit is 102400 bytes)
+      const largeEmail = 'a'.repeat(200000) + '@example.com' // 200KB+ payload
       const res = await app.inject({
         method: 'POST',
         url: '/v1/validate/email',
-        headers: { authorization: `API-Key ${apiKey}` },
+        headers: { authorization: `Bearer ${apiKey}` },
         payload: { email: largeEmail }
       })
       expect(res.statusCode).toBe(413) // Payload too large
@@ -660,7 +662,7 @@ describe('Validation Integration Tests', () => {
       const res = await app.inject({
         method: 'POST',
         url: '/v1/validate/email',
-        headers: { authorization: `API-Key ${apiKey}` },
+        headers: { authorization: `Bearer ${apiKey}` },
         payload: { email: 'test@example.com' }
       })
       expect(res.statusCode).toBe(200)
@@ -680,7 +682,7 @@ describe('Validation Integration Tests', () => {
       const res = await app.inject({
         method: 'POST',
         url: '/v1/validate/phone',
-        headers: { authorization: `API-Key ${apiKey}` },
+        headers: { authorization: `Bearer ${apiKey}` },
         payload: { phone: '+1234567890' }
       })
       expect(res.statusCode).toBe(200)
@@ -697,14 +699,14 @@ describe('Validation Integration Tests', () => {
       const res1 = await app.inject({
         method: 'POST',
         url: '/v1/validate/email',
-        headers: { authorization: `API-Key ${apiKey}` },
+        headers: { authorization: `Bearer ${apiKey}` },
         payload: { email: 'test@example.com' }
       })
       
       const res2 = await app.inject({
         method: 'POST',
         url: '/v1/validate/email',
-        headers: { authorization: `API-Key ${apiKey}` },
+        headers: { authorization: `Bearer ${apiKey}` },
         payload: { email: 'test2@example.com' }
       })
       

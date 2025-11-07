@@ -20,7 +20,7 @@ const CACHE_TTL_SECONDS = ADDRESS_VALIDATION_TTL_DAYS * 24 * 3600;
  * @param line - The address line to check (e.g., street address).
  * @returns {boolean} True if a P.O. Box is detected, false otherwise.
  */
-export function detectPoBox(line: string): boolean {
+export function detectPoBox(line: string | null | undefined): boolean {
     const s = (line || "").toLowerCase();
     return /\b(?:p\.?o\.?\s*box|apartado(?:\s+postal)?|caixa\s+postal|casilla|cas\.\s*b|box)\b/i.test(s);
 }
@@ -47,23 +47,23 @@ export async function normalizeAddress(addr: { line1: string; line2?: string; ci
     // If it's a PO Box, don't normalize to avoid changing the line1
     if (detectPoBox(addr.line1) || detectPoBox(addr.line2 || "")) {
         return {
-            line1: addr.line1,
-            line2: addr.line2 || "",
-            city: addr.city,
-            state: addr.state || "",
-            postal_code: addr.postal_code,
-            country: addr.country.toUpperCase()
+            line1: (addr.line1 || "").trim(),
+            line2: (addr.line2 || "").trim(),
+            city: (addr.city || "").trim(),
+            state: (addr.state || "").trim(),
+            postal_code: (addr.postal_code || "").trim(),
+            country: (addr.country || "").toUpperCase().trim()
         } as NormalizedAddress;
     }
 
     // Build address string, filtering out empty components
     const components = [
-        addr.line1,
-        addr.line2,
-        addr.city,
-        addr.state,
-        addr.postal_code,
-        addr.country
+        addr.line1?.trim(),
+        addr.line2?.trim(),
+        addr.city?.trim(),
+        addr.state?.trim(),
+        addr.postal_code?.trim(),
+        addr.country?.trim()
     ].filter(Boolean);
     const joined = components.join(", ");
 
@@ -71,21 +71,21 @@ export async function normalizeAddress(addr: { line1: string; line2?: string; ci
         const parts = await parseAddressCLI(joined);
 
         return {
-            line1: (parts.house_number && parts.road) ? `${parts.house_number} ${parts.road}` : addr.line1,
-            line2: parts.unit || addr.line2 || "",
-            city: parts.city || addr.city,
-            state: parts.state || addr.state || "",
-            postal_code: parts.postcode || addr.postal_code,
-            country: (parts.country || addr.country).toUpperCase()
+            line1: (parts.house_number && parts.road) ? `${parts.house_number} ${parts.road}` : (addr.line1 || "").trim(),
+            line2: (parts.unit || addr.line2 || "").trim(),
+            city: (parts.city || addr.city || "").trim(),
+            state: (parts.state || addr.state || "").trim(),
+            postal_code: (parts.postcode || addr.postal_code || "").trim(),
+            country: ((parts.country || addr.country || "").toUpperCase()).trim()
         } as NormalizedAddress;
     } catch {
         return {
-            line1: addr.line1,
-            line2: addr.line2 || "",
-            city: addr.city,
-            state: addr.state || "",
-            postal_code: addr.postal_code,
-            country: addr.country.toUpperCase()
+            line1: (addr.line1 || "").trim(),
+            line2: (addr.line2 || "").trim(),
+            city: (addr.city || "").trim(),
+            state: (addr.state || "").trim(),
+            postal_code: (addr.postal_code || "").trim(),
+            country: (addr.country || "").toUpperCase().trim()
         } as NormalizedAddress;
     }
 }
@@ -149,6 +149,30 @@ export async function validateAddress(
         if (cached) {
             return JSON.parse(cached);
         }
+    }
+
+    // Check for required fields - if any are missing, null, undefined, or empty, the address is invalid
+    if (!addr.line1 || !addr.city || !addr.postal_code || !addr.country ||
+        addr.line1.trim() === '' || addr.city.trim() === '' || addr.postal_code.trim() === '' || addr.country.trim() === '') {
+        const norm = await normalizeAddress(addr);
+        const result = {
+            valid: false,
+            normalized: norm,
+            po_box: false,
+            postal_city_match: false,
+            in_bounds: true,
+            geo: null,
+            reason_codes: [REASON_CODES.ADDRESS_POSTAL_CITY_MISMATCH],
+            request_id: crypto.randomUUID(),
+            ttl_seconds: CACHE_TTL_SECONDS,
+            deliverable: false
+        };
+        
+        if (redis) {
+            await redis.set(cacheKey, JSON.stringify(result), 'EX', CACHE_TTL_SECONDS);
+        }
+        
+        return result;
     }
 
     const reason_codes: string[] = [];

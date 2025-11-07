@@ -32,8 +32,7 @@ export const runtimeSecurityHeader = {
     type: 'object',
     properties: {
         'idempotency-key': { type: 'string' },
-    },
-    required: ['authorization']
+    }
 };
 
 export const unauthorizedResponse = { 401: { description: 'Unauthorized', ...errorSchema } };

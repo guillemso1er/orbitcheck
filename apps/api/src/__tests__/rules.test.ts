@@ -81,8 +81,6 @@ describe('Rules Endpoints', () => {
 
     describe('POST /v1/rules/register', () => {
         it('should register custom rules successfully', async () => {
-            const mockConsoleWarn = jest.spyOn(console, 'warn').mockImplementation(() => { });
-
             const response = await request(app.server)
                 .post('/v1/rules/register')
                 .set('Authorization', 'Bearer valid_key')
@@ -98,17 +96,12 @@ describe('Rules Endpoints', () => {
                     ]
                 });
 
-            expect(response.status).toBe(200);
-            const body = response.body as { registered_rules: string[]; message: string };
-            expect(mockConsoleWarn).toHaveBeenCalledWith(
-                expect.stringContaining('Rules registered for project test_project:'),
-                expect.any(Array)
-            );
+            expect(response.status).toBe(201);
+            const body = response.body as { registered_rules: string[]; message: string; request_id: string };
             expect(body.registered_rules).toHaveLength(1);
             expect(body.registered_rules[0]).toBe('test_rule_id');
             expect(body.message).toBe('Rules registered successfully');
-
-            mockConsoleWarn.mockRestore();
+            expect(body.request_id).toBeDefined();
         });
 
         it('should handle empty rules array', async () => {
@@ -117,9 +110,9 @@ describe('Rules Endpoints', () => {
                 .set('Authorization', 'Bearer valid_key')
                 .send({ rules: [] });
 
-            expect(response.status).toBe(200);
-            const body = response.body as { registered_rules: string[] };
-            expect(body.registered_rules).toEqual([]);
+            expect(response.status).toBe(400);
+            const body = response.body as { error: string; request_id: string };
+            expect(body.error).toContain('Invalid rules array');
         });
     });
     describe('POST /v1/rules/test', () => {

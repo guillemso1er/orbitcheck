@@ -3,7 +3,7 @@ import crypto from 'node:crypto';
 import type { FastifyInstance } from 'fastify'; // Import the type for safety
 import request from 'supertest';
 
-import { createApp, mockPool, setupBeforeAll } from './testSetup.js';
+import { createApp, mockPool, mockRedisInstance, setupBeforeAll } from './testSetup.js';
 
 describe('Jobs Endpoints', () => {
     let app: FastifyInstance;
@@ -12,6 +12,14 @@ describe('Jobs Endpoints', () => {
     beforeAll(async () => {
         await setupBeforeAll(); // Set up all global mocks
         app = await createApp();  // Await the async function
+
+        // Add proper authentication hooks
+        const { authenticateRequest, applyRateLimitingAndIdempotency } = await import('../web.js');
+        app.addHook('preHandler', async (request, rep) => {
+            await authenticateRequest(request, rep, mockPool as any);
+            await applyRateLimitingAndIdempotency(request, rep, mockRedisInstance as any);
+        });
+
         await app.ready();      // Wait for the app to be ready
     });
 

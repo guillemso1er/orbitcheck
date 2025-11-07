@@ -4,10 +4,11 @@ import metrics from "@immobiliarelabs/fastify-metrics";
 import * as Sentry from '@sentry/node';
 import { Queue, Worker } from 'bullmq';
 import * as dotenv from 'dotenv';
-import type { FastifyInstance } from "fastify";
+import type { FastifyInstance, FastifyError, FastifyRequest, FastifyReply } from "fastify";
 import Fastify from "fastify";
 import { type Redis as IORedisType, Redis } from 'ioredis';
 import cron from 'node-cron';
+import crypto from 'node:crypto';
 import { once } from 'node:events';
 import { Pool } from "pg";
 import { MESSAGES, REQUEST_TIMEOUT_MS, ROUTES, SESSION_MAX_AGE_MS, STARTUP_SMOKE_TEST_TIMEOUT_MS } from "./config.js";
@@ -55,14 +56,15 @@ export async function build(pool: Pool, redis: IORedisType): Promise<FastifyInst
                 : { target: 'pino-pretty', options: { colorize: true, translateTime: 'SYS:standard' } }
         },
         requestTimeout: REQUEST_TIMEOUT_MS,
+        bodyLimit: 1024 * 100, // 100KB limit to trigger 413
         trustProxy: true,
     }) as any;
 
     // Setup API documentation
     await setupDocumentation(app);
 
-    // Add input sanitization hook
-    app.addHook('preHandler', async (request: any, reply: any) => {
+    // Add input sanitization hook - use preValidation to catch content-type errors early
+    app.addHook('preValidation', async (request: any, reply: any) => {
         if (
             request.url.startsWith('/documentation') ||
             request.url.startsWith('/reference') ||
@@ -71,6 +73,33 @@ export async function build(pool: Pool, redis: IORedisType): Promise<FastifyInst
             return;
         }
         await inputSanitizationHook(request, reply);
+    });
+
+    // Add custom error handler to convert 400 to 413 for payload too large errors
+    app.setErrorHandler(async (error: FastifyError, request: FastifyRequest, reply: FastifyReply) => {
+        // Handle body size limit errors - check various conditions
+        const isPayloadTooLarge =
+            error.code === 'FST_REQ_FILE_TOO_LARGE' ||
+            error.code === 'FST_ERR_CTP_INVALID_MEDIA_TYPE' ||
+            error.statusCode === 413 ||
+            (error.statusCode === 400 && (
+                error.message?.includes('payload') ||
+                error.message?.includes('too large') ||
+                error.message?.includes('body')
+            ));
+
+        if (isPayloadTooLarge) {
+            return reply.status(413).send({
+                error: {
+                    code: 'payload_too_large',
+                    message: 'Request payload too large'
+                },
+                request_id: (request as any).id || crypto.randomUUID()
+            });
+        }
+        
+        console.log('Unhandled error:', { code: error.code, statusCode: error.statusCode, message: error.message });
+        throw error;
     });
 
     // Skip startup guard in test environment

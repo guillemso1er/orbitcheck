@@ -364,6 +364,7 @@ export const createApp = async (): Promise<FastifyInstance> => {
   const { registerDataRoutes } = await import('../routes/data.js');
   const { registerDedupeRoutes } = await import('../routes/dedupe.js');
   const { registerJobRoutes } = await import('../routes/jobs.js');
+  const { registerNormalizeRoutes } = await import('../routes/normalize.js');
   const { registerOrderRoutes } = await import('../routes/orders.js');
   const { registerRulesRoutes } = await import('../routes/rules/rules.js');
   const { registerValidationRoutes } = await import('../routes/validation.js');
@@ -379,6 +380,7 @@ export const createApp = async (): Promise<FastifyInstance> => {
   registerDataRoutes(app, mockPool as any);
   registerDedupeRoutes(app, mockPool as any);
   registerJobRoutes(app, mockPool as any);
+  registerNormalizeRoutes(app, mockPool as any);
   registerOrderRoutes(app, mockPool as any, mockRedisInstance as any);
   registerRulesRoutes(app, mockPool as any, mockRedisInstance as any);
   registerSettingsRoutes(app, mockPool as any);

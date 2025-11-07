@@ -4,6 +4,15 @@
  * @returns Validation result
  */
 export function validateName(name: string): { valid: boolean; reason_codes: string[]; normalized: string } {
+  // Handle undefined or null name
+  if (!name) {
+    return {
+      valid: false,
+      reason_codes: ['name.empty'],
+      normalized: ''
+    };
+  }
+
   const trimmed = name.trim();
   const valid = trimmed.length > 0 && trimmed.length <= 100 && /^[a-zA-Z\s\-'\.]+$/.test(trimmed);
 

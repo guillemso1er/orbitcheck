@@ -26,7 +26,6 @@ export function registerValidationRoutes(app: FastifyInstance, pool: Pool, redis
             security: API_V1_SECURITY,
             body: {
                 type: 'object',
-                required: ['email'],
                 properties: {
                     email: { type: 'string', description: 'The email address to validate.' }
                 }
@@ -94,7 +93,34 @@ export function registerValidationRoutes(app: FastifyInstance, pool: Pool, redis
             const request_id = generateRequestId();
             const body = request.body as any;
             const { email } = body;
-            const out = await validateEmail(email, redis);
+            
+            // Check for missing or empty email field
+            if (!email || (typeof email === 'string' && email.trim() === '')) {
+                return rep.status(400).send({
+                    error: {
+                        code: 'validation_error',
+                        message: 'Email field cannot be empty'
+                    },
+                    request_id
+                });
+            }
+            
+            let out;
+            try {
+                out = await validateEmail(email, redis);
+            } catch (error) {
+                // If validation fails internally, return a proper validation result
+                out = {
+                    valid: false,
+                    normalized: email.toLowerCase().trim(),
+                    reason_codes: ['email.invalid_format'],
+                    disposable: false,
+                    mx_found: false,
+                    request_id,
+                    ttl_seconds: 30 * 24 * 3600
+                };
+            }
+            
             if (rep.saveIdem) {
                 await rep.saveIdem(out);
             }
@@ -249,10 +275,10 @@ export function registerValidationRoutes(app: FastifyInstance, pool: Pool, redis
             headers: runtimeSecurityHeader,
             body: {
                 type: 'object',
-                required: ['type', 'value'],
+                required: ['tax_id', 'type'],
                 properties: {
-                    type: { type: 'string', description: 'The type of tax ID (e.g., "vat", "euvat", "br_cnpj").' },
-                    value: { type: 'string', description: 'The tax ID number.' },
+                    tax_id: { type: 'string', description: 'The tax ID number.' },
+                    type: { type: 'string', description: 'The type of tax ID (e.g., "ssn", "ein", "vat", "euvat", "br_cnpj").' },
                     country: { type: 'string', description: 'An optional two-letter country code.' }
                 }
             },
@@ -263,9 +289,10 @@ export function registerValidationRoutes(app: FastifyInstance, pool: Pool, redis
                     properties: {
                         valid: { type: 'boolean' },
                         normalized: { type: 'string' },
+                        type: { type: 'string' },
                         reason_codes: { type: 'array', items: { type: 'string' } },
-                        request_id: { type: 'string' }
-                        // Add other fields returned by `validateTaxId` as needed
+                        request_id: { type: 'string' },
+                        ttl_seconds: { type: 'integer' }
                     }
                 },
                 ...unauthorizedResponse,
@@ -277,8 +304,8 @@ export function registerValidationRoutes(app: FastifyInstance, pool: Pool, redis
         try {
             const request_id = generateRequestId();
             const body = request.body as any;
-            const { type, value, country } = body;
-            const out = await validateTaxId({ type, value, country: country || "", redis });
+            const { type, tax_id, country } = body;
+            const out = await validateTaxId({ type, value: tax_id, country: country || "", redis });
             if (rep.saveIdem) {
                 await rep.saveIdem(out);
             }
@@ -311,7 +338,8 @@ export function registerValidationRoutes(app: FastifyInstance, pool: Pool, redis
                         valid: { type: 'boolean' },
                         normalized: { type: 'string' },
                         reason_codes: { type: 'array', items: { type: 'string' } },
-                        request_id: { type: 'string' }
+                        request_id: { type: 'string' },
+                        ttl_seconds: { type: 'integer' }
                     }
                 },
                 ...unauthorizedResponse,
@@ -324,6 +352,18 @@ export function registerValidationRoutes(app: FastifyInstance, pool: Pool, redis
             const request_id = generateRequestId();
             const body = request.body as any;
             const { name } = body;
+            
+            // Check for empty name field
+            if (!name || (typeof name === 'string' && name.trim() === '')) {
+                return rep.status(400).send({
+                    error: {
+                        code: 'validation_error',
+                        message: 'Name field cannot be empty'
+                    },
+                    request_id
+                });
+            }
+            
             const { validateName } = await import('../validators/name.js');
             const out = validateName(name);
             const response: any = { ...out, request_id };

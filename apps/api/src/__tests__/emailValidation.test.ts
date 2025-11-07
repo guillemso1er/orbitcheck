@@ -260,6 +260,144 @@ describe('Email Validation Endpoints', () => {
         });
     });
 
+    describe('validateEmail function - non-obvious invalid cases', () => {
+        it('should invalidate email with multiple @ symbols', async () => {
+            (hapi).isEmailValid.mockReturnValue(false);
+
+            const result = await validateEmail('user@name@domain.com');
+
+            expect(result.valid).toBe(false);
+            expect(result.reason_codes).toContain('email.invalid_format');
+        });
+
+        it('should invalidate email with only @ but no local part', async () => {
+            (hapi).isEmailValid.mockReturnValue(false);
+
+            const result = await validateEmail('@domain.com');
+
+            expect(result.valid).toBe(false);
+            expect(result.reason_codes).toContain('email.invalid_format');
+        });
+
+        it('should invalidate email with only @ but no domain part', async () => {
+            (hapi).isEmailValid.mockReturnValue(false);
+
+            const result = await validateEmail('user@');
+
+            expect(result.valid).toBe(false);
+            expect(result.reason_codes).toContain('email.invalid_format');
+        });
+
+        it('should invalidate email with consecutive dots in local part', async () => {
+            (hapi).isEmailValid.mockReturnValue(false);
+
+            const result = await validateEmail('user..name@domain.com');
+
+            expect(result.valid).toBe(false);
+            expect(result.reason_codes).toContain('email.invalid_format');
+        });
+
+        it('should invalidate email with leading dot in local part', async () => {
+            (hapi).isEmailValid.mockReturnValue(false);
+
+            const result = await validateEmail('.user@domain.com');
+
+            expect(result.valid).toBe(false);
+            expect(result.reason_codes).toContain('email.invalid_format');
+        });
+
+        it('should invalidate email with trailing dot in local part', async () => {
+            (hapi).isEmailValid.mockReturnValue(false);
+
+            const result = await validateEmail('user.@domain.com');
+
+            expect(result.valid).toBe(false);
+            expect(result.reason_codes).toContain('email.invalid_format');
+        });
+
+        it('should invalidate email with domain starting with hyphen', async () => {
+            (hapi).isEmailValid.mockReturnValue(false);
+
+            const result = await validateEmail('user@-domain.com');
+
+            expect(result.valid).toBe(false);
+            expect(result.reason_codes).toContain('email.invalid_format');
+        });
+
+        it('should invalidate email with domain ending with hyphen', async () => {
+            (hapi).isEmailValid.mockReturnValue(false);
+
+            const result = await validateEmail('user@domain-.com');
+
+            expect(result.valid).toBe(false);
+            expect(result.reason_codes).toContain('email.invalid_format');
+        });
+
+        it('should invalidate email with numbers-only domain that looks valid but has no MX', async () => {
+            (mockDns).resolveMx.mockRejectedValue(new Error('No MX'));
+            (mockDns).resolve4.mockRejectedValue(new Error('No A'));
+            (mockDns).resolve6.mockRejectedValue(new Error('No AAAA'));
+
+            const result = await validateEmail('user@123456789.com');
+
+            expect(result.valid).toBe(false);
+            expect(result.reason_codes).toContain('email.mx_not_found');
+            expect(result.mx_found).toBe(false);
+        });
+
+        it('should invalidate email with very long local part (255+ chars)', async () => {
+            const longLocal = 'a'.repeat(250) + '@example.com';
+            (hapi).isEmailValid.mockReturnValue(false);
+
+            const result = await validateEmail(longLocal);
+
+            expect(result.valid).toBe(false);
+            expect(result.reason_codes).toContain('email.invalid_format');
+        });
+
+        it('should invalidate email with encoded characters that fail parsing', async () => {
+            (hapi).isEmailValid.mockReturnValue(false);
+
+            const result = await validateEmail('user%test@domain.com');
+
+            expect(result.valid).toBe(false);
+            expect(result.reason_codes).toContain('email.invalid_format');
+        });
+
+        it('should invalidate email with whitespace embedded in local part', async () => {
+            (hapi).isEmailValid.mockReturnValue(false);
+
+            const result = await validateEmail('user name@domain.com');
+
+            expect(result.valid).toBe(false);
+            expect(result.reason_codes).toContain('email.invalid_format');
+        });
+
+        it('should invalidate email with null input', async () => {
+            const result = await validateEmail(null as any);
+
+            expect(result.valid).toBe(false);
+            expect(result.normalized).toBe('');
+            expect(result.reason_codes).toContain('email.invalid_format');
+        });
+
+        it('should invalidate email with undefined input', async () => {
+            const result = await validateEmail(undefined as any);
+
+            expect(result.valid).toBe(false);
+            expect(result.normalized).toBe('');
+            expect(result.reason_codes).toContain('email.invalid_format');
+        });
+
+        it('should invalidate email with empty string', async () => {
+            const result = await validateEmail('');
+
+            expect(result.valid).toBe(false);
+            expect(result.normalized).toBe('');
+            expect(result.reason_codes).toContain('email.invalid_format');
+        });
+    });
+
     describe('POST /v1/validate/email', () => {
         it('should validate a valid email using default success mocks', async () => {
             // This test relies entirely on the default setup in beforeEach

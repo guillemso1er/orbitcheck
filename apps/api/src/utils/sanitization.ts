@@ -15,16 +15,14 @@ export class InputSanitizer {
     }
 
     /**
-     * Sanitizes email input by validating format and escaping
+     * Sanitizes email input by escaping but allowing invalid emails to pass through
      */
     static sanitizeEmail(email: string): string {
         if (!email || typeof email !== 'string') {
             return '';
         }
         const trimmed = email.trim();
-        if (!validator.isEmail(trimmed)) {
-            return '';
-        }
+        // Don't reject invalid emails - let the validation logic handle them
         return validator.escape(trimmed);
     }
 

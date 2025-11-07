@@ -23,6 +23,14 @@ describe('Auth Routes', () => {
   beforeAll(async () => {
     await setupBeforeAll();
     app = await createApp();
+
+    // Add proper authentication hooks
+    const { authenticateRequest, applyRateLimitingAndIdempotency } = await import('../web.js');
+    app.addHook('preHandler', async (request, rep) => {
+      await authenticateRequest(request, rep, mockPool as any);
+      await applyRateLimitingAndIdempotency(request, rep, mockRedisInstance as any);
+    });
+
     await app.ready();
   });
 

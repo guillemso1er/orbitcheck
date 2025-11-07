@@ -28,6 +28,11 @@ export async function setupErrorHandler<TServer extends RawServerBase = RawServe
             return ErrorHandler.handleDatabaseError(reply, error, 'request_handler');
         }
 
+        // Handle unsupported media type errors
+        if (error.statusCode === 415 || error.code === 'FST_ERR_CTP_INVALID_MEDIA_TYPE') {
+            return reply.status(415).send({ error: 'unsupported_media_type', message: 'Unsupported Media Type' });
+        }
+
         // Handle authentication errors
         if (error.statusCode === 401 || error.code === 'UNAUTHORIZED') {
             return reply.status(401).send({ error: 'unauthorized', message: 'Authentication required' });

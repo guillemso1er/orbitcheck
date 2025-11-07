@@ -23,7 +23,13 @@ import { EVENT_TYPES } from "./validation.js";
  * @returns {Promise<void>} Resolves if under limit, sends 429 if exceeded.
  */
 export async function rateLimit(request: FastifyRequest, rep: FastifyReply, redis: IORedisType): Promise<void> {
-    const key = `rl:${request.project_id}:${request.ip}`;
+    // Skip rate limiting if project_id is not available (unauthenticated routes)
+    const projectId = (request as any).project_id;
+    if (!projectId) {
+        return;
+    }
+    
+    const key = `rl:${projectId}:${request.ip}`;
     const limit = process.env.NODE_ENV === 'production' ? environment.RATE_LIMIT_BURST : environment.RATE_LIMIT_COUNT;
     const ttl = RATE_LIMIT_TTL_SECONDS;
     const cnt = await redis.incr(key);

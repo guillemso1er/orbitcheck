@@ -6,6 +6,17 @@ import { InputSanitizer } from '../utils/sanitization.js';
  * Fastify hook to sanitize all incoming request data
  */
 export async function inputSanitizationHook(request: FastifyRequest, _reply: FastifyReply): Promise<void> {
+    // Check content-type for POST requests to validation endpoints
+    if (request.method === 'POST' && request.url.includes('/v1/validate/')) {
+        const contentType = request.headers['content-type'];
+        if (!contentType || !contentType.includes('application/json')) {
+            const error = new Error('Unsupported Media Type') as any;
+            error.statusCode = 415;
+            error.code = 'FST_ERR_CTP_INVALID_MEDIA_TYPE';
+            throw error;
+        }
+    }
+
     // Sanitize query parameters
     if (request.query) {
         request.query = InputSanitizer.sanitizeObject(request.query);

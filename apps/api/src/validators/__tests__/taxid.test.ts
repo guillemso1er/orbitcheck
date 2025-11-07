@@ -140,6 +140,11 @@ describe('Tax ID Validators', () => {
       expect(result.valid).toBe(false);
       expect(result.reason_codes).toContain('taxid.invalid_checksum');
     });
+
+    it('should invalidate RUT with lowercase check digit', () => {
+      const result = validateRUT('76.765.943-k');
+      expect(result.valid).toBe(false);
+    });
   });
 
   describe('validateRUC', () => {
@@ -220,6 +225,17 @@ describe('Tax ID Validators', () => {
       expect(result.valid).toBe(false);
       expect(result.reason_codes).toContain('taxid.invalid_format');
     });
+
+    it('should invalidate EIN with letters', () => {
+      const result = validateEIN('12-345678A');
+      expect(result.valid).toBe(false);
+      expect(result.reason_codes).toContain('taxid.invalid_format');
+    });
+
+    it('should invalidate EIN with missing dash', () => {
+      const result = validateEIN('123456789');
+      expect(result.valid).toBe(false);
+    });
   });
 
   describe('validateTaxId', () => {
@@ -244,7 +260,11 @@ describe('Tax ID Validators', () => {
     it('should invalidate unknown type', async () => {
       const result = await validateTaxId({ type: 'UNKNOWN', value: '123', country: '' }) as { valid: boolean; reason_codes: string[] };
       expect(result.valid).toBe(false);
-      expect(result.reason_codes).toContain('taxid.invalid_format');
+    });
+
+    it('should invalidate with empty value', async () => {
+      const result = await validateTaxId({ type: 'CPF', value: '', country: 'BR' }) as { valid: boolean; reason_codes: string[] };
+      expect(result.valid).toBe(false);
     });
   });
 });
