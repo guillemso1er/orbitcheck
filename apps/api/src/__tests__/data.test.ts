@@ -1,7 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import request from 'supertest';
 
-import { verifyPAT } from '../routes/auth.js';
 import * as hooks from '../hooks.js';
 import { createApp, mockPool, setupBeforeAll } from './testSetup.js';
 
@@ -17,7 +16,7 @@ jest.mock('argon2', () => ({
   verify: jest.fn().mockResolvedValue(true),
 }));
 
-const MOCK_PAT = 'pat_token'; // Use PAT token format for management routes
+const MOCK_PAT = 'oc_pat_test:pat123:secret456'; // Use proper PAT format for test environment
 
 describe('Data Routes', () => {
   let app: FastifyInstance;
@@ -47,7 +46,7 @@ describe('Data Routes', () => {
   beforeEach(() => {
     // Only clear jest spies, not the pool mock
     jest.clearAllMocks();
-    
+
     // Mock logEvent - don't use spyOn since we'll clear mocks
     const originalLogEvent = hooks.logEvent;
     jest.doMock('../hooks.js', () => ({
@@ -63,21 +62,24 @@ describe('Data Routes', () => {
 
   describe('POST /v1/data/erase', () => {
     it('should erase user data for GDPR compliance', async () => {
-      // Set up mocks - the order matters!
+      // Clear all previous mocks
+      jest.clearAllMocks();
+
+      // Set up comprehensive mocks for the data erase process
       mockPool.query
         // PAT verification query
-        .mockResolvedValueOnce({ 
-          rows: [{ 
-            id: 'pat_1', 
-            user_id: 'test_user', 
+        .mockResolvedValueOnce({
+          rows: [{
+            id: 'pat123',
+            user_id: 'test_user',
             scopes: ['*'],
             ip_allowlist: null,
             expires_at: null,
             disabled: false,
-            token_hash: 'mock_token_hash' 
-          }] 
+            token_hash: 'mock_token_hash'
+          }]
         })
-        // User verification query  
+        // User verification query
         .mockResolvedValueOnce({ rows: [{ id: 'test_user' }] })
         // Project lookup query
         .mockResolvedValueOnce({ rows: [{ project_id: 'test_project' }] })
@@ -87,7 +89,7 @@ describe('Data Routes', () => {
         .mockResolvedValueOnce({ rows: [{ email: 'test@example.com', project_name: 'Test Project' }] })
         // Data deletion queries
         .mockResolvedValueOnce({ rows: [] }) // DELETE FROM LOGS
-        .mockResolvedValueOnce({ rows: [] }) // DELETE FROM API_KEYS  
+        .mockResolvedValueOnce({ rows: [] }) // DELETE FROM API_KEYS
         .mockResolvedValueOnce({ rows: [] }) // DELETE FROM WEBHOOKS
         .mockResolvedValueOnce({ rows: [] }) // DELETE FROM SETTINGS
         .mockResolvedValueOnce({ rows: [] }) // DELETE FROM JOBS

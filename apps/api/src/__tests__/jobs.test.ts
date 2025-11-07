@@ -88,33 +88,40 @@ describe('Jobs Endpoints', () => {
         });
 
         it('should return job status for pending job', async () => {
-            mockPool.query.mockImplementationOnce((queryText: string) => {
-                const upperQuery = queryText.toUpperCase();
-                if (upperQuery.includes('SELECT') && upperQuery.includes('JOBS')) {
-                    return Promise.resolve({
-                        rows: [{
-                            id: 'job-456',
-                            status: 'pending',
-                            input_data: JSON.stringify({ type: 'email', data: ['test@example.com'] }),
-                            result_data: null,
-                            error_message: null,
-                            total_items: 1,
-                            processed_items: 0,
-                            result_url: null,
-                            created_at: new Date('2023-01-01T00:00:00Z'),
-                            updated_at: new Date('2023-01-01T00:00:00Z')
-                        }]
-                    });
-                }
-                if (upperQuery.includes('API_KEYS')) {
-                    return Promise.resolve({ rows: [{ id: 'test_key_id', project_id: 'test_project' }] });
-                }
-                return Promise.resolve({ rows: [] });
-            });
+            // Clear all mocks first
+            jest.clearAllMocks();
+
+            // Set up comprehensive mocks for this test
+            mockPool.query
+                // First call: API key lookup for authentication
+                .mockResolvedValueOnce({
+                    rows: [{
+                        id: 'test_key_id',
+                        project_id: 'test_project',
+                        encrypted_key: '0123456789abcdef0123456789abcdef:test_encrypted_key'
+                    }]
+                })
+                // Second call: API key usage update
+                .mockResolvedValueOnce({ rows: [] })
+                // Third call: Job lookup - this should return pending job
+                .mockResolvedValueOnce({
+                    rows: [{
+                        id: 'job-456',
+                        status: 'pending',
+                        input_data: JSON.stringify({ type: 'email', data: ['test@example.com'] }),
+                        result_data: null,
+                        error_message: null,
+                        total_items: 1,
+                        processed_items: 0,
+                        result_url: null,
+                        created_at: new Date('2023-01-01T00:00:00Z'),
+                        updated_at: new Date('2023-01-01T00:00:00Z')
+                    }]
+                });
 
             const response = await request(app.server)
                 .get('/v1/jobs/job-456')
-                .set('Authorization', 'Bearer valid_key');
+                .set('Authorization', 'Bearer ok_test_key_1234567890abcdef');
 
             expect(response.status).toBe(200);
             expect(response.body.status).toBe('pending');
@@ -123,69 +130,84 @@ describe('Jobs Endpoints', () => {
         });
 
         it('should return job status for processing job', async () => {
-            mockPool.query.mockImplementationOnce((queryText: string) => {
-                const upperQuery = queryText.toUpperCase();
-                if (upperQuery.includes('SELECT') && upperQuery.includes('JOBS')) {
-                    return Promise.resolve({
-                        rows: [{
-                            id: 'job-789',
-                            status: 'processing',
-                            input_data: JSON.stringify({ type: 'email', data: ['test1@example.com', 'test2@example.com'] }),
-                            result_data: null,
-                            error_message: null,
-                            total_items: 2,
-                            processed_items: 1,
-                            result_url: null,
-                            created_at: new Date('2023-01-01T00:00:00Z'),
-                            updated_at: new Date('2023-01-01T00:00:30Z')
-                        }]
-                    });
-                }
-                if (upperQuery.includes('API_KEYS')) {
-                    return Promise.resolve({ rows: [{ id: 'test_key_id', project_id: 'test_project' }] });
-                }
-                return Promise.resolve({ rows: [] });
-            });
+            // Clear all mocks first
+            jest.clearAllMocks();
+
+            // Set up comprehensive mocks for this test
+            mockPool.query
+                // First call: API key lookup for authentication
+                .mockResolvedValueOnce({
+                    rows: [{
+                        id: 'test_key_id',
+                        project_id: 'test_project',
+                        encrypted_key: '0123456789abcdef0123456789abcdef:test_encrypted_key'
+                    }]
+                })
+                // Second call: API key usage update
+                .mockResolvedValueOnce({ rows: [] })
+                // Third call: Job lookup - this should return processing job
+                .mockResolvedValueOnce({
+                    rows: [{
+                        id: 'job-processing',
+                        status: 'processing',
+                        input_data: JSON.stringify({ type: 'email', data: ['test@example.com'] }),
+                        result_data: null,
+                        error_message: null,
+                        total_items: 10,
+                        processed_items: 5,
+                        result_url: null,
+                        created_at: new Date('2023-01-01T00:00:00Z'),
+                        updated_at: new Date('2023-01-01T00:00:30Z')
+                    }]
+                });
 
             const response = await request(app.server)
-                .get('/v1/jobs/job-789')
-                .set('Authorization', 'Bearer valid_key');
+                .get('/v1/jobs/job-processing')
+                .set('Authorization', 'Bearer ok_test_key_1234567890abcdef');
 
             expect(response.status).toBe(200);
             expect(response.body.status).toBe('processing');
-            expect(response.body.progress).toHaveProperty('total', 2);
-            expect(response.body.progress).toHaveProperty('processed', 1);
-            expect(response.body.progress).toHaveProperty('percentage', 50);
+            expect(response.body.progress).toBeDefined();
+            expect(response.body.progress.total).toBe(10);
+            expect(response.body.progress.processed).toBe(5);
+            expect(response.body.progress.percentage).toBe(50);
         });
 
         it('should return job status for failed job', async () => {
-            mockPool.query.mockImplementationOnce((queryText: string) => {
-                const upperQuery = queryText.toUpperCase();
-                if (upperQuery.includes('SELECT') && upperQuery.includes('JOBS')) {
-                    return Promise.resolve({
-                        rows: [{
-                            id: 'job-fail',
-                            status: 'failed',
-                            input_data: JSON.stringify({ type: 'email', data: ['test@example.com'] }),
-                            result_data: null,
-                            error_message: 'Processing failed',
-                            total_items: 1,
-                            processed_items: 0,
-                            result_url: null,
-                            created_at: new Date('2023-01-01T00:00:00Z'),
-                            updated_at: new Date('2023-01-01T00:00:05Z')
-                        }]
-                    });
-                }
-                if (upperQuery.includes('API_KEYS')) {
-                    return Promise.resolve({ rows: [{ id: 'test_key_id', project_id: 'test_project' }] });
-                }
-                return Promise.resolve({ rows: [] });
-            });
+            // Clear all mocks first
+            jest.clearAllMocks();
+
+            // Set up comprehensive mocks for this test
+            mockPool.query
+                // First call: API key lookup for authentication
+                .mockResolvedValueOnce({
+                    rows: [{
+                        id: 'test_key_id',
+                        project_id: 'test_project',
+                        encrypted_key: '0123456789abcdef0123456789abcdef:test_encrypted_key'
+                    }]
+                })
+                // Second call: API key usage update
+                .mockResolvedValueOnce({ rows: [] })
+                // Third call: Job lookup - this should return failed job
+                .mockResolvedValueOnce({
+                    rows: [{
+                        id: 'job-fail',
+                        status: 'failed',
+                        input_data: JSON.stringify({ type: 'email', data: ['test@example.com'] }),
+                        result_data: null,
+                        error_message: 'Processing failed',
+                        total_items: 1,
+                        processed_items: 0,
+                        result_url: null,
+                        created_at: new Date('2023-01-01T00:00:00Z'),
+                        updated_at: new Date('2023-01-01T00:00:05Z')
+                    }]
+                });
 
             const response = await request(app.server)
                 .get('/v1/jobs/job-fail')
-                .set('Authorization', 'Bearer valid_key');
+                .set('Authorization', 'Bearer ok_test_key_1234567890abcdef');
 
             expect(response.status).toBe(200);
             expect(response.body.status).toBe('failed');
@@ -193,24 +215,31 @@ describe('Jobs Endpoints', () => {
         });
 
         it('should return 404 for non-existent job', async () => {
-            mockPool.query.mockImplementationOnce((queryText: string) => {
-                const upperQuery = queryText.toUpperCase();
-                if (upperQuery.includes('SELECT') && upperQuery.includes('JOBS')) {
-                    return Promise.resolve({ rows: [] });
-                }
-                if (upperQuery.includes('API_KEYS')) {
-                    return Promise.resolve({ rows: [{ id: 'test_key_id', project_id: 'test_project' }] });
-                }
-                return Promise.resolve({ rows: [] });
-            });
+            // Clear all mocks first
+            jest.clearAllMocks();
+
+            // Set up comprehensive mocks for this test
+            mockPool.query
+                // First call: API key lookup for authentication
+                .mockResolvedValueOnce({
+                    rows: [{
+                        id: 'test_key_id',
+                        project_id: 'test_project',
+                        encrypted_key: '0123456789abcdef0123456789abcdef:test_encrypted_key'
+                    }]
+                })
+                // Second call: API key usage update
+                .mockResolvedValueOnce({ rows: [] })
+                // Third call: Job lookup - this should return empty (no job found)
+                .mockResolvedValueOnce({ rows: [] });
 
             const response = await request(app.server)
                 .get('/v1/jobs/non-existent')
-                .set('Authorization', 'Bearer valid_key');
+                .set('Authorization', 'Bearer ok_test_key_1234567890abcdef');
 
             expect(response.status).toBe(404);
             expect(response.body.error.code).toBe('not_found');
-            expect(response.body.error.message).toBe('Resource not found');
+            expect(response.body.error.message).toBe('Job not found');
         });
     });
 });

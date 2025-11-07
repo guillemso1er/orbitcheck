@@ -1,9 +1,8 @@
 import crypto from "node:crypto";
 
 import type { Redis } from "ioredis";
-import { type CountryCode,parsePhoneNumberWithError } from "libphonenumber-js";
+import { type CountryCode, parsePhoneNumberWithError } from "libphonenumber-js";
 
-import { REASON_CODES } from "../validation.js";
 
 /**
  * Validates a phone number using libphonenumber-js for international format parsing.

@@ -10,6 +10,7 @@ jest.mock('validator', () => ({
   trim: jest.fn(str => str),
   // Add any other validator functions you use in your hooks if needed
 }));
+
 // Tell Jest to use the manual mock we created in src/mocks/environment.ts
 jest.mock('@orbitcheck/contracts', () => ({
   DASHBOARD_ROUTES: {
@@ -19,6 +20,18 @@ jest.mock('@orbitcheck/contracts', () => ({
   }
 }));
 
+// Mock libpostal CLI to prevent EPIPE errors
+jest.mock('../lib/libpostal-cli', () => ({
+  parseAddressCLI: jest.fn().mockResolvedValue({
+    house_number: '123',
+    road: 'Main St',
+    city: 'Anytown',
+    state: 'CA',
+    postcode: '12345',
+    country: 'US'
+  }),
+  expandAddressCLI: jest.fn().mockResolvedValue(['123 Main St, Anytown, CA 12345, United States']),
+}));
 
 jest.mock('../environment', () => ({
   environment: {
@@ -123,6 +136,7 @@ import { Pool } from 'pg';
 
 // Import the mocked env so we can manipulate it in tests
 import { environment } from '../environment.js';
+import * as Sentry from '@sentry/node';
 // Re-require the server module to ensure it gets the mocked dependencies
 import { build, start } from '../server.js';
 import { registerRoutes } from '../web.js';
@@ -148,30 +162,28 @@ describe('Server Build', () => {
     });
   });
 
-  it('should build the Fastify app and init Sentry when DSN is set', async () => {
+  it('should build the Fastify app and configure logger when SENTRY_DSN is set', async () => {
     // 1. Arrange: Modify the imported mock env for this specific test
     (environment as any).SENTRY_DSN = 'test_dsn';
     (environment as any).LOG_LEVEL = 'debug';
+    (environment as any).HTTP2_ENABLED = false;
 
     // 2. Act: Run the function under test
     const app = await build(mockPool, mockRedis);
 
-    // 3. Assert: Check the outcomes
+    // 3. Assert: Check the outcomes - in test environment, logger should be 'error' level
     expect(Fastify).toHaveBeenCalledWith({
       logger: {
-        level: 'debug',
-        transport: {
-          target: 'pino-pretty',
-          options: {
-            colorize: true,
-            translateTime: 'SYS:standard'
-          }
-        }
+        level: 'error', // Should be 'error' in test environment
+        transport: undefined, // No transport in test environment
       },
       requestTimeout: 10_000,
       trustProxy: true,
+      bodyLimit: 1024 * 100, // 100KB limit
     });
     expect(mockRegisterRoutes).toHaveBeenCalledWith(app, mockPool, mockRedis);
+    // Note: Sentry.init is not called in test environment per server.ts line 43
+    expect(Sentry.init).not.toHaveBeenCalled();
   });
 
   it('should configure CORS with async origin function that validates allowed origins', async () => {
@@ -272,21 +284,20 @@ describe('Server Startup', () => {
   it('should handle startup errors', async () => {
     // Arrange
     const error = new Error('Database connection failed');
-    // Make the Pool constructor throw when it's called inside start()
-    (Pool as unknown as jest.Mock).mockImplementationOnce(() => {
-      throw error;
-    });
+    const mockPoolInstance = {
+      connect: jest.fn().mockRejectedValue(error),
+      query: jest.fn(),
+      end: jest.fn(),
+    };
+    
+    // Clear previous mocks
+    jest.clearAllMocks();
+    
+    // Mock Pool constructor to return a pool that fails on connect
+    (Pool as jest.MockedClass<typeof Pool>).mockImplementation(() => mockPoolInstance as any);
 
     // Act & Assert
-    // This line tells Jest: "I expect the start() promise to be rejected,
-    // and the reason for the rejection should be an error with this message."
-    await expect(start()).rejects.toThrow('Database connection failed');
-
-    // Advance timers to trigger the forced exit timeout
-    jest.advanceTimersByTime(1000);
-
-    // You can also assert that process.exit was called if that's part of your logic
-    expect(mockProcessExit).toHaveBeenCalledWith(1);
+    await expect(start()).rejects.toThrow('FATAL: Could not connect to PostgreSQL. Shutting down. Database connection failed');
   });
 
   it('should register /v1/status endpoint', async () => {

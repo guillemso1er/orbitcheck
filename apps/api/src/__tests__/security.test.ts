@@ -2,8 +2,16 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import type { Pool } from "pg";
 import request from 'supertest';
 
+import * as bcrypt from 'bcryptjs';
+
 import { verifyAPIKey } from '../routes/auth.js';
 import { createApp, mockPool, mockRedisInstance, setupBeforeAll } from './testSetup.js';
+
+// Mock bcrypt functions
+jest.mock('bcryptjs', () => ({
+  hash: jest.fn(),
+  compare: jest.fn(),
+}));
 
 describe('Security and Authentication', () => {
   let app: FastifyInstance;
@@ -38,8 +46,20 @@ describe('Security and Authentication', () => {
     mockPool.query.mockImplementation((queryText: string) => {
       const upperQuery = queryText.toUpperCase();
 
-      if (upperQuery.includes('API_KEYS')) {
-        return Promise.resolve({ rows: [{ id: 'test_key_id', project_id: 'test_project' }] });
+      // For API key lookups (from verifyAPIKey function)
+      if (upperQuery.includes('API_KEYS') && upperQuery.includes('PREFIX')) {
+        return Promise.resolve({
+          rows: [{
+            id: 'test_key_id',
+            project_id: 'test_project',
+            encrypted_key: '0123456789abcdef0123456789abcdef:test_encrypted_key'
+          }]
+        });
+      }
+
+      // For usage tracking
+      if (upperQuery.includes('PROJECTS') && upperQuery.includes('ID')) {
+        return Promise.resolve({ rows: [{ project_id: 'test_project' }] });
       }
 
       return Promise.resolve({ rows: [] });
@@ -80,16 +100,39 @@ describe('Security and Authentication', () => {
 
   describe('Security Headers', () => {
     it('should include security headers in responses', async () => {
-      // This test relies on the default successful auth mock from beforeEach
+      // Clear previous mocks and set up comprehensive mocks
+      jest.clearAllMocks();
+
+      // Set up mocks for all expected database queries
+      mockPool.query
+        // API key lookup (verifyAPIKey function)
+        .mockImplementationOnce((queryText: string) => {
+          if (queryText.includes('hash=') && queryText.includes('prefix=')) {
+            return Promise.resolve({
+              rows: [{
+                id: 'valid_key_id',
+                project_id: 'test_project'
+              }]
+            });
+          }
+          return Promise.resolve({ rows: [] });
+        })
+        // API key usage update
+        .mockResolvedValueOnce({ rows: [] })
+        // Project lookup
+        .mockResolvedValueOnce({ rows: [{ project_id: 'test_project' }] })
+        // Usage increment
+        .mockResolvedValueOnce({ rows: [] });
+
       const result = await request(app.server)
         .post('/v1/validate/email')
-        .set('Authorization', 'Bearer valid_key')
+        .set('Authorization', 'Bearer ok_test_key_1234567890abcdef')
         .send({ email: 'test@example.com' });
 
-      // Assuming a successful validation returns 200
+      // Check that the request was successful
       expect(result.statusCode).toBe(200);
 
-      // Check for the security headers added by the preHandler hook in your test setup
+      // Check for the security headers added by the preHandler hook
       expect(result.headers['x-content-type-options']).toBe('nosniff');
       expect(result.headers['x-frame-options']).toBe('DENY');
       expect(result.headers['x-xss-protection']).toBe('1; mode=block');

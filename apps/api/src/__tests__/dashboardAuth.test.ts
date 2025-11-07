@@ -68,7 +68,7 @@ describe('Dashboard Authentication - /api-keys endpoint', () => {
     });
 
     it('should successfully access /api-keys with valid PAT token', async () => {
-        const validToken = 'pat_token_hash';
+        const validToken = 'oc_pat_live:pat_1:secret456'; // Use proper PAT format with test secret
 
         mockPool.query.mockImplementation((queryText: string) => {
             const upperQuery = queryText.toUpperCase();
@@ -100,6 +100,20 @@ describe('Dashboard Authentication - /api-keys endpoint', () => {
             }
             if (upperQuery.includes('UPDATE PERSONAL_ACCESS_TOKENS SET LAST_USED_AT')) {
                 return Promise.resolve({ rows: [] });
+            }
+            // Added for PAT verification that includes token_hash
+            if (upperQuery.includes('TOKEN_HASH FROM PERSONAL_ACCESS_TOKENS WHERE TOKEN_ID')) {
+                return Promise.resolve({
+                    rows: [{
+                        id: 'pat_1',
+                        user_id: 'test_user',
+                        scopes: ['keys:read'],
+                        ip_allowlist: null,
+                        expires_at: null,
+                        disabled: false,
+                        token_hash: 'mocked_hash'
+                    }]
+                });
             }
             return Promise.resolve({ rows: [] });
         });
@@ -199,11 +213,25 @@ describe('Dashboard Authentication - /api-keys endpoint', () => {
             if (upperQuery.includes('UPDATE PERSONAL_ACCESS_TOKENS SET LAST_USED_AT')) {
                 return Promise.resolve({ rows: [] });
             }
+            // Added for PAT verification that includes token_hash
+            if (upperQuery.includes('TOKEN_HASH FROM PERSONAL_ACCESS_TOKENS WHERE TOKEN_ID')) {
+                return Promise.resolve({
+                    rows: [{
+                        id: 'pat_1',
+                        user_id: 'test_user',
+                        scopes: ['keys:read'],
+                        ip_allowlist: null,
+                        expires_at: null,
+                        disabled: false,
+                        token_hash: 'mocked_hash'
+                    }]
+                });
+            }
             return Promise.resolve({ rows: [] });
         });
 
         // Test that /api-keys uses PAT auth (already tested above)
-        const patToken = 'pat_token_hash';
+        const patToken = 'oc_pat_live:pat_1:secret456'; // Use proper PAT format with test secret
         const patResponse = await request(app.server)
             .get('/v1/api-keys')
             .set('Authorization', `Bearer ${patToken}`);

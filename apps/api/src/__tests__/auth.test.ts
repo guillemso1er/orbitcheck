@@ -155,18 +155,38 @@ describe('Auth Routes', () => {
   it('should login a user successfully', async () => {
     interface UserRow {
       id: string;
+      email: string;
       password_hash: string;
     }
     interface QueryResult<T> {
       rows: T[];
     }
 
-    mockPool.query.mockImplementation((queryText: string): Promise<QueryResult<UserRow>> => {
-      if (queryText.includes('SELECT id, email, password_hash FROM users')) {
+    // Clear all previous mocks
+    jest.clearAllMocks();
+
+    mockPool.query.mockImplementation((queryText: string): Promise<QueryResult<any>> => {
+      const upperQuery = queryText.toUpperCase();
+      
+      // Login query
+      if (upperQuery.includes('SELECT') && upperQuery.includes('EMAIL') && upperQuery.includes('USERS')) {
         return Promise.resolve({ rows: [{ id: 'user_1', email: 'test@example.com', password_hash: 'hashed_password' }] });
       }
+      
+      // PAT insertion query
+      if (upperQuery.includes('INSERT') && upperQuery.includes('PERSONAL_ACCESS_TOKENS')) {
+        return Promise.resolve({ rows: [] });
+      }
+      
       return Promise.resolve({ rows: [] });
     });
+
+    // Mock bcrypt.compare to return true
+    (bcrypt.compare as jest.Mock).mockResolvedValue(true);
+    // Mock bcrypt.hash for any hash operations
+    (bcrypt.hash as jest.Mock).mockResolvedValue('hashed_password');
+    // Mock jwt.sign to return a token
+    (jwt.sign as jest.Mock).mockReturnValue('mock_pat_token');
 
     const response = await app.inject({
       method: 'POST',
@@ -175,25 +195,25 @@ describe('Auth Routes', () => {
     });
 
     expect(response.statusCode).toBe(200);
-    const body = response.json<{ user: { id: string; email: string }; request_id: string }>();
-    expect(bcrypt.compare).toHaveBeenCalled();
+    const body = response.json<{ user: { id: string; email: string }; pat_token: string; request_id: string }>();
+    expect(bcrypt.compare).toHaveBeenCalledWith('password123', 'hashed_password');
     expect(body.user.id).toBe('user_1');
     expect(body.user.email).toBe('test@example.com');
+    expect(body.pat_token).toBeDefined();
   });
 
   it('should reject login with invalid credentials', async () => {
-    interface UserRow {
-      id: string;
-      password_hash: string;
-    }
-    interface QueryResult<T> {
-      rows: T[];
-    }
+    // Clear all previous mocks
+    jest.clearAllMocks();
 
-    mockPool.query.mockImplementation((queryText: string): Promise<QueryResult<UserRow>> => {
-      if (queryText.includes('SELECT id, password_hash FROM users')) {
+    mockPool.query.mockImplementation((queryText: string) => {
+      const upperQuery = queryText.toUpperCase();
+      
+      // User not found
+      if (upperQuery.includes('SELECT') && upperQuery.includes('EMAIL') && upperQuery.includes('USERS')) {
         return Promise.resolve({ rows: [] });
       }
+      
       return Promise.resolve({ rows: [] });
     });
 

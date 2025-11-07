@@ -86,21 +86,33 @@ describe('Web Module', () => {
         log: { info: jest.fn() }
       } as any;
 
-      // Mock PAT verification
-      const crypto = await import('node:crypto');
-      (crypto.createHash as jest.Mock).mockReturnValue({
-        update: jest.fn().mockReturnThis(),
-        digest: jest.fn().mockReturnValue('token_hash'),
-      });
+      // Mock PAT verification - the test expects the function to work with test tokens
+      // Clear previous mocks
+      jest.clearAllMocks();
 
+      // Mock the database query to return a valid PAT
       mockPool.query
-        .mockResolvedValueOnce({ rows: [{ id: 'pat123', user_id: 'user123', scopes: ['*'] }] })
-        .mockResolvedValueOnce({ rows: [{ value: 1 }] })
-        .mockResolvedValueOnce({ rows: [{ project_id: 'project123' }] })
-        .mockResolvedValueOnce({ rows: [{ value: 1 }] });
+        .mockResolvedValueOnce({
+          rows: [{
+            id: 'pat123',
+            user_id: 'user123',
+            scopes: ['*'],
+            token_hash: 'mock_token_hash',
+            disabled: false,
+            expires_at: null,
+            ip_allowlist: null
+          }]
+        });
 
-      await verifyPAT(mockRequest, mockPool as any);
+      // Call the verifyPAT function
+      const result = await verifyPAT(mockRequest, mockPool as any);
 
+      // The function should return the PAT object
+      expect(result).toBeDefined();
+      expect(result.user_id).toBe('user123');
+      expect(result.scopes).toEqual(['*']);
+      
+      // Also check that the request object gets decorated
       expect(mockRequest.user_id).toBe('user123');
       expect(mockRequest.pat_scopes).toEqual(['*']);
     });
@@ -108,25 +120,43 @@ describe('Web Module', () => {
     it('should use API key/HMAC auth for runtime routes', async () => {
       const mockRequest = {
         url: '/v1/orders',
+        method: 'POST',
         headers: { authorization: 'Bearer ok_test_key' },
         log: { info: jest.fn() },
         routeType: 'runtime'
       } as any;
-      const mockReply = {} as FastifyReply;
+      const mockReply = { status: jest.fn().mockReturnThis(), send: jest.fn() } as any;
 
-      // Mock API key verification
-      const crypto = await import('node:crypto');
-      (crypto.createHash as jest.Mock).mockReturnValue({
-        update: jest.fn().mockReturnThis(),
-        digest: jest.fn().mockReturnValue('key_hash'),
-      });
+      // Clear previous mocks
+      jest.clearAllMocks();
+
+      // Mock database query for API key lookup - need to match the hash+prefix query in verifyAPIKey
+      const crypto = require('crypto');
+      const testKey = 'ok_test_key_1234567890abcdef';
+      const keyHash = crypto.createHash('sha256').update(testKey).digest('hex');
+      const prefix = 'ok_tes'; // first 6 chars of the test key
 
       mockPool.query
-        .mockResolvedValueOnce({ rows: [{ id: 'key123', project_id: 'project123' }] })
-        .mockResolvedValueOnce({ rows: [{ value: 1 }] });
+        // First call: API key lookup (query for hash and prefix)
+        .mockImplementationOnce((queryText: string) => {
+          if (queryText.includes('hash=') && queryText.includes('prefix=')) {
+            return Promise.resolve({
+              rows: [{
+                id: 'key123',
+                project_id: 'project123'
+              }]
+            });
+          }
+          return Promise.resolve({ rows: [] });
+        })
+        // Second call: usage update
+        .mockResolvedValueOnce({ rows: [] });
 
-      await auth(mockRequest, mockReply, mockPool as any);
+      // Call the verifyAPIKey function
+      const result = await auth(mockRequest, mockReply, mockPool as any);
 
+      // The function should return true on success
+      expect(result).toBe(true);
       expect(mockRequest.project_id).toBe('project123');
     });
 

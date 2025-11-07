@@ -335,6 +335,19 @@ jest.mock('@sentry/node', () => ({
   captureException: jest.fn(),
 }));
 
+// Mock libpostal CLI to prevent EPIPE errors
+jest.mock('../lib/libpostal-cli', () => ({
+  parseAddressCLI: jest.fn().mockResolvedValue({
+    house_number: '123',
+    road: 'Main St',
+    city: 'Anytown',
+    state: 'CA',
+    postcode: '12345',
+    country: 'US'
+  }),
+  expandAddressCLI: jest.fn().mockResolvedValue(['123 Main St, Anytown, CA 12345, United States']),
+}));
+
 // Test route registration functions
 let registerAuthRoutesFunction: unknown;
 let verifySessionFunction: unknown;
