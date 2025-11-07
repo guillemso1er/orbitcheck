@@ -467,10 +467,6 @@ export async function verifyPAT<TServer extends RawServerBase = RawServerBase>(r
         "UPDATE personal_access_tokens SET last_used_at = now(), last_used_ip = $1 WHERE id = $2",
         [req.ip, pat.id]
     ).catch(() => { }); // Non-blocking
-
-    // Attach identity for downstream handlers
-    (req as any).user_id = pat.user_id;
-    (req as any).pat_scopes = pat.scopes;
     
     return pat;
 }

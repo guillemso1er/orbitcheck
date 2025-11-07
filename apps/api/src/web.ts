@@ -90,7 +90,6 @@ export async function authenticateRequest<TServer extends RawServerBase = RawSer
         })
     );
 
-    // Log the auth method being used for debugging
     request.log.info({ url, isDashboardRoute, isMgmtRoute, isRuntimeRoute }, 'Auth method determination');
 
     if (isDashboardRoute) {

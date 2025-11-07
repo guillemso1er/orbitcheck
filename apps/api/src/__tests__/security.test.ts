@@ -122,6 +122,8 @@ describe('Security and Authentication', () => {
         // Project lookup
         .mockResolvedValueOnce({ rows: [{ project_id: 'test_project' }] })
         // Usage increment
+        .mockResolvedValueOnce({ rows: [] })
+        // Log event insertion (logEvent call after successful validation)
         .mockResolvedValueOnce({ rows: [] });
 
       const result = await request(app.server)

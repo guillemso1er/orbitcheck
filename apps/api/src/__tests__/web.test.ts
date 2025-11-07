@@ -82,7 +82,7 @@ describe('Web Module', () => {
     it('should use PAT auth for management routes', async () => {
       const mockRequest = {
         url: '/v1/api-keys',
-        headers: { authorization: 'Bearer pat_token' },
+        headers: { authorization: 'Bearer oc_pat_test:pat123:secret456' },
         log: { info: jest.fn() }
       } as any;
 

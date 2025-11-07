@@ -66,8 +66,9 @@ describe('Data Routes', () => {
       jest.clearAllMocks();
 
       // Set up comprehensive mocks for the data erase process
+      // The order matters! PAT verification and user lookup queries will be called first
       mockPool.query
-        // PAT verification query
+        // 1. PAT verification query (personal_access_tokens lookup)
         .mockResolvedValueOnce({
           rows: [{
             id: 'pat123',
@@ -79,21 +80,18 @@ describe('Data Routes', () => {
             token_hash: 'mock_token_hash'
           }]
         })
-        // User verification query
-        .mockResolvedValueOnce({ rows: [{ id: 'test_user' }] })
-        // Project lookup query
-        .mockResolvedValueOnce({ rows: [{ project_id: 'test_project' }] })
-        // Update PAT last used
-        .mockResolvedValueOnce({ rows: [] })
-        // Get user and project info for email
+        // 2. getDefaultProjectId call for PAT auth (this is the missing piece!)
+        .mockResolvedValueOnce({ rows: [{ id: 'test_project' }] })
+        // 3. Get user and project info for email (the main query in data route)
         .mockResolvedValueOnce({ rows: [{ email: 'test@example.com', project_name: 'Test Project' }] })
-        // Data deletion queries
+        // 4. Get project info for user_id
+        .mockResolvedValueOnce({ rows: [{ user_id: 'test_user' }] })
+        // 5. Data deletion queries
         .mockResolvedValueOnce({ rows: [] }) // DELETE FROM LOGS
         .mockResolvedValueOnce({ rows: [] }) // DELETE FROM API_KEYS
         .mockResolvedValueOnce({ rows: [] }) // DELETE FROM WEBHOOKS
         .mockResolvedValueOnce({ rows: [] }) // DELETE FROM SETTINGS
         .mockResolvedValueOnce({ rows: [] }) // DELETE FROM JOBS
-        .mockResolvedValueOnce({ rows: [{ user_id: 'test_user' }] }) // SELECT USER_ID FROM PROJECTS
         .mockResolvedValueOnce({ rows: [] }) // DELETE FROM PERSONAL_ACCESS_TOKENS
         .mockResolvedValueOnce({ rows: [] }) // DELETE FROM AUDIT_LOGS
         .mockResolvedValueOnce({ rows: [] }) // UPDATE USERS SET EMAIL

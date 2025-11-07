@@ -8,10 +8,15 @@ jest.mock('jsonwebtoken', () => ({
   sign: jest.fn(),
   verify: jest.fn(),
 }));
+jest.mock('argon2', () => ({
+  hash: jest.fn(),
+  verify: jest.fn(),
+}));
 
 import * as crypto from 'node:crypto';
 
 import * as bcrypt from 'bcryptjs';
+import * as argon2 from 'argon2';
 import type { FastifyInstance } from 'fastify';
 import * as jwt from 'jsonwebtoken';
 
@@ -88,11 +93,8 @@ describe('Auth Routes', () => {
     mockRedisInstance.set.mockResolvedValue('OK');
     mockRedisInstance.quit.mockResolvedValue('OK');
 
-    // eslint-disable-next-line promise/prefer-await-to-callbacks
-    (crypto.randomBytes as jest.Mock).mockImplementation((_size, callback) => {
-      // eslint-disable-next-line promise/prefer-await-to-callbacks
-      callback(null, Buffer.from('test32bytes' + 'a'.repeat(24)));
-    });
+    // Mock crypto.randomBytes to return a buffer synchronously (for synchronous usage)
+    (crypto.randomBytes as jest.Mock).mockReturnValue(Buffer.from('test32bytes' + 'a'.repeat(24)));
     // Mock crypto.createHash
     (crypto.createHash as jest.Mock).mockImplementation(() => ({
       update: jest.fn().mockReturnThis(),
@@ -185,6 +187,8 @@ describe('Auth Routes', () => {
     (bcrypt.compare as jest.Mock).mockResolvedValue(true);
     // Mock bcrypt.hash for any hash operations
     (bcrypt.hash as jest.Mock).mockResolvedValue('hashed_password');
+    // Mock argon2.hash for PAT creation
+    (argon2.hash as jest.Mock).mockResolvedValue('mock_argon2_hash');
     // Mock jwt.sign to return a token
     (jwt.sign as jest.Mock).mockReturnValue('mock_pat_token');
 
