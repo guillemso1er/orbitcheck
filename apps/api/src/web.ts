@@ -52,19 +52,42 @@ export async function authenticateRequest<TServer extends RawServerBase = RawSer
     }
 
     // Dashboard routes - use session-based authentication
-    const isDashboardRoute =
-        Object.values(DASHBOARD_ROUTES).some(route => url.startsWith(route));
+    const isDashboardRoute = Object.values(DASHBOARD_ROUTES).some(route => {
+        // Handle parameterized routes like '/projects/:id'
+        if (route.includes(':')) {
+            const routePattern = route.replace(/:[^/]+/g, '[^/]+');
+            const regex = new RegExp(`^${routePattern}`);
+            return regex.test(url);
+        }
+        return url.startsWith(route);
+    });
 
     // Management routes - use PAT authentication, fallback to session
     const isMgmtRoute = Object.values(MGMT_V1_ROUTES).some(group =>
         typeof group === 'object' && group !== null &&
-        Object.values(group).some(route => url.startsWith(route))
+        Object.values(group).some(route => {
+            // Handle parameterized routes like '/v1/api-keys/:id'
+            if (route.includes(':')) {
+                const routePattern = route.replace(/:[^/]+/g, '[^/]+');
+                const regex = new RegExp(`^${routePattern}`);
+                return regex.test(url);
+            }
+            return url.startsWith(route);
+        })
     );
 
     // Runtime routes - use API key with HMAC
     const isRuntimeRoute = Object.values(API_V1_ROUTES).some(group =>
         typeof group === 'object' && group !== null &&
-        Object.values(group).some(route => url.startsWith(route))
+        Object.values(group).some(route => {
+            // Handle parameterized routes like '/v1/jobs/:id'
+            if (route.includes(':')) {
+                const routePattern = route.replace(/:[^/]+/g, '[^/]+');
+                const regex = new RegExp(`^${routePattern}`);
+                return regex.test(url);
+            }
+            return url.startsWith(route);
+        })
     );
 
     // Log the auth method being used for debugging

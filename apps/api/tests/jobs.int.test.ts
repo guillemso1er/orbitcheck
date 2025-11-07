@@ -7,6 +7,7 @@ let app: Awaited<ReturnType<typeof build>>
 let pool: ReturnType<typeof getPool>
 let redis: Redis
 let apiKey: string
+let projectId: string
 
 beforeAll(async () => {
   try {
@@ -51,11 +52,41 @@ beforeAll(async () => {
       headers: { authorization: `Bearer ${loginRes.json().pat_token}` }
     })
     
+    // Try to get project ID from API response, fallback to database
+    const projectData = projectRes.json()
+    projectId = projectData.id || projectData.project_id || projectData.data?.id || projectData.data?.project_id
+    
+    // If not found in response, get from database
+    if (!projectId) {
+      const projectResult = await pool.query('SELECT id FROM projects LIMIT 1')
+      if (projectResult.rows.length > 0) {
+        projectId = projectResult.rows[0].id
+      }
+    }
+    
+    // If still no project ID, create a basic one for testing
+    if (!projectId) {
+      const userResult = await pool.query('SELECT id FROM users LIMIT 1')
+      if (userResult.rows.length > 0) {
+        const result = await pool.query(
+          'INSERT INTO projects (name, user_id, created_at) VALUES ($1, $2, NOW()) RETURNING id',
+          ['Test Project', userResult.rows[0].id]
+        )
+        projectId = result.rows[0].id
+      }
+    }
+    
     const keyRes = await app.inject({
       method: 'POST',
-      url: '/v1/keys',
+      url: '/v1/api-keys',
+      payload: {}, // Empty body as per API spec
       headers: { authorization: `Bearer ${loginRes.json().pat_token}` }
     })
+    
+    if (keyRes.statusCode !== 201) {
+      throw new Error(`Failed to create API key: ${keyRes.statusCode} - ${keyRes.body}`)
+    }
+    
     apiKey = keyRes.json().full_key
   } catch (error) {
     console.error('Failed to start test environment:', error)
@@ -117,20 +148,60 @@ beforeEach(async () => {
     headers: { authorization: `Bearer ${loginRes.json().pat_token}` }
   })
   
+  // Try to get project ID from API response, fallback to database
+  const projectData = projectRes.json()
+  projectId = projectData.id || projectData.project_id || projectData.data?.id || projectData.data?.project_id
+  
+  // If not found in response, get from database
+  if (!projectId) {
+    const projectResult = await pool.query('SELECT id FROM projects LIMIT 1')
+    if (projectResult.rows.length > 0) {
+      projectId = projectResult.rows[0].id
+    }
+  }
+  
+  // If still no project ID, create a basic one for testing
+  if (!projectId) {
+    const firstUserResult = await pool.query('SELECT id FROM users LIMIT 1')
+    if (firstUserResult.rows.length > 0) {
+      const result = await pool.query(
+        'INSERT INTO projects (name, user_id, created_at) VALUES ($1, $2, NOW()) RETURNING id',
+        ['Test Project', firstUserResult.rows[0].id]
+      )
+      projectId = result.rows[0].id
+    }
+  }
+
+  // Store the user_id for later use
+  const testUserResult = await pool.query('SELECT id FROM users WHERE email = $1', ['test@example.com'])
+  if (testUserResult.rows.length > 0) {
+    ;(global as any).testUserId = testUserResult.rows[0].id
+  }
+  
   const keyRes = await app.inject({
     method: 'POST',
-    url: '/v1/keys',
+    url: '/v1/api-keys',
+    payload: {}, // Empty body as per API spec
     headers: { authorization: `Bearer ${loginRes.json().pat_token}` }
   })
-  apiKey = keyRes.json().full_key
+  
+  if (keyRes.statusCode !== 201) {
+    throw new Error(`Failed to create API key in beforeEach: ${keyRes.statusCode} - ${keyRes.body}`)
+  }
+  
+  const responseJson = keyRes.json()
+  apiKey = responseJson.full_key
 })
 
 describe('Jobs Integration Tests', () => {
+  // Debug: Log the API key to see what we're working with
+  // console.log('Using API Key:', apiKey ? `${apiKey.substring(0, 10)}...` : 'NO API KEY')
+
   describe('Authentication Required', () => {
     test('401 on missing authorization header', async () => {
       const res = await app.inject({
         method: 'GET',
-        url: '/v1/jobs/test-job-id'
+        url: '/v1/jobs/550e8400-e29b-41d4-a716-446655440099'
       })
       expect(res.statusCode).toBe(401)
     })
@@ -138,8 +209,8 @@ describe('Jobs Integration Tests', () => {
     test('401 on invalid API key', async () => {
       const res = await app.inject({
         method: 'GET',
-        url: '/v1/jobs/test-job-id',
-        headers: { authorization: 'API-Key invalid-key' }
+        url: '/v1/jobs/550e8400-e29b-41d4-a716-446655440099',
+        headers: { authorization: 'Bearer ok_invalid' }
       })
       expect(res.statusCode).toBe(401)
     })
@@ -147,20 +218,19 @@ describe('Jobs Integration Tests', () => {
 
   describe('Get Job Status (GET /v1/jobs/:id)', () => {
     test('200 returns job status for valid job', async () => {
-      // First create a mock job in the database
-      const jobId = 'test-job-123'
-      const projectId = 'test-project-123'
+      const jobId = '550e8400-e29b-41d4-a716-446655440000'
       
       await pool.query(`
-        INSERT INTO jobs (id, project_id, status, input_data, total_items, processed_items, created_at, updated_at)
-        VALUES ($1, $2, 'processing', $3, 100, 50, NOW(), NOW())
+        INSERT INTO jobs (id, project_id, job_type, status, input_data, total_items, processed_items, created_at, updated_at)
+        VALUES ($1, $2, 'batch_validate', 'processing', $3, 100, 50, NOW(), NOW())
       `, [jobId, projectId, JSON.stringify({ test: 'data' })])
       
       const res = await app.inject({
         method: 'GET',
         url: `/v1/jobs/${jobId}`,
-        headers: { authorization: `API-Key ${apiKey}` }
+        headers: { authorization: `Bearer ${apiKey}` }
       })
+      
       expect(res.statusCode).toBe(200)
       const body = res.json()
       expect(body).toHaveProperty('job_id', jobId)
@@ -175,17 +245,17 @@ describe('Jobs Integration Tests', () => {
     })
 
     test('200 returns completed job with results', async () => {
-      const jobId = 'completed-job-123'
+      const jobId = '550e8400-e29b-41d4-a716-446655440003'
       
       await pool.query(`
-        INSERT INTO jobs (id, project_id, status, input_data, result_data, total_items, processed_items, created_at, updated_at)
-        VALUES ($1, $2, 'completed', $3, $4, 10, 10, NOW(), NOW())
-      `, [jobId, 'test-project', JSON.stringify({ emails: ['test@example.com'] }), JSON.stringify({ results: ['valid'] })])
+        INSERT INTO jobs (id, project_id, job_type, status, input_data, result_data, total_items, processed_items, created_at, updated_at)
+        VALUES ($1, $2, 'batch_validate', 'completed', $3, $4, 10, 10, NOW(), NOW())
+      `, [jobId, projectId, JSON.stringify({ emails: ['test@example.com'] }), JSON.stringify({ results: ['valid'] })])
       
       const res = await app.inject({
         method: 'GET',
         url: `/v1/jobs/${jobId}`,
-        headers: { authorization: `API-Key ${apiKey}` }
+        headers: { authorization: `Bearer ${apiKey}` }
       })
       expect(res.statusCode).toBe(200)
       const body = res.json()
@@ -195,17 +265,17 @@ describe('Jobs Integration Tests', () => {
     })
 
     test('200 returns failed job with error', async () => {
-      const jobId = 'failed-job-123'
+      const jobId = '550e8400-e29b-41d4-a716-446655440004'
       
       await pool.query(`
-        INSERT INTO jobs (id, project_id, status, input_data, error_message, total_items, processed_items, created_at, updated_at)
-        VALUES ($1, $2, 'failed', $3, 'Processing failed due to invalid data', 100, 25, NOW(), NOW())
-      `, [jobId, 'test-project', JSON.stringify({ test: 'data' })])
+        INSERT INTO jobs (id, project_id, job_type, status, input_data, error_message, total_items, processed_items, created_at, updated_at)
+        VALUES ($1, $2, 'batch_validate', 'failed', $3, 'Processing failed due to invalid data', 100, 25, NOW(), NOW())
+      `, [jobId, projectId, JSON.stringify({ test: 'data' })])
       
       const res = await app.inject({
         method: 'GET',
         url: `/v1/jobs/${jobId}`,
-        headers: { authorization: `API-Key ${apiKey}` }
+        headers: { authorization: `Bearer ${apiKey}` }
       })
       expect(res.statusCode).toBe(200)
       const body = res.json()
@@ -215,17 +285,17 @@ describe('Jobs Integration Tests', () => {
     })
 
     test('200 returns pending job without progress', async () => {
-      const jobId = 'pending-job-123'
+      const jobId = '550e8400-e29b-41d4-a716-446655440005'
       
       await pool.query(`
-        INSERT INTO jobs (id, project_id, status, input_data, created_at, updated_at)
-        VALUES ($1, $2, 'pending', $3, NOW(), NOW())
-      `, [jobId, 'test-project', JSON.stringify({ test: 'data' })])
+        INSERT INTO jobs (id, project_id, job_type, status, input_data, created_at, updated_at)
+        VALUES ($1, $2, 'batch_validate', 'pending', $3, NOW(), NOW())
+      `, [jobId, projectId, JSON.stringify({ test: 'data' })])
       
       const res = await app.inject({
         method: 'GET',
         url: `/v1/jobs/${jobId}`,
-        headers: { authorization: `API-Key ${apiKey}` }
+        headers: { authorization: `Bearer ${apiKey}` }
       })
       expect(res.statusCode).toBe(200)
       const body = res.json()
@@ -236,27 +306,51 @@ describe('Jobs Integration Tests', () => {
     test('404 on non-existent job', async () => {
       const res = await app.inject({
         method: 'GET',
-        url: '/v1/jobs/non-existent-job',
-        headers: { authorization: `API-Key ${apiKey}` }
+        url: '/v1/jobs/550e8400-e29b-41d4-a716-446655440099',
+        headers: { authorization: `Bearer ${apiKey}` }
       })
       expect(res.statusCode).toBe(404)
       const body = res.json()
-      expect(body.error.code).toBe('NOT_FOUND')
+      expect(body.error.code).toBe('not_found')
     })
 
     test('404 on job from different project', async () => {
-      const jobId = 'other-project-job'
+      const jobId = '550e8400-e29b-41d4-a716-446655440006'
+      
+      // Get the test user ID or create a new one
+      let testUserId = (global as any).testUserId
+      if (!testUserId) {
+        const userResult = await pool.query('SELECT id FROM users WHERE email = $1', ['test@example.com'])
+        if (userResult.rows.length > 0) {
+          testUserId = userResult.rows[0].id
+        } else {
+          // Create a new user if none exists
+          const newUserResult = await pool.query(
+            'INSERT INTO users (email, password_hash, created_at) VALUES ($1, $2, NOW()) RETURNING id',
+            ['different@example.com', 'dummy_hash']
+          )
+          testUserId = newUserResult.rows[0].id
+        }
+      }
+
+      // Create a different project
+      const differentProjectResult = await pool.query(`
+        INSERT INTO projects (name, user_id, created_at)
+        VALUES ($1, $2, NOW())
+        RETURNING id
+      `, ['Different Project', testUserId])
+      const differentProjectId = differentProjectResult.rows[0].id
       
       // Create job for different project
       await pool.query(`
-        INSERT INTO jobs (id, project_id, status, input_data, created_at, updated_at)
-        VALUES ($1, $2, 'completed', $3, NOW(), NOW())
-      `, [jobId, 'different-project', JSON.stringify({ test: 'data' })])
+        INSERT INTO jobs (id, project_id, job_type, status, input_data, created_at, updated_at)
+        VALUES ($1, $2, 'batch_validate', 'completed', $3, NOW(), NOW())
+      `, [jobId, differentProjectId, JSON.stringify({ test: 'data' })])
       
       const res = await app.inject({
         method: 'GET',
         url: `/v1/jobs/${jobId}`,
-        headers: { authorization: `API-Key ${apiKey}` }
+        headers: { authorization: `Bearer ${apiKey}` }
       })
       expect(res.statusCode).toBe(404)
     })
@@ -273,17 +367,17 @@ describe('Jobs Integration Tests', () => {
       ]
       
       for (const testCase of testCases) {
-        const jobId = `progress-test-${testCase.processed}-${testCase.total}`
+        const jobId = `550e8400-e29b-41d4-a716-446655440${String(testCase.processed).padStart(3, '0')}`
         
         await pool.query(`
-          INSERT INTO jobs (id, project_id, status, input_data, total_items, processed_items, created_at, updated_at)
-          VALUES ($1, $2, 'processing', $3, $4, $5, NOW(), NOW())
-        `, [jobId, 'test-project', JSON.stringify({ test: 'data' }), testCase.total, testCase.processed])
+          INSERT INTO jobs (id, project_id, job_type, status, input_data, total_items, processed_items, created_at, updated_at)
+          VALUES ($1, $2, 'batch_validate', 'processing', $3, $4, $5, NOW(), NOW())
+        `, [jobId, projectId, JSON.stringify({ test: 'data' }), testCase.total, testCase.processed])
         
         const res = await app.inject({
           method: 'GET',
           url: `/v1/jobs/${jobId}`,
-          headers: { authorization: `API-Key ${apiKey}` }
+          headers: { authorization: `Bearer ${apiKey}` }
         })
         expect(res.statusCode).toBe(200)
         const body = res.json()
@@ -295,17 +389,17 @@ describe('Jobs Integration Tests', () => {
     })
 
     test('200 handles job with zero total items', async () => {
-      const jobId = 'zero-items-job'
+      const jobId = '550e8400-e29b-41d4-a716-446655440020'
       
       await pool.query(`
-        INSERT INTO jobs (id, project_id, status, input_data, total_items, processed_items, created_at, updated_at)
-        VALUES ($1, $2, 'completed', $3, 0, 0, NOW(), NOW())
-      `, [jobId, 'test-project', JSON.stringify({ test: 'data' })])
+        INSERT INTO jobs (id, project_id, job_type, status, input_data, total_items, processed_items, created_at, updated_at)
+        VALUES ($1, $2, 'batch_validate', 'completed', $3, 0, 0, NOW(), NOW())
+      `, [jobId, projectId, JSON.stringify({ test: 'data' })])
       
       const res = await app.inject({
         method: 'GET',
         url: `/v1/jobs/${jobId}`,
-        headers: { authorization: `API-Key ${apiKey}` }
+        headers: { authorization: `Bearer ${apiKey}` }
       })
       expect(res.statusCode).toBe(200)
       const body = res.json()
@@ -313,17 +407,17 @@ describe('Jobs Integration Tests', () => {
     })
 
     test('200 includes proper timestamp formats', async () => {
-      const jobId = 'timestamp-test-job'
+      const jobId = '550e8400-e29b-41d4-a716-446655440021'
       
       await pool.query(`
-        INSERT INTO jobs (id, project_id, status, input_data, created_at, updated_at)
-        VALUES ($1, $2, 'pending', $3, NOW(), NOW())
-      `, [jobId, 'test-project', JSON.stringify({ test: 'data' })])
+        INSERT INTO jobs (id, project_id, job_type, status, input_data, created_at, updated_at)
+        VALUES ($1, $2, 'batch_validate', 'pending', $3, NOW(), NOW())
+      `, [jobId, projectId, JSON.stringify({ test: 'data' })])
       
       const res = await app.inject({
         method: 'GET',
         url: `/v1/jobs/${jobId}`,
-        headers: { authorization: `API-Key ${apiKey}` }
+        headers: { authorization: `Bearer ${apiKey}` }
       })
       expect(res.statusCode).toBe(200)
       const body = res.json()
@@ -334,40 +428,80 @@ describe('Jobs Integration Tests', () => {
     })
 
     test('200 maintains data isolation between projects', async () => {
-      // Create two jobs with same ID but different projects
-      const jobId = 'shared-id-job'
+      // Get the test user ID or create a new one
+      let testUserId = (global as any).testUserId
+      if (!testUserId) {
+        const userResult = await pool.query('SELECT id FROM users WHERE email = $1', ['test@example.com'])
+        if (userResult.rows.length > 0) {
+          testUserId = userResult.rows[0].id
+        } else {
+          // Create a new user if none exists
+          const newUserResult = await pool.query(
+            'INSERT INTO users (email, password_hash, created_at) VALUES ($1, $2, NOW()) RETURNING id',
+            ['different@example.com', 'dummy_hash']
+          )
+          testUserId = newUserResult.rows[0].id
+        }
+      }
+
+      // Create two jobs with different IDs but different projects
+      const jobIdA = '550e8400-e29b-41d4-a716-446655440022'
+      const jobIdB = '550e8400-e29b-41d4-a716-446655440023'
+      const differentProjectResult = await pool.query(`
+        INSERT INTO projects (name, user_id, created_at)
+        VALUES ($1, $2, NOW())
+        RETURNING id
+      `, ['Different Project', testUserId])
+      const projectBId = differentProjectResult.rows[0].id
       
+      // Create job for project A
       await pool.query(`
-        INSERT INTO jobs (id, project_id, status, input_data, created_at, updated_at)
-        VALUES ($1, $2, 'completed', $3, NOW(), NOW()),
-               ($1, $4, 'processing', $5, NOW(), NOW())
-      `, [jobId, 'project-a', JSON.stringify({ project: 'A' }), 'project-b', JSON.stringify({ project: 'B' })])
+        INSERT INTO jobs (id, project_id, job_type, status, input_data, created_at, updated_at)
+        VALUES ($1, $2, 'batch_validate', 'completed', $3, NOW(), NOW())
+      `, [jobIdA, projectId, JSON.stringify({ project: 'A' })])
       
-      // Request with project A's API key should return project A's job
-      const res = await app.inject({
+      // Create job for project B
+      await pool.query(`
+        INSERT INTO jobs (id, project_id, job_type, status, input_data, created_at, updated_at)
+        VALUES ($1, $2, 'batch_dedupe', 'processing', $3, NOW(), NOW())
+      `, [jobIdB, projectBId, JSON.stringify({ project: 'B' })])
+      
+      // Request with project A's API key should only return project A's job
+      const resA = await app.inject({
         method: 'GET',
-        url: `/v1/jobs/${jobId}`,
-        headers: { authorization: `API-Key ${apiKey}` }
+        url: `/v1/jobs/${jobIdA}`,
+        headers: { authorization: `Bearer ${apiKey}` }
       })
-      expect(res.statusCode).toBe(200)
-      const body = res.json()
-      expect(body.status).toBeDefined() // Should return one of the jobs
+      expect(resA.statusCode).toBe(200)
+      const bodyA = resA.json()
+      expect(bodyA.status).toBe('completed')
+      expect(bodyA.job_id).toBe(jobIdA)
+      expect(bodyA).toHaveProperty('created_at')
+      expect(bodyA).toHaveProperty('updated_at')
+      
+      // Request with project A's API key for project B's job should return 404
+      const resB = await app.inject({
+        method: 'GET',
+        url: `/v1/jobs/${jobIdB}`,
+        headers: { authorization: `Bearer ${apiKey}` }
+      })
+      expect(resB.statusCode).toBe(404) // Job from different project should not be accessible
     })
   })
 
   describe('Response Structure Validation', () => {
     test('job status response has all required fields', async () => {
-      const jobId = 'structure-test-job'
+      const jobId = '550e8400-e29b-41d4-a716-446655440024'
       
       await pool.query(`
-        INSERT INTO jobs (id, project_id, status, input_data, total_items, processed_items, created_at, updated_at)
-        VALUES ($1, $2, 'processing', $3, 100, 50, NOW(), NOW())
-      `, [jobId, 'test-project', JSON.stringify({ test: 'data' })])
+        INSERT INTO jobs (id, project_id, job_type, status, input_data, total_items, processed_items, created_at, updated_at)
+        VALUES ($1, $2, 'batch_validate', 'processing', $3, 100, 50, NOW(), NOW())
+      `, [jobId, projectId, JSON.stringify({ test: 'data' })])
       
       const res = await app.inject({
         method: 'GET',
         url: `/v1/jobs/${jobId}`,
-        headers: { authorization: `API-Key ${apiKey}` }
+        headers: { authorization: `Bearer ${apiKey}` }
       })
       expect(res.statusCode).toBe(200)
       const body = res.json()
@@ -387,23 +521,23 @@ describe('Jobs Integration Tests', () => {
     })
 
     test('unique request_id for each request', async () => {
-      const jobId = 'request-id-test-job'
+      const jobId = '550e8400-e29b-41d4-a716-446655440025'
       
       await pool.query(`
-        INSERT INTO jobs (id, project_id, status, input_data, created_at, updated_at)
-        VALUES ($1, $2, 'pending', $3, NOW(), NOW())
-      `, [jobId, 'test-project', JSON.stringify({ test: 'data' })])
+        INSERT INTO jobs (id, project_id, job_type, status, input_data, created_at, updated_at)
+        VALUES ($1, $2, 'batch_validate', 'pending', $3, NOW(), NOW())
+      `, [jobId, projectId, JSON.stringify({ test: 'data' })])
       
       const res1 = await app.inject({
         method: 'GET',
         url: `/v1/jobs/${jobId}`,
-        headers: { authorization: `API-Key ${apiKey}` }
+        headers: { authorization: `Bearer ${apiKey}` }
       })
       
       const res2 = await app.inject({
         method: 'GET',
         url: `/v1/jobs/${jobId}`,
-        headers: { authorization: `API-Key ${apiKey}` }
+        headers: { authorization: `Bearer ${apiKey}` }
       })
       
       expect(res1.json().request_id).not.toBe(res2.json().request_id)
@@ -414,34 +548,34 @@ describe('Jobs Integration Tests', () => {
     test('handles database errors gracefully', async () => {
       // This would require mocking database failures
       // For now, ensure normal operation works
-      const jobId = 'error-test-job'
+      const jobId = '550e8400-e29b-41d4-a716-446655440026'
       
       await pool.query(`
-        INSERT INTO jobs (id, project_id, status, input_data, created_at, updated_at)
-        VALUES ($1, $2, 'pending', $3, NOW(), NOW())
-      `, [jobId, 'test-project', JSON.stringify({ test: 'data' })])
+        INSERT INTO jobs (id, project_id, job_type, status, input_data, created_at, updated_at)
+        VALUES ($1, $2, 'batch_validate', 'pending', $3, NOW(), NOW())
+      `, [jobId, projectId, JSON.stringify({ test: 'data' })])
       
       const res = await app.inject({
         method: 'GET',
         url: `/v1/jobs/${jobId}`,
-        headers: { authorization: `API-Key ${apiKey}` }
+        headers: { authorization: `Bearer ${apiKey}` }
       })
       expect(res.statusCode).toBe(200)
     })
 
     test('handles malformed job data', async () => {
-      const jobId = 'malformed-job'
+      const jobId = '550e8400-e29b-41d4-a716-446655440027'
       
       // Insert job with potentially malformed data
       await pool.query(`
-        INSERT INTO jobs (id, project_id, status, input_data, total_items, processed_items, created_at, updated_at)
-        VALUES ($1, $2, 'processing', $3, -1, 150, NOW(), NOW())
-      `, [jobId, 'test-project', 'invalid-json'])
+        INSERT INTO jobs (id, project_id, job_type, status, input_data, total_items, processed_items, created_at, updated_at)
+        VALUES ($1, $2, 'batch_validate', 'processing', $3::jsonb, -1, 150, NOW(), NOW())
+      `, [jobId, projectId, JSON.stringify({ test: 'data' })])
       
       const res = await app.inject({
         method: 'GET',
         url: `/v1/jobs/${jobId}`,
-        headers: { authorization: `API-Key ${apiKey}` }
+        headers: { authorization: `Bearer ${apiKey}` }
       })
       // Should still return 200, but handle edge cases gracefully
       expect([200, 500]).toContain(res.statusCode)
@@ -450,19 +584,19 @@ describe('Jobs Integration Tests', () => {
 
   describe('Performance and Concurrency', () => {
     test('handles concurrent job status requests', async () => {
-      const jobId = 'concurrent-test-job'
+      const jobId = '550e8400-e29b-41d4-a716-446655440028'
       
       await pool.query(`
-        INSERT INTO jobs (id, project_id, status, input_data, total_items, processed_items, created_at, updated_at)
-        VALUES ($1, $2, 'processing', $3, 1000, 500, NOW(), NOW())
-      `, [jobId, 'test-project', JSON.stringify({ test: 'data' })])
+        INSERT INTO jobs (id, project_id, job_type, status, input_data, total_items, processed_items, created_at, updated_at)
+        VALUES ($1, $2, 'batch_validate', 'processing', $3, 1000, 500, NOW(), NOW())
+      `, [jobId, projectId, JSON.stringify({ test: 'data' })])
       
       // Make multiple concurrent requests
       const requests = Array.from({ length: 5 }, () =>
         app.inject({
           method: 'GET',
           url: `/v1/jobs/${jobId}`,
-          headers: { authorization: `API-Key ${apiKey}` }
+          headers: { authorization: `Bearer ${apiKey}` }
         })
       )
       

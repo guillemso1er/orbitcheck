@@ -130,11 +130,10 @@ export interface TestRulesResponse {
     };
 }
 
-// Validation Schema using Zod for better validation
 export const TestPayloadJsonSchema = {
     $id: 'TestPayload', type: 'object', additionalProperties: true,
     properties: {
-        email: { type: 'string', format: 'email' }, phone: { type: 'string' }, address: {
+        email: { type: 'string' }, phone: { type: 'string' }, address: {
             type: 'object', additionalProperties: false, properties: {
                 line1: { type: 'string' }, line2: { type: 'string' },
                 city: { type: 'string' }, state: { type: 'string' }, postal_code: { type: 'string' },
@@ -147,7 +146,7 @@ export const TestPayloadJsonSchema = {
 
 // Enhanced Rule Evaluator
 export class RuleEvaluator {
-    private static readonly MAX_EVALUATION_TIME_MS = 1000;
+    private static readonly MAX_EVALUATION_TIME_MS = 50; // Reduced for better performance
     private static readonly OPERATOR_MAP: Record<string, string | null> = {
         'AND': '&&',
         'OR': '||',
@@ -181,10 +180,6 @@ export class RuleEvaluator {
             const result = await Promise.race([evaluationPromise, timeoutPromise]);
 
             const evaluationTime = performance.now() - startTime;
-
-            if (options.debug) {
-                console.log(`Rule ${rule.id} evaluation took ${evaluationTime.toFixed(2)}ms`);
-            }
 
             return result as any;
         } catch (error) {
@@ -292,6 +287,12 @@ export class RuleEvaluator {
                 const now = new Date();
                 return Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
             },
+            // Enhanced validation helpers
+            emailFormatInvalid: (value: any) => value && value.valid === false && value.reason_codes &&
+                (value.reason_codes.includes('EMAIL_INVALID_FORMAT') || !value.mx_found),
+            emailHasFormatIssue: (value: any) => value && value.valid === false,
+            addressHasIssue: (value: any) => value && value.valid === false,
+            riskLevel: (level: string) => level === 'critical',
             // Math functions
             Math: Math,
             parseInt: parseInt,
@@ -325,24 +326,26 @@ export class RuleEvaluator {
     }
 
     private static calculateConfidence(result: boolean, context: any): number {
-        let confidence = result ? 80 : 20; // Base confidence
+        let confidence = result ? 0.7 : 0.3; // Base confidence in 0-1 range
 
         // Adjust confidence based on data quality
-        if (context.email?.valid) confidence += 5;
-        if (context.phone?.valid) confidence += 5;
-        if (context.address?.valid) confidence += 5;
+        if (context.email?.valid) confidence += 0.1;
+        if (context.phone?.valid) confidence += 0.1;
+        if (context.address?.valid) confidence += 0.1;
 
         // Adjust based on risk scores
         const avgRiskScore = [
             context.email?.risk_score,
             context.phone?.risk_score,
             context.address?.risk_score,
-        ].filter(Boolean).reduce((a, b) => a + b, 0) / 3;
+        ].filter(score => score !== undefined).reduce((a, b, _, arr) => a + b / arr.length, 0);
 
-        if (avgRiskScore > 70) confidence -= 10;
-        if (avgRiskScore < 30) confidence += 10;
+        if (avgRiskScore > 70) confidence -= 0.15;
+        if (avgRiskScore > 50) confidence -= 0.1;
+        if (avgRiskScore < 30) confidence += 0.1;
+        if (avgRiskScore < 10) confidence += 0.1;
 
-        return Math.max(0, Math.min(100, confidence));
+        return Math.max(0, Math.min(1, confidence));
     }
 }
 
@@ -450,8 +453,12 @@ export class RiskScoreCalculator {
         if (validationResults.address) {
             const address = validationResults.address;
             if (!address.valid) {
-                totalScore += this.RISK_FACTORS.address.invalid;
-                factors.push('Invalid address');
+                // Check if it's just a postal code mismatch (less severe)
+                const isPostalMismatch = address.reason_codes &&
+                    (address.reason_codes as string[]).some((code: string) =>
+                        code.includes('POSTAL') || code.includes('CITY_MISMATCH'));
+                totalScore += isPostalMismatch ? 15 : this.RISK_FACTORS.address.invalid;
+                factors.push(isPostalMismatch ? 'Address postal/city mismatch' : 'Invalid address');
             }
             if (address.po_box) {
                 totalScore += this.RISK_FACTORS.address.po_box;

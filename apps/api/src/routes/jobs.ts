@@ -2,9 +2,9 @@ import { API_V1_ROUTES } from "@orbitcheck/contracts";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import type { Pool } from "pg";
 
-import { ERROR_CODES, ERROR_MESSAGES, HTTP_STATUS } from "../errors.js";
+import { ERROR_CODES, HTTP_STATUS } from "../errors.js";
 import { logEvent } from "../hooks.js";
-import { generateRequestId, rateLimitResponse, runtimeSecurityHeader as securityHeader, sendServerError, unauthorizedResponse, validationErrorResponse } from "./utils.js";
+import { API_V1_SECURITY, errorSchema, generateRequestId, sendServerError } from "./utils.js";
 
 export function registerJobRoutes(app: FastifyInstance, pool: Pool): void {
     app.get(API_V1_ROUTES.JOBS.GET_JOB_STATUS, {
@@ -12,11 +12,13 @@ export function registerJobRoutes(app: FastifyInstance, pool: Pool): void {
             summary: 'Get job status',
             description: 'Retrieves the status and results of an asynchronous job',
             tags: ['Batch Operations'],
-            headers: securityHeader,
-            security: [
-                { ApiKeyAuth: [] },
-                { BearerAuth: [] }
-            ],
+            headers: {
+                type: 'object',
+                properties: {
+                    'idempotency-key': { type: 'string' },
+                },
+            },
+            security: API_V1_SECURITY,
             parameters: [
                 {
                     name: 'id',
@@ -50,9 +52,11 @@ export function registerJobRoutes(app: FastifyInstance, pool: Pool): void {
                         request_id: { type: 'string' }
                     }
                 },
-                ...unauthorizedResponse,
-                ...rateLimitResponse,
-                ...validationErrorResponse
+                400: { description: 'Validation Error', ...errorSchema },
+                401: { description: 'Unauthorized', ...errorSchema },
+                404: { description: 'Not Found', ...errorSchema },
+                429: { description: 'Rate Limit Exceeded', ...errorSchema },
+                500: { description: 'Server Error', ...errorSchema }
             }
         }
     }, async (request: FastifyRequest, rep: FastifyReply) => {
@@ -60,6 +64,13 @@ export function registerJobRoutes(app: FastifyInstance, pool: Pool): void {
             const request_id = generateRequestId();
             const { id } = request.params as any;
             const project_id = (request as any).project_id;
+
+            // Check if user is authenticated (project_id should be set by auth middleware)
+            if (!project_id) {
+                return rep.status(HTTP_STATUS.UNAUTHORIZED).send({
+                    error: { code: ERROR_CODES.UNAUTHORIZED, message: 'Authentication required' }
+                });
+            }
 
             // Get job from database
             const { rows: [job] } = await pool.query(
@@ -69,7 +80,7 @@ export function registerJobRoutes(app: FastifyInstance, pool: Pool): void {
 
             if (!job) {
                 return rep.status(HTTP_STATUS.NOT_FOUND).send({
-                    error: { code: ERROR_CODES.NOT_FOUND, message: ERROR_MESSAGES[ERROR_CODES.NOT_FOUND] }
+                    error: { code: 'not_found', message: 'Job not found' }
                 });
             }
 

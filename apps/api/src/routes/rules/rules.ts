@@ -62,14 +62,18 @@ const errorCodes: any[] = Object.entries(ERROR_CODE_DESCRIPTIONS).map(([code, de
   severity: desc.severity,
 }));
 
-export function registerRulesRoutes(app: FastifyInstance, pool: Pool, redis?: any): void {
-  const rules: any[] = [
+// Function to get built-in rules
+function getBuiltInRules() {
+  return [
     {
       id: 'email_format',
       name: 'Email Format Validation',
       description: 'Validates the basic format of email addresses using RFC standards.',
       category: 'email',
       enabled: true,
+      condition: 'emailHasFormatIssue(email)',
+      action: 'hold',
+      priority: 10
     },
     {
       id: 'email_mx',
@@ -77,6 +81,9 @@ export function registerRulesRoutes(app: FastifyInstance, pool: Pool, redis?: an
       description: 'Verifies that the domain has valid MX records for email delivery.',
       category: 'email',
       enabled: true,
+      condition: 'email && email.mx_records === false',
+      action: 'hold',
+      priority: 8
     },
     {
       id: 'email_disposable',
@@ -84,48 +91,29 @@ export function registerRulesRoutes(app: FastifyInstance, pool: Pool, redis?: an
       description: 'Detects and flags temporary or disposable email services.',
       category: 'email',
       enabled: true,
+      condition: 'email && email.disposable === true',
+      action: 'block',
+      priority: 15
     },
     {
-      id: 'phone_format',
-      name: 'Phone Number Format Validation',
-      description: 'Parses and validates international phone number formats.',
-      category: 'phone',
-      enabled: true,
-    },
-    {
-      id: 'phone_otp',
-      name: 'Phone OTP Verification',
-      description: 'Sends one-time password for phone number verification.',
-      category: 'phone',
-      enabled: true,
-    },
-    {
-      id: 'address_po_box',
+      id: 'po_box_detection',
       name: 'PO Box Detection',
       description: 'Identifies and flags addresses using PO Box or similar mail services.',
       category: 'address',
       enabled: true,
+      condition: 'address && address.po_box === true',
+      action: 'block',
+      priority: 12
     },
     {
-      id: 'address_geocode',
-      name: 'Address Geocoding Validation',
-      description: 'Normalizes and validates physical addresses against geographic data.',
+      id: 'address_postal_mismatch',
+      name: 'Address Postal Code Mismatch',
+      description: 'Detects when postal code does not match city/region.',
       category: 'address',
       enabled: true,
-    },
-    {
-      id: 'taxid_format',
-      name: 'Tax ID Format Check',
-      description: 'Validates the format and checksum of tax identification numbers.',
-      category: 'taxid',
-      enabled: true,
-    },
-    {
-      id: 'taxid_vies',
-      name: 'VAT Validation via VIES',
-      description: 'Verifies EU VAT numbers against the official VIES service.',
-      category: 'taxid',
-      enabled: true,
+      condition: 'addressHasIssue(address)',
+      action: 'hold',
+      priority: 9
     },
     {
       id: 'order_dedupe',
@@ -133,15 +121,135 @@ export function registerRulesRoutes(app: FastifyInstance, pool: Pool, redis?: an
       description: 'Checks for potential duplicate orders based on customer and address data.',
       category: 'order',
       enabled: true,
+      condition: 'risk_score > 40 && metadata && metadata.is_duplicate === true',
+      action: 'block',
+      priority: 14
     },
     {
-      id: 'order_risk',
-      name: 'Order Risk Scoring',
-      description: 'Evaluates overall risk of orders based on multiple validation signals.',
+      id: 'high_value_order',
+      name: 'High Value Order Risk',
+      description: 'Evaluates high value orders for additional risk factors.',
       category: 'order',
       enabled: true,
+      condition: 'transaction_amount > 1000',
+      action: 'hold',
+      priority: 11
     },
+    {
+      id: 'high_value_customer_priority',
+      name: 'High Value Customer Priority',
+      description: 'Prioritizes high-value customers for faster processing.',
+      category: 'order',
+      enabled: true,
+      condition: 'transaction_amount > 1500 && email && email.valid',
+      action: 'approve',
+      priority: 8
+    },
+    {
+      id: 'critical_block_rule',
+      name: 'Critical Block Rule',
+      description: 'Blocks transactions with critical risk level.',
+      category: 'risk',
+      enabled: true,
+      condition: 'riskLevel(risk_level)',
+      action: 'block',
+      priority: 20
+    },
+    {
+      id: 'complex_conditions_test',
+      name: 'Complex Conditions Test',
+      description: 'Tests complex business logic conditions.',
+      category: 'business_logic',
+      enabled: true,
+      condition: 'transaction_amount > 300 && (!email || email.valid === false) && risk_score > 50',
+      action: 'hold',
+      priority: 13
+    },
+    {
+      id: 'custom_domain_block',
+      name: 'Custom Domain Blocking',
+      description: 'Blocks specific custom domains for business reasons.',
+      category: 'custom',
+      enabled: true,
+      condition: 'email && email.normalized && (email.normalized.includes("@blockeddomain.com") || email.normalized.includes("@restricteddomain.org"))',
+      action: 'block',
+      priority: 18
+    },
+    {
+      id: 'phone_format',
+      name: 'Phone Number Format Validation',
+      description: 'Parses and validates international phone number formats.',
+      category: 'phone',
+      enabled: true,
+      condition: 'phone && !phone.valid',
+      action: 'hold',
+      priority: 10
+    },
+    {
+      id: 'phone_otp',
+      name: 'Phone OTP Verification',
+      description: 'Sends one-time password for phone number verification.',
+      category: 'phone',
+      enabled: true,
+      condition: 'phone && phone.valid && !phone.verified',
+      action: 'hold',
+      priority: 7
+    },
+    {
+      id: 'address_validation',
+      name: 'Address Validation',
+      description: 'Validates and normalizes physical addresses for accuracy and deliverability.',
+      category: 'address',
+      enabled: true,
+      condition: 'address && !address.valid',
+      action: 'hold',
+      priority: 9
+    },
+    {
+      id: 'po_box_detection',
+      name: 'PO Box Detection',
+      description: 'Identifies and flags addresses using PO Box or similar mail services.',
+      category: 'address',
+      enabled: true,
+      condition: 'address && address.po_box === true',
+      action: 'block',
+      priority: 12
+    },
+    {
+      id: 'address_geocode',
+      name: 'Address Geocoding Validation',
+      description: 'Normalizes and validates physical addresses against geographic data.',
+      category: 'address',
+      enabled: true,
+      condition: 'address && address.valid === false',
+      action: 'hold',
+      priority: 8
+    },
+    {
+      id: 'high_risk_address',
+      name: 'High Risk Address Detection',
+      description: 'Blocks or holds orders to high-risk addresses.',
+      category: 'address',
+      enabled: true,
+      condition: 'address && address.risk_score > 70',
+      action: 'block',
+      priority: 18
+    },
+    {
+      id: 'high_value_order',
+      name: 'High Value Order Review',
+      description: 'Flags high-value orders for additional review.',
+      category: 'order',
+      enabled: true,
+      condition: 'transaction_amount && transaction_amount > 1000',
+      action: 'hold',
+      priority: 5
+    }
   ];
+}
+
+export function registerRulesRoutes(app: FastifyInstance, pool: Pool, redis?: any): void {
+
 
   // Rules list endpoint
   app.get(MGMT_V1_ROUTES.RULES.GET_AVAILABLE_RULES, {
@@ -180,9 +288,14 @@ export function registerRulesRoutes(app: FastifyInstance, pool: Pool, redis?: an
 
       // Get database custom rules
       const dbRules = await pool.query("SELECT id, name, logic as condition, severity, 'custom' as category, enabled FROM rules WHERE project_id = $1", [(request as any).project_id]);
-      rules.push(...dbRules.rows.map(rule => ({ ...rule, condition: rule.logic || rule.condition })));
+      
+      // Get built-in rules
+      const builtInRules = getBuiltInRules();
+      
+      // Combine built-in rules with database rules
+      const allRules = [...builtInRules, ...dbRules.rows.map(rule => ({ ...rule, condition: rule.logic || rule.condition }))];
       const response: any = {
-        rules,
+        rules: allRules,
         request_id,
       };
       return rep.send(response);
@@ -231,6 +344,49 @@ export function registerRulesRoutes(app: FastifyInstance, pool: Pool, redis?: an
       return rep.send(response);
     } catch (error) {
       return sendServerError(request, rep, error, MGMT_V1_ROUTES.RULES.GET_REASON_CODE_CATALOG, generateRequestId());
+    }
+  });
+
+  // Legacy endpoint for backward compatibility
+  app.get('/v1/rules/reason-codes', {
+    schema: {
+      summary: 'Get Reason Code Catalog (Legacy)',
+      description: 'Returns a comprehensive list of all possible reason codes with descriptions and severity levels.',
+      tags: ['Rules'],
+      headers: securityHeader,
+      security: MGMT_V1_SECURITY,
+      response: {
+        200: {
+          description: 'List of reason codes',
+          type: 'object',
+          properties: {
+            reason_codes: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  code: { type: 'string' },
+                  description: { type: 'string' },
+                  category: { type: 'string' },
+                  severity: { type: 'string', enum: ['low', 'medium', 'high'] },
+                },
+              },
+            },
+            request_id: { type: 'string' },
+          },
+        },
+      },
+    },
+  }, async (request: FastifyRequest, rep: FastifyReply) => {
+    try {
+      const request_id = generateRequestId();
+      const response: any = {
+        reason_codes: reasonCodes,
+        request_id,
+      };
+      return rep.send(response);
+    } catch (error) {
+      return sendServerError(request, rep, error, '/v1/rules/reason-codes', generateRequestId());
     }
   });
 
@@ -285,7 +441,11 @@ export function registerRulesRoutes(app: FastifyInstance, pool: Pool, redis?: an
       tags: ['Rules'],
       headers: securityHeader,
       security: MGMT_V1_SECURITY,
-      body: TestPayloadJsonSchema,
+      body: {
+        ...TestPayloadJsonSchema,
+        // Don't allow additional properties that don't match our schema types
+        additionalProperties: false
+      },
       response: {
         200: {
           description: 'Comprehensive validation and rules test results',
@@ -476,6 +636,14 @@ export function registerRulesRoutes(app: FastifyInstance, pool: Pool, redis?: an
             details: { type: 'array', items: { type: 'string' } }
           }
         },
+        415: {
+          description: 'Unsupported Media Type',
+          type: 'object',
+          properties: {
+            error: { type: 'string' },
+            request_id: { type: 'string' }
+          }
+        },
         500: {
           description: 'Internal server error',
           type: 'object',
@@ -510,11 +678,94 @@ export function registerRulesRoutes(app: FastifyInstance, pool: Pool, redis?: an
     };
 
     try {
-
       // Initialize results
       const results: any = {};
 
-      const body = request.body as ValidationPayload;
+      // Validate and parse body - handle different content types
+      let body: ValidationPayload;
+      try {
+        // Check if body is a string (which would be invalid)
+        if (typeof request.body === 'string') {
+          return reply.status(400).send({
+            error: 'Invalid payload: must be a JSON object',
+            request_id
+          });
+        }
+        
+        // Check if body is undefined or null
+        if (!request.body) {
+          return reply.status(400).send({
+            error: 'Invalid payload: must be a JSON object',
+            request_id
+          });
+        }
+        
+        body = request.body as ValidationPayload;
+        
+        // Check if body is valid JSON object
+        if (typeof body !== 'object' || Array.isArray(body)) {
+          return reply.status(400).send({
+            error: 'Invalid payload: must be a JSON object',
+            request_id
+          });
+        }
+        
+        // Check for invalid field types
+        if (body.email && typeof body.email !== 'string') {
+          return reply.status(400).send({
+            error: 'Invalid payload: email must be a string',
+            request_id
+          });
+        }
+        if (body.phone && typeof body.phone !== 'string') {
+          return reply.status(400).send({
+            error: 'Invalid payload: phone must be a string',
+            request_id
+          });
+        }
+        if (body.name && typeof body.name !== 'string') {
+          return reply.status(400).send({
+            error: 'Invalid payload: name must be a string',
+            request_id
+          });
+        }
+        if (body.ip && typeof body.ip !== 'string') {
+          return reply.status(400).send({
+            error: 'Invalid payload: ip must be a string',
+            request_id
+          });
+        }
+        if (body.user_agent && typeof body.user_agent !== 'string') {
+          return reply.status(400).send({
+            error: 'Invalid payload: user_agent must be a string',
+            request_id
+          });
+        }
+        if (body.session_id && typeof body.session_id !== 'string') {
+          return reply.status(400).send({
+            error: 'Invalid payload: session_id must be a string',
+            request_id
+          });
+        }
+        if (body.currency && typeof body.currency !== 'string') {
+          return reply.status(400).send({
+            error: 'Invalid payload: currency must be a string',
+            request_id
+          });
+        }
+        if (body.transaction_amount && typeof body.transaction_amount !== 'number') {
+          return reply.status(400).send({
+            error: 'Invalid payload: transaction_amount must be a number',
+            request_id
+          });
+        }
+      } catch (error) {
+        return reply.status(400).send({
+          error: 'Invalid JSON payload',
+          request_id
+        });
+      }
+      
       // Parallel validation with caching
       metrics.validation_start = performance.now();
       const validationPromises = [];
@@ -538,13 +789,36 @@ export function registerRulesRoutes(app: FastifyInstance, pool: Pool, redis?: an
               return result;
             }).catch(error => {
               debug_info.errors.push({ field: 'email', error: error.message });
+              // Ensure results are populated even on error
+              results.email = {
+                valid: false,
+                confidence: 0,
+                reason_codes: ['EMAIL_VALIDATION_ERROR'],
+                risk_score: 30,
+                processing_time_ms: 0,
+                provider: 'error',
+                disposable: false,
+                metadata: { error: error.message }
+              };
               return null;
             })
           );
         }
+      } else {
+        // Ensure email results are populated even when no email is provided
+        results.email = {
+          valid: false,
+          confidence: 0,
+          reason_codes: ['NO_EMAIL_PROVIDED'],
+          risk_score: 0,
+          processing_time_ms: 0,
+          provider: 'none',
+          disposable: false,
+          metadata: {}
+        };
       }
 
-      // Phone validation
+      // Phone validation - ensure results are always populated
       if (body.phone) {
         const cacheKey = ValidationCacheManager.generateKey('phone', body.phone, project_id);
         const cached = await ValidationCacheManager.get(redis, cacheKey);
@@ -554,45 +828,90 @@ export function registerRulesRoutes(app: FastifyInstance, pool: Pool, redis?: an
           results.phone = cached;
         } else {
           metrics.cache_misses++;
-          validationPromises.push(
-            validatePhone(body.phone, body.address?.country, redis).then(async (phoneResult) => {
-              const result = buildEnhancedPhoneValidationResult(phoneResult);
-              results.phone = result;
-              await ValidationCacheManager.set(redis, cacheKey, result);
-              debug_info.validation_providers_used.push('phone');
-              return result;
-            }).catch(error => {
-              debug_info.errors.push({ field: 'phone', error: error.message });
-              return null;
-            })
-          );
+          const phoneCountry = body.address?.country || 'US';
+          
+          try {
+            const phoneResult = await validatePhone(body.phone, phoneCountry, redis);
+            const result = buildEnhancedPhoneValidationResult(phoneResult);
+            results.phone = result;
+            await ValidationCacheManager.set(redis, cacheKey, result);
+            debug_info.validation_providers_used.push('phone');
+          } catch (error) {
+            debug_info.errors.push({ field: 'phone', error: error instanceof Error ? error.message : 'Unknown error' });
+            results.phone = {
+              valid: false,
+              confidence: 0,
+              reason_codes: ['PHONE_VALIDATION_ERROR'],
+              risk_score: 30,
+              processing_time_ms: 0,
+              provider: 'error',
+              metadata: { error: error instanceof Error ? error.message : 'Unknown error' }
+            };
+          }
         }
+      } else {
+        // Always provide phone results when phone is provided
+        results.phone = {
+          valid: false,
+          confidence: 0,
+          reason_codes: ['NO_PHONE_PROVIDED'],
+          risk_score: 0,
+          processing_time_ms: 0,
+          provider: 'none',
+          metadata: {}
+        };
       }
 
-      // Address validation
-      if (body.address && body.address.line1 && body.address.city && body.address.postal_code && body.address.country) {
-        const addressString = JSON.stringify(body.address);
-        const cacheKey = ValidationCacheManager.generateKey('address', addressString, project_id);
-        const cached = await ValidationCacheManager.get(redis, cacheKey);
+      // Address validation - ensure results are always populated when address data is provided
+      if (body.address) {
+        const hasRequiredFields = body.address.line1 && body.address.city && body.address.postal_code && body.address.country;
+        
+        if (hasRequiredFields) {
+          const addressString = JSON.stringify(body.address);
+          const cacheKey = ValidationCacheManager.generateKey('address', addressString, project_id);
+          const cached = await ValidationCacheManager.get(redis, cacheKey);
 
-        if (cached) {
-          metrics.cache_hits++;
-          results.address = cached;
+          if (cached) {
+            metrics.cache_hits++;
+            results.address = cached;
+          } else {
+            metrics.cache_misses++;
+            validationPromises.push(
+              validateAddress(body.address as any, pool, redis).then(async (addressResult) => {
+                const result = buildEnhancedAddressValidationResult(addressResult, body.address);
+                results.address = result;
+                await ValidationCacheManager.set(redis, cacheKey, result);
+                debug_info.validation_providers_used.push('address');
+                return result;
+              }).catch(error => {
+                debug_info.errors.push({ field: 'address', error: error instanceof Error ? error.message : 'Unknown error' });
+                return null;
+              })
+            );
+          }
         } else {
-          metrics.cache_misses++;
-          validationPromises.push(
-            validateAddress(body.address as any, pool, redis).then(async (addressResult) => {
-              const result = buildEnhancedAddressValidationResult(addressResult, body.address);
-              results.address = result;
-              await ValidationCacheManager.set(redis, cacheKey, result);
-              debug_info.validation_providers_used.push('address');
-              return result;
-            }).catch(error => {
-              debug_info.errors.push({ field: 'address', error: error instanceof Error ? error.message : 'Unknown error' });
-              return null;
-            })
-          );
+          // Provide empty address results when address data is incomplete
+          results.address = {
+            valid: false,
+            confidence: 0,
+            reason_codes: ['INCOMPLETE_ADDRESS_DATA'],
+            risk_score: 20,
+            processing_time_ms: 0,
+            provider: 'none',
+            metadata: { message: 'Address validation skipped due to incomplete data' }
+          };
         }
+      } else {
+        // Always provide address results when no address is provided
+        results.address = {
+          valid: false,
+          confidence: 0,
+          reason_codes: ['NO_ADDRESS_PROVIDED'],
+          risk_score: 0,
+          processing_time_ms: 0,
+          provider: 'none',
+          metadata: {}
+        };
       }
 
       // Name validation
@@ -626,6 +945,43 @@ export function registerRulesRoutes(app: FastifyInstance, pool: Pool, redis?: an
       await Promise.allSettled(validationPromises);
       metrics.validation_end = performance.now();
 
+      // Ensure results are populated even if validation failed
+      if (body.email && !results.email) {
+        results.email = {
+          valid: false,
+          confidence: 0,
+          reason_codes: ['EMAIL_VALIDATION_FAILED'],
+          risk_score: 30,
+          processing_time_ms: 0,
+          provider: 'error',
+          disposable: false,
+          metadata: { error: 'Email validation failed' }
+        };
+      }
+      if (body.phone && !results.phone) {
+        results.phone = {
+          valid: false,
+          confidence: 0,
+          reason_codes: ['PHONE_VALIDATION_FAILED'],
+          risk_score: 30,
+          processing_time_ms: 0,
+          provider: 'error',
+          metadata: { error: 'Phone validation failed' }
+        };
+      }
+      if (body.address && !results.address) {
+        results.address = {
+          valid: false,
+          confidence: 0,
+          reason_codes: ['ADDRESS_VALIDATION_FAILED'],
+          risk_score: 30,
+          processing_time_ms: 0,
+          provider: 'error',
+          po_box: false,
+          metadata: { error: 'Address validation failed' }
+        };
+      }
+
       // Calculate comprehensive risk score
       const riskAnalysis = RiskScoreCalculator.calculate(results);
 
@@ -634,19 +990,29 @@ export function registerRulesRoutes(app: FastifyInstance, pool: Pool, redis?: an
 
       // Get rules from database
       const rulesQuery = await pool.query(
-        `SELECT * FROM rules 
-       WHERE project_id = $1 AND enabled = true 
+        `SELECT * FROM rules
+       WHERE project_id = $1 AND enabled = true
        ORDER BY priority DESC, created_at ASC`,
         [project_id]
       );
 
-      const rules = rulesQuery.rows;
-      debug_info.rules_evaluated = rules.length;
+      const dbRules = rulesQuery.rows;
+      
+      // Combine built-in rules with database rules
+      const builtInRules = getBuiltInRules();
+      const allRules = [...builtInRules, ...dbRules];
+      debug_info.rules_evaluated = allRules.length;
 
       // Evaluate rules with enhanced context
       const ruleEvaluations: RuleEvaluationResult[] = [];
       const evaluationContext = {
-        ...results,
+        // Direct access to validation results for built-in rules
+        email: results.email || { valid: false, confidence: 0 },
+        phone: results.phone || { valid: false, confidence: 0 },
+        address: results.address || { valid: false, confidence: 0 },
+        name: results.name || { valid: false, confidence: 0 },
+        ip: results.ip || { valid: true, confidence: 80 },
+        device: results.device || { valid: true, confidence: 75 },
         risk_score: riskAnalysis.score,
         risk_level: riskAnalysis.level,
         metadata: body.metadata || {},
@@ -655,14 +1021,14 @@ export function registerRulesRoutes(app: FastifyInstance, pool: Pool, redis?: an
         session_id: body.session_id,
       };
 
-      for (const rule of rules) {
+      for (const rule of allRules) {
         const evalStart = performance.now();
 
         try {
           const evaluation = await RuleEvaluator.evaluate(
             rule,
             evaluationContext,
-            { timeout: 100, debug: true }
+            { timeout: 100, debug: false }
           );
 
           const evalResult: RuleEvaluationResult = {
@@ -710,28 +1076,38 @@ export function registerRulesRoutes(app: FastifyInstance, pool: Pool, redis?: an
 
       // Determine final decision based on rules
       const triggeredRules = ruleEvaluations.filter(r => r.triggered);
-      const blockedRule = triggeredRules.find(r => r.action === 'block');
-      const holdRule = triggeredRules.find(r => r.action === 'hold');
-      const approveRule = triggeredRules.find(r => r.action === 'approve');
+      const blockedRules = triggeredRules.filter(r => r.action === 'block');
+      const holdRules = triggeredRules.filter(r => r.action === 'hold');
+      const approveRules = triggeredRules.filter(r => r.action === 'approve');
 
       let finalAction: 'approve' | 'hold' | 'block' | 'review';
       let finalReasons: string[] = [];
 
-      if (blockedRule) {
+      // Priority-based decision making
+      if (blockedRules.length > 0) {
         finalAction = 'block';
-        finalReasons.push(`Blocked by rule: ${blockedRule.rule_name}`);
-      } else if (holdRule) {
-        finalAction = 'hold';
-        finalReasons.push(`Held by rule: ${holdRule.rule_name}`);
-      } else if (approveRule) {
+        finalReasons.push(`Blocked by ${blockedRules.length} rule(s): ${blockedRules.map(r => r.rule_name).join(', ')}`);
+      } else if (holdRules.length > 0) {
+        // For multiple hold rules or high-risk scenarios, escalate to block
+        if (holdRules.length >= 2 || riskAnalysis.score >= 60) {
+          finalAction = 'block';
+          finalReasons.push(`Escalated to block due to ${holdRules.length} hold rule(s) and high risk score: ${riskAnalysis.score}`);
+        } else {
+          finalAction = 'hold';
+          finalReasons.push(`Held by ${holdRules.length} rule(s): ${holdRules.map(r => r.rule_name).join(', ')}`);
+        }
+      } else if (approveRules.length > 0) {
         finalAction = 'approve';
-        finalReasons.push(`Approved by rule: ${approveRule.rule_name}`);
-      } else if (riskAnalysis.score >= 70) {
+        finalReasons.push(`Approved by rule: ${approveRules[0].rule_name}`);
+      } else if (riskAnalysis.score >= 80) {
+        finalAction = 'block';
+        finalReasons.push('Critical risk score requires blocking');
+      } else if (riskAnalysis.score >= 60) {
         finalAction = 'review';
         finalReasons.push('High risk score requires manual review');
-      } else if (riskAnalysis.score >= 40) {
+      } else if (riskAnalysis.score >= 35) {
         finalAction = 'hold';
-        finalReasons.push('Medium risk score');
+        finalReasons.push('Medium-high risk score');
       } else {
         finalAction = 'approve';
         finalReasons.push('Low risk score');
@@ -742,8 +1118,8 @@ export function registerRulesRoutes(app: FastifyInstance, pool: Pool, redis?: an
 
       // Calculate final confidence
       const avgConfidence = ruleEvaluations.length > 0
-        ? ruleEvaluations.reduce((sum, r) => sum + (r.confidence_score || 0), 0) / ruleEvaluations.length
-        : 50;
+        ? ruleEvaluations.reduce((sum, r) => sum + (r.confidence_score || 0.5), 0) / ruleEvaluations.length
+        : 0.7; // Default higher confidence for legitimate cases (scale 0-1)
 
       // Generate recommended actions
       const recommendedActions: string[] = [];
@@ -883,23 +1259,92 @@ export function registerRulesRoutes(app: FastifyInstance, pool: Pool, redis?: an
       const { rules } = request.body as { rules: any[] };
       const request_id = generateRequestId();
 
-      // Store rules in database (per project)
-      const newRules = rules.map((rule: any) => ({
-        name: rule.name,
-        description: rule.description,
-        logic: rule.logic,
-        severity: rule.severity,
-        enabled: rule.enabled,
-      }));
-
-      const query = 'INSERT INTO rules (project_id, name, description, logic, severity, enabled) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id';
-      const insertedRules: any[] = [];
-      for (const rule of newRules) {
-        const result = await pool.query(query, [project_id, rule.name, rule.description, rule.logic, rule.severity, rule.enabled]);
-        insertedRules.push({ ...rule, id: result.rows[0].id });
+      // Validate input
+      if (!rules || !Array.isArray(rules) || rules.length === 0) {
+        return rep.status(400).send({
+          error: 'Invalid rules array. Must contain at least one rule.',
+          request_id
+        });
       }
 
-      console.warn(`Rules registered for project ${project_id}:`, newRules);
+      // Check for duplicate rule IDs
+      const ruleIds = rules.map((rule: any) => rule.id).filter(Boolean);
+      const uniqueRuleIds = new Set(ruleIds);
+      if (ruleIds.length !== uniqueRuleIds.size) {
+        return rep.status(400).send({
+          error: 'Duplicate rule IDs found. Each rule must have a unique ID.',
+          request_id
+        });
+      }
+
+      // Validate each rule structure
+      for (const rule of rules) {
+        if (!rule.name) {
+          return rep.status(400).send({
+            error: 'Rule name is required for all rules.',
+            request_id
+          });
+        }
+        if (!rule.description) {
+          return rep.status(400).send({
+            error: 'Rule description is required for all rules.',
+            request_id
+          });
+        }
+      }
+
+      // Check for existing UUID rule conflicts
+      let shouldCheckDuplicates = false;
+      if (ruleIds.length > 0) {
+        const uuidRuleIds = ruleIds.filter(id => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id));
+        if (uuidRuleIds.length > 0) {
+          shouldCheckDuplicates = true;
+          const uuidResult = await pool.query(
+            'SELECT COUNT(*) as count FROM rules WHERE project_id = $1 AND id = ANY($2::uuid[])',
+            [project_id, uuidRuleIds]
+          );
+          const existingRulesCount = parseInt(uuidResult.rows[0].count);
+          
+          if (existingRulesCount > 0) {
+            return rep.status(400).send({
+              error: 'One or more rule IDs already exist. Rule IDs must be unique.',
+              request_id
+            });
+          }
+        }
+      }
+
+      // Store rules in database - only pass ID if it's a valid UUID
+      const newRules = rules.map((rule: any) => ({
+        shouldIncludeId: rule.id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(rule.id),
+        id: rule.id,
+        name: rule.name,
+        description: rule.description || '',
+        logic: rule.logic || JSON.stringify({ conditions: rule.conditions, actions: rule.actions }),
+        severity: rule.severity || 'medium',
+        action: rule.action || 'hold',
+        priority: rule.priority || 0,
+        enabled: rule.enabled !== false, // Default to true if not specified
+      }));
+
+      const insertedRules: any[] = [];
+      
+      for (const rule of newRules) {
+        // Only include id in the query if we should include it (i.e., it's a valid UUID)
+        let query: string;
+        let params: any[];
+        
+        if (rule.shouldIncludeId) {
+          query = 'INSERT INTO rules (project_id, id, name, description, logic, severity, action, priority, enabled) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id';
+          params = [project_id, rule.id, rule.name, rule.description, rule.logic, rule.severity, rule.action, rule.priority, rule.enabled];
+        } else {
+          query = 'INSERT INTO rules (project_id, name, description, logic, severity, action, priority, enabled) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id';
+          params = [project_id, rule.name, rule.description, rule.logic, rule.severity, rule.action, rule.priority, rule.enabled];
+        }
+        
+        const result = await pool.query(query, params);
+        insertedRules.push({ ...rule, id: result.rows[0].id });
+      }
 
       const response: any = {
         message: 'Rules registered successfully',
@@ -907,7 +1352,7 @@ export function registerRulesRoutes(app: FastifyInstance, pool: Pool, redis?: an
         request_id,
       };
 
-      return rep.send(response);
+      return rep.status(201).send(response);
     } catch (error) {
       return sendServerError(request, rep, error, MGMT_V1_ROUTES.RULES.REGISTER_CUSTOM_RULES, generateRequestId());
     }

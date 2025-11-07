@@ -214,3 +214,20 @@ export function getPool() {
 export function getRedis() {
   return new Redis(redisContainer.getConnectionUrl())
 }
+
+export async function seedTestData() {
+  // Load some common disposable domains for testing
+  const redis = new Redis(redisContainer.getConnectionUrl())
+  const testDisposableDomains = [
+    '10minutemail.com',
+    'tempmail.org',
+    'guerrillamail.com',
+    'throwaway.email',
+    'yopmail.com',
+    'disposable.com',
+    'testmail.com'
+  ]
+  
+  await redis.sadd('disposable_domains', ...testDisposableDomains)
+  await redis.quit()
+}
