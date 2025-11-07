@@ -62,7 +62,10 @@ export async function rateLimit(request: FastifyRequest, rep: FastifyReply, redi
 export async function idempotency(request: FastifyRequest, rep: FastifyReply, redis: IORedisType): Promise<void> {
     const idem = request.headers["idempotency-key"] || request.headers["Idempotency-Key"];
     if (!idem || typeof idem !== "string") return;
-    const cacheKey = `idem:${request.project_id}:${idem}`;
+    if (!(request as any).project_id) {
+        return;
+    }
+    const cacheKey = `idem:${(request as any).project_id}:${idem}`;
     const cached = await redis.get(cacheKey);
     if (cached) {
         rep.header("x-idempotent-replay", "1");

@@ -1,7 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import request from 'supertest';
 
-import * as hooks from '../hooks.js';
 import { createApp, mockPool, setupBeforeAll } from './testSetup.js';
 
 // Mock nodemailer to prevent actual email sending during tests
@@ -48,7 +47,6 @@ describe('Data Routes', () => {
     jest.clearAllMocks();
 
     // Mock logEvent - don't use spyOn since we'll clear mocks
-    const originalLogEvent = hooks.logEvent;
     jest.doMock('../hooks.js', () => ({
       ...jest.requireActual('../hooks.js'),
       logEvent: jest.fn().mockResolvedValue(undefined),

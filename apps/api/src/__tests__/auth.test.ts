@@ -155,11 +155,6 @@ describe('Auth Routes', () => {
   });
 
   it('should login a user successfully', async () => {
-    interface UserRow {
-      id: string;
-      email: string;
-      password_hash: string;
-    }
     interface QueryResult<T> {
       rows: T[];
     }

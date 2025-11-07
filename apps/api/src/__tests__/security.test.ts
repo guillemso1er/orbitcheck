@@ -1,11 +1,41 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
-import type { Pool } from "pg";
 import request from 'supertest';
 
-import * as bcrypt from 'bcryptjs';
+import { createApp, mockPool, mockRedisInstance, mockValidateEmail, setupBeforeAll } from './testSetup.js';
 
-import { verifyAPIKey } from '../routes/auth.js';
-import { createApp, mockPool, mockRedisInstance, setupBeforeAll } from './testSetup.js';
+// Mock environment module
+jest.mock('../environment.js', () => ({
+  environment: {
+    DATABASE_URL: 'postgres://test',
+    REDIS_URL: 'redis://localhost',
+    JWT_SECRET: 'test_jwt_secret',
+    SESSION_SECRET: '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
+    ENCRYPTION_KEY: '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
+    TWILIO_ACCOUNT_SID: 'test_sid',
+    TWILIO_AUTH_TOKEN: 'test_token',
+    TWILIO_PHONE_NUMBER: '+15551234567',
+    TWILIO_VERIFY_SERVICE_SID: 'test_verify_sid',
+    GOOGLE_GEOCODING_KEY: '',
+    USE_GOOGLE_FALLBACK: false,
+    DISPOSABLE_LIST_URL: 'https://example.com/disposable-domains.json',
+    RATE_LIMIT_COUNT: 100,
+    RATE_LIMIT_BURST: 200,
+    RETENTION_DAYS: 90,
+    PORT: 3000,
+    LOG_LEVEL: 'error',
+    SENTRY_DSN: '',
+    OIDC_ENABLED: false,
+    OIDC_CLIENT_ID: '',
+    OIDC_CLIENT_SECRET: '',
+    OIDC_PROVIDER_URL: '',
+    OIDC_REDIRECT_URI: '',
+    STRIPE_SECRET_KEY: 'sk_test_mock',
+    STRIPE_BASE_PLAN_PRICE_ID: 'price_base_mock',
+    STRIPE_USAGE_PRICE_ID: 'price_usage_mock',
+    STRIPE_STORE_ADDON_PRICE_ID: 'price_addon_mock',
+    FRONTEND_URL: 'http://localhost:3000',
+  }
+}));
 
 // Mock bcrypt functions
 jest.mock('bcryptjs', () => ({
@@ -41,6 +71,24 @@ describe('Security and Authentication', () => {
   // Before each test, reset mocks to a clean, default state
   beforeEach(() => {
     jest.clearAllMocks();
+
+    // Set up default validator mock
+    mockValidateEmail.mockResolvedValue({
+      valid: true,
+      reason_codes: [],
+      disposable: false,
+      normalized: 'test@example.com',
+      mx_found: true,
+      request_id: 'test-id',
+      ttl_seconds: 2_592_000
+    });
+
+    // Set up Redis mocks for rate limiting
+    mockRedisInstance.incr.mockResolvedValue(1); // First request, count = 1
+    mockRedisInstance.expire.mockResolvedValue(true);
+    mockRedisInstance.ttl.mockResolvedValue(60);
+    mockRedisInstance.get.mockResolvedValue(null); // No cached idempotency
+    mockRedisInstance.set.mockResolvedValue('OK');
 
     // Default mock implementation: assume authentication is successful
     mockPool.query.mockImplementation((queryText: string) => {
@@ -130,6 +178,7 @@ describe('Security and Authentication', () => {
         .post('/v1/validate/email')
         .set('Authorization', 'Bearer ok_test_key_1234567890abcdef')
         .send({ email: 'test@example.com' });
+
 
       // Check that the request was successful
       expect(result.statusCode).toBe(200);

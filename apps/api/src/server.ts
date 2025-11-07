@@ -182,13 +182,24 @@ async function closeResources(
     }
 
     // Stop all workers
-    await Promise.allSettled(
-        activeWorkers.map(worker => worker.close())
-    );
+    if (activeWorkers.length > 0) {
+        await Promise.allSettled(
+            activeWorkers.map(worker => {
+                if (worker && typeof worker.close === 'function') {
+                    return worker.close();
+                }
+                return Promise.resolve();
+            })
+        );
+    }
     activeWorkers = [];
 
     // Stop all cron tasks
-    activeCronTasks.forEach(task => task.stop());
+    activeCronTasks.forEach(task => {
+        if (task && typeof task.stop === 'function') {
+            task.stop();
+        }
+    });
     activeCronTasks = [];
 
     // Close other resources

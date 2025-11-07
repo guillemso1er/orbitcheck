@@ -297,7 +297,14 @@ describe('Server Startup', () => {
     (Pool as jest.MockedClass<typeof Pool>).mockImplementation(() => mockPoolInstance as any);
 
     // Act & Assert
-    await expect(start()).rejects.toThrow('FATAL: Could not connect to PostgreSQL. Shutting down. Database connection failed');
+    try {
+      await start();
+      fail('start() should have rejected');
+    } catch (caughtError) {
+      const error = caughtError as Error;
+      expect(error.message).toContain('FATAL: Could not connect to PostgreSQL');
+      expect(error.message).toContain('Database connection failed');
+    }
   });
 
   it('should register /v1/status endpoint', async () => {

@@ -51,15 +51,22 @@ export async function authenticateRequest<TServer extends RawServerBase = RawSer
         return;
     }
 
-    // Dashboard routes - use session-based authentication
+    // Projects routes - use management authentication (PAT tokens)
+    const isProjectsRoute = url.startsWith('/projects');
+
+    // Dashboard routes - use session-based authentication (exclude projects which use PAT)
     const isDashboardRoute = Object.values(DASHBOARD_ROUTES).some(route => {
-        // Handle parameterized routes like '/projects/:id'
-        if (route.includes(':')) {
+        // Handle parameterized routes like '/user/:id' but exclude projects
+        if (route.includes(':') && !route.startsWith('/projects')) {
             const routePattern = route.replace(/:[^/]+/g, '[^/]+');
             const regex = new RegExp(`^${routePattern}`);
             return regex.test(url);
         }
-        return url.startsWith(route);
+        // Handle non-parameterized routes but exclude projects
+        if (!route.includes(':') && !route.startsWith('/projects')) {
+            return url.startsWith(route);
+        }
+        return false;
     });
 
     // Management routes - use PAT authentication, fallback to session
@@ -74,7 +81,7 @@ export async function authenticateRequest<TServer extends RawServerBase = RawSer
             }
             return url.startsWith(route);
         })
-    );
+    ) || isProjectsRoute;
 
     // Runtime routes - use API key with HMAC
     const isRuntimeRoute = Object.values(API_V1_ROUTES).some(group =>
@@ -90,7 +97,7 @@ export async function authenticateRequest<TServer extends RawServerBase = RawSer
         })
     );
 
-    request.log.info({ url, isDashboardRoute, isMgmtRoute, isRuntimeRoute }, 'Auth method determination');
+    request.log.info({ url, isDashboardRoute, isMgmtRoute, isRuntimeRoute, isProjectsRoute }, 'Auth method determination');
 
     if (isDashboardRoute) {
         await authenticateRouteRequest(request, rep, pool, 'dashboard');

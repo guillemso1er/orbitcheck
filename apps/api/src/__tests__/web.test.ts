@@ -131,11 +131,6 @@ describe('Web Module', () => {
       jest.clearAllMocks();
 
       // Mock database query for API key lookup - need to match the hash+prefix query in verifyAPIKey
-      const crypto = require('crypto');
-      const testKey = 'ok_test_key_1234567890abcdef';
-      const keyHash = crypto.createHash('sha256').update(testKey).digest('hex');
-      const prefix = 'ok_tes'; // first 6 chars of the test key
-
       mockPool.query
         // First call: API key lookup (query for hash and prefix)
         .mockImplementationOnce((queryText: string) => {

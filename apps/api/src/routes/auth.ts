@@ -54,7 +54,7 @@ function detectAuthMethod<TServer extends RawServerBase = RawServerBase>(request
     return AuthMethod.NONE;
 }
 
-export async function verifyAPIKey<TServer extends RawServerBase = RawServerBase>(request: FastifyRequest<RouteGenericInterface, TServer>, rep: FastifyReply<RouteGenericInterface, TServer>, pool: Pool): Promise<boolean> {
+export async function verifyAPIKey<TServer extends RawServerBase = RawServerBase>(request: FastifyRequest<RouteGenericInterface, TServer>, _rep: FastifyReply<RouteGenericInterface, TServer>, pool: Pool): Promise<boolean> {
     const header = request.headers["authorization"];
     if (!header || !header.startsWith("Bearer ")) {
         request.log.info('No Bearer header for API key auth');
@@ -467,6 +467,10 @@ export async function verifyPAT<TServer extends RawServerBase = RawServerBase>(r
         "UPDATE personal_access_tokens SET last_used_at = now(), last_used_ip = $1 WHERE id = $2",
         [req.ip, pat.id]
     ).catch(() => { }); // Non-blocking
+    
+    // Decorate request object with PAT information for downstream handlers
+    (req as any).user_id = pat.user_id;
+    (req as any).pat_scopes = pat.scopes;
     
     return pat;
 }

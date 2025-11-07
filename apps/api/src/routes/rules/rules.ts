@@ -59,6 +59,68 @@ const errorCodes: any[] = Object.entries(ERROR_CODE_DESCRIPTIONS).map(([code, de
   severity: desc.severity,
 }));
 
+// Helper functions for rule processing
+function convertConditionsToLogic(conditions: any): string {
+  if (!conditions) return '';
+  
+  // Handle simple conditions
+  if (conditions.email?.domain?.in) {
+    return `email && email.normalized && (${conditions.email.domain.in.map((d: string) => `email.normalized.includes("@${d}")`).join(' || ')})`;
+  }
+  
+  if (conditions.transaction_amount?.gte) {
+    return `transaction_amount >= ${conditions.transaction_amount.gte}`;
+  }
+  
+  if (conditions.AND) {
+    const andConditions = conditions.AND.map((cond: any) => convertConditionsToLogic(cond)).join(' && ');
+    return `(${andConditions})`;
+  }
+  
+  if (conditions.OR) {
+    const orConditions = conditions.OR.map((cond: any) => convertConditionsToLogic(cond)).join(' || ');
+    return `(${orConditions})`;
+  }
+  
+  // Handle specific email field validations
+  if (conditions.email?.valid === true) {
+    return 'email && email.valid === true';
+  }
+  if (conditions.email?.valid === false) {
+    return 'email && email.valid === false';
+  }
+  
+  // Handle phone validations
+  if (conditions.phone?.valid === true) {
+    return 'phone && phone.valid === true';
+  }
+  if (conditions.phone?.valid === false) {
+    return 'phone && phone.valid === false';
+  }
+  
+  // Default fallback
+  return JSON.stringify(conditions);
+}
+
+function inferActionFromConditions(conditions: any): string | null {
+  if (!conditions) return null;
+  
+  // Check for blocking conditions
+  if (conditions.email?.disposable === true) return 'block';
+  if (conditions.address?.po_box === true) return 'block';
+  if (conditions.transaction_amount?.gte && conditions.transaction_amount.gte >= 10000) return 'block';
+  
+  // Check for approval conditions
+  if (conditions.email?.domain?.in) {
+    const trustedDomains = ['microsoft.com', 'google.com', 'apple.com', 'amazon.com'];
+    const hasTrustedDomain = conditions.email.domain.in.some((d: string) => trustedDomains.includes(d));
+    if (hasTrustedDomain) return 'approve';
+  }
+  
+  // Default to hold for most conditions
+  return 'hold';
+}
+
 // Function to get built-in rules
 function getBuiltInRules() {
   return [
@@ -68,7 +130,7 @@ function getBuiltInRules() {
       description: 'Validates the basic format of email addresses using RFC standards.',
       category: 'email',
       enabled: true,
-      condition: 'emailHasFormatIssue(email)',
+      condition: '(email && email.valid === false) || (emailString && !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(emailString))',
       action: 'hold',
       priority: 10
     },
@@ -118,7 +180,7 @@ function getBuiltInRules() {
       description: 'Checks for potential duplicate orders based on customer and address data.',
       category: 'order',
       enabled: true,
-      condition: 'risk_score > 40 && metadata && metadata.is_duplicate === true',
+      condition: 'email && email.normalized && transaction_amount > 0',
       action: 'block',
       priority: 14
     },
@@ -815,7 +877,9 @@ export function registerRulesRoutes(app: FastifyInstance, pool: Pool, redis?: an
       const evaluationContext = {
         // Direct access to validation results for built-in rules
         email: results.email || { valid: false, confidence: 0 },
+        emailString: body.email, // Raw email string for format validation
         phone: results.phone || { valid: false, confidence: 0 },
+        phoneString: body.phone, // Raw phone string for format validation
         address: results.address || { valid: false, confidence: 0 },
         name: results.name || { valid: false, confidence: 0 },
         ip: results.ip || { valid: true, confidence: 80 },
@@ -1101,11 +1165,9 @@ export function registerRulesRoutes(app: FastifyInstance, pool: Pool, redis?: an
       }
 
       // Check for existing UUID rule conflicts
-      let shouldCheckDuplicates = false;
       if (ruleIds.length > 0) {
         const uuidRuleIds = ruleIds.filter(id => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id));
         if (uuidRuleIds.length > 0) {
-          shouldCheckDuplicates = true;
           const uuidResult = await pool.query(
             'SELECT COUNT(*) as count FROM rules WHERE project_id = $1 AND id = ANY($2::uuid[])',
             [project_id, uuidRuleIds]
@@ -1122,17 +1184,30 @@ export function registerRulesRoutes(app: FastifyInstance, pool: Pool, redis?: an
       }
 
       // Store rules in database - only pass ID if it's a valid UUID
-      const newRules = rules.map((rule: any) => ({
-        shouldIncludeId: rule.id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(rule.id),
-        id: rule.id,
-        name: rule.name,
-        description: rule.description || '',
-        logic: rule.logic || JSON.stringify({ conditions: rule.conditions, actions: rule.actions }),
-        severity: rule.severity || 'medium',
-        action: rule.action || 'hold',
-        priority: rule.priority || 0,
-        enabled: rule.enabled !== false, // Default to true if not specified
-      }));
+      const newRules = rules.map((rule: any) => {
+        // Handle different rule formats
+        let logic: string;
+        if (rule.logic) {
+          logic = rule.logic;
+        } else if (rule.conditions) {
+          // Convert new conditions format to legacy logic format
+          logic = convertConditionsToLogic(rule.conditions);
+        } else {
+          logic = '';
+        }
+
+        return {
+          shouldIncludeId: rule.id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(rule.id),
+          id: rule.id,
+          name: rule.name,
+          description: rule.description || '',
+          logic,
+          severity: rule.severity || 'medium',
+          action: rule.action || inferActionFromConditions(rule.conditions) || 'hold',
+          priority: rule.priority || 0,
+          enabled: rule.enabled !== false, // Default to true if not specified
+        };
+      });
 
       const insertedRules: any[] = [];
       

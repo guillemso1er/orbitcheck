@@ -62,10 +62,10 @@ export async function validatePhone(
             e164 = parsed.number;
             cc = parsed.country ? String(parsed.country) : cc;
         } else {
-            reason_codes.push('phone.invalid_format');
+            reason_codes.push('phone.invalid');
         }
     } catch {
-        reason_codes.push('phone.unparseable');
+        reason_codes.push('phone.invalid');
     }
 
     const valid = reason_codes.length === 0;

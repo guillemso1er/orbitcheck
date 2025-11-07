@@ -288,9 +288,24 @@ export class RuleEvaluator {
                 return Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
             },
             // Enhanced validation helpers
-            emailFormatInvalid: (value: any) => value && value.valid === false && value.reason_codes &&
-                (value.reason_codes.includes('EMAIL_INVALID_FORMAT') || !value.mx_records),
-            emailHasFormatIssue: (value: any) => value && value.valid === false,
+            emailFormatInvalid: (value: any) => {
+                if (!value) return false;
+                // Check for format issues by testing email pattern
+                if (typeof value === 'string') {
+                    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                    return !emailPattern.test(value);
+                }
+                return value.valid === false && value.reason_codes &&
+                    (value.reason_codes.includes('EMAIL_INVALID_FORMAT') || !value.mx_records);
+            },
+            emailHasFormatIssue: (value: any) => {
+                if (!value) return false;
+                if (typeof value === 'string') {
+                    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                    return !emailPattern.test(value);
+                }
+                return value && value.valid === false;
+            },
             addressHasIssue: (value: any) => value && value.valid === false,
             riskLevel: (level: string) => level === 'critical',
             // Math functions
@@ -452,18 +467,26 @@ export class RiskScoreCalculator {
         // Address risk factors
         if (validationResults.address) {
             const address = validationResults.address;
-            if (!address.valid) {
-                // Check if it's just a postal code mismatch (less severe)
-                const isPostalMismatch = address.reason_codes &&
-                    (address.reason_codes as string[]).some((code: string) =>
-                        code.includes('POSTAL') || code.includes('CITY_MISMATCH'));
-                totalScore += isPostalMismatch ? 15 : this.RISK_FACTORS.address.invalid;
-                factors.push(isPostalMismatch ? 'Address postal/city mismatch' : 'Invalid address');
-            }
+            
+            // Check for specific address issues with appropriate risk levels
             if (address.po_box) {
                 totalScore += this.RISK_FACTORS.address.po_box;
                 factors.push('PO Box address');
             }
+            
+            // Check for postal code/city mismatch - should be medium risk (20-25 points)
+            const isPostalMismatch = address.reason_codes &&
+                (address.reason_codes as string[]).some((code: string) =>
+                    code.includes('POSTAL') || code.includes('CITY_MISMATCH') || code.includes('ADDRESS_POSTAL_CITY_MISMATCH'));
+            
+            if (isPostalMismatch) {
+                totalScore += 25; // Medium risk - should not escalate to critical
+                factors.push('Address postal/city mismatch');
+            } else if (!address.valid) {
+                totalScore += this.RISK_FACTORS.address.invalid;
+                factors.push('Invalid address');
+            }
+            
             if (address.deliverable === false) {
                 totalScore += this.RISK_FACTORS.address.non_deliverable;
                 factors.push('Non-deliverable address');
