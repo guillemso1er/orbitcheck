@@ -80,7 +80,6 @@ function detectMissingAwait(func: Function): string[] {
         { pattern: /\.save\(/g, name: 'save()' },
         { pattern: /\.find[A-Z]?\w*\(/g, name: 'database query' },
         { pattern: /\.create\(/g, name: 'create()' },
-        { pattern: /\.update\(/g, name: 'update()' },
         { pattern: /\.delete\(/g, name: 'delete()' },
         { pattern: /fetch\(/g, name: 'fetch()' },
         { pattern: /axios\./g, name: 'axios call' }

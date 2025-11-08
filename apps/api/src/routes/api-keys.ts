@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+import { webcrypto as nodeWebCrypto } from "node:crypto";
 
 import { MGMT_V1_ROUTES } from "@orbitcheck/contracts";
 import type { FastifyInstance } from "fastify";
@@ -107,24 +108,34 @@ export function registerApiKeysRoutes(app: FastifyInstance, pool: Pool): void {
             const prefix = full_key.slice(0, 6);
             const keyHash = crypto.createHash(HASH_ALGORITHM).update(full_key).digest('hex');
 
-            // Encrypt the full key
-            const iv = await new Promise<Buffer>((resolve, reject) => {
+            // Encrypt the full key using Web Crypto API (async)
+            const ivBuffer = await new Promise<Buffer>((resolve, reject) => {
                 crypto.randomBytes(CRYPTO_IV_BYTES, (error, buf) => {
                     if (error) reject(error);
                     else resolve(buf);
                 });
             });
-            const cipher = crypto.createCipheriv(ENCRYPTION_ALGORITHM, Buffer.from(environment.ENCRYPTION_KEY, ENCODING_HEX), iv);
-            let encrypted = await new Promise<string>((resolve, reject) => {
-                try {
-                    const updateResult = cipher.update(full_key, ENCODING_UTF8, ENCODING_HEX);
-                    const finalResult = cipher.final(ENCODING_HEX);
-                    resolve(updateResult + finalResult);
-                } catch (error) {
-                    reject(error);
-                }
-            });
-            const encryptedWithIv = iv.toString('hex') + ':' + encrypted;
+            
+            // Use Web Crypto API for async encryption
+            const cryptoKey = await nodeWebCrypto.subtle.importKey(
+                'raw',
+                Buffer.from(environment.ENCRYPTION_KEY, ENCODING_HEX),
+                { name: ENCRYPTION_ALGORITHM, length: 256 },
+                false,
+                ['encrypt']
+            );
+            
+            const encryptedBuffer = await nodeWebCrypto.subtle.encrypt(
+                {
+                    name: ENCRYPTION_ALGORITHM,
+                    iv: ivBuffer
+                },
+                cryptoKey,
+                Buffer.from(full_key, ENCODING_UTF8)
+            );
+            
+            const encrypted = Buffer.from(encryptedBuffer).toString(ENCODING_HEX);
+            const encryptedWithIv = ivBuffer.toString('hex') + ':' + encrypted;
 
             const { rows } = await pool.query(
                 "INSERT INTO api_keys (project_id, prefix, hash, encrypted_key, status, name) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id, created_at",

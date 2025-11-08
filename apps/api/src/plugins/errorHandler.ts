@@ -1,4 +1,5 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest, RawServerBase, RouteGenericInterface } from "fastify";
+import crypto from "node:crypto";
 
 import { ErrorHandler } from "../utils/errorHandler.js";
 
@@ -36,6 +37,27 @@ export async function setupErrorHandler<TServer extends RawServerBase = RawServe
         // Handle authentication errors
         if (error.statusCode === 401 || error.code === 'UNAUTHORIZED') {
             return reply.status(401).send({ error: 'unauthorized', message: 'Authentication required' });
+        }
+
+        // Handle payload too large errors
+        const isPayloadTooLarge =
+            error.code === 'FST_REQ_FILE_TOO_LARGE' ||
+            error.code === 'FST_ERR_CTP_INVALID_MEDIA_TYPE' ||
+            error.statusCode === 413 ||
+            (error.statusCode === 400 && (
+                error.message?.includes('payload') ||
+                error.message?.includes('too large') ||
+                error.message?.includes('body')
+            ));
+        
+        if (isPayloadTooLarge) {
+            return reply.status(413).send({
+                error: {
+                    code: 'payload_too_large',
+                    message: 'Request payload too large'
+                },
+                request_id: (request as any).id || crypto.randomUUID()
+            });
         }
 
         // Handle validation errors - these are generally safe to expose

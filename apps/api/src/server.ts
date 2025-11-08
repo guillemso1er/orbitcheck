@@ -58,6 +58,7 @@ export async function build(pool: Pool, redis: IORedisType): Promise<FastifyInst
         requestTimeout: REQUEST_TIMEOUT_MS,
         bodyLimit: 1024 * 100, // 100KB limit to trigger 413
         trustProxy: true,
+        allowErrorHandlerOverride: false, // Disable error handler override warnings
     }) as any;
 
     // Setup API documentation
@@ -75,32 +76,6 @@ export async function build(pool: Pool, redis: IORedisType): Promise<FastifyInst
         await inputSanitizationHook(request, reply);
     });
 
-    // Add custom error handler to convert 400 to 413 for payload too large errors
-    app.setErrorHandler(async (error: FastifyError, request: FastifyRequest, reply: FastifyReply) => {
-        // Handle body size limit errors - check various conditions
-        const isPayloadTooLarge =
-            error.code === 'FST_REQ_FILE_TOO_LARGE' ||
-            error.code === 'FST_ERR_CTP_INVALID_MEDIA_TYPE' ||
-            error.statusCode === 413 ||
-            (error.statusCode === 400 && (
-                error.message?.includes('payload') ||
-                error.message?.includes('too large') ||
-                error.message?.includes('body')
-            ));
-
-        if (isPayloadTooLarge) {
-            return reply.status(413).send({
-                error: {
-                    code: 'payload_too_large',
-                    message: 'Request payload too large'
-                },
-                request_id: (request as any).id || crypto.randomUUID()
-            });
-        }
-
-        console.log('Unhandled error:', { code: error.code, statusCode: error.statusCode, message: error.message });
-        throw error;
-    });
 
     // Skip startup guard in test environment
     if (!isTestEnvironment && process.env.NODE_ENV !== 'production') {
