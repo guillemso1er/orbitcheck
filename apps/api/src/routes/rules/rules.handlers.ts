@@ -21,6 +21,8 @@ export async function handleTestRules(
     const request_id = generateRequestId();
     const project_id = (request as any).project_id;
 
+    console.log(`[DEBUG] handleTestRules - Starting request ${request_id} for project ${project_id}`);
+
     const metrics = {
         cache_hits: 0,
         cache_misses: 0,
@@ -61,7 +63,13 @@ export async function handleTestRules(
         return reply.status(400).send({ error: 'Invalid JSON payload', request_id });
     }
 
+    console.log(`[DEBUG] handleTestRules - Validating payload for ${request_id}`);
+    console.log(`[DEBUG] handleTestRules - Payload: ${JSON.stringify(body)}`);
+
     const { results: orchestratorResults, metrics: orchestratorMetrics, debug_info: orchestratorDebugInfo } = await validatePayload(body, redis, pool, { mode: 'test', fillMissingResults: true, useCache: true, timeoutMs: 30000, projectId: project_id });
+
+    console.log(`[DEBUG] handleTestRules - Validation results: ${JSON.stringify(orchestratorResults)}`);
+
     Object.assign(results, orchestratorResults);
     metrics.cache_hits += orchestratorMetrics.cache_hits;
     metrics.cache_misses += orchestratorMetrics.cache_misses;
@@ -72,68 +80,143 @@ export async function handleTestRules(
     debug_info.warnings.push(...orchestratorDebugInfo.warnings);
 
     const riskAnalysis = RiskScoreCalculator.calculate(results);
+    console.log(`[DEBUG] handleTestRules - Risk analysis: ${JSON.stringify(riskAnalysis)}`);
+
     metrics.rule_eval_start = performance.now();
+
+    console.log(`[DEBUG] handleTestRules - Querying database for rules for project ${project_id}`);
     const rulesQuery = await pool.query(`SELECT * FROM rules WHERE project_id = $1 AND enabled = true ORDER BY priority DESC, created_at ASC`, [project_id]);
+    console.log(`[DEBUG] handleTestRules - Found ${rulesQuery.rows.length} database rules`);
     const dbRules = rulesQuery.rows;
     const builtInRules = getBuiltInRules();
+    console.log(`[DEBUG] handleTestRules - Found ${builtInRules.length} built-in rules`);
     const allRules = [...builtInRules, ...dbRules];
     debug_info.rules_evaluated = allRules.length;
+    console.log(`[DEBUG] handleTestRules - Total rules to evaluate: ${allRules.length}`);
 
     const ruleEvaluations: RuleEvaluationResult[] = [];
     const evaluationContext = {
+        // Add helper functions to the context
+        addressHasIssue: (address: any) => {
+            if (!address) return false;
+            return address.postal_code && address.city && address.postal_code_mismatch;
+        },
+        riskLevel: (level: string) => {
+            return level === 'critical' || level === 'high';
+        },
         email: results.email || { valid: false, confidence: 0 }, emailString: body.email, phone: results.phone || { valid: false, confidence: 0 }, phoneString: body.phone, address: results.address || { valid: false, confidence: 0 }, name: results.name || { valid: false, confidence: 0 }, ip: results.ip || { valid: true, confidence: 80 }, device: results.device || { valid: true, confidence: 75 }, risk_score: riskAnalysis.score, risk_level: riskAnalysis.level, metadata: body.metadata || {}, transaction_amount: body.transaction_amount, currency: body.currency, session_id: body.session_id,
     };
 
+    console.log(`[DEBUG] handleTestRules - Evaluation context: ${JSON.stringify(Object.keys(evaluationContext))}`);
+
+    console.log(`[DEBUG] handleTestRules - Starting rule evaluation loop`);
+
     for (const rule of allRules) {
         const evalStart = performance.now();
+        console.log(`[DEBUG] handleTestRules - Evaluating rule: ${rule.id} (${rule.name})`);
+
         try {
             const evaluation = await RuleEvaluator.evaluate(rule, evaluationContext, { timeout: 100, debug: false });
-            ruleEvaluations.push({ rule_id: rule.id, rule_name: rule.name || `Rule ${rule.id}`, description: rule.description, condition: rule.condition || rule.logic, triggered: evaluation.triggered, action: rule.action || 'hold', priority: rule.priority || 0, evaluation_time_ms: performance.now() - evalStart, confidence_score: evaluation.confidence, reason: evaluation.reason, error: evaluation.error, metadata: rule.metadata });
-            if (evaluation.triggered) debug_info.rules_triggered++;
+            console.log(`[DEBUG] handleTestRules - Rule ${rule.id} evaluation result: triggered=${evaluation.triggered}, confidence=${evaluation.confidence}`);
+
+            const evaluationResult = {
+                rule_id: rule.id,
+                rule_name: rule.name || `Rule ${rule.id}`,
+                description: rule.description,
+                condition: rule.condition || rule.logic,
+                triggered: evaluation.triggered,
+                action: rule.action || 'hold',
+                priority: rule.priority || 0,
+                evaluation_time_ms: performance.now() - evalStart,
+                confidence_score: evaluation.confidence,
+                reason: evaluation.reason,
+                error: evaluation.error,
+                metadata: rule.metadata
+            };
+
+            ruleEvaluations.push(evaluationResult);
+            if (evaluation.triggered) {
+                debug_info.rules_triggered++;
+                console.log(`[DEBUG] handleTestRules - Rule ${rule.id} TRIGGERED!`);
+            }
         } catch (error) {
-            ruleEvaluations.push({ rule_id: rule.id, rule_name: rule.name || `Rule ${rule.id}`, description: rule.description, condition: rule.condition || rule.logic, triggered: false, action: rule.action || 'hold', priority: rule.priority || 0, evaluation_time_ms: performance.now() - evalStart, error: error instanceof Error ? error.message : 'Evaluation failed' });
+            console.log(`[DEBUG] handleTestRules - Rule ${rule.id} evaluation error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+
+            const evaluationResult = {
+                rule_id: rule.id,
+                rule_name: rule.name || `Rule ${rule.id}`,
+                description: rule.description,
+                condition: rule.condition || rule.logic,
+                triggered: false,
+                action: rule.action || 'hold',
+                priority: rule.priority || 0,
+                evaluation_time_ms: performance.now() - evalStart,
+                error: error instanceof Error ? error.message : 'Evaluation failed'
+            };
+
+            ruleEvaluations.push(evaluationResult);
             debug_info.errors.push({ field: `rule_${rule.id}`, error: error instanceof Error ? error.message : 'Unknown error' });
         }
     }
+
+    console.log(`[DEBUG] handleTestRules - Rule evaluation complete. Total evaluated: ${ruleEvaluations.length}, Triggered: ${debug_info.rules_triggered}`);
 
     metrics.rule_eval_end = performance.now();
     const triggeredRules = ruleEvaluations.filter(r => r.triggered);
     const blockedRules = triggeredRules.filter(r => r.action === 'block');
     const holdRules = triggeredRules.filter(r => r.action === 'hold');
     const approveRules = triggeredRules.filter(r => r.action === 'approve');
+
+    console.log(`[DEBUG] handleTestRules - Decision logic:`);
+    console.log(`[DEBUG] handleTestRules - Triggered rules: ${triggeredRules.length}`);
+    console.log(`[DEBUG] handleTestRules - Blocked rules: ${blockedRules.length} (${blockedRules.map(r => r.rule_id).join(', ')})`);
+    console.log(`[DEBUG] handleTestRules - Hold rules: ${holdRules.length} (${holdRules.map(r => r.rule_id).join(', ')})`);
+    console.log(`[DEBUG] handleTestRules - Approve rules: ${approveRules.length} (${approveRules.map(r => r.rule_id).join(', ')})`);
+    console.log(`[DEBUG] handleTestRules - Risk score: ${riskAnalysis.score}, Level: ${riskAnalysis.level}`);
+
     let finalAction: 'approve' | 'hold' | 'block' | 'review';
     let finalReasons: string[] = [];
 
     if (blockedRules.length > 0) {
         finalAction = 'block';
         finalReasons.push(`Blocked by ${blockedRules.length} rule(s): ${blockedRules.map(r => r.rule_name).join(', ')}`);
+        console.log(`[DEBUG] handleTestRules - Final action: BLOCK (from blocked rules)`);
     } else if (holdRules.length > 0) {
-        if (holdRules.length >= 2 || riskAnalysis.score >= 60) {
-            finalAction = 'block';
-            finalReasons.push(`Escalated to block due to ${holdRules.length} hold rule(s) and high risk score: ${riskAnalysis.score}`);
+        if (riskAnalysis.score >= 80 || riskAnalysis.level === 'critical') {
+            finalAction = 'review';
+            finalReasons.push(`Manual review due to critical risk (${riskAnalysis.score}) with ${holdRules.length} hold rule(s): ${holdRules.map(r => r.rule_name).join(', ')}`);
+            console.log(`[DEBUG] handleTestRules - Final action: REVIEW (critical risk with hold rules)`);
         } else {
             finalAction = 'hold';
             finalReasons.push(`Held by ${holdRules.length} rule(s): ${holdRules.map(r => r.rule_name).join(', ')}`);
+            console.log(`[DEBUG] handleTestRules - Final action: HOLD (from hold rules)`);
         }
     } else if (approveRules.length > 0) {
         finalAction = 'approve';
         finalReasons.push(`Approved by rule: ${approveRules[0].rule_name}`);
+        console.log(`[DEBUG] handleTestRules - Final action: APPROVE (from approve rules)`);
     } else if (riskAnalysis.score >= 80) {
         finalAction = 'block';
         finalReasons.push('Critical risk score requires blocking');
+        console.log(`[DEBUG] handleTestRules - Final action: BLOCK (critical risk score)`);
     } else if (riskAnalysis.score >= 60) {
         finalAction = 'review';
         finalReasons.push('High risk score requires manual review');
+        console.log(`[DEBUG] handleTestRules - Final action: REVIEW (high risk score)`);
     } else if (riskAnalysis.score >= 35) {
         finalAction = 'hold';
         finalReasons.push('Medium-high risk score');
+        console.log(`[DEBUG] handleTestRules - Final action: HOLD (medium-high risk score)`);
     } else {
         finalAction = 'approve';
         finalReasons.push('Low risk score');
+        console.log(`[DEBUG] handleTestRules - Final action: APPROVE (low risk score)`);
     }
 
     finalReasons.push(...riskAnalysis.factors);
-    const avgConfidence = ruleEvaluations.length > 0 ? ruleEvaluations.reduce((sum, r) => sum + (r.confidence_score || 0.5), 0) / ruleEvaluations.length : 0.7;
+    const avgConfidence = triggeredRules.length > 0
+        ? triggeredRules.reduce((sum, r) => sum + (r.confidence_score || 0.5), 0) / triggeredRules.length
+        : 0.7;  // Only average triggered rules, not all rules
     const recommendedActions: string[] = [];
     if (results.email?.disposable) recommendedActions.push('Request alternative email address');
     if (results.phone?.reachable === false) recommendedActions.push('Verify phone number via SMS');
@@ -141,6 +224,12 @@ export async function handleTestRules(
     if (riskAnalysis.score > 50) recommendedActions.push('Request additional verification');
 
     const endTime = performance.now();
+
+    console.log(`[DEBUG] handleTestRules - Final response structure:`);
+    console.log(`[DEBUG] handleTestRules - rule_evaluations length: ${ruleEvaluations.length}`);
+    console.log(`[DEBUG] handleTestRules - first few rule_evaluations: ${JSON.stringify(ruleEvaluations.slice(0, 3))}`);
+    console.log(`[DEBUG] handleTestRules - email_format in evaluations: ${ruleEvaluations.find(r => r.rule_id === 'email_format') ? 'FOUND' : 'NOT FOUND'}`);
+
     const response: TestRulesResponse = {
         results: { ...results, ...(results.email && { email: { ...results.email, processing_time_ms: results.email.processing_time_ms || 0 } }), ...(results.phone && { phone: { ...results.phone, processing_time_ms: results.phone.processing_time_ms || 0 } }), ...(results.address && { address: { ...results.address, processing_time_ms: results.address.processing_time_ms || 0 } }), ...(results.name && { name: { ...results.name, processing_time_ms: results.name.processing_time_ms || 0 } }), },
         rule_evaluations: ruleEvaluations,

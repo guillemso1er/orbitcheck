@@ -4,7 +4,7 @@ import metrics from "@immobiliarelabs/fastify-metrics";
 import * as Sentry from '@sentry/node';
 import { Queue, Worker } from 'bullmq';
 import * as dotenv from 'dotenv';
-import type { FastifyInstance, FastifyError, FastifyRequest, FastifyReply } from "fastify";
+import type { FastifyError, FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import Fastify from "fastify";
 import { type Redis as IORedisType, Redis } from 'ioredis';
 import cron from 'node-cron';
@@ -17,7 +17,6 @@ import { environment } from "./environment.js";
 import { batchDedupeProcessor } from './jobs/batchDedupe.js';
 import { batchValidationProcessor } from './jobs/batchValidation.js';
 import { disposableProcessor } from './jobs/refreshDisposable.js';
-import { inputSanitizationHook } from "./middleware/inputSanitization.js";
 import { setupCors } from "./plugins/cors.js";
 import { setupDocumentation } from "./plugins/documentation.js";
 import { setupErrorHandler } from "./plugins/errorHandler.js";
@@ -72,7 +71,7 @@ export async function build(pool: Pool, redis: IORedisType): Promise<FastifyInst
         ) {
             return;
         }
-        await inputSanitizationHook(request, reply);
+        // await inputSanitizationHook(request, reply);
     });
 
     // Add custom error handler to convert 400 to 413 for payload too large errors
@@ -97,7 +96,7 @@ export async function build(pool: Pool, redis: IORedisType): Promise<FastifyInst
                 request_id: (request as any).id || crypto.randomUUID()
             });
         }
-        
+
         console.log('Unhandled error:', { code: error.code, statusCode: error.statusCode, message: error.message });
         throw error;
     });

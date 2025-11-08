@@ -122,7 +122,9 @@ export function getBuiltInRules() {
         { id: 'email_disposable', name: 'Disposable Email Detection', description: 'Detects and flags temporary or disposable email services.', category: 'email', enabled: true, condition: 'email && email.disposable === true', action: 'block', priority: 15 },
         { id: 'po_box_detection', name: 'PO Box Detection', description: 'Identifies and flags addresses using PO Box or similar mail services.', category: 'address', enabled: true, condition: 'address && address.po_box === true', action: 'block', priority: 12 },
         { id: 'address_postal_mismatch', name: 'Address Postal Code Mismatch', description: 'Detects when postal code does not match city/region.', category: 'address', enabled: true, condition: 'addressHasIssue(address)', action: 'hold', priority: 9 },
-        { id: 'order_dedupe', name: 'Order Deduplication', description: 'Checks for potential duplicate orders based on customer and address data.', category: 'order', enabled: true, condition: 'email && email.normalized && transaction_amount > 0', action: 'block', priority: 14 },
+
+        { id: 'order_dedupe', name: 'Order Deduplication', description: 'Checks for potential duplicate orders based on customer and address data.', category: 'order', enabled: true, condition: 'metadata && metadata.is_duplicate_order === true', action: 'hold', priority: 14 },
+
         { id: 'high_value_order', name: 'High Value Order Risk', description: 'Evaluates high value orders for additional risk factors.', category: 'order', enabled: true, condition: 'transaction_amount > 1000', action: 'hold', priority: 11 },
         { id: 'high_value_customer_priority', name: 'High Value Customer Priority', description: 'Prioritizes high-value customers for faster processing.', category: 'order', enabled: true, condition: 'transaction_amount > 1500 && email && email.valid', action: 'approve', priority: 8 },
         { id: 'critical_block_rule', name: 'Critical Block Rule', description: 'Blocks transactions with critical risk level.', category: 'risk', enabled: true, condition: 'riskLevel(risk_level)', action: 'block', priority: 20 },
@@ -131,10 +133,11 @@ export function getBuiltInRules() {
         { id: 'phone_format', name: 'Phone Number Format Validation', description: 'Parses and validates international phone number formats.', category: 'phone', enabled: true, condition: 'phone && !phone.valid', action: 'hold', priority: 10 },
         { id: 'phone_otp', name: 'Phone OTP Verification', description: 'Sends one-time password for phone number verification.', category: 'phone', enabled: true, condition: 'phone && phone.valid && !phone.verified', action: 'hold', priority: 7 },
         { id: 'address_validation', name: 'Address Validation', description: 'Validates and normalizes physical addresses for accuracy and deliverability.', category: 'address', enabled: true, condition: 'address && !address.valid', action: 'hold', priority: 9 },
-        { id: 'po_box_detection', name: 'PO Box Detection', description: 'Identifies and flags addresses using PO Box or similar mail services.', category: 'address', enabled: true, condition: 'address && address.po_box === true', action: 'block', priority: 12 },
         { id: 'address_geocode', name: 'Address Geocoding Validation', description: 'Normalizes and validates physical addresses against geographic data.', category: 'address', enabled: true, condition: 'address && address.valid === false', action: 'hold', priority: 8 },
-        { id: 'high_risk_address', name: 'High Risk Address Detection', description: 'Blocks or holds orders to high-risk addresses.', category: 'address', enabled: true, condition: 'address && address.risk_score > 70', action: 'block', priority: 18 },
-        { id: 'high_value_order', name: 'High Value Order Review', description: 'Flags high-value orders for additional review.', category: 'order', enabled: true, condition: 'transaction_amount && transaction_amount > 1000', action: 'hold', priority: 5 }
+
+        { id: 'high_risk_address', name: 'High Risk Address Detection', description: 'Blocks or holds orders to high-risk addresses.', category: 'address', enabled: true, condition: 'address && address.risk_score > 90 && address.valid === false', action: 'hold', priority: 18 },
+
+        { id: 'high_value_order_review', name: 'High Value Order Review', description: 'Flags high-value orders for additional review.', category: 'order', enabled: true, condition: 'transaction_amount && transaction_amount > 1000', action: 'hold', priority: 5 }
     ];
 }
 
