@@ -446,6 +446,8 @@ const ApiKeys: React.FC<ApiKeysProps> = () => {
       const errorMessage = err instanceof Error ? err.message : 'Failed to create API key';
       setError(errorMessage);
       console.error('Error creating API key:', err);
+      // Close modal on error
+      setShowCreate(false);
     } finally {
       setCreating(false);
     }

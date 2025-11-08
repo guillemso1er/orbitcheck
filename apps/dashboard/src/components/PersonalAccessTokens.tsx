@@ -667,7 +667,7 @@ const PersonalAccessTokens: React.FC<PersonalAccessTokensProps> = () => {
       setLoading(true);
       setError(null);
       const response = await apiClient.listPersonalAccessTokens();
-      setTokens((response.data || []).filter((token): token is PersonalAccessToken =>
+      setTokens(((response as any).pats || []).filter((token: PersonalAccessToken): token is PersonalAccessToken =>
         token.id !== undefined &&
         token.token_id !== undefined &&
         token.name !== undefined &&
