@@ -116,8 +116,17 @@ const Login: React.FC = () => {
       } else {
         throw new Error(ERROR_MESSAGES.INVALID_SERVER_RESPONSE);
       }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : ERROR_MESSAGES.UNEXPECTED_ERROR);
+    } catch (err: any) {
+      // Handle Axios errors with proper error message extraction
+      if (err.response?.data?.error?.message) {
+        setError(err.response.data.error.message);
+      } else if (err.response?.data?.message) {
+        setError(err.response.data.message);
+      } else if (err.message) {
+        setError(err.message);
+      } else {
+        setError(ERROR_MESSAGES.UNEXPECTED_ERROR);
+      }
     } finally {
       setLoading(false);
     }
