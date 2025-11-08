@@ -1,7 +1,7 @@
 import { Redis } from 'ioredis'
 import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'vitest'
 import { build } from '../src/server'
-import { getPool, getRedis, resetDb, startTestEnv, stopTestEnv, seedTestData } from './setup'
+import { getPool, getRedis, resetDb, seedTestData, startTestEnv, stopTestEnv } from './setup'
 
 let app: Awaited<ReturnType<typeof build>>
 let pool: ReturnType<typeof getPool>
@@ -12,21 +12,21 @@ beforeAll(async () => {
   try {
     // Start environment first
     await startTestEnv()
-    
+
     // Get connections
     pool = getPool()
     redis = getRedis()
-    
+
     // Build app
     app = await build(pool, redis)
     await app.ready()
-    
+
     // Give the app a moment to fully initialize
     await new Promise(resolve => setTimeout(resolve, 100))
-    
+
     // Seed test data for disposable domains
     await seedTestData()
-    
+
     // Set up PAT token for rules tests
     const userRes = await app.inject({
       method: 'POST',
@@ -37,7 +37,7 @@ beforeAll(async () => {
         confirm_password: 'password123'
       }
     })
-    
+
     const loginRes = await app.inject({
       method: 'POST',
       url: '/auth/login',
@@ -62,7 +62,7 @@ afterAll(async () => {
   } catch (error) {
     // Ignore closing errors in tests
   }
-  
+
   try {
     if (redis) {
       redis.disconnect()
@@ -70,7 +70,7 @@ afterAll(async () => {
   } catch (error) {
     // Ignore
   }
-  
+
   try {
     await stopTestEnv()
   } catch (error) {
@@ -90,7 +90,7 @@ beforeEach(async () => {
       confirm_password: 'password123'
     }
   })
-  
+
   const loginRes = await app.inject({
     method: 'POST',
     url: '/auth/login',
@@ -151,7 +151,7 @@ describe('Rules Integration Tests', () => {
       expect(body).toHaveProperty('rules')
       expect(Array.isArray(body.rules)).toBe(true)
       expect(body).toHaveProperty('request_id')
-      
+
       // Verify rule structure
       if (body.rules.length > 0) {
         const rule = body.rules[0]
@@ -171,7 +171,7 @@ describe('Rules Integration Tests', () => {
       })
       expect(res.statusCode).toBe(200)
       const body = res.json()
-      
+
       // Check for expected rule categories
       const categories = body.rules.map((rule: any) => rule.category)
       expect(categories).toContain('email')
@@ -189,7 +189,7 @@ describe('Rules Integration Tests', () => {
       expect(res.statusCode).toBe(200)
       const body = res.json()
       const ruleIds = body.rules.map((rule: any) => rule.id)
-      
+
       // Check for specific expected rule IDs
       expect(ruleIds).toContain('email_format')
       expect(ruleIds).toContain('email_mx')
@@ -208,11 +208,11 @@ describe('Rules Integration Tests', () => {
       })
       expect(res.statusCode).toBe(200)
       const body = res.json()
-      
+
       // Should have both enabled and disabled rules
       const enabledRules = body.rules.filter((rule: any) => rule.enabled)
       const disabledRules = body.rules.filter((rule: any) => !rule.enabled)
-      
+
       expect(enabledRules.length).toBeGreaterThan(0)
       expect(Array.isArray(disabledRules)).toBe(true)
     })
@@ -240,7 +240,7 @@ describe('Rules Integration Tests', () => {
       })
       expect(res.statusCode).toBe(200)
       const body = res.json()
-      const emailCodes = body.reason_codes.filter((code: any) => 
+      const emailCodes = body.reason_codes.filter((code: any) =>
         code.code.includes('EMAIL') || code.category === 'email'
       )
       expect(emailCodes.length).toBeGreaterThan(0)
@@ -254,7 +254,7 @@ describe('Rules Integration Tests', () => {
       })
       expect(res.statusCode).toBe(200)
       const body = res.json()
-      const phoneCodes = body.reason_codes.filter((code: any) => 
+      const phoneCodes = body.reason_codes.filter((code: any) =>
         code.code.includes('PHONE') || code.category === 'phone'
       )
       expect(phoneCodes.length).toBeGreaterThan(0)
@@ -268,7 +268,7 @@ describe('Rules Integration Tests', () => {
       })
       expect(res.statusCode).toBe(200)
       const body = res.json()
-      const addressCodes = body.reason_codes.filter((code: any) => 
+      const addressCodes = body.reason_codes.filter((code: any) =>
         code.code.includes('ADDRESS') || code.category === 'address'
       )
       expect(addressCodes.length).toBeGreaterThan(0)
@@ -282,7 +282,7 @@ describe('Rules Integration Tests', () => {
       })
       expect(res.statusCode).toBe(200)
       const body = res.json()
-      
+
       if (body.reason_codes.length > 0) {
         const code = body.reason_codes[0]
         expect(code).toHaveProperty('code')
@@ -316,7 +316,7 @@ describe('Rules Integration Tests', () => {
       })
       expect(res.statusCode).toBe(200)
       const body = res.json()
-      
+
       if (body.error_codes.length > 0) {
         const code = body.error_codes[0]
         expect(code).toHaveProperty('code')
@@ -424,7 +424,7 @@ describe('Rules Integration Tests', () => {
       const body = res.json()
       expect(body).toHaveProperty('rule_evaluations')
       expect(Array.isArray(body.rule_evaluations)).toBe(true)
-      
+
       // Check rule evaluation structure
       if (body.rule_evaluations.length > 0) {
         const evaluation = body.rule_evaluations[0]
@@ -464,7 +464,7 @@ describe('Rules Integration Tests', () => {
       expect(res.statusCode).toBe(200)
       const body = res.json()
       expect(body).toHaveProperty('results')
-      
+
       // Each validation field should have risk scoring
       if (body.results.email) {
         expect(body.results.email).toHaveProperty('risk_score')
@@ -610,24 +610,24 @@ describe('Rules Integration Tests', () => {
   describe('Business Logic Validation', () => {
     test('rules test returns consistent results for same input', async () => {
       const payload = { email: 'test@example.com' }
-      
+
       const res1 = await app.inject({
         method: 'POST',
         url: '/v1/rules/test',
         headers: { authorization: `Bearer ${patToken}` },
         payload
       })
-      
+
       const res2 = await app.inject({
         method: 'POST',
         url: '/v1/rules/test',
         headers: { authorization: `Bearer ${patToken}` },
         payload
       })
-      
+
       expect(res1.statusCode).toBe(200)
       expect(res2.statusCode).toBe(200)
-      
+
       // Results should be consistent (note: might differ due to time-based checks)
       expect(res1.json().results.email.valid).toBe(res2.json().results.email.valid)
     })
@@ -644,7 +644,7 @@ describe('Rules Integration Tests', () => {
       })
       expect(res.statusCode).toBe(200)
       const body = res.json()
-      
+
       // Each rule evaluation should have confidence scoring
       body.rule_evaluations.forEach((evaluation: any) => {
         if (evaluation.triggered) {
@@ -658,7 +658,7 @@ describe('Rules Integration Tests', () => {
 
     test('handles high validation volume efficiently', async () => {
       const startTime = Date.now()
-      
+
       for (let i = 0; i < 10; i++) {
         const res = await app.inject({
           method: 'POST',
@@ -668,9 +668,9 @@ describe('Rules Integration Tests', () => {
         })
         expect(res.statusCode).toBe(200)
       }
-      
+
       const endTime = Date.now()
-      
+
       // Should complete within reasonable time (adjust threshold as needed)
       expect(endTime - startTime).toBeLessThan(30000) // 30 seconds
     })
@@ -688,7 +688,7 @@ describe('Rules Integration Tests', () => {
           confirm_password: 'password123'
         }
       })
-      
+
       const user2Res = await app.inject({
         method: 'POST',
         url: '/auth/register',
@@ -698,7 +698,7 @@ describe('Rules Integration Tests', () => {
           confirm_password: 'password123'
         }
       })
-      
+
       const login1Res = await app.inject({
         method: 'POST',
         url: '/auth/login',
@@ -707,7 +707,7 @@ describe('Rules Integration Tests', () => {
           password: 'password123'
         }
       })
-      
+
       const login2Res = await app.inject({
         method: 'POST',
         url: '/auth/login',
@@ -716,7 +716,7 @@ describe('Rules Integration Tests', () => {
           password: 'password123'
         }
       })
-      
+
       // User1 registers custom rules
       const customRules = [
         {
@@ -727,7 +727,7 @@ describe('Rules Integration Tests', () => {
           enabled: true
         }
       ]
-      
+
       const registerRes = await app.inject({
         method: 'POST',
         url: '/v1/rules/register',
@@ -735,7 +735,7 @@ describe('Rules Integration Tests', () => {
         payload: { rules: customRules }
       })
       expect(registerRes.statusCode).toBe(201)
-      
+
       // User2 should not see User1's custom rules in the list
       const listRes = await app.inject({
         method: 'GET',
@@ -768,10 +768,10 @@ describe('Rules Integration Tests', () => {
             headers: { authorization: `Bearer ${patToken}` },
             payload: { email }
           })
-          
+
           expect(res.statusCode).toBe(200)
           const body = res.json()
-          
+
           // Find email format rule evaluation
           const formatRule = body.rule_evaluations.find((rule: any) =>
             rule.rule_id === 'email_format' && rule.triggered
@@ -797,10 +797,10 @@ describe('Rules Integration Tests', () => {
             headers: { authorization: `Bearer ${patToken}` },
             payload: { email }
           })
-          
+
           expect(res.statusCode).toBe(200)
           const body = res.json()
-          
+
           // Check if disposable rule was triggered
           const disposableRule = body.rule_evaluations.find((rule: any) =>
             rule.rule_id === 'email_disposable' && rule.triggered
@@ -829,10 +829,10 @@ describe('Rules Integration Tests', () => {
               transaction_amount: 150.00
             }
           })
-          
+
           expect(res.statusCode).toBe(200)
           const body = res.json()
-          
+
           // Should trigger risk scoring rules
           expect(body.final_decision.risk_level).toMatch(/medium|high|critical/)
         }
@@ -853,10 +853,10 @@ describe('Rules Integration Tests', () => {
             headers: { authorization: `Bearer ${patToken}` },
             payload: { email: testCase.email }
           })
-          
+
           expect(res.statusCode).toBe(200)
           const body = res.json()
-          
+
           if (body.results.email) {
             expect(body.results.email.confidence).toBeGreaterThanOrEqual(testCase.expectedMinConfidence || 0)
             if (testCase.expectedMaxConfidence) {
@@ -884,10 +884,10 @@ describe('Rules Integration Tests', () => {
             headers: { authorization: `Bearer ${patToken}` },
             payload: { phone }
           })
-          
+
           expect(res.statusCode).toBe(200)
           const body = res.json()
-          
+
           const formatRule = body.rule_evaluations.find((rule: any) =>
             rule.rule_id === 'phone_format' && rule.triggered
           )
@@ -909,10 +909,10 @@ describe('Rules Integration Tests', () => {
             headers: { authorization: `Bearer ${patToken}` },
             payload: { phone }
           })
-          
+
           expect(res.statusCode).toBe(200)
           const body = res.json()
-          
+
           // Should trigger risk-based phone rules
           expect(body.final_decision.risk_level).toMatch(/medium|high|critical/)
         }
@@ -932,10 +932,10 @@ describe('Rules Integration Tests', () => {
             headers: { authorization: `Bearer ${patToken}` },
             payload: { phone }
           })
-          
+
           expect(res.statusCode).toBe(200)
           const body = res.json()
-          
+
           if (body.results.phone) {
             expect(body.results.phone.country).toBeDefined()
             expect(body.results.phone.e164).toBeDefined()
@@ -947,10 +947,10 @@ describe('Rules Integration Tests', () => {
     describe('Address Rule Logic Conditions', () => {
       test('triggers PO Box detection on PO Box addresses', async () => {
         const poBoxAddresses = [
-          { address: { line1: 'PO Box 123', city: 'Anytown', postal_code: '12345', country: 'US' }},
-          { address: { line1: 'P.O. Box 456', city: 'Anytown', postal_code: '12345', country: 'US' }},
-          { address: { line1: 'Post Office Box 789', city: 'Anytown', postal_code: '12345', country: 'US' }},
-          { address: { line1: 'PO BOX 999', city: 'Anytown', postal_code: '12345', country: 'US' }}
+          { address: { line1: 'PO Box 123', city: 'Anytown', postal_code: '12345', country: 'US' } },
+          { address: { line1: 'P.O. Box 456', city: 'Anytown', postal_code: '12345', country: 'US' } },
+          { address: { line1: 'Post Office Box 789', city: 'Anytown', postal_code: '12345', country: 'US' } },
+          { address: { line1: 'PO BOX 999', city: 'Anytown', postal_code: '12345', country: 'US' } }
         ]
 
         for (const testCase of poBoxAddresses) {
@@ -960,16 +960,16 @@ describe('Rules Integration Tests', () => {
             headers: { authorization: `Bearer ${patToken}` },
             payload: testCase
           })
-          
+
           expect(res.statusCode).toBe(200)
           const body = res.json()
-          
+
           const poBoxRule = body.rule_evaluations.find((rule: any) =>
             rule.rule_id === 'po_box_detection' && rule.triggered
           )
           expect(poBoxRule).toBeDefined()
           expect(poBoxRule.action).toBe('block')
-          
+
           if (body.results.address) {
             expect(body.results.address.po_box).toBe(true)
           }
@@ -1005,10 +1005,10 @@ describe('Rules Integration Tests', () => {
             headers: { authorization: `Bearer ${patToken}` },
             payload: testCase
           })
-          
+
           expect(res.statusCode).toBe(200)
           const body = res.json()
-          
+
           const geocodeRule = body.rule_evaluations.find((rule: any) =>
             rule.rule_id === 'address_geocode' && rule.triggered
           )
@@ -1036,10 +1036,10 @@ describe('Rules Integration Tests', () => {
             headers: { authorization: `Bearer ${patToken}` },
             payload: testCase
           })
-          
+
           expect(res.statusCode).toBe(200)
           const body = res.json()
-          
+
           // Should trigger postal code mismatch rule (adjusted to match current risk scoring)
           expect(body.final_decision.risk_level).toMatch(/medium|high|critical/)
         }
@@ -1074,11 +1074,11 @@ describe('Rules Integration Tests', () => {
           headers: { authorization: `Bearer ${patToken}` },
           payload: duplicateOrderData[0]
         })
-        
+
         expect(res1.statusCode).toBe(200)
         // Updated expectation - first order might be held/blocked due to risk scoring
         expect(['approve', 'hold', 'block']).toContain(res1.json().final_decision.action)
-        
+
         // Test second order (should trigger duplicate detection)
         const res2 = await app.inject({
           method: 'POST',
@@ -1086,10 +1086,10 @@ describe('Rules Integration Tests', () => {
           headers: { authorization: `Bearer ${patToken}` },
           payload: duplicateOrderData[1]
         })
-        
+
         expect(res2.statusCode).toBe(200)
         const body2 = res2.json()
-        
+
         const dedupeRule = body2.rule_evaluations.find((rule: any) =>
           rule.rule_id === 'order_dedupe' && rule.triggered
         )
@@ -1122,10 +1122,10 @@ describe('Rules Integration Tests', () => {
             headers: { authorization: `Bearer ${patToken}` },
             payload: order
           })
-          
+
           expect(res.statusCode).toBe(200)
           const body = res.json()
-          
+
           // Higher amounts should trigger more restrictive actions
           if (order.transaction_amount >= 10000) {
             expect(['block', 'hold', 'review']).toContain(body.final_decision.action)
@@ -1151,10 +1151,10 @@ describe('Rules Integration Tests', () => {
             headers: { authorization: `Bearer ${patToken}` },
             payload: order
           })
-          
+
           expect(res.statusCode).toBe(200)
           const body = res.json()
-          
+
           // COD should increase risk
           expect(body.final_decision.risk_level).toMatch(/medium|high|critical/)
         }
@@ -1270,10 +1270,10 @@ describe('Rules Integration Tests', () => {
             currency: 'USD'
           }
         })
-        
+
         expect(res.statusCode).toBe(200)
         const body = res.json()
-        
+
         const highValueRule = body.rule_evaluations.find((rule: any) =>
           rule.rule_id === 'high_value_customer_priority' && rule.triggered
         )
@@ -1290,7 +1290,7 @@ describe('Rules Integration Tests', () => {
             enabled: true,
             conditions: {
               OR: [
-                { AND: [ { email: { valid: true } }, { phone: { valid: true } } ] },
+                { AND: [{ email: { valid: true } }, { phone: { valid: true } }] },
                 { transaction_amount: { gte: 500 } }
               ]
             },
@@ -1318,7 +1318,7 @@ describe('Rules Integration Tests', () => {
             phone: '+1234567890'
           }
         })
-        
+
         expect(res1.statusCode).toBe(200)
         const body1 = res1.json()
         const complexRule1 = body1.rule_evaluations.find((rule: any) =>
@@ -1336,7 +1336,7 @@ describe('Rules Integration Tests', () => {
             transaction_amount: 1000.00
           }
         })
-        
+
         expect(res2.statusCode).toBe(200)
         const body2 = res2.json()
         const complexRule2 = body2.rule_evaluations.find((rule: any) =>
@@ -1395,13 +1395,13 @@ describe('Rules Integration Tests', () => {
           headers: { authorization: `Bearer ${patToken}` },
           payload: { email: 'user@tempmail.com' }
         })
-        
+
         expect(res.statusCode).toBe(200)
         const body = res.json()
-        
+
         // Should trigger critical block rule with highest priority
         expect(body.final_decision.action).toBe('block')
-        
+
         const criticalRule = body.rule_evaluations.find((rule: any) =>
           rule.rule_id === 'critical_block_rule' && rule.triggered
         )
@@ -1422,14 +1422,14 @@ describe('Rules Integration Tests', () => {
           headers: { authorization: `Bearer ${patToken}` },
           payload: multiIssueData
         })
-        
+
         expect(res.statusCode).toBe(200)
         const body = res.json()
-        
+
         // Should have multiple triggered rules
         const triggeredRules = body.rule_evaluations.filter((rule: any) => rule.triggered)
         expect(triggeredRules.length).toBeGreaterThan(1)
-        
+
         // Overall confidence should be low due to multiple issues
         expect(body.final_decision.confidence).toBeLessThan(50)
         expect(body.final_decision.risk_level).toMatch(/high|critical/)
@@ -1469,7 +1469,7 @@ describe('Rules Integration Tests', () => {
           headers: { authorization: `Bearer ${patToken}` },
           payload: { email: 'test@example.com' }
         })
-        
+
         expect(res.statusCode).toBe(200)
         // Should still return valid response despite malformed rule
         expect(res.json()).toHaveProperty('final_decision')
@@ -1481,7 +1481,7 @@ describe('Rules Integration Tests', () => {
           email: 'user@example.com',
           metadata: {}
         }
-        
+
         // Add large metadata object
         for (let i = 0; i < 1000; i++) {
           largePayload.metadata[`field_${i}`] = 'x'.repeat(100)
@@ -1493,7 +1493,7 @@ describe('Rules Integration Tests', () => {
           headers: { authorization: `Bearer ${patToken}` },
           payload: largePayload
         })
-        
+
         expect(res.statusCode).toBe(200)
         const body = res.json()
         expect(body).toHaveProperty('final_decision')
@@ -1517,7 +1517,7 @@ describe('Rules Integration Tests', () => {
         }
 
         const results = await Promise.all(promises)
-        
+
         // All requests should succeed
         results.forEach((res: any, index: number) => {
           expect(res.statusCode).toBe(200)
@@ -1528,7 +1528,7 @@ describe('Rules Integration Tests', () => {
       test('validates rule performance metrics under load', async () => {
         const startTime = Date.now()
         const iterations = 20
-        
+
         for (let i = 0; i < iterations; i++) {
           const res = await app.inject({
             method: 'POST',
@@ -1547,10 +1547,10 @@ describe('Rules Integration Tests', () => {
           })
           expect(res.statusCode).toBe(200)
         }
-        
+
         const endTime = Date.now()
         const totalTime = endTime - startTime
-        
+
         // Should complete within reasonable time (adjust threshold as needed)
         expect(totalTime).toBeLessThan(60000) // 60 seconds for 20 iterations
       })
@@ -1582,17 +1582,17 @@ describe('Rules Integration Tests', () => {
           headers: { authorization: `Bearer ${patToken}` },
           payload: highRiskOrder
         })
-        
+
         expect(res.statusCode).toBe(200)
         const body = res.json()
-        
+
         // Should trigger multiple risk rules
         expect(body.final_decision.action).toBe('block')
         expect(body.final_decision.risk_level).toBe('critical')
-        
+
         // Should have detailed rule evaluations
         expect(body.rule_evaluations.length).toBeGreaterThan(3)
-        
+
         // Each evaluation should have proper structure
         body.rule_evaluations.forEach((evaluation: any) => {
           expect(evaluation).toHaveProperty('rule_id')
@@ -1626,10 +1626,10 @@ describe('Rules Integration Tests', () => {
           headers: { authorization: `Bearer ${patToken}` },
           payload: kycData
         })
-        
+
         expect(res.statusCode).toBe(200)
         const body = res.json()
-        
+
         // Should be approved or require minimal review
         expect(['approve', 'hold', 'review']).toContain(body.final_decision.action)
         expect(['low', 'medium']).toContain(body.final_decision.risk_level)
@@ -1660,10 +1660,10 @@ describe('Rules Integration Tests', () => {
           headers: { authorization: `Bearer ${patToken}` },
           payload: subscriptionData
         })
-        
+
         expect(res.statusCode).toBe(200)
         const body = res.json()
-        
+
         // Should have good confidence for legitimate subscription
         expect(body.final_decision.confidence).toBeGreaterThan(0.6)
         expect(['approve', 'hold']).toContain(body.final_decision.action)

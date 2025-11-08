@@ -5,7 +5,6 @@ import type { Pool } from "pg";
 
 import { ROUTES } from "./config.js";
 import { HTTP_STATUS } from "./errors.js";
-import { createPlansService } from './services/plans.js';
 import { idempotency, rateLimit } from "./hooks.js";
 import { registerApiKeysRoutes } from './routes/api-keys.js';
 import { authenticateRouteRequest, registerAuthRoutes } from "./routes/auth.js";
@@ -17,12 +16,13 @@ import { registerJobRoutes } from './routes/jobs.js';
 import { registerNormalizeRoutes } from './routes/normalize.js';
 import { registerOrderRoutes } from './routes/orders.js';
 import { registerPatRoutes } from './routes/pats.js';
-import { registerRulesRoutes } from './routes/rules/rules.js';
-import { registerSettingsRoutes } from './routes/settings.js';
-import { registerValidationRoutes } from './routes/validation.js';
 import { registerPlanRoutes } from './routes/plans.js';
 import { registerProjectRoutes } from './routes/projects.js';
+import { registerSettingsRoutes } from './routes/settings.js';
+import { registerValidationRoutes } from './routes/validation.js';
 import { registerWebhookRoutes } from './routes/webhook.js';
+import { createPlansService } from './services/plans.js';
+import { registerRulesRoutes } from "./routes/rules/rules.routes.js";
 
 const AUTH_REGISTER = DASHBOARD_ROUTES.REGISTER_NEW_USER;
 const AUTH_LOGIN = DASHBOARD_ROUTES.USER_LOGIN;
