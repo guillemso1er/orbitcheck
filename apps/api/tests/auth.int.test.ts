@@ -256,7 +256,7 @@ describe('Authentication Integration Tests', () => {
     test('dashboard routes require session auth', async () => {
       const res = await app.inject({
         method: 'GET',
-        url: '/projects'
+        url: '/user/plan'
       })
       expect(res.statusCode).toBe(401)
       const body = res.json()
