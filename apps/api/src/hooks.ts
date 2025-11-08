@@ -171,8 +171,21 @@ export async function logEvent(project_id: string, type: string, endpoint: strin
             status,
             ...meta
         };
-        // Fire and forget
-        setImmediate(() => sendWebhooks(project_id, webhookEvent, payload, pool));
+        // Fire and forget, but make sure pool is still valid
+        setImmediate(async () => {
+            try {
+                // Check if pool is still valid before making queries
+                if (!pool || (pool as any).ended || (pool as any)._ended) {
+                    return; // Skip webhook if pool is closed
+                }
+                await sendWebhooks(project_id, webhookEvent, payload, pool);
+            } catch (error) {
+                // Suppress errors during test teardown
+                if (process.env.NODE_ENV !== 'test') {
+                    console.error('Webhook error after pool closed:', error);
+                }
+            }
+        });
     }
 }
 

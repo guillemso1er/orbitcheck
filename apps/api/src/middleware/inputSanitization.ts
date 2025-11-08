@@ -6,6 +6,11 @@ import { InputSanitizer } from '../utils/sanitization.js';
  * Fastify hook to sanitize all incoming request data
  */
 export async function inputSanitizationHook(request: FastifyRequest, _reply: FastifyReply): Promise<void> {
+    // Skip sanitization for test rules endpoint - it needs raw data for rule evaluation
+    if (request.url.includes('/v1/rules/test') || request.url.includes('/v1/rules/test-rules')) {
+        return;
+    }
+
     // Check content-type for POST requests to validation endpoints
     if (request.method === 'POST' && request.url.includes('/v1/validate/')) {
         const contentType = request.headers['content-type'];

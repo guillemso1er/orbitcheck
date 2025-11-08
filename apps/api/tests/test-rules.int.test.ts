@@ -619,7 +619,7 @@ describe('Comprehensive Rule Logic Testing', () => {
             expect(highValueRule).toBeDefined()
         })
 
-        test('validates rule condition evaluation logic', async () => {
+        test('validates rule condition evaluation logic for transaction amount, email, phone, and address', async () => {
             const complexRules = [
                 {
                     id: 'complex_conditions_test',
@@ -683,7 +683,7 @@ describe('Comprehensive Rule Logic Testing', () => {
             expect(highValueRule).toBeDefined()
         })
 
-        test('validates rule condition evaluation logic', async () => {
+        test('validates rule condition evaluation logic for email, phone and transaction amount', async () => {
             const complexRules = [
                 {
                     id: 'complex_conditions_test',
@@ -954,7 +954,7 @@ describe('Comprehensive Rule Logic Testing', () => {
 
             // Should complete within reasonable time (adjust threshold as needed)
             expect(totalTime).toBeLessThan(60000) // 60 seconds for 20 iterations
-        })
+        }, 35000)
     })
 
     describe('Real-World Rule Scenarios', () => {

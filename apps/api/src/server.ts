@@ -17,6 +17,7 @@ import { environment } from "./environment.js";
 import { batchDedupeProcessor } from './jobs/batchDedupe.js';
 import { batchValidationProcessor } from './jobs/batchValidation.js';
 import { disposableProcessor } from './jobs/refreshDisposable.js';
+import { inputSanitizationHook } from "./middleware/inputSanitization.js";
 import { setupCors } from "./plugins/cors.js";
 import { setupDocumentation } from "./plugins/documentation.js";
 import { setupErrorHandler } from "./plugins/errorHandler.js";
@@ -26,7 +27,6 @@ import { registerAuthenticatedDocsRoutes } from "./routes/authenticatedDocs.js";
 import { registerHealthRoutes } from "./routes/health.js";
 import startupGuard from './startup-guard.js';
 import { registerRoutes } from "./web.js";
-import { inputSanitizationHook } from "./middleware/inputSanitization.js";
 
 if (process.env.NODE_ENV !== 'production' && process.env.NODE_ENV !== 'test') {
     dotenv.config();

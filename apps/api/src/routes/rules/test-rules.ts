@@ -145,8 +145,29 @@ export class RuleEvaluator {
             enhancedContext.addressHasIssue = (value: any) => value && value.valid === false;
         }
         if (!enhancedContext.riskLevel) {
-            enhancedContext.riskLevel = (level: string) => level === 'critical' || level === 'high';
+            enhancedContext.riskLevel = (level: string) => level === 'critical';
         }
+
+        const domainFromMeta = enhancedContext.email?.metadata?.domain;
+        const domainFromNormalized = typeof enhancedContext.email?.normalized === 'string'
+            ? enhancedContext.email.normalized.split('@')[1]?.toLowerCase()
+            : undefined;
+        const domainFromRaw = typeof enhancedContext.emailString === 'string'
+            ? enhancedContext.emailString.split('@')[1]?.toLowerCase()
+            : undefined;
+
+        if (enhancedContext.email) {
+            enhancedContext.email.domain =
+                enhancedContext.email.domain || domainFromMeta || domainFromNormalized || domainFromRaw || undefined;
+
+            if (enhancedContext.email.domain) {
+                enhancedContext.email.metadata = {
+                    ...(enhancedContext.email.metadata || {}),
+                    domain: enhancedContext.email.domain,
+                };
+            }
+        }
+
 
         const helpers = {
             exists: (value: any) => value !== null && value !== undefined,
@@ -504,6 +525,9 @@ export class ValidationCacheManager {
 export function buildEnhancedEmailValidationResult(result: any): any {
     const processingStart = performance.now();
 
+    const normalized = result.normalized || (typeof result.email === 'string' ? result.email.toLowerCase() : undefined);
+    const derivedDomain = typeof normalized === 'string' ? normalized.split('@')[1]?.toLowerCase() : undefined;
+
     const enhanced = {
         valid: result.valid || false,
         confidence: calculateFieldConfidence(result),
@@ -511,7 +535,7 @@ export function buildEnhancedEmailValidationResult(result: any): any {
         risk_score: 0,
         processing_time_ms: 0,
         provider: result.provider || 'internal',
-        normalized: result.normalized,
+        normalized,
         disposable: result.disposable || false,
         domain_reputation: result.domain_reputation,
         mx_records: result.mx_found,
@@ -520,7 +544,7 @@ export function buildEnhancedEmailValidationResult(result: any): any {
         role_account: result.role_account || false,
         free_provider: result.free_provider || false,
         metadata: {
-            domain: result.domain,
+            domain: result.domain || derivedDomain, // ensure domain if possible
             suggestion: result.suggestion,
             checked_at: new Date().toISOString()
         }

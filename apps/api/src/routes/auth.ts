@@ -295,6 +295,14 @@ export async function authenticateRouteRequest<TServer extends RawServerBase = R
                 {
                     const pat = await verifyPAT(request, pool);
                     if (pat) {
+                        // FIX: For runtime routes, also resolve project_id when using PAT auth
+                        try {
+                            if (!(request as any).project_id) {
+                                (request as any).project_id = await getDefaultProjectId(pool, (request as any).user_id);
+                            }
+                        } catch (error) {
+                            request.log.warn({ error }, 'Failed to resolve project_id for PAT auth');
+                        }
                         return;
                     }
                     // If PAT fails, try API key
@@ -333,6 +341,14 @@ export async function authenticateRouteRequest<TServer extends RawServerBase = R
                 if (request.headers["authorization"]?.startsWith("Bearer ")) {
                     const pat = await verifyPAT(request, pool);
                     if (pat) {
+                        // FIX: For runtime routes, also resolve project_id when using PAT auth
+                        try {
+                            if (!(request as any).project_id) {
+                                (request as any).project_id = await getDefaultProjectId(pool, (request as any).user_id);
+                            }
+                        } catch (error) {
+                            request.log.warn({ error }, 'Failed to resolve project_id for PAT auth');
+                        }
                         return;
                     }
                     const apiKeyValid = await verifyAPIKey(request, rep, pool);

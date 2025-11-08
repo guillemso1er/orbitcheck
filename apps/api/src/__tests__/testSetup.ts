@@ -379,7 +379,7 @@ export const createApp = async (): Promise<FastifyInstance> => {
   const { registerJobRoutes } = await import('../routes/jobs.js');
   const { registerNormalizeRoutes } = await import('../routes/normalize.js');
   const { registerOrderRoutes } = await import('../routes/orders.js');
-  const { registerRulesRoutes } = await import('../routes/rules/rules.js');
+  const { registerRulesRoutes } = await import('../routes/rules/rules.routes.js');
   const { registerValidationRoutes } = await import('../routes/validation.js');
   const { registerWebhookRoutes } = await import('../routes/webhook.js');
   const { registerSettingsRoutes } = await import('../routes/settings.js');

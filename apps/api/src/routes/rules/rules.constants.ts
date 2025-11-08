@@ -131,12 +131,33 @@ export function inferActionFromConditions(conditions: any): string | null {
 
     return 'hold';
 }
+type BuiltInOverride = Partial<{
+    condition: string;
+    action: 'block' | 'hold' | 'approve';
+    priority: number;
+    name: string;
+    description: string;
+    enabled: boolean;
+}>;
 
+let BUILTIN_RULE_OVERRIDES: Record<string, BuiltInOverride> = {};
+
+export function registerBuiltInRuleOverride(id: string, override: BuiltInOverride) {
+    BUILTIN_RULE_OVERRIDES[id] = { ...(BUILTIN_RULE_OVERRIDES[id] || {}), ...override };
+}
+
+export function clearBuiltInRuleOverrides(id?: string) {
+    if (!id) {
+        BUILTIN_RULE_OVERRIDES = {};
+        return;
+    }
+    delete BUILTIN_RULE_OVERRIDES[id];
+}
 /**
  * Returns a list of hardcoded, built-in validation rules.
  */
 export function getBuiltInRules() {
-    return [
+    const rules = [
         { id: 'email_format', name: 'Email Format Validation', description: 'Validates the basic format of email addresses using RFC standards.', category: 'email', enabled: true, condition: '(email && email.valid === false) || (emailString && !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(emailString))', action: 'hold', priority: 10 },
         { id: 'email_mx', name: 'Email MX Record Check', description: 'Verifies that the domain has valid MX records for email delivery.', category: 'email', enabled: true, condition: 'email && email.mx_records === false', action: 'hold', priority: 8 },
         { id: 'email_disposable', name: 'Disposable Email Detection', description: 'Detects and flags temporary or disposable email services.', category: 'email', enabled: true, condition: 'email && email.disposable === true', action: 'block', priority: 15 },
@@ -148,7 +169,10 @@ export function getBuiltInRules() {
         { id: 'high_value_order', name: 'High Value Order Risk', description: 'Evaluates high value orders for additional risk factors.', category: 'order', enabled: true, condition: 'transaction_amount > 1000', action: 'hold', priority: 11 },
         { id: 'high_value_customer_priority', name: 'High Value Customer Priority', description: 'Prioritizes high-value customers for faster processing.', category: 'order', enabled: true, condition: 'transaction_amount > 1500 && email && email.valid', action: 'approve', priority: 8 },
         { id: 'critical_block_rule', name: 'Critical Block Rule', description: 'Blocks transactions with critical risk level.', category: 'risk', enabled: true, condition: 'riskLevel(risk_level)', action: 'block', priority: 20 },
+
+        // Important: this id is used by tests; allow it to be overridden on registration
         { id: 'complex_conditions_test', name: 'Complex Conditions Test', description: 'Tests complex business logic conditions.', category: 'business_logic', enabled: true, condition: 'transaction_amount > 300 && (!email || email.valid === false) && risk_score > 50', action: 'hold', priority: 13 },
+
         { id: 'custom_domain_block', name: 'Custom Domain Blocking', description: 'Blocks specific custom domains for business reasons.', category: 'custom', enabled: true, condition: 'email && email.normalized && (email.normalized.includes("@blockeddomain.com") || email.normalized.includes("@restricteddomain.org"))', action: 'block', priority: 18 },
         { id: 'phone_format', name: 'Phone Number Format Validation', description: 'Parses and validates international phone number formats.', category: 'phone', enabled: true, condition: 'phone && !phone.valid', action: 'hold', priority: 10 },
         { id: 'phone_otp', name: 'Phone OTP Verification', description: 'Sends one-time password for phone number verification.', category: 'phone', enabled: true, condition: 'phone && phone.valid && !phone.verified', action: 'hold', priority: 7 },
@@ -159,6 +183,21 @@ export function getBuiltInRules() {
 
         { id: 'high_value_order_review', name: 'High Value Order Review', description: 'Flags high-value orders for additional review.', category: 'order', enabled: true, condition: 'transaction_amount && transaction_amount > 1000', action: 'hold', priority: 5 }
     ];
+
+    // APPLY OVERRIDES
+    return rules.map(r => {
+        const o = BUILTIN_RULE_OVERRIDES[r.id];
+        if (!o) return r;
+        return {
+            ...r,
+            ...(o.name !== undefined ? { name: o.name } : {}),
+            ...(o.description !== undefined ? { description: o.description } : {}),
+            ...(o.priority !== undefined ? { priority: o.priority } : {}),
+            ...(o.action !== undefined ? { action: o.action } : {}),
+            ...(o.enabled !== undefined ? { enabled: o.enabled } : {}),
+            ...(o.condition !== undefined ? { condition: o.condition } : {}),
+        };
+    });
 }
 
 export const TestPayloadJsonSchema = {
