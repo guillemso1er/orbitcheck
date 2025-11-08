@@ -65,30 +65,50 @@ export const errorCodes: any[] = Object.entries(ERROR_CODE_DESCRIPTIONS).map(([c
 export function convertConditionsToLogic(conditions: any): string {
     if (!conditions) return '';
 
-    if (conditions.email?.domain?.in) {
-        return `email && email.normalized && (${conditions.email.domain.in.map((d: string) => `email.normalized.includes("@${d}")`).join(' || ')})`;
-    }
-
-    if (conditions.transaction_amount?.gte) {
-        return `transaction_amount >= ${conditions.transaction_amount.gte}`;
-    }
-
+    // handle logical groups first
     if (conditions.AND) {
-        const andConditions = conditions.AND.map((cond: any) => convertConditionsToLogic(cond)).join(' && ');
-        return `(${andConditions})`;
+        const parts = conditions.AND.map((c: any) => convertConditionsToLogic(c)).filter(Boolean);
+        return parts.length ? `(${parts.join(' && ')})` : '';
     }
-
     if (conditions.OR) {
-        const orConditions = conditions.OR.map((cond: any) => convertConditionsToLogic(cond)).join(' || ');
-        return `(${orConditions})`;
+        const parts = conditions.OR.map((c: any) => convertConditionsToLogic(c)).filter(Boolean);
+        return parts.length ? `(${parts.join(' || ')})` : '';
     }
 
-    if (conditions.email?.valid === true) return 'email && email.valid === true';
-    if (conditions.email?.valid === false) return 'email && email.valid === false';
-    if (conditions.phone?.valid === true) return 'phone && phone.valid === true';
-    if (conditions.phone?.valid === false) return 'phone && phone.valid === false';
+    const parts: string[] = [];
 
-    return JSON.stringify(conditions);
+    // transaction
+    if (conditions.transaction_amount?.gte !== undefined) {
+        parts.push(`transaction_amount >= ${Number(conditions.transaction_amount.gte)}`);
+    }
+
+    // email conditions
+    if (conditions.email) {
+        const e = conditions.email;
+        if ('valid' in e) parts.push(`email && email.valid === ${e.valid ? 'true' : 'false'}`);
+        if ('disposable' in e) parts.push(`email && email.disposable === ${e.disposable ? 'true' : 'false'}`);
+        if ('free_provider' in e) parts.push(`email && email.free_provider === ${e.free_provider ? 'true' : 'false'}`);
+        if ('role_account' in e) parts.push(`email && email.role_account === ${e.role_account ? 'true' : 'false'}`);
+        if (e.domain?.in?.length) {
+            const checks = e.domain.in.map((d: string) =>
+                `email && email.normalized && email.normalized.toLowerCase().endsWith("@${String(d).toLowerCase()}")`
+            );
+            parts.push(`(${checks.join(' || ')})`);
+        }
+    }
+
+    // phone conditions
+    if (conditions.phone) {
+        const p = conditions.phone;
+        if ('valid' in p) parts.push(`phone && phone.valid === ${p.valid ? 'true' : 'false'}`);
+    }
+
+    if (parts.length) {
+        return parts.length > 1 ? `(${parts.join(' && ')})` : parts[0];
+    }
+
+    // safe fallback: never auto-true
+    return 'false';
 }
 
 /**

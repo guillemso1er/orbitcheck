@@ -118,21 +118,37 @@ export class RuleEvaluator {
     }
 
     private static createEvaluationContext(context: any): any {
-
+        // clone non-function data
         const enhancedContext = JSON.parse(JSON.stringify(context));
+
+        // restore functions lost by JSON clone
+        if (typeof context.riskLevel === 'function') {
+            enhancedContext.riskLevel = context.riskLevel;
+        }
+        if (typeof context.addressHasIssue === 'function') {
+            enhancedContext.addressHasIssue = context.addressHasIssue;
+        }
+
+        // lift metadata-derived fields into the top-level structures
         if (enhancedContext.email?.metadata?.domain) {
             enhancedContext.email.domain = enhancedContext.email.metadata.domain;
         }
         if (enhancedContext.phone?.metadata) {
-            Object.assign(enhancedContext.phone, enhancedContext.phone.metadata);
+            enhancedContext.phone = { ...(enhancedContext.phone || {}), ...enhancedContext.phone.metadata };
         }
         if (enhancedContext.address?.metadata) {
-            Object.assign(enhancedContext.address, enhancedContext.address.metadata);
+            enhancedContext.address = { ...(enhancedContext.address || {}), ...enhancedContext.address.metadata };
         }
 
-        return {
-            ...enhancedContext,
-            // Helper functions for rule evaluation
+        // sensible defaults if not provided by the handler
+        if (!enhancedContext.addressHasIssue) {
+            enhancedContext.addressHasIssue = (value: any) => value && value.valid === false;
+        }
+        if (!enhancedContext.riskLevel) {
+            enhancedContext.riskLevel = (level: string) => level === 'critical' || level === 'high';
+        }
+
+        const helpers = {
             exists: (value: any) => value !== null && value !== undefined,
             isEmpty: (value: any) => {
                 if (value === null || value === undefined) return true;
@@ -159,19 +175,12 @@ export class RuleEvaluator {
                 const now = new Date();
                 return Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
             },
-            // Enhanced validation helpers
             emailFormatInvalid: (value: any) => {
                 if (!value) return false;
-                // Check for format issues by testing email pattern
                 if (typeof value === 'string') {
                     const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
                     return !emailPattern.test(value);
                 }
-                /**
-                 * FIX: Addresses 'triggers email format validation on invalid email formats' test failure.
-                 * The original logic (`|| !value.mx_records`) incorrectly mixed deliverability (MX records)
-                 * with format validation. The `email_format` rule should only trigger on format issues.
-                 */
                 return value.valid === false && value.reason_codes &&
                     (value.reason_codes.includes('EMAIL_INVALID_FORMAT'));
             },
@@ -183,16 +192,15 @@ export class RuleEvaluator {
                 }
                 return value && value.valid === false;
             },
-            addressHasIssue: (value: any) => value && value.valid === false,
-            riskLevel: (level: string) => level === 'critical',
-            // Math functions
-            Math: Math,
-            parseInt: parseInt,
-            parseFloat: parseFloat,
-            // Date functions
-            Date: Date,
+            Math,
+            parseInt,
+            parseFloat,
+            Date,
             now: () => new Date(),
         };
+
+        // Important: helpers first, then enhancedContext so the handler-provided functions win
+        return { ...helpers, ...enhancedContext };
     }
 
     private static async sandboxedEval(expression: string, context: any): Promise<boolean> {
@@ -345,24 +353,30 @@ export class RiskScoreCalculator {
         if (validationResults.address) {
             const address = validationResults.address;
 
-            // Check for specific address issues with appropriate risk levels
+            // PO Box adds risk
             if (address.po_box) {
                 totalScore += this.RISK_FACTORS.address.po_box;
                 factors.push('PO Box address');
             }
 
-            // Normalize reason codes for robust matching (your orchestrator uses lowercase like 'address.postal_city_mismatch')
+            // Normalize reason codes and detect specific issues
             const reasonCodes = (address.reason_codes || []).map((c: string) => String(c).toLowerCase());
             const isPostalMismatch =
-                reasonCodes.some((code: string | string[]) =>
+                reasonCodes.some((code: string) =>
                     code.includes('postal_city_mismatch') ||
                     (code.includes('postal') && code.includes('mismatch'))
                 );
             const isGeoOutOfBounds =
-                reasonCodes.some((code: string | string[]) => code.includes('geo_out_of_bounds'));
+                reasonCodes.some((code: string) => code.includes('geo_out_of_bounds'));
+            const isGeocodeFailed =
+                reasonCodes.some((code: string) =>
+                    code.includes('geocode_failed') ||
+                    (code.includes('geocode') && code.includes('fail'))
+                );
 
-            // Apply moderated penalties for specific issues, and avoid double-counting generic "invalid"
+            // Apply moderated penalties for specific issues, avoid double-counting generic "invalid"
             let appliedSpecificAddressIssue = false;
+
             if (isPostalMismatch) {
                 totalScore += 15; // medium-light
                 factors.push('Address postal/city mismatch');
@@ -373,6 +387,12 @@ export class RiskScoreCalculator {
                 factors.push('Address geolocation mismatch');
                 appliedSpecificAddressIssue = true;
             }
+            if (isGeocodeFailed) {
+                totalScore += 10; // light
+                factors.push('Address geocoding failed');
+                appliedSpecificAddressIssue = true;
+            }
+
             if (!appliedSpecificAddressIssue && address.valid === false) {
                 totalScore += this.RISK_FACTORS.address.invalid;
                 factors.push('Invalid address');
@@ -438,6 +458,12 @@ export class RiskScoreCalculator {
             factors
         };
     }
+
+
+
+
+
+
 }
 
 // Cache Manager for better performance

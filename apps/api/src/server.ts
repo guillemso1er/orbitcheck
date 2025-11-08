@@ -26,6 +26,7 @@ import { registerAuthenticatedDocsRoutes } from "./routes/authenticatedDocs.js";
 import { registerHealthRoutes } from "./routes/health.js";
 import startupGuard from './startup-guard.js';
 import { registerRoutes } from "./web.js";
+import { inputSanitizationHook } from "./middleware/inputSanitization.js";
 
 if (process.env.NODE_ENV !== 'production' && process.env.NODE_ENV !== 'test') {
     dotenv.config();
@@ -71,7 +72,7 @@ export async function build(pool: Pool, redis: IORedisType): Promise<FastifyInst
         ) {
             return;
         }
-        // await inputSanitizationHook(request, reply);
+        await inputSanitizationHook(request, reply);
     });
 
     // Add custom error handler to convert 400 to 413 for payload too large errors

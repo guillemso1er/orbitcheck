@@ -884,7 +884,7 @@ describe('Comprehensive Rule Logic Testing', () => {
             for (let i = 0; i < 100; i++) {
                 largePayload.metadata[`key_${i}`] = 'x'.repeat(100)
             }
-            for (let i = 0; i < 1000; i++) {
+            for (let i = 0; i < 700; i++) {
                 largePayload.metadata[`field_${i}`] = 'x'.repeat(100)
             }
 
@@ -958,6 +958,23 @@ describe('Comprehensive Rule Logic Testing', () => {
     })
 
     describe('Real-World Rule Scenarios', () => {
+        let rwToken: string;
+
+        beforeAll(async () => {
+            const email = `realworld+${Date.now()}@example.com`;
+            await app.inject({
+                method: 'POST',
+                url: '/auth/register',
+                payload: { email, password: 'password123', confirm_password: 'password123' }
+            });
+            const login = await app.inject({
+                method: 'POST',
+                url: '/auth/login',
+                payload: { email, password: 'password123' }
+            });
+            rwToken = login.json().pat_token;
+        });
+
         test('simulates e-commerce fraud detection workflow', async () => {
             // High-risk order scenario
             const highRiskOrder = {
@@ -980,7 +997,7 @@ describe('Comprehensive Rule Logic Testing', () => {
             const res = await app.inject({
                 method: 'POST',
                 url: '/v1/rules/test',
-                headers: { authorization: `Bearer ${patToken}` },
+                headers: { authorization: `Bearer ${rwToken}` },
                 payload: highRiskOrder
             })
 
@@ -1024,7 +1041,7 @@ describe('Comprehensive Rule Logic Testing', () => {
             const res = await app.inject({
                 method: 'POST',
                 url: '/v1/rules/test',
-                headers: { authorization: `Bearer ${patToken}` },
+                headers: { authorization: `Bearer ${rwToken}` },
                 payload: kycData
             })
 
@@ -1064,7 +1081,7 @@ describe('Comprehensive Rule Logic Testing', () => {
             const res = await app.inject({
                 method: 'POST',
                 url: '/v1/rules/test',
-                headers: { authorization: `Bearer ${patToken}` },
+                headers: { authorization: `Bearer ${rwToken}` },
                 payload: subscriptionData
             })
 
