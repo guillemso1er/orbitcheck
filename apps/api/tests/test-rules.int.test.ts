@@ -622,7 +622,6 @@ describe('Comprehensive Rule Logic Testing', () => {
         test('validates rule condition evaluation logic for transaction amount, email, phone, and address', async () => {
             const complexRules = [
                 {
-                    id: 'complex_conditions_test',
                     name: 'Complex Conditions Test',
                     description: 'Tests complex AND/OR condition logic',
                     category: 'order',
@@ -658,7 +657,7 @@ describe('Comprehensive Rule Logic Testing', () => {
             const body1 = case1Res.json()
 
             const complexRule1 = body1.rule_evaluations.find((rule: any) =>
-                rule.rule_id === 'complex_conditions_test' && rule.triggered
+                rule.rule_name === 'Complex Conditions Test' && rule.triggered
             )
             expect(complexRule1).toBeDefined()
 
@@ -686,7 +685,6 @@ describe('Comprehensive Rule Logic Testing', () => {
         test('validates rule condition evaluation logic for email, phone and transaction amount', async () => {
             const complexRules = [
                 {
-                    id: 'complex_conditions_test',
                     name: 'Complex Conditions Test',
                     description: 'Tests complex AND/OR conditions',
                     category: 'general',
@@ -720,7 +718,7 @@ describe('Comprehensive Rule Logic Testing', () => {
             expect(res1.statusCode).toBe(200)
             const body1 = res1.json()
             const complexRule1 = body1.rule_evaluations.find((rule: any) =>
-                rule.rule_id === 'complex_conditions_test' && rule.triggered
+                rule.rule_name === 'Complex Conditions Test' && rule.triggered
             )
             expect(complexRule1).toBeDefined()
 
@@ -738,7 +736,7 @@ describe('Comprehensive Rule Logic Testing', () => {
             expect(res2.statusCode).toBe(200)
             const body2 = res2.json()
             const complexRule2 = body2.rule_evaluations.find((rule: any) =>
-                rule.rule_id === 'complex_conditions_test' && rule.triggered
+                rule.rule_name === 'Complex Conditions Test' && rule.triggered
             )
             expect(complexRule2).toBeDefined()
         })

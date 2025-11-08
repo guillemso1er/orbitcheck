@@ -1261,9 +1261,8 @@ describe('Rules Integration Tests', () => {
       })
 
       test('validates rule condition evaluation logic', async () => {
-        const complexRules = [
+          const complexRules = [
           {
-            id: 'complex_conditions_test',
             name: 'Complex Conditions Test',
             description: 'Tests complex AND/OR conditions',
             category: 'general',
@@ -1302,7 +1301,7 @@ describe('Rules Integration Tests', () => {
         expect(res1.statusCode).toBe(200)
         const body1 = res1.json()
         const complexRule1 = body1.rule_evaluations.find((rule: any) =>
-          rule.rule_id === 'complex_conditions_test' && rule.triggered
+          rule.rule_name === 'Complex Conditions Test' && rule.triggered
         )
         expect(complexRule1).toBeDefined()
 
@@ -1320,7 +1319,7 @@ describe('Rules Integration Tests', () => {
         expect(res2.statusCode).toBe(200)
         const body2 = res2.json()
         const complexRule2 = body2.rule_evaluations.find((rule: any) =>
-          rule.rule_id === 'complex_conditions_test' && rule.triggered
+          rule.rule_name === 'Complex Conditions Test' && rule.triggered
         )
         expect(complexRule2).toBeDefined()
       })

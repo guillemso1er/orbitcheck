@@ -170,9 +170,6 @@ export function getBuiltInRules() {
         { id: 'high_value_customer_priority', name: 'High Value Customer Priority', description: 'Prioritizes high-value customers for faster processing.', category: 'order', enabled: false, condition: 'transaction_amount > 1500 && email && email.valid', action: 'approve', priority: 8 },
         { id: 'critical_block_rule', name: 'Critical Block Rule', description: 'Blocks transactions with critical risk level.', category: 'risk', enabled: false, condition: 'riskLevel(risk_level)', action: 'block', priority: 20 },
 
-        // Important: this id is used by tests; allow it to be overridden on registration
-        { id: 'complex_conditions_test', name: 'Complex Conditions Test', description: 'Tests complex business logic conditions.', category: 'business_logic', enabled: true, condition: 'transaction_amount > 300 && (!email || email.valid === false) && risk_score > 50', action: 'hold', priority: 13 },
-
         { id: 'custom_domain_block', name: 'Custom Domain Blocking', description: 'Blocks specific custom domains for business reasons.', category: 'custom', enabled: false, condition: 'email && email.normalized && (email.normalized.includes("@blockeddomain.com") || email.normalized.includes("@restricteddomain.org"))', action: 'block', priority: 18 },
         { id: 'phone_format', name: 'Phone Number Format Validation', description: 'Parses and validates international phone number formats.', category: 'phone', enabled: false, condition: 'phone && !phone.valid', action: 'hold', priority: 10 },
         { id: 'phone_otp', name: 'Phone OTP Verification', description: 'Sends one-time password for phone number verification.', category: 'phone', enabled: false, condition: 'phone && phone.valid && !phone.verified', action: 'hold', priority: 7 },

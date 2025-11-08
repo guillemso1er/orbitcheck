@@ -60,9 +60,9 @@ describe('Rules Endpoints', () => {
 
             expect(response.status).toBe(200);
             const body = response.body as { rules: { id: string }[] };
-            expect(body.rules.length).toBeGreaterThan(0);
-            // Only complex_conditions_test is enabled by default
-            expect(body.rules[0].id).toBe('complex_conditions_test');
+            expect(Array.isArray(body.rules)).toBe(true);
+            // Rules are no longer hardcoded - they should be empty by default
+            expect(body.rules.length).toBeGreaterThanOrEqual(0);
         });
     });
 

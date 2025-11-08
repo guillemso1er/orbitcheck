@@ -193,6 +193,7 @@ jest.mock('@orbitcheck/contracts', () => ({
       GET_REASON_CODE_CATALOG: '/v1/rules/catalog',
       REGISTER_CUSTOM_RULES: '/v1/rules/register',
       TEST_RULES_AGAINST_PAYLOAD: '/v1/rules/test',
+      DELETE_CUSTOM_RULE: '/v1/rules/:id',
     },
     SETTINGS: {
       GET_TENANT_SETTINGS: '/v1/settings',
