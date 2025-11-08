@@ -2113,6 +2113,8 @@ export interface operations {
                             config?: {
                                 [key: string]: unknown;
                             };
+                            /** @description Rule condition expression */
+                            condition?: string;
                         }[];
                         request_id?: string;
                     };
@@ -2287,13 +2289,17 @@ export interface operations {
             content: {
                 "application/json": {
                     /** @description Array of custom rules to register */
-                    rules: {
+                    rules: ({
                         /** @description Custom rule name */
                         name: string;
                         /** @description Rule description */
                         description?: string;
-                        /** @description Rule logic expression */
-                        logic: string;
+                        /** @description A string containing the rule's logic expression. */
+                        condition?: string;
+                        /** @description A structured JSON object defining the rule's logic. */
+                        conditions?: {
+                            [key: string]: unknown;
+                        };
                         /**
                          * @description Rule severity
                          * @default medium
@@ -2305,7 +2311,7 @@ export interface operations {
                          * @default true
                          */
                         enabled?: boolean;
-                    }[];
+                    } & (unknown | unknown))[];
                 };
             };
         };

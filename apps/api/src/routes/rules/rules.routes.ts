@@ -14,7 +14,7 @@ export function registerRulesRoutes(app: FastifyInstance, pool: Pool, redis?: an
     app.get(MGMT_V1_ROUTES.RULES.GET_AVAILABLE_RULES, {
         schema: {
             summary: 'Get Available Rules', description: 'Returns a list of all available validation and risk assessment rules.', tags: ['Rules'], headers: securityHeader, security: MGMT_V1_SECURITY,
-            response: { 200: { description: 'List of rules', type: 'object', properties: { rules: { type: 'array', items: { type: 'object', properties: { id: { type: 'string' }, name: { type: 'string' }, description: { type: 'string' }, category: { type: 'string' }, enabled: { type: 'boolean' } } } }, request_id: { type: 'string' } } } },
+            response: { 200: { description: 'List of rules', type: 'object', properties: { rules: { type: 'array', items: { type: 'object', properties: { id: { type: 'string' }, name: { type: 'string' }, description: { type: 'string' }, category: { type: 'string' }, enabled: { type: 'boolean' }, condition: { type: 'string' } } } }, request_id: { type: 'string' } } } },
         },
     }, async (request: FastifyRequest, rep: FastifyReply) => {
         try {
@@ -73,7 +73,7 @@ export function registerRulesRoutes(app: FastifyInstance, pool: Pool, redis?: an
     app.post(MGMT_V1_ROUTES.RULES.REGISTER_CUSTOM_RULES, {
         schema: {
             summary: 'Register Custom Rules', description: 'Registers custom business rules for the project.', tags: ['Rules'], headers: securityHeader, security: MGMT_V1_SECURITY,
-            body: { type: 'object', properties: { rules: { type: 'array', items: { type: 'object', properties: { name: { type: 'string' }, description: { type: 'string' }, logic: { type: 'string' }, severity: { type: 'string', enum: ['low', 'medium', 'high'] }, enabled: { type: 'boolean' } } } } } },
+            body: { type: 'object', properties: { rules: { type: 'array', items: { type: 'object', properties: { name: { type: 'string' }, description: { type: 'string' }, condition: { type: 'string' }, conditions: { type: 'object', additionalProperties: true }, severity: { type: 'string', enum: ['low', 'medium', 'high'] }, enabled: { type: 'boolean' } } } } } },
             response: { 200: { description: 'Rules registered successfully', type: 'object', properties: { message: { type: 'string' }, registered_rules: { type: 'array', items: { type: 'string' } }, request_id: { type: 'string' } } } },
         },
     }, async (request: FastifyRequest, rep: FastifyReply) => {

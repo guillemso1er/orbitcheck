@@ -797,6 +797,8 @@ export type GetAvailableRules200RulesItem = {
   enabled?: boolean;
   /** Rule configuration options */
   config?: GetAvailableRules200RulesItemConfig;
+  /** Rule condition expression */
+  condition?: string;
 };
 
 export type GetAvailableRules200 = {
@@ -890,6 +892,11 @@ export type TestRulesAgainstPayload200 = {
 };
 
 /**
+ * A structured JSON object defining the rule's logic.
+ */
+export type RegisterCustomRulesBodyRulesItemConditions = { [key: string]: unknown };
+
+/**
  * Rule severity
  */
 export type RegisterCustomRulesBodyRulesItemSeverity = typeof RegisterCustomRulesBodyRulesItemSeverity[keyof typeof RegisterCustomRulesBodyRulesItemSeverity];
@@ -903,18 +910,33 @@ export const RegisterCustomRulesBodyRulesItemSeverity = {
   critical: 'critical',
 } as const;
 
-export type RegisterCustomRulesBodyRulesItem = {
+export type RegisterCustomRulesBodyRulesItem = (unknown & {
   /** Custom rule name */
   name: string;
   /** Rule description */
   description?: string;
-  /** Rule logic expression */
-  logic: string;
+  /** A string containing the rule's logic expression. */
+  condition?: string;
+  /** A structured JSON object defining the rule's logic. */
+  conditions?: RegisterCustomRulesBodyRulesItemConditions;
   /** Rule severity */
   severity?: RegisterCustomRulesBodyRulesItemSeverity;
   /** Whether the rule is enabled */
   enabled?: boolean;
-};
+}) | (unknown & {
+  /** Custom rule name */
+  name: string;
+  /** Rule description */
+  description?: string;
+  /** A string containing the rule's logic expression. */
+  condition?: string;
+  /** A structured JSON object defining the rule's logic. */
+  conditions?: RegisterCustomRulesBodyRulesItemConditions;
+  /** Rule severity */
+  severity?: RegisterCustomRulesBodyRulesItemSeverity;
+  /** Whether the rule is enabled */
+  enabled?: boolean;
+});
 
 export type RegisterCustomRulesBody = {
   /** Array of custom rules to register */
