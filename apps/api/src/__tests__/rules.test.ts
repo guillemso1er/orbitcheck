@@ -53,7 +53,7 @@ describe('Rules Endpoints', () => {
     });
 
     describe('GET /v1/rules', () => {
-        it('should return a list of rules', async () => {
+        it('should return a list of enabled rules', async () => {
             const response = await request(app.server)
                 .get('/v1/rules')
                 .set('Authorization', 'Bearer valid_key');
@@ -61,7 +61,8 @@ describe('Rules Endpoints', () => {
             expect(response.status).toBe(200);
             const body = response.body as { rules: { id: string }[] };
             expect(body.rules.length).toBeGreaterThan(0);
-            expect(body.rules[0].id).toBe('email_format');
+            // Only complex_conditions_test is enabled by default
+            expect(body.rules[0].id).toBe('complex_conditions_test');
         });
     });
 
@@ -113,6 +114,75 @@ describe('Rules Endpoints', () => {
             expect(response.status).toBe(400);
             const body = response.body as { error: string; request_id: string };
             expect(body.error).toContain('Invalid rules array');
+        });
+
+        it('should reject rules with duplicate names in the same request', async () => {
+            const response = await request(app.server)
+                .post('/v1/rules/register')
+                .set('Authorization', 'Bearer valid_key')
+                .send({
+                    rules: [
+                        {
+                            name: 'Duplicate Name',
+                            description: 'First rule with duplicate name',
+                            logic: 'email.valid == true',
+                            severity: 'medium',
+                            enabled: true
+                        },
+                        {
+                            name: 'Duplicate Name',
+                            description: 'Second rule with duplicate name',
+                            logic: 'phone.valid == true',
+                            severity: 'medium',
+                            enabled: true
+                        }
+                    ]
+                });
+
+            expect(response.status).toBe(400);
+            const body = response.body as { error: string; request_id: string };
+            expect(body.error).toContain('Duplicate rule names found in request');
+            expect(body.request_id).toBeDefined();
+        });
+
+        it('should reject rules with names that already exist in the database', async () => {
+            // First, register a rule
+            await request(app.server)
+                .post('/v1/rules/register')
+                .set('Authorization', 'Bearer valid_key')
+                .send({
+                    rules: [
+                        {
+                            name: 'Existing Rule',
+                            description: 'Rule that already exists',
+                            logic: 'email.valid == true',
+                            severity: 'medium',
+                            enabled: true
+                        }
+                    ]
+                });
+
+            // Then try to register another rule with the same name
+            const response = await request(app.server)
+                .post('/v1/rules/register')
+                .set('Authorization', 'Bearer valid_key')
+                .send({
+                    rules: [
+                        {
+                            name: 'Existing Rule',
+                            description: 'Another rule with the same name',
+                            logic: 'phone.valid == true',
+                            severity: 'medium',
+                            enabled: true
+                        }
+                    ]
+                });
+
+            expect(response.status).toBe(400);
+            const body = response.body as { error: string; request_id: string };
+            expect(body.error).toContain('Rule names already exist');
+            expect(body.error).toContain('Existing Rule');
+            expect(body.request_id).toBeDefined();
         });
     });
     describe('POST /v1/rules/test', () => {

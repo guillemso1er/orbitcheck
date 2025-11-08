@@ -5,7 +5,7 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import type { Pool } from "pg";
 import { generateRequestId, MGMT_V1_SECURITY, securityHeader, sendServerError } from "../utils.js";
 import { errorCodes, getBuiltInRules, reasonCodes, TestPayloadJsonSchema } from "./rules.constants.js";
-import { handleRegisterCustomRules, handleTestRules } from "./rules.handlers.js";
+import { handleDeleteCustomRule, handleRegisterCustomRules, handleTestRules } from "./rules.handlers.js";
 
 /**
  * Registers all routes related to rules management and evaluation.
@@ -19,9 +19,9 @@ export function registerRulesRoutes(app: FastifyInstance, pool: Pool, redis?: an
     }, async (request: FastifyRequest, rep: FastifyReply) => {
         try {
             const request_id = generateRequestId();
-            const dbRules = await pool.query("SELECT id, name, logic as condition, severity, 'custom' as category, enabled FROM rules WHERE project_id = $1", [(request as any).project_id]);
-            const builtInRules = getBuiltInRules();
-            const allRules = [...builtInRules, ...dbRules.rows.map(rule => ({ ...rule, condition: rule.logic || rule.condition }))];
+            const dbRules = await pool.query("SELECT id, name, description, logic as condition, severity, 'custom' as category, enabled FROM rules WHERE project_id = $1", [(request as any).project_id]);
+            const builtInRules = getBuiltInRules().filter(rule => rule.enabled);
+            const allRules = [...builtInRules, ...dbRules.rows.map(rule => ({ ...rule, condition: rule.condition || rule.logic }))];
             return rep.send({ rules: allRules, request_id });
         } catch (error) {
             return sendServerError(request, rep, error, MGMT_V1_ROUTES.RULES.GET_AVAILABLE_RULES, generateRequestId());
@@ -39,20 +39,6 @@ export function registerRulesRoutes(app: FastifyInstance, pool: Pool, redis?: an
             return rep.send({ reason_codes: reasonCodes, request_id });
         } catch (error) {
             return sendServerError(request, rep, error, MGMT_V1_ROUTES.RULES.GET_REASON_CODE_CATALOG, generateRequestId());
-        }
-    });
-
-    app.get('/v1/rules/reason-codes', {
-        schema: {
-            summary: 'Get Reason Code Catalog (Legacy)', description: 'Returns a comprehensive list of all possible reason codes with descriptions and severity levels.', tags: ['Rules'], headers: securityHeader, security: MGMT_V1_SECURITY,
-            response: { 200: { description: 'List of reason codes', type: 'object', properties: { reason_codes: { type: 'array', items: { type: 'object', properties: { code: { type: 'string' }, description: { type: 'string' }, category: { type: 'string' }, severity: { type: 'string', enum: ['low', 'medium', 'high'] } } } }, request_id: { type: 'string' } } } },
-        },
-    }, async (request: FastifyRequest, rep: FastifyReply) => {
-        try {
-            const request_id = generateRequestId();
-            return rep.send({ reason_codes: reasonCodes, request_id });
-        } catch (error) {
-            return sendServerError(request, rep, error, '/v1/rules/reason-codes', generateRequestId());
         }
     });
 
@@ -95,6 +81,65 @@ export function registerRulesRoutes(app: FastifyInstance, pool: Pool, redis?: an
             return await handleRegisterCustomRules(request, rep, pool);
         } catch (error) {
             return sendServerError(request, rep, error, MGMT_V1_ROUTES.RULES.REGISTER_CUSTOM_RULES, generateRequestId());
+        }
+    });
+
+    app.delete(`${MGMT_V1_ROUTES.RULES.DELETE_CUSTOM_RULE}`, {
+        schema: {
+            summary: 'Delete Custom Rule',
+            description: 'Deletes a specific custom rule by ID.',
+            tags: ['Rules'],
+            headers: securityHeader,
+            security: MGMT_V1_SECURITY,
+            params: {
+                type: 'object',
+                properties: {
+                    id: { type: 'string', description: 'Rule ID to delete' }
+                },
+                required: ['id']
+            },
+            response: {
+                200: {
+                    description: 'Rule deleted successfully',
+                    type: 'object',
+                    properties: {
+                        message: { type: 'string' },
+                        deleted_rule_id: { type: 'string' },
+                        request_id: { type: 'string' }
+                    }
+                },
+                400: {
+                    description: 'Invalid request',
+                    type: 'object',
+                    properties: {
+                        error: { type: 'string' },
+                        request_id: { type: 'string' }
+                    }
+                },
+                404: {
+                    description: 'Rule not found',
+                    type: 'object',
+                    properties: {
+                        error: { type: 'string' },
+                        request_id: { type: 'string' },
+                        details: { type: 'string' }
+                    }
+                },
+                500: {
+                    description: 'Internal server error',
+                    type: 'object',
+                    properties: {
+                        error: { type: 'string' },
+                        request_id: { type: 'string' }
+                    }
+                }
+            }
+        }
+    }, async (request: FastifyRequest, rep: FastifyReply) => {
+        try {
+            return await handleDeleteCustomRule(request, rep, pool);
+        } catch (error) {
+            return sendServerError(request, rep, error, `${MGMT_V1_ROUTES.RULES.REGISTER_CUSTOM_RULES}/:id`, generateRequestId());
         }
     });
 }

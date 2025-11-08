@@ -1,5 +1,5 @@
 import React from 'react';
-import { RuleTestResult, TestResult } from '../types';
+import { RuleTestResult, TestResult } from '../../types';
 import { TestPayloadEditor } from './TestPayloadEditor';
 
 interface TestHarnessProps {

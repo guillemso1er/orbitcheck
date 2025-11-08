@@ -389,34 +389,99 @@ export async function handleRegisterCustomRules(
     const { rules } = request.body as { rules: any[] };
     const request_id = generateRequestId();
 
-    if (!rules || !Array.isArray(rules) || rules.length === 0) {
-        return reply.status(400).send({ error: 'Invalid rules array. Must contain at least one rule.', request_id });
+    if (!rules || !Array.isArray(rules)) {
+        return reply.status(400).send({ error: 'Invalid rules array. Must be an array.', request_id });
     }
 
-    const ruleIds = rules.map((rule: any) => rule.id).filter(Boolean);
-    const uniqueRuleIds = new Set(ruleIds);
-    if (ruleIds.length !== uniqueRuleIds.size) {
-        return reply.status(400).send({ error: 'Duplicate rule IDs found. Each rule must have a unique ID.', request_id });
+    // Allow empty arrays (for deleting all rules)
+    if (rules.length === 0) {
+        return reply.status(200).send({
+            message: 'All rules cleared successfully.',
+            updated_rules: [],
+            registered_rules: [],
+            request_id
+        });
     }
 
+    // Validate required fields
     for (const rule of rules) {
         if (!rule.name || !rule.description) {
             return reply.status(400).send({ error: 'Rule name and description are required for all rules.', request_id });
         }
     }
 
-    // If any UUID-like IDs provided, check duplicates
-    if (ruleIds.length > 0) {
-        const uuidRuleIds = ruleIds.filter(id => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id));
-        if (uuidRuleIds.length > 0) {
-            const uuidResult = await pool.query(
-                'SELECT COUNT(*) as count FROM rules WHERE project_id = $1 AND id = ANY($2::uuid[])',
-                [project_id, uuidRuleIds]
+    // Check for duplicate rule IDs within the provided array
+    const ruleIds = rules.map((rule: any) => rule.id).filter(Boolean);
+    const uniqueRuleIds = new Set(ruleIds);
+    if (ruleIds.length !== uniqueRuleIds.size) {
+        return reply.status(400).send({ error: 'Duplicate rule IDs found. Each rule must have a unique ID.', request_id });
+    }
+
+    // Check for duplicate rule names within the provided array (for new rules)
+    const ruleNames = rules.map((rule: any) => rule.name).filter(Boolean);
+    const uniqueRuleNames = new Set(ruleNames);
+    if (ruleNames.length !== uniqueRuleNames.size) {
+        return reply.status(400).send({ error: 'Duplicate rule names found in request. Each rule must have a unique name.', request_id });
+    }
+
+    // Check which rules exist by ID or name
+    const existingById: any[] = [];
+    const existingByName: any[] = [];
+    const newRules: any[] = [];
+
+    for (const rule of rules) {
+        if (rule.id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(rule.id)) {
+            // Check if rule with this ID exists
+            const idResult = await pool.query(
+                'SELECT * FROM rules WHERE project_id = $1 AND id = $2',
+                [project_id, rule.id]
             );
-            if (parseInt(uuidResult.rows[0].count) > 0) {
-                return reply.status(400).send({ error: 'One or more rule IDs already exist. Rule IDs must be unique.', request_id });
+            if (idResult.rows.length > 0) {
+                existingById.push({ ...rule, existing: idResult.rows[0] });
+            } else {
+                newRules.push(rule);
+            }
+        } else {
+            // Check if rule with this name exists
+            const nameResult = await pool.query(
+                'SELECT * FROM rules WHERE project_id = $1 AND name = $2',
+                [project_id, rule.name]
+            );
+            if (nameResult.rows.length > 0) {
+                existingByName.push({ ...rule, existing: nameResult.rows[0] });
+            } else {
+                newRules.push(rule);
             }
         }
+    }
+
+    // Process existing rules (updates) and new rules
+    const rulesToProcess: any[] = [...existingById, ...existingByName];
+    const processedRules: any[] = [];
+    
+    // Update existing rules
+    for (const rule of rulesToProcess) {
+        const logic = rule.logic || rule.condition || convertConditionsToLogic(rule.conditions) || '';
+        const action = rule.action || (inferActionFromConditions(rule.conditions) || 'hold');
+        
+        await pool.query(
+            'UPDATE rules SET name = $1, description = $2, logic = $3, severity = $4, action = $5, priority = $6, enabled = $7 WHERE id = $8',
+            [rule.name, rule.description, logic, rule.severity || 'medium', action, rule.priority || 0, rule.enabled !== false, rule.existing.id]
+        );
+
+        // Register in-memory override if it's a built-in rule
+        if (typeof rule.id === 'string') {
+            registerBuiltInRuleOverride(rule.id, {
+                condition: logic,
+                action,
+                priority: rule.priority,
+                name: rule.name,
+                description: rule.description,
+                enabled: rule.enabled !== false,
+            });
+        }
+        
+        processedRules.push({ ...rule.existing, ...rule });
     }
 
     // helper to resolve action from 'action' or 'actions' or infer
@@ -430,7 +495,7 @@ export async function handleRegisterCustomRules(
         return (inferActionFromConditions(r.conditions) || 'hold') as any;
     };
 
-    const newRules = rules.map((r: any) => {
+    const mappedNewRules = newRules.map((r: any) => {
         const logic = r.logic || r.condition || convertConditionsToLogic(r.conditions) || '';
         const action = resolveAction(r);
 
@@ -451,16 +516,17 @@ export async function handleRegisterCustomRules(
             id: r.id,
             name: r.name,
             description: r.description || '',
-            logic, // CHANGED: accept 'condition' as well
+            logic,
             severity: r.severity || 'medium',
-            action, // CHANGED: respect action/actions/infer
+            action,
             priority: r.priority || 0,
             enabled: r.enabled !== false,
         };
     });
 
+    // Create new rules
     const insertedRules: any[] = [];
-    for (const rule of newRules) {
+    for (const rule of mappedNewRules) {
         let query: string;
         let params: any[];
         if (rule.shouldIncludeId) {
@@ -475,9 +541,71 @@ export async function handleRegisterCustomRules(
     }
 
     const response = {
-        message: 'Rules registered successfully',
+        message: `Rules processed successfully. ${existingById.length + existingByName.length} updated, ${insertedRules.length} created.`,
+        updated_rules: processedRules.map(r => r.id),
         registered_rules: insertedRules.map(r => r.id),
         request_id
     };
     return reply.status(201).send(response);
+}
+
+/**
+ * Handles the logic for deleting a custom rule.
+ */
+export async function handleDeleteCustomRule(
+    request: FastifyRequest,
+    reply: FastifyReply,
+    pool: Pool
+) {
+    const project_id = (request as any).project_id;
+    const ruleId = (request.params as any).id;
+    const request_id = generateRequestId();
+
+    if (!ruleId) {
+        return reply.status(400).send({ error: 'Rule ID is required', request_id });
+    }
+
+    try {
+        // Check if the rule exists and belongs to the project
+        const ruleQuery = await pool.query(
+            'SELECT id, name FROM rules WHERE project_id = $1 AND id = $2',
+            [project_id, ruleId]
+        );
+
+        if (ruleQuery.rows.length === 0) {
+            return reply.status(404).send({
+                error: 'Rule not found',
+                request_id,
+                details: `No rule found with ID ${ruleId} for this project`
+            });
+        }
+
+        const ruleName = ruleQuery.rows[0].name;
+
+        // Delete the rule
+        const deleteResult = await pool.query(
+            'DELETE FROM rules WHERE project_id = $1 AND id = $2',
+            [project_id, ruleId]
+        );
+
+        if (deleteResult.rowCount === 0) {
+            return reply.status(500).send({
+                error: 'Failed to delete rule',
+                request_id
+            });
+        }
+
+        return reply.status(200).send({
+            message: `Rule "${ruleName}" deleted successfully`,
+            deleted_rule_id: ruleId,
+            request_id
+        });
+
+    } catch (error) {
+        console.error('Error deleting rule:', error);
+        return reply.status(500).send({
+            error: 'Internal server error',
+            request_id
+        });
+    }
 }

@@ -935,6 +935,12 @@ export type RegisterCustomRules201 = {
   request_id?: string;
 };
 
+export type DeleteCustomRule200 = {
+  /** Deleted rule ID */
+  id?: string;
+  request_id?: string;
+};
+
 export type GetLogsParams = {
 /**
  * Filter by exact reason code
@@ -2544,6 +2550,18 @@ export const registerCustomRules = <TData = AxiosResponse<RegisterCustomRules201
   }
 
 /**
+ * Deletes a custom validation rule by its ID
+ * @summary Delete custom rule
+ */
+export const deleteCustomRule = <TData = AxiosResponse<DeleteCustomRule200>>(
+    id: string, options?: AxiosRequestConfig
+ ): Promise<TData> => {
+    return axios.delete(
+      `/v1/rules/${id}`,options
+    );
+  }
+
+/**
  * Retrieves event logs for the project with optional filters
  * @summary Get event logs
  */
@@ -2895,6 +2913,7 @@ export type GetErrorCodeCatalogResult = AxiosResponse<GetErrorCodeCatalog200>
 export type GetReasonCodeCatalogResult = AxiosResponse<GetReasonCodeCatalog200>
 export type TestRulesAgainstPayloadResult = AxiosResponse<TestRulesAgainstPayload200>
 export type RegisterCustomRulesResult = AxiosResponse<RegisterCustomRules201>
+export type DeleteCustomRuleResult = AxiosResponse<DeleteCustomRule200>
 export type GetLogsResult = AxiosResponse<GetLogs200>
 export type ListPersonalAccessTokensResult = AxiosResponse<ListPersonalAccessTokens200>
 export type CreatePersonalAccessTokenResult = AxiosResponse<CreatePersonalAccessToken201>

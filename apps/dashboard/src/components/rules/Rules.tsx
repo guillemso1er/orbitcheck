@@ -1,12 +1,11 @@
 // src/Rules.tsx
 import React, { useEffect, useMemo, useState } from 'react';
-import { Rule } from '../types';
-import { API_BASE, API_ENDPOINTS, LOCAL_STORAGE_KEYS } from '../constants';
-import { useDebounce } from '../hooks/useDebounce';
-import { useLocalStorage } from '../hooks/useLocalStorage';
-import { RuleTestResult, TestResult } from '../types';
-import { apiClient } from '../utils/api';
-import { ConditionEvaluator } from '../utils/ConditionEvaluator';
+import { API_BASE, API_ENDPOINTS, LOCAL_STORAGE_KEYS } from '../../constants';
+import { useDebounce } from '../../hooks/useDebounce';
+import { useLocalStorage } from '../../hooks/useLocalStorage';
+import { Rule, RuleTestResult, TestResult } from '../../types';
+import { apiClient } from '../../utils/api';
+import { ConditionEvaluator } from '../../utils/ConditionEvaluator';
 import { RulesHeader } from './RulesHeader';
 import { RulesList } from './RulesList';
 import { TestHarness } from './TestHarness';
@@ -14,23 +13,34 @@ import { TestHarness } from './TestHarness';
 
 const Rules: React.FC = () => {
   const [rules, setRules] = useState<Rule[]>([]);
+  const [validationErrors, setValidationErrors] = useState<{ [key: number]: boolean }>({});
+  const [backendError, setBackendError] = useState<string | null>(null);
+
+  // Generate a proper UUID for backend identification
+  const generateUUID = () => {
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+      const r = Math.random() * 16 | 0;
+      const v = c === 'x' ? r : (r & 0x3 | 0x8);
+      return v.toString(16);
+    });
+  };
 
   useEffect(() => {
     const loadRules = async () => {
       try {
         const response = await apiClient.getAvailableRules();
         const customRules = (response.rules || [])
-          .filter(rule => rule.category === 'custom' && rule.id && rule.name)
+          .filter(rule => rule.id && rule.name && (rule.category === 'custom' || (rule as any).condition || (rule as any).logic))
           .map(rule => ({
             id: rule.id!,
             name: rule.name!,
             description: rule.description || '',
-            condition: (rule as any).condition || '',
-            action: 'hold' as const,
-            priority: 0,
+            condition: (rule as any).condition || (rule as any).logic || '',
+            action: (rule as any).action || 'hold' as const,
+            priority: (rule as any).priority || 0,
             enabled: rule.enabled || false,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
+            createdAt: (rule as any).createdAt || new Date().toISOString(),
+            updatedAt: (rule as any).updatedAt || new Date().toISOString(),
           }));
         setRules(customRules);
       } catch (err) {
@@ -68,9 +78,18 @@ const Rules: React.FC = () => {
       .sort((a, b) => b.priority - a.priority);
   }, [rules, searchTerm, filterAction, showOnlyEnabled]);
 
+  const handleValidationChange = (index: number, hasError: boolean) => {
+    setValidationErrors(prev => ({
+      ...prev,
+      [index]: hasError
+    }));
+  };
+
+  const hasValidationErrors = Object.values(validationErrors).some(error => error);
+
   const addRule = (newRuleData?: Partial<Rule>) => {
     const newRule: Rule = {
-      id: `rule_${Date.now()}`,
+      id: generateUUID(),
       name: `New Rule ${rules.length + 1}`,
       description: '',
       condition: '',
@@ -83,19 +102,59 @@ const Rules: React.FC = () => {
     setRules([newRule, ...rules]);
   };
 
-  const updateRule = (index: number, updatedRule: Rule) => {
+  const updateRule = async (index: number, updatedRule: Rule) => {
     const newRules = [...rules];
     const originalIndex = rules.findIndex(r => r.id === filteredRules[index].id);
     if (originalIndex !== -1) {
-      newRules[originalIndex] = { ...updatedRule, updatedAt: new Date().toISOString() };
+      const ruleToUpdate = { ...updatedRule, updatedAt: new Date().toISOString() };
+      newRules[originalIndex] = ruleToUpdate;
+
+      // Update local state immediately for better UX
       setRules(newRules);
+
+      try {
+        // Persist the change to backend
+        await apiClient.registerCustomRules({
+          rules: newRules.map(rule => ({
+            id: rule.id,
+            name: rule.name,
+            description: rule.description,
+            logic: rule.condition,
+            severity: 'high' as const,
+            enabled: rule.enabled,
+            action: rule.action,
+            priority: rule.priority,
+          }))
+        });
+      } catch (err) {
+        // Revert local state if backend update fails
+        setRules(rules);
+        const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+        setBackendError(`Failed to update rule: ${errorMessage}`);
+        console.error('Failed to update rule:', err);
+      }
     }
   };
 
-  const deleteRule = (index: number) => {
+  const deleteRule = async (index: number) => {
     if (window.confirm('Are you sure you want to delete this rule?')) {
       const ruleId = filteredRules[index].id;
+      const ruleName = filteredRules[index].name;
+
+      // Update local state immediately for better UX
       setRules(rules.filter(r => r.id !== ruleId));
+
+      try {
+        // Call the delete API endpoint
+        await apiClient.deleteCustomRule(ruleId);
+        console.log(`Rule "${ruleName}" deleted successfully`);
+      } catch (err) {
+        // Revert local state if backend update fails
+        setRules(rules);
+        const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+        setBackendError(`Failed to delete rule: ${errorMessage}`);
+        console.error('Failed to delete rule:', err);
+      }
     }
   };
 
@@ -103,7 +162,7 @@ const Rules: React.FC = () => {
     const ruleToDuplicate = filteredRules[index];
     const newRule: Rule = {
       ...ruleToDuplicate,
-      id: `rule_${Date.now()}`,
+      id: generateUUID(),
       name: `${ruleToDuplicate.name} (Copy)`,
       createdAt: new Date().toISOString(),
     };
@@ -145,18 +204,34 @@ const Rules: React.FC = () => {
   };
 
   const handleSaveRules = async () => {
+    setBackendError(null);
+
+    if (hasValidationErrors) {
+      setSaveStatus('error');
+      setBackendError('Please fix all validation errors before saving');
+      setTimeout(() => setSaveStatus('idle'), 2000);
+      return;
+    }
+
     setSaveStatus('saving');
     try {
       await apiClient.registerCustomRules({
         rules: rules.map(rule => ({
-          name: rule.name, description: rule.description, logic: rule.condition,
-          severity: 'high' as const, enabled: rule.enabled,
+          id: rule.id,
+          name: rule.name,
+          description: rule.description,
+          logic: rule.condition,
+          severity: 'high' as const,
+          enabled: rule.enabled,
+          action: rule.action,
+          priority: rule.priority,
         }))
       });
       setSaveStatus('saved');
     } catch (err) {
       setSaveStatus('error');
-      alert(`Failed to save rules: ${err instanceof Error ? err.message : 'Unknown error'}`);
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+      setBackendError(`Failed to save rules: ${errorMessage}`);
     } finally {
       setTimeout(() => setSaveStatus('idle'), 2000);
     }
@@ -193,7 +268,14 @@ const Rules: React.FC = () => {
 
   return (
     <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
-      <RulesHeader onSave={handleSaveRules} saveStatus={saveStatus} onExport={exportRules} onImport={importRules} />
+      <RulesHeader
+        onSave={handleSaveRules}
+        saveStatus={saveStatus}
+        onExport={exportRules}
+        onImport={importRules}
+        backendError={backendError}
+        hasValidationErrors={hasValidationErrors}
+      />
       <RulesList
         filteredRules={filteredRules}
         totalRulesCount={rules.length}
@@ -207,6 +289,7 @@ const Rules: React.FC = () => {
         setFilterAction={setFilterAction}
         showOnlyEnabled={showOnlyEnabled}
         setShowOnlyEnabled={setShowOnlyEnabled}
+        onValidationChange={handleValidationChange}
       />
       <TestHarness
         testPayload={testPayload}

@@ -596,14 +596,109 @@ describe('Rules Integration Tests', () => {
       expect(res.statusCode).toBe(400)
     })
 
-    test('400 on empty rules array', async () => {
+    test('200 allows empty rules array for rule deletion', async () => {
       const res = await app.inject({
         method: 'POST',
         url: '/v1/rules/register',
         headers: { authorization: `Bearer ${patToken}` },
         payload: { rules: [] }
       })
+      expect(res.statusCode).toBe(200)
+      const body = res.json()
+      expect(body).toHaveProperty('message')
+      expect(body.message).toContain('All rules cleared successfully')
+      expect(body).toHaveProperty('updated_rules')
+      expect(body).toHaveProperty('registered_rules')
+      expect(body.updated_rules).toEqual([])
+      expect(body.registered_rules).toEqual([])
+    })
+
+    test('400 on duplicate rule names in the same request', async () => {
+      const duplicateNameRules = [
+        {
+          name: 'Duplicate Rule Name',
+          description: 'First rule with duplicate name',
+          category: 'email',
+          enabled: true,
+          conditions: {
+            email: {
+              domain: { in: ['test.com'] }
+            }
+          }
+        },
+        {
+          name: 'Duplicate Rule Name', // Same name
+          description: 'Second rule with duplicate name',
+          category: 'phone',
+          enabled: true,
+          conditions: {
+            phone: {
+              country: { in: ['US'] }
+            }
+          }
+        }
+      ]
+
+      const res = await app.inject({
+        method: 'POST',
+        url: '/v1/rules/register',
+        headers: { authorization: `Bearer ${patToken}` },
+        payload: { rules: duplicateNameRules }
+      })
       expect(res.statusCode).toBe(400)
+      const body = res.json()
+      expect(body.error).toContain('Duplicate rule names found in request')
+    })
+
+    test('400 on rule name that already exists in database', async () => {
+      // First, register a rule with a specific name
+      const firstRule = [
+        {
+          name: 'Existing Rule Name',
+          description: 'Rule that already exists',
+          category: 'email',
+          enabled: true,
+          conditions: {
+            email: {
+              domain: { in: ['existing.com'] }
+            }
+          }
+        }
+      ]
+
+      const firstRes = await app.inject({
+        method: 'POST',
+        url: '/v1/rules/register',
+        headers: { authorization: `Bearer ${patToken}` },
+        payload: { rules: firstRule }
+      })
+      expect(firstRes.statusCode).toBe(201)
+
+      // Then try to register another rule with the same name
+      const duplicateNameRules = [
+        {
+          name: 'Existing Rule Name', // Same name as existing rule
+          description: 'Another rule with the same name',
+          category: 'phone',
+          enabled: true,
+          conditions: {
+            phone: {
+              country: { in: ['US'] }
+            }
+          }
+        }
+      ]
+
+      const res = await app.inject({
+        method: 'POST',
+        url: '/v1/rules/register',
+        headers: { authorization: `Bearer ${patToken}` },
+        payload: { rules: duplicateNameRules }
+      })
+      expect(res.statusCode).toBe(400)
+      const body = res.json()
+      expect(body.error).toContain('Rule names already exist')
+      expect(body.error).toContain('Existing Rule Name')
     })
   })
 

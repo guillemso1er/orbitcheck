@@ -11,6 +11,7 @@ import type {
   CreateApiKeyBody,
   CreatePersonalAccessToken201,
   CreatePersonalAccessTokenBody,
+  DeleteCustomRule200,
   EvaluateOrder200,
   EvaluateOrderBody,
   GetAvailableRules200,
@@ -36,6 +37,7 @@ import {
   batchValidate,
   createApiKey,
   createPersonalAccessToken,
+  deleteCustomRule,
   evaluateOrder,
   getAvailableRules as getAvailableRulesApi,
   getJobStatus,
@@ -235,6 +237,15 @@ export class ApiClient {
 
   async getAvailableRules(): Promise<GetAvailableRules200> {
     const response = await getAvailableRulesApi({
+      baseURL: this.baseURL,
+      withCredentials: true,
+      headers: this.getHeaders()
+    });
+    return response.data;
+  }
+
+  async deleteCustomRule(ruleId: string): Promise<DeleteCustomRule200> {
+    const response = await deleteCustomRule(ruleId, {
       baseURL: this.baseURL,
       withCredentials: true,
       headers: this.getHeaders()

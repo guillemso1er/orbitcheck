@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { CONDITION_TEMPLATES } from '../constants';
-import { Rule } from '../types';
+import { CONDITION_TEMPLATES } from '../../constants';
+import { Rule } from '../../types';
 import { RuleEditor } from './RuleEditor';
 
 interface RulesListProps {
@@ -10,6 +10,7 @@ interface RulesListProps {
     onDelete: (index: number) => void;
     onDuplicate: (index: number) => void;
     onAdd: (rule?: Partial<Rule>) => void;
+    onValidationChange?: (index: number, hasError: boolean) => void;
 
     searchTerm: string;
     setSearchTerm: (term: string) => void;
@@ -21,7 +22,7 @@ interface RulesListProps {
 
 export const RulesList: React.FC<RulesListProps> = ({
     filteredRules, totalRulesCount, onUpdate, onDelete, onDuplicate, onAdd,
-    searchTerm, setSearchTerm, filterAction, setFilterAction, showOnlyEnabled, setShowOnlyEnabled
+    searchTerm, setSearchTerm, filterAction, setFilterAction, showOnlyEnabled, setShowOnlyEnabled, onValidationChange
 }) => {
     const [showTemplates, setShowTemplates] = useState(false);
 
@@ -84,7 +85,7 @@ export const RulesList: React.FC<RulesListProps> = ({
                         </div>
                     ) : (
                         filteredRules.map((rule, index) => (
-                            <RuleEditor key={`${rule.id}-${index}`} rule={rule} index={index} onUpdate={onUpdate} onDelete={onDelete} onDuplicate={onDuplicate} />
+                            <RuleEditor key={`${rule.id}-${index}`} rule={rule} index={index} onUpdate={onUpdate} onDelete={onDelete} onDuplicate={onDuplicate} onValidationChange={onValidationChange} />
                         ))
                     )}
                 </div>

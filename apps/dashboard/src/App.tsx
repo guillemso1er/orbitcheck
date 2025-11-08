@@ -6,7 +6,7 @@ import BulkCsvTool from './components/BulkCsvTool';
 import LogExplorer from './components/LogExplorer';
 import Login from './components/Login';
 import PersonalAccessTokens from './components/PersonalAccessTokens';
-import Rules from './components/Rules';
+import Rules from './components/rules/Rules';
 import ThemeToggle from './components/ThemeToggle';
 import UsageDashboard from './components/UsageDashboard';
 import WebhookTester from './components/WebhookTester';
