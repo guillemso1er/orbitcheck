@@ -21,6 +21,9 @@ responses:
             id:
               type: string
               description: Deleted rule ID
+            deleted:
+              type: boolean
+              description: Indicates if the rule was deleted
             request_id:
               type: string
   '401':

@@ -22,6 +22,9 @@ requestBody:
             items:
               type: string
             description: Events to subscribe to
+          secret:
+            type: string
+            description: Secret used to sign webhook payloads
 responses:
   '201':
     description: Webhook created successfully

@@ -648,18 +648,34 @@ export type LoginUserResponses = {
      */
     200: {
         /**
-         * JWT authentication token
+         * PAT token for authentication
          */
-        token?: string;
-        user?: {
+        pat_token: string;
+        user: {
             /**
              * User ID
              */
-            id?: string;
+            id: string;
             /**
-             * User email
+             * User email address
              */
-            email?: string;
+            email: string;
+            /**
+             * User first name
+             */
+            first_name: string;
+            /**
+             * User last name
+             */
+            last_name: string;
+            /**
+             * Creation timestamp
+             */
+            created_at?: string;
+            /**
+             * Last update timestamp
+             */
+            updated_at?: string;
         };
         /**
          * Request identifier
@@ -1113,6 +1129,10 @@ export type CreateWebhookData = {
          * Events to subscribe to
          */
         events: Array<string>;
+        /**
+         * Secret used to sign webhook payloads
+         */
+        secret?: string;
     };
     path?: never;
     query?: never;
@@ -1600,6 +1620,10 @@ export type RegisterCustomRulesData = {
              * Whether the rule is enabled
              */
             enabled?: boolean;
+            /**
+             * Actions to take when the rule is triggered
+             */
+            actions?: Array<'approve' | 'hold' | 'block'>;
         }>;
     };
     path?: never;
@@ -1669,6 +1693,10 @@ export type RegisterCustomRulesResponses = {
              */
             status?: string;
         }>;
+        /**
+         * Number of rules registered
+         */
+        count?: number;
         request_id?: string;
     };
 };
@@ -1739,6 +1767,10 @@ export type DeleteCustomRuleResponses = {
          * Deleted rule ID
          */
         id?: string;
+        /**
+         * Indicates if the rule was deleted
+         */
+        deleted?: boolean;
         request_id?: string;
     };
 };
@@ -1823,6 +1855,14 @@ export type ValidatePhoneData = {
          * Phone number to validate
          */
         phone: string;
+        /**
+         * ISO 3166-1 alpha-2 country code
+         */
+        country?: string;
+        /**
+         * Whether to request an OTP for phone verification
+         */
+        request_otp?: boolean;
     };
     path?: never;
     query?: never;
@@ -3995,6 +4035,10 @@ export type GetJobStatusByIdResponses = {
             [key: string]: unknown;
         } | null;
         /**
+         * URL to download job result if applicable
+         */
+        result_url?: string | null;
+        /**
          * Error message if job failed
          */
         error?: string | null;
@@ -4071,6 +4115,10 @@ export type GetUserProjectsResponses = {
              */
             canCreateMore?: boolean;
         };
+        /**
+         * Request identifier
+         */
+        request_id?: string;
     };
 };
 
@@ -4132,6 +4180,10 @@ export type CreateProjectResponses = {
          * Project creation timestamp
          */
         created_at?: string;
+        /**
+         * Request identifier
+         */
+        request_id?: string;
     };
 };
 
@@ -4197,6 +4249,10 @@ export type DeleteProjectResponses = {
          * Success message
          */
         message?: string;
+        /**
+         * Request identifier
+         */
+        request_id?: string;
     };
 };
 

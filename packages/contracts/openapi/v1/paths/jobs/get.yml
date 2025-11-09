@@ -40,6 +40,10 @@ responses:
               type: [object, "null"]
               description: Job result data
               additionalProperties: true
+            result_url:
+              type: [string, "null"]
+              format: uri
+              description: URL to download job result if applicable
             error:
               type: [string, "null"]
               description: Error message if job failed

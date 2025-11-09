@@ -38,7 +38,7 @@ export const serviceHandlers = (pool: Pool, redis: IORedisType): RouteHandlers =
     getAvailableRules: async (request, reply) => getAvailableRules(request, reply),
     getErrorCodeCatalog: async (request, reply) => getErrorCodeCatalog(request, reply),
     getReasonCodeCatalog: async (request, reply) => getReasonCodeCatalog(request, reply),
-    testRulesAgainstPayload: async (request, reply) => testRulesAgainstPayload(request, reply, pool),
+    testRulesAgainstPayload: async (request, reply) => testRulesAgainstPayload(request, reply, pool, redis),
     registerCustomRules: async (request, reply) => registerCustomRules(request, reply, pool),
     deleteCustomRule: async (request, reply) => deleteCustomRule(request, reply, pool),
 

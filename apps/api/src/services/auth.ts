@@ -162,7 +162,7 @@ export async function loginUser(
         request.session.user_id = user.id;
 
         const response: LoginUserResponses[200] = {
-            user: { id: user.id, email: user.email },
+            user: { id: user.id, email: user.email, first_name: user.first_name, last_name: user.last_name, created_at: user.created_at, updated_at: user.updated_at },
             pat_token: patToken,
             request_id
         };

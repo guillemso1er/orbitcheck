@@ -35,18 +35,13 @@ export async function getJobStatus(
         }
 
         // Calculate progress
-        let progress = null;
+        let progress: number | undefined = undefined;
         if ((job.status === 'processing' || job.status === 'completed' || job.status === 'failed') && job.total_items > 0) {
-            const percentage = Math.round((job.processed_items / job.total_items) * 100);
-            progress = {
-                total: job.total_items,
-                processed: job.processed_items,
-                percentage
-            };
+            progress = Math.round((job.processed_items / job.total_items) * 100);
         }
 
         const response: GetJobStatusByIdResponses[200] = {
-            job_id: job.id,
+            id: job.id,
             status: job.status,
             progress,
             result_url: job.result_url,
@@ -58,7 +53,7 @@ export async function getJobStatus(
 
         // If job is completed and has result_data, include it
         if (job.status === 'completed' && job.result_data) {
-            response.result_data = job.result_data;
+            response.result = job.result_data;
         }
 
         await logEvent(project_id, 'jobs', API_V1_ROUTES.JOBS.GET_JOB_STATUS, [], HTTP_STATUS.OK, {

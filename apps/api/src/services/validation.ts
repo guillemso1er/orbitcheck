@@ -9,10 +9,10 @@ import { HTTP_STATUS } from "../errors.js";
 import type { ValidateAddressData, ValidateAddressResponses, ValidateEmailData, ValidateEmailResponses, ValidateNameData, ValidateNameResponses, ValidatePhoneData, ValidatePhoneResponses, ValidateTaxIdData, ValidateTaxIdResponses, VerifyPhoneOtpData, VerifyPhoneOtpResponses } from "../generated/fastify/types.gen.js";
 import { logEvent } from "../hooks.js";
 import { generateRequestId, sendServerError } from "../routes/utils.js";
-import { validateAddress } from "../validators/address.js";
 import { validateEmail } from "../validators/email.js";
 import { validatePhone } from "../validators/phone.js";
-import { validateTaxId } from "../validators/taxid.js";
+import { validateAddress as validateAddressLogic } from "../validators/address.js";
+import { validateTaxId  as validateTaxIdLogic } from "../validators/taxid.js";
 
 export async function validateEmailAddress(
     request: FastifyRequest<{ Body: ValidateEmailData['body'] }>,
@@ -117,7 +117,7 @@ export async function validateAddress(
         const request_id = generateRequestId();
         const body = request.body as ValidateAddressData['body'];
         const { address } = body;
-        const out = await validateAddress(address, pool, redis);
+        const out = await validateAddressLogic(address, pool, redis);
         if (rep.saveIdem) {
             await rep.saveIdem(out);
         }
@@ -138,8 +138,8 @@ export async function validateTaxId(
     try {
         const request_id = generateRequestId();
         const body = request.body as ValidateTaxIdData['body'];
-        const { type, tax_id, country } = body;
-        const out = await validateTaxId({ type, value: tax_id, country: country || "", redis });
+        const { type, value, country } = body;
+        const out = await validateTaxIdLogic({ type, value: value, country: country || "", redis });
         if (rep.saveIdem) {
             await rep.saveIdem(out);
         }

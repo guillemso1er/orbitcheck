@@ -1,26 +1,29 @@
+import { API_V1_ROUTES } from "@orbitcheck/contracts";
 import type { FastifyReply, FastifyRequest } from "fastify";
 import type { Pool } from "pg";
-import { API_V1_ROUTES } from "@orbitcheck/contracts";
-import type { DedupeAddressData, DedupeAddressResponses, DedupeCustomerData, DedupeCustomerResponses, MergeDeduplicatedData, MergeDeduplicatedResponses } from "../generated/fastify/types.gen.js";
+import { dedupeAddress as dedupeAddressLogic, dedupeCustomer as dedupeCustomerLogic } from "../dedupe.js";
 import { HTTP_STATUS } from "../errors.js";
-import { dedupeAddress, dedupeCustomer } from "../dedupe.js";
+import type { DedupeAddressData, DedupeAddressResponses, DedupeCustomerData, DedupeCustomerResponses, MergeDeduplicatedData, MergeDeduplicatedResponses } from "../generated/fastify/types.gen.js";
 import { logEvent } from "../hooks.js";
-import { MERGE_TYPES } from "../validation.js";
 import { generateRequestId, sendServerError } from "../routes/utils.js";
-
+import { MERGE_TYPES } from "../validation.js";
 export async function dedupeCustomer(
     request: FastifyRequest<{ Body: DedupeCustomerData['body'] }>,
     rep: FastifyReply,
     pool: Pool
-): Promise<FastifyReply> {
+): Promise<FastifyReply<{ Body: DedupeCustomerResponses[] }>> {
     try {
         const request_id = generateRequestId();
         const body = request.body as DedupeCustomerData['body'];
         const project_id = (request as any).project_id;
         const reason_codes: string[] = [];
 
-        const result = await dedupeCustomer(body, project_id, pool);
-        const response: DedupeCustomerResponses[200] = { ...result, request_id };
+        const result = await dedupeCustomerLogic(body, project_id, pool);
+        const mappedMatches = result.matches.map((match: any) => ({
+            ...match,
+            match_type: match.match_type as "exact_email" | "exact_phone" | "fuzzy_name" | undefined
+        }));
+        const response: DedupeCustomerResponses[200] = { ...result, matches: mappedMatches, request_id };
         await (rep as any).saveIdem?.(response);
         await logEvent(project_id, 'dedupe', '/dedupe/customer', reason_codes, HTTP_STATUS.OK, { matches_count: result.matches.length, suggested_action: result.suggested_action }, pool);
         return rep.send(response);
@@ -40,8 +43,12 @@ export async function dedupeAddress(
         const project_id = (request as any).project_id;
         const reason_codes: string[] = [];
 
-        const result = await dedupeAddress(body, project_id, pool);
-        const response: DedupeAddressResponses[200] = { ...result, request_id };
+        const result = await dedupeAddressLogic(body, project_id, pool);
+        const mappedMatches = result.matches.map((match: any) => ({
+            ...match,
+            match_type: match.match_type as "exact_address" | "exact_postal" | "fuzzy_address" | undefined
+        }));
+        const response: DedupeAddressResponses[200] = { ...result, matches: mappedMatches, request_id };
         await (rep as any).saveIdem?.(response);
         await logEvent(project_id, 'dedupe', '/dedupe/address', reason_codes, HTTP_STATUS.OK, { matches_count: result.matches.length, suggested_action: result.suggested_action }, pool);
         return rep.send(response);

@@ -42,6 +42,12 @@ requestBody:
                   type: boolean
                   default: true
                   description: Whether the rule is enabled
+                actions:
+                  type: array
+                  description: Actions to take when the rule is triggered
+                  items:
+                    type: string
+                    enum: [approve, hold, block]
               oneOf:
                 - required: [condition]
                 - required: [conditions]
@@ -67,6 +73,9 @@ responses:
                   status:
                     type: string
                     description: Registration status
+            count:
+              type: integer
+              description: Number of rules registered
             request_id:
               type: string
   '400':

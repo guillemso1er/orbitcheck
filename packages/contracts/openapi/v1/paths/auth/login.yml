@@ -27,23 +27,7 @@ post:
       content:
         application/json:
           schema:
-            type: object
-            properties:
-              token:
-                type: string
-                description: JWT authentication token
-              user:
-                type: object
-                properties:
-                  id:
-                    type: string
-                    description: User ID
-                  email:
-                    type: string
-                    description: User email
-              request_id:
-                type: string
-                description: Request identifier
+            $ref: '../../components/schemas/LoginResponse.yml'
     '401':
       description: Invalid credentials
       content:

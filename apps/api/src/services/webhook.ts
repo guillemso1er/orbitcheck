@@ -1,13 +1,14 @@
-import crypto from "node:crypto";
+import { MGMT_V1_ROUTES } from "@orbitcheck/contracts";
 import type { FastifyReply, FastifyRequest } from "fastify";
+import crypto from "node:crypto";
 import type { Pool } from "pg";
 import Stripe from 'stripe';
-import { MGMT_V1_ROUTES } from "@orbitcheck/contracts";
-import type { CreateWebhookData, CreateWebhookResponses, DeleteWebhookData, DeleteWebhookResponses, ListWebhooksResponses, TestWebhookData, TestWebhookResponses } from "../generated/fastify/types.gen.js";
-import { CONTENT_TYPES, CRYPTO_KEY_BYTES, MESSAGES, STRIPE_API_VERSION, STRIPE_DEFAULT_SECRET_KEY, USER_AGENT_WEBHOOK_TESTER, WEBHOOK_TEST_LOW_RISK_TAG, WEBHOOK_TEST_ORDER_ID, WEBHOOK_TEST_RISK_SCORE } from "../config.js";
-import { HTTP_STATUS } from "../errors.js";
+import { CONTENT_TYPES, CRYPTO_KEY_BYTES, STRIPE_API_VERSION, STRIPE_DEFAULT_SECRET_KEY, USER_AGENT_WEBHOOK_TESTER, WEBHOOK_TEST_LOW_RISK_TAG, WEBHOOK_TEST_ORDER_ID, WEBHOOK_TEST_RISK_SCORE } from "../config.js";
+import { ERROR_CODES, ERROR_MESSAGES, HTTP_STATUS } from "../errors.js";
+import type { CreateWebhookData, CreateWebhookResponses, DeleteWebhookData, DeleteWebhookResponses, ListWebhooksResponses, TestWebhookData } from "../generated/fastify/types.gen.js";
 import { logEvent } from "../hooks.js";
-import { generateRequestId, sendServerError, sendError } from "../routes/utils.js";
+import { generateRequestId, sendError, sendServerError } from "../routes/utils.js";
+import { EVENT_TYPES, ORDER_ACTIONS, PAYLOAD_TYPES, REASON_CODES } from "../validation.js";
 
 let stripe: Stripe | null = null;
 
@@ -63,7 +64,7 @@ export async function createWebhook(
         // Validate events
         const validEvents = ['validation.completed', 'order.evaluated', 'job.completed', 'job.failed'];
         const filteredEvents = events.filter(event => validEvents.includes(event));
-        
+
         if (filteredEvents.length === 0) {
             return sendError(rep, HTTP_STATUS.BAD_REQUEST, 'INVALID_EVENTS', 'No valid events provided', request_id);
         }
@@ -110,7 +111,7 @@ export async function deleteWebhook(
             return sendError(rep, HTTP_STATUS.NOT_FOUND, 'NOT_FOUND', 'Webhook not found', request_id);
         }
 
-        const response: DeleteWebhookResponses[200] = { message: 'Webhook deleted successfully', request_id };
+        const response: DeleteWebhookResponses[200] = { id, status: 'Webhook deleted successfully', request_id };
         return rep.send(response);
     } catch (error) {
         return sendServerError(request, rep, error, MGMT_V1_ROUTES.WEBHOOKS.DELETE_WEBHOOK, request_id);
@@ -122,57 +123,266 @@ export async function testWebhook(
     rep: FastifyReply,
     pool: Pool
 ): Promise<FastifyReply> {
-    const project_id = (request as any).project_id!;
-    const request_id = generateRequestId();
-    const { id } = request.body as TestWebhookData['body'];
-
+    const project_id = request.project_id!;
+    const body = request.body as any;
+    const { url, payload_type = PAYLOAD_TYPES.VALIDATION, custom_payload } = body;
     try {
-        // Get webhook details
-        const { rows: webhookRows } = await pool.query(
-            "SELECT url, secret FROM webhooks WHERE id = $1 AND project_id = $2 AND status = 'active'",
-            [id, project_id]
-        );
+        const request_id = generateRequestId();
 
-        if (webhookRows.length === 0) {
-            return sendError(rep, HTTP_STATUS.NOT_FOUND, 'NOT_FOUND', 'Active webhook not found', request_id);
+        try {
+            const parsedUrl = new URL(url);
+            if (parsedUrl.protocol !== 'http:' && parsedUrl.protocol !== 'https:') {
+                throw new Error('Invalid protocol');
+            }
+        } catch {
+            return await sendError(rep, HTTP_STATUS.BAD_REQUEST, ERROR_CODES.INVALID_URL, ERROR_MESSAGES[ERROR_CODES.INVALID_URL], request_id);
         }
 
-        const webhook = webhookRows[0];
-
-        // Create test payload
-        const testPayload = {
-            event: 'test.webhook',
-            data: {
-                order_id: WEBHOOK_TEST_ORDER_ID,
-                risk_score: WEBHOOK_TEST_RISK_SCORE,
-                action: 'approve',
-                tags: [WEBHOOK_TEST_LOW_RISK_TAG],
-                timestamp: new Date().toISOString()
-            }
-        };
-
-        // Generate signature
-        const signature = crypto
-            .createHmac('sha256', webhook.secret)
-            .update(JSON.stringify(testPayload))
-            .digest('hex');
-
-        // Send test webhook (in a real implementation, you would make an HTTP request here)
-        // For now, just log that we would send it
-        request.log.info({
-            webhook_url: webhook.url,
-            payload: testPayload,
-            signature: signature
-        }, 'Test webhook would be sent');
-
-        const response: TestWebhookResponses[200] = {
-            message: 'Test webhook sent successfully',
-            signature,
-            payload: testPayload,
+        let payload: Record<string, unknown>;
+        const timestamp = new Date().toISOString();
+        const common = {
+            project_id,
+            timestamp,
             request_id
         };
-        return rep.send(response);
+
+        switch (payload_type) {
+            case PAYLOAD_TYPES.VALIDATION: {
+                payload = {
+                    ...common,
+                    event: EVENT_TYPES.VALIDATION_RESULT,
+                    type: 'email',
+                    result: {
+                        valid: true,
+                        normalized: 'user@example.com',
+                        reason_codes: [], // Use actual reason code if needed
+                        meta: { domain: 'example.com' }
+                    }
+                };
+                break;
+            }
+            case PAYLOAD_TYPES.ORDER: {
+                payload = {
+                    ...common,
+                    event: EVENT_TYPES.ORDER_EVALUATED,
+                    order_id: WEBHOOK_TEST_ORDER_ID,
+                    risk_score: WEBHOOK_TEST_RISK_SCORE,
+                    action: ORDER_ACTIONS.APPROVE,
+                    reason_codes: [], // Use actual reason code if needed
+                    tags: [WEBHOOK_TEST_LOW_RISK_TAG]
+                };
+                break;
+            }
+            case PAYLOAD_TYPES.CUSTOM: {
+                if (!custom_payload) {
+                    return await sendError(rep, HTTP_STATUS.BAD_REQUEST, ERROR_CODES.MISSING_PAYLOAD, ERROR_MESSAGES[ERROR_CODES.MISSING_PAYLOAD], request_id);
+                }
+                payload = { ...common, ...custom_payload };
+                break;
+            }
+            default: {
+                return await sendError(rep, HTTP_STATUS.BAD_REQUEST, ERROR_CODES.INVALID_TYPE, ERROR_MESSAGES[ERROR_CODES.INVALID_TYPE], request_id);
+            }
+        }
+
+
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': CONTENT_TYPES.APPLICATION_JSON,
+                'User-Agent': USER_AGENT_WEBHOOK_TESTER
+            },
+            body: JSON.stringify(payload),
+            signal: AbortSignal.timeout(5000) // 5 second timeout for webhook test
+        });
+
+        const responseBody = await response.text();
+        const responseHeaders: Record<string, string> = {};
+        response.headers.forEach((value, key) => {
+            responseHeaders[key] = value;
+        });
+
+        const result: any = {
+            sent_to: url,
+            payload,
+            response: {
+                status: response.status,
+                status_text: response.statusText,
+                headers: responseHeaders,
+                body: responseBody
+            },
+            request_id
+        };
+
+        await logEvent(project_id, 'webhook_test', MGMT_V1_ROUTES.WEBHOOKS.TEST_WEBHOOK, [], HTTP_STATUS.OK, {
+            url,
+            payload_type,
+            response_status: response.status
+        }, pool);
+
+        return rep.send(result);
     } catch (error) {
-        return sendServerError(request, rep, error, MGMT_V1_ROUTES.WEBHOOKS.TEST_WEBHOOK, request_id);
+        const request_id = generateRequestId();
+        const err = error as any;
+        let errorMessage = 'Unknown error';
+
+        if (err?.name === 'AbortError') {
+            errorMessage = 'Webhook request timed out after 5000ms';
+        } else if (err?.code === 'ENOTFOUND') {
+            errorMessage = 'DNS lookup failed for target URL';
+        } else if (err?.code === 'ECONNREFUSED') {
+            errorMessage = 'Connection refused by target URL';
+        } else if (err?.code === 'ECONNRESET') {
+            errorMessage = 'Connection reset by peer';
+        } else if (err instanceof Error) {
+            errorMessage = err.message;
+        }
+
+        await logEvent(project_id, 'webhook_test', MGMT_V1_ROUTES.WEBHOOKS.TEST_WEBHOOK, [REASON_CODES.WEBHOOK_SEND_FAILED], HTTP_STATUS.INTERNAL_SERVER_ERROR, {
+            url,
+            payload_type,
+            error: errorMessage
+        }, pool);
+
+        return sendError(rep, HTTP_STATUS.BAD_GATEWAY, ERROR_CODES.WEBHOOK_SEND_FAILED, errorMessage, request_id);
     }
+}
+
+export async function handleStripeWebhook(
+    request: FastifyRequest,
+    rep: FastifyReply,
+    pool: Pool
+): Promise<FastifyReply> {
+    return new Promise<FastifyReply>(async () => {
+        const sig = request.headers['stripe-signature'] as string;
+        const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
+
+        if (!endpointSecret) {
+            request.log.error('Stripe webhook secret not configured');
+            return rep.status(HTTP_STATUS.BAD_REQUEST).send({ error: 'Webhook secret not configured' });
+        }
+
+        let event: Stripe.Event;
+
+        try {
+            event = getStripe().webhooks.constructEvent(request.body as string | Buffer, sig, endpointSecret);
+        } catch (err) {
+            request.log.error({ err }, 'Webhook signature verification failed');
+            return rep.status(HTTP_STATUS.BAD_REQUEST).send({ error: 'Webhook signature verification failed' });
+        }
+
+        try {
+            switch (event.type) {
+                case 'checkout.session.completed': {
+                    const session = event.data.object as Stripe.Checkout.Session;
+                    const accountId = session.client_reference_id;
+
+                    if (!accountId) {
+                        request.log.warn('No client_reference_id in checkout session');
+                        break;
+                    }
+
+                    // Store subscription and item IDs
+                    if (session.subscription && session.subscription instanceof Object) {
+                        const subscriptionId = (session.subscription as any).id;
+                        const itemIds = session.line_items?.data.map(item => item.price?.id).filter(Boolean) || [];
+
+                        await pool.query(
+                            'UPDATE accounts SET stripe_subscription_id = $1, stripe_item_ids = $2, billing_status = $3 WHERE id = $4',
+                            [subscriptionId, JSON.stringify(itemIds), 'active', accountId]
+                        );
+
+                        request.log.info({ accountId, subscriptionId, itemIds }, 'Subscription created');
+                    }
+
+                    // Create customer if not exists
+                    if (session.customer) {
+                        await pool.query(
+                            'UPDATE accounts SET stripe_customer_id = $1 WHERE id = $2 AND stripe_customer_id IS NULL',
+                            [session.customer, accountId]
+                        );
+                    }
+                    break;
+                }
+
+                case 'invoice.payment_succeeded': {
+                    const invoice = event.data.object as Stripe.Invoice;
+                    const subscriptionId = (invoice as any).subscription;
+                    if (subscriptionId && typeof subscriptionId === 'string') {
+                        // Update billing status to active on successful payment
+                        await pool.query(
+                            'UPDATE accounts SET billing_status = $1 WHERE stripe_subscription_id = $2',
+                            ['active', subscriptionId]
+                        );
+                    }
+                    break;
+                }
+
+                case 'invoice.payment_failed': {
+                    const invoice = event.data.object as Stripe.Invoice;
+                    const subscriptionId = (invoice as any).subscription;
+                    if (subscriptionId && typeof subscriptionId === 'string') {
+                        // Update billing status to past_due on failed payment
+                        await pool.query(
+                            'UPDATE accounts SET billing_status = $1 WHERE stripe_subscription_id = $2',
+                            ['past_due', subscriptionId]
+                        );
+                    }
+                    break;
+                }
+
+                case 'customer.subscription.updated': {
+                    const subscription = event.data.object as Stripe.Subscription;
+                    const accountResult = await pool.query(
+                        'SELECT id FROM accounts WHERE stripe_subscription_id = $1',
+                        [subscription.id]
+                    );
+
+                    if (accountResult.rows.length > 0) {
+                        const account = accountResult.rows[0];
+
+                        // Update plan and included quantities
+                        const itemIds = subscription.items.data.map(item => item.price.id);
+                        let includedValidations = 0;
+                        let includedStores = 0;
+
+                        // Parse plan details from subscription items (this would need to match your pricing structure)
+                        for (const item of subscription.items.data) {
+                            // This is a simplified example - you'd need to map price IDs to plan features
+                            if (item.price.id.includes('plan')) {
+                                includedValidations = item.quantity || 0;
+                            } else if (item.price.id.includes('store')) {
+                                includedStores = item.quantity || 0;
+                            }
+                        }
+
+                        await pool.query(
+                            'UPDATE accounts SET stripe_item_ids = $1, included_validations = $2, included_stores = $3 WHERE id = $4',
+                            [JSON.stringify(itemIds), includedValidations, includedStores, account.id]
+                        );
+
+                        request.log.info({ accountId: account.id, itemIds, includedValidations, includedStores }, 'Subscription updated');
+                    }
+                    break;
+                }
+
+                case 'customer.subscription.deleted': {
+                    // Restrict production access when subscription is cancelled
+                    await pool.query(
+                        'UPDATE accounts SET billing_status = $1 WHERE stripe_subscription_id = $2',
+                        ['cancelled', event.data.object.id]
+                    );
+                    break;
+                }
+
+                default:
+                    request.log.info({ eventType: event.type }, 'Unhandled Stripe event');
+            }
+
+            return rep.status(HTTP_STATUS.OK).send({ received: true });
+        } catch (error) {
+            request.log.error({ err: error, eventType: event.type }, 'Error processing Stripe webhook');
+            return rep.status(HTTP_STATUS.BAD_REQUEST).send({ error: 'Webhook processing failed' });
+        }
+    });
 }

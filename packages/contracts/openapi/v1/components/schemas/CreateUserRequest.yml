@@ -17,3 +17,5 @@ properties:
   password:
     type: string
     description: User password (optional for admin creation)
+
+    

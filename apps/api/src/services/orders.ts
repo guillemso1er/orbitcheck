@@ -1,20 +1,23 @@
+import { API_V1_ROUTES } from "@orbitcheck/contracts";
 import type { FastifyReply, FastifyRequest } from "fastify";
 import type { Redis } from "ioredis";
 import type { Pool } from "pg";
-import { API_V1_ROUTES } from "@orbitcheck/contracts";
-import type { EvaluateOrderData, EvaluateOrderResponses } from "../generated/fastify/types.gen.js";
-import { HTTP_STATUS } from "../errors.js";
 import { dedupeAddress, dedupeCustomer } from "../dedupe.js";
+import { HTTP_STATUS } from "../errors.js";
+import type { EvaluateOrderData, EvaluateOrderResponses } from "../generated/fastify/types.gen.js";
 import { logEvent } from "../hooks.js";
+import { generateRequestId, sendServerError } from "../routes/utils.js";
 import { validateAddress } from "../validators/address.js";
 import { validateEmail } from "../validators/email.js";
 import { validatePhone } from "../validators/phone.js";
-import { generateRequestId, sendServerError } from "../routes/utils.js";
 
 function mapOrderToValidationPayload(body: any) {
     return {
         email: body.customer?.email,
         phone: body.customer?.phone,
+        first_name: body.customer?.first_name,
+        last_name: body.customer?.last_name,
+        customer: body.customer,
         name: body.customer?.first_name && body.customer?.last_name
             ? `${body.customer.first_name} ${body.customer.last_name}`
             : undefined,
@@ -40,53 +43,60 @@ export async function evaluateOrderForRiskAndRules(
         const request_id = generateRequestId();
         const body = request.body as EvaluateOrderData['body'];
         const project_id = (request as any).project_id;
-        
+        const { validateName } = await import('../validators/name.js');
+
         // Basic validation and normalization
         const payload = mapOrderToValidationPayload(body);
-        
+
         // Run validations in parallel
-        const [emailValidation, phoneValidation, addressValidation, customerDedupe, addressDedupe] = await Promise.all([
+        const [emailValidation, phoneValidation, addressValidation, nameValidation, customerDedupe, addressDedupe] = await Promise.all([
             payload.email ? validateEmail(payload.email, redis) : { valid: false, reason_codes: ['email.missing'] },
             payload.phone ? validatePhone(payload.phone, undefined, redis) : { valid: false, reason_codes: ['phone.missing'] },
             payload.address ? validateAddress(payload.address, pool, redis) : { valid: false, reason_codes: ['address.missing'] },
-            payload.email && payload.customer?.first_name && payload.customer?.last_name 
+            payload.name ? validateName(payload.name) : { valid: false, reason_codes: ['name.missing'] },
+            payload.email && payload?.name && payload.customer
                 ? dedupeCustomer({
                     email: payload.email,
                     first_name: payload.customer.first_name,
                     last_name: payload.customer.last_name,
                     phone: payload.phone
                 }, project_id, pool)
-                : { matches: [], suggested_action: 'create_new' },
+                : { matches: [], suggested_action: 'create_new' as const },
             payload.address
                 ? dedupeAddress(payload.address, project_id, pool)
-                : { matches: [], suggested_action: 'create_new' }
+                : { matches: [], suggested_action: 'create_new' as const }
         ]);
 
         // Simple risk calculation (can be enhanced with actual rules engine)
         let risk_score = 0;
         const reason_codes: string[] = [];
-        
+
         // Add risk factors
         if (!emailValidation.valid) {
             risk_score += 20;
             reason_codes.push(...emailValidation.reason_codes);
         }
-        
+
         if (!phoneValidation.valid) {
             risk_score += 15;
             reason_codes.push(...phoneValidation.reason_codes);
         }
-        
+
         if (!addressValidation.valid) {
             risk_score += 25;
             reason_codes.push(...addressValidation.reason_codes);
         }
-        
-        if (addressValidation.po_box) {
+
+        if (addressValidation.valid) {
             risk_score += 10;
             reason_codes.push('address.po_box');
         }
-        
+
+        if (!nameValidation.valid) {
+            risk_score += 10;
+            reason_codes.push(...nameValidation.reason_codes);
+        }
+
         // Determine action based on risk score
         let action: 'approve' | 'hold' | 'block' = 'approve';
         if (risk_score > 70) {
@@ -107,17 +117,6 @@ export async function evaluateOrderForRiskAndRules(
                 email: emailValidation,
                 phone: phoneValidation,
                 address: addressValidation
-            },
-            rules_evaluation: {
-                triggered_rules: [],
-                final_decision: {
-                    action,
-                    confidence: 1 - (risk_score / 100),
-                    reasons: reason_codes,
-                    risk_score,
-                    risk_level: risk_score > 70 ? 'high' : risk_score > 40 ? 'medium' : 'low',
-                    recommended_actions: [action]
-                }
             },
             request_id
         };

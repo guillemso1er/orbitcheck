@@ -1,9 +1,10 @@
+import { DASHBOARD_ROUTES } from "@orbitcheck/contracts";
 import type { FastifyReply, FastifyRequest } from "fastify";
 import type { Pool } from "pg";
-import { DASHBOARD_ROUTES } from "@orbitcheck/contracts";
-import type { CreateProjectData, CreateProjectResponses, DeleteProjectData, DeleteProjectResponses, GetUserProjectsResponses } from "../generated/fastify/types.gen.js";
 import { HTTP_STATUS } from "../errors.js";
+import type { CreateProjectData, CreateProjectResponses, DeleteProjectData, DeleteProjectResponses, GetUserProjectsResponses } from "../generated/fastify/types.gen.js";
 import { generateRequestId, sendServerError } from "../routes/utils.js";
+import { createPlansService } from "./plans.js";
 
 export async function getUserProjects(
     request: FastifyRequest,
@@ -25,7 +26,22 @@ export async function getUserProjects(
             [userId]
         );
 
-        const response: GetUserProjectsResponses[200] = { data: rows, request_id };
+        // Get user plan information
+        const plansService = createPlansService(pool);
+        const userPlan = await plansService.getUserPlan(userId);
+        const currentProjects = rows.length;
+        const projectsLimit = userPlan.plan.projectsLimit;
+
+        const response: GetUserProjectsResponses[200] = {
+            projects: rows,
+            plan: {
+                slug: userPlan.plan.slug,
+                projectsLimit,
+                currentProjects,
+                canCreateMore: currentProjects < projectsLimit
+            },
+            request_id
+        };
         return rep.send(response);
     } catch (error) {
         return sendServerError(request, rep, error, DASHBOARD_ROUTES.LIST_PROJECTS, generateRequestId());
@@ -66,7 +82,7 @@ export async function createProject(
             });
         }
 
-        const response: CreateProjectResponses[201] = { project: rows[0], request_id };
+        const response: CreateProjectResponses[201] = { id: rows[0].id, name: rows[0].name, created_at: rows[0].created_at, request_id };
         return rep.status(HTTP_STATUS.CREATED).send(response);
     } catch (error) {
         return sendServerError(request, rep, error, DASHBOARD_ROUTES.CREATE_PROJECT, generateRequestId());

@@ -1,10 +1,9 @@
 import type { FastifyReply, FastifyRequest } from "fastify";
 import type { Pool } from "pg";
 import Stripe from 'stripe';
-import { MGMT_V1_ROUTES } from "@orbitcheck/contracts";
-import type { CreateCheckoutSessionResponses, CreateCustomerPortalSessionResponses } from "../generated/fastify/types.gen.js";
 import { STRIPE_API_VERSION, STRIPE_DEFAULT_SECRET_KEY } from "../config.js";
 import { HTTP_STATUS } from "../errors.js";
+import type { CreateCheckoutSessionResponses, CreateCustomerPortalSessionResponses } from "../generated/fastify/types.gen.js";
 import { generateRequestId, sendError } from "../routes/utils.js";
 
 let stripe: Stripe | null = null;
@@ -91,7 +90,7 @@ export async function createStripeCheckoutSession(
         const session = await getStripe().checkout.sessions.create(sessionParams);
 
         const response: CreateCheckoutSessionResponses[200] = {
-            session_url: session.url,
+            session_url: session.url ?? undefined,
             session_id: session.id,
             request_id
         };

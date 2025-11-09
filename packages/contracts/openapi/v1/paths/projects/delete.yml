@@ -23,6 +23,9 @@ responses:
             message:
               type: string
               description: Success message
+            request_id:
+              type: string
+              description: Request identifier
   '401':
     description: Unauthorized
     content:

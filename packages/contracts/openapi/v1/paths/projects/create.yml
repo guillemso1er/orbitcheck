@@ -35,6 +35,9 @@ responses:
               type: string
               format: date-time
               description: Project creation timestamp
+            request_id:
+              type: string
+              description: Request identifier
   '400':
     description: Invalid input
     content:
