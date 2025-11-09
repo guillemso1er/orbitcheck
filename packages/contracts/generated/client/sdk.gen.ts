@@ -2,7 +2,7 @@
 
 import type { Client, Options as Options2, TDataShape } from './client';
 import { client } from './client.gen';
-import type { BatchDedupeData, BatchDedupeResponses, BatchValidateData, BatchValidateResponses, CheckValidationLimitsData, CheckValidationLimitsErrors, CheckValidationLimitsResponses, CreateApiKeyData, CreateApiKeyErrors, CreateApiKeyResponses, CreateCheckoutSessionData, CreateCheckoutSessionErrors, CreateCheckoutSessionResponses, CreateCustomerPortalSessionData, CreateCustomerPortalSessionErrors, CreateCustomerPortalSessionResponses, CreatePersonalAccessTokenData, CreatePersonalAccessTokenErrors, CreatePersonalAccessTokenResponses, CreateProjectData, CreateProjectErrors, CreateProjectResponses, CreateUserData, CreateUserErrors, CreateUserResponses, CreateWebhookData, CreateWebhookErrors, CreateWebhookResponses, DedupeAddressData, DedupeAddressErrors, DedupeAddressResponses, DedupeCustomerData, DedupeCustomerResponses, DeleteCustomRuleData, DeleteCustomRuleErrors, DeleteCustomRuleResponses, DeleteLogData, DeleteLogErrors, DeleteLogResponses, DeleteProjectData, DeleteProjectErrors, DeleteProjectResponses, DeleteWebhookData, DeleteWebhookErrors, DeleteWebhookResponses, EraseDataData, EraseDataErrors, EraseDataResponses, EvaluateOrderData, EvaluateOrderErrors, EvaluateOrderResponses, GetAvailablePlansData, GetAvailablePlansResponses, GetAvailableRulesData, GetAvailableRulesErrors, GetAvailableRulesResponses, GetErrorCodeCatalogData, GetErrorCodeCatalogErrors, GetErrorCodeCatalogResponses, GetJobStatusByIdData, GetJobStatusByIdErrors, GetJobStatusByIdResponses, GetLogsData, GetLogsErrors, GetLogsResponses, GetReasonCodeCatalogData, GetReasonCodeCatalogErrors, GetReasonCodeCatalogResponses, GetSettingsData, GetSettingsErrors, GetSettingsResponses, GetUsageData, GetUsageErrors, GetUsageResponses, GetUserPlanData, GetUserPlanErrors, GetUserPlanResponses, GetUserProjectsData, GetUserProjectsErrors, GetUserProjectsResponses, ListApiKeysData, ListApiKeysErrors, ListApiKeysResponses, ListPersonalAccessTokensData, ListPersonalAccessTokensErrors, ListPersonalAccessTokensResponses, ListUsersData, ListUsersErrors, ListUsersResponses, ListWebhooksData, ListWebhooksErrors, ListWebhooksResponses, LoginUserData, LoginUserErrors, LoginUserResponses, LogoutUserData, LogoutUserErrors, LogoutUserResponses, MergeDeduplicatedData, MergeDeduplicatedErrors, MergeDeduplicatedResponses, NormalizeAddressData, NormalizeAddressResponses, RegisterCustomRulesData, RegisterCustomRulesErrors, RegisterCustomRulesResponses, RegisterUserData, RegisterUserErrors, RegisterUserResponses, RevokeApiKeyData, RevokeApiKeyErrors, RevokeApiKeyResponses, RevokePersonalAccessTokenData, RevokePersonalAccessTokenErrors, RevokePersonalAccessTokenResponses, TestRulesAgainstPayloadData, TestRulesAgainstPayloadResponses, TestWebhookData, TestWebhookResponses, UpdateSettingsData, UpdateSettingsErrors, UpdateSettingsResponses, UpdateUserPlanData, UpdateUserPlanErrors, UpdateUserPlanResponses, ValidateAddressData, ValidateAddressResponses, ValidateEmailData, ValidateEmailResponses, ValidateNameData, ValidateNameErrors, ValidateNameResponses, ValidatePhoneData, ValidatePhoneResponses, ValidateTaxIdData, ValidateTaxIdErrors, ValidateTaxIdResponses, VerifyPhoneOtpData, VerifyPhoneOtpErrors, VerifyPhoneOtpResponses } from './types.gen';
+import type { BatchDedupeData, BatchDedupeErrors, BatchDedupeResponses, BatchValidateData, BatchValidateErrors, BatchValidateResponses, CheckValidationLimitsData, CheckValidationLimitsErrors, CheckValidationLimitsResponses, CreateApiKeyData, CreateApiKeyErrors, CreateApiKeyResponses, CreateCheckoutSessionData, CreateCheckoutSessionErrors, CreateCheckoutSessionResponses, CreateCustomerPortalSessionData, CreateCustomerPortalSessionErrors, CreateCustomerPortalSessionResponses, CreatePersonalAccessTokenData, CreatePersonalAccessTokenErrors, CreatePersonalAccessTokenResponses, CreateProjectData, CreateProjectErrors, CreateProjectResponses, CreateUserData, CreateUserErrors, CreateUserResponses, CreateWebhookData, CreateWebhookErrors, CreateWebhookResponses, DedupeAddressData, DedupeAddressErrors, DedupeAddressResponses, DedupeCustomerData, DedupeCustomerErrors, DedupeCustomerResponses, DeleteCustomRuleData, DeleteCustomRuleErrors, DeleteCustomRuleResponses, DeleteLogData, DeleteLogErrors, DeleteLogResponses, DeleteProjectData, DeleteProjectErrors, DeleteProjectResponses, DeleteWebhookData, DeleteWebhookErrors, DeleteWebhookResponses, EraseDataData, EraseDataErrors, EraseDataResponses, EvaluateOrderData, EvaluateOrderErrors, EvaluateOrderResponses, GetAvailablePlansData, GetAvailablePlansErrors, GetAvailablePlansResponses, GetAvailableRulesData, GetAvailableRulesErrors, GetAvailableRulesResponses, GetErrorCodeCatalogData, GetErrorCodeCatalogErrors, GetErrorCodeCatalogResponses, GetJobStatusByIdData, GetJobStatusByIdErrors, GetJobStatusByIdResponses, GetLogsData, GetLogsErrors, GetLogsResponses, GetReasonCodeCatalogData, GetReasonCodeCatalogErrors, GetReasonCodeCatalogResponses, GetSettingsData, GetSettingsErrors, GetSettingsResponses, GetUsageData, GetUsageErrors, GetUsageResponses, GetUserPlanData, GetUserPlanErrors, GetUserPlanResponses, GetUserProjectsData, GetUserProjectsErrors, GetUserProjectsResponses, ListApiKeysData, ListApiKeysErrors, ListApiKeysResponses, ListPersonalAccessTokensData, ListPersonalAccessTokensErrors, ListPersonalAccessTokensResponses, ListUsersData, ListUsersErrors, ListUsersResponses, ListWebhooksData, ListWebhooksErrors, ListWebhooksResponses, LoginUserData, LoginUserErrors, LoginUserResponses, LogoutUserData, LogoutUserErrors, LogoutUserResponses, MergeDeduplicatedData, MergeDeduplicatedErrors, MergeDeduplicatedResponses, NormalizeAddressData, NormalizeAddressErrors, NormalizeAddressResponses, RegisterCustomRulesData, RegisterCustomRulesErrors, RegisterCustomRulesResponses, RegisterUserData, RegisterUserErrors, RegisterUserResponses, RevokeApiKeyData, RevokeApiKeyErrors, RevokeApiKeyResponses, RevokePersonalAccessTokenData, RevokePersonalAccessTokenErrors, RevokePersonalAccessTokenResponses, TestRulesAgainstPayloadData, TestRulesAgainstPayloadErrors, TestRulesAgainstPayloadResponses, TestWebhookData, TestWebhookErrors, TestWebhookResponses, UpdateSettingsData, UpdateSettingsErrors, UpdateSettingsResponses, UpdateUserPlanData, UpdateUserPlanErrors, UpdateUserPlanResponses, ValidateAddressData, ValidateAddressErrors, ValidateAddressResponses, ValidateEmailData, ValidateEmailErrors, ValidateEmailResponses, ValidateNameData, ValidateNameErrors, ValidateNameResponses, ValidatePhoneData, ValidatePhoneErrors, ValidatePhoneResponses, ValidateTaxIdData, ValidateTaxIdErrors, ValidateTaxIdResponses, VerifyPhoneOtpData, VerifyPhoneOtpErrors, VerifyPhoneOtpResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean> = Options2<TData, ThrowOnError> & {
     /**
@@ -238,7 +238,7 @@ export const deleteWebhook = <ThrowOnError extends boolean = false>(options: Opt
  * Sends a sample payload to the provided webhook URL and returns the response. Useful for testing webhook configurations.
  */
 export const testWebhook = <ThrowOnError extends boolean = false>(options: Options<TestWebhookData, ThrowOnError>) => {
-    return (options.client ?? client).post<TestWebhookResponses, unknown, ThrowOnError>({
+    return (options.client ?? client).post<TestWebhookResponses, TestWebhookErrors, ThrowOnError>({
         security: [
             {
                 scheme: 'bearer',
@@ -330,7 +330,7 @@ export const getReasonCodeCatalog = <ThrowOnError extends boolean = false>(optio
  * Tests rules against a sample payload and returns triggered rules
  */
 export const testRulesAgainstPayload = <ThrowOnError extends boolean = false>(options: Options<TestRulesAgainstPayloadData, ThrowOnError>) => {
-    return (options.client ?? client).post<TestRulesAgainstPayloadResponses, unknown, ThrowOnError>({
+    return (options.client ?? client).post<TestRulesAgainstPayloadResponses, TestRulesAgainstPayloadErrors, ThrowOnError>({
         security: [
             {
                 scheme: 'bearer',
@@ -404,7 +404,7 @@ export const deleteCustomRule = <ThrowOnError extends boolean = false>(options: 
  * Validates an email address
  */
 export const validateEmail = <ThrowOnError extends boolean = false>(options: Options<ValidateEmailData, ThrowOnError>) => {
-    return (options.client ?? client).post<ValidateEmailResponses, unknown, ThrowOnError>({
+    return (options.client ?? client).post<ValidateEmailResponses, ValidateEmailErrors, ThrowOnError>({
         security: [
             {
                 name: 'Authorization',
@@ -426,7 +426,7 @@ export const validateEmail = <ThrowOnError extends boolean = false>(options: Opt
  * Validates a phone number
  */
 export const validatePhone = <ThrowOnError extends boolean = false>(options: Options<ValidatePhoneData, ThrowOnError>) => {
-    return (options.client ?? client).post<ValidatePhoneResponses, unknown, ThrowOnError>({
+    return (options.client ?? client).post<ValidatePhoneResponses, ValidatePhoneErrors, ThrowOnError>({
         security: [
             {
                 name: 'Authorization',
@@ -448,7 +448,7 @@ export const validatePhone = <ThrowOnError extends boolean = false>(options: Opt
  * Validates an address
  */
 export const validateAddress = <ThrowOnError extends boolean = false>(options: Options<ValidateAddressData, ThrowOnError>) => {
-    return (options.client ?? client).post<ValidateAddressResponses, unknown, ThrowOnError>({
+    return (options.client ?? client).post<ValidateAddressResponses, ValidateAddressErrors, ThrowOnError>({
         security: [
             {
                 name: 'Authorization',
@@ -878,7 +878,7 @@ export const createUser = <ThrowOnError extends boolean = false>(options: Option
  * Performs basic address normalization without geocoding or external lookups
  */
 export const normalizeAddress = <ThrowOnError extends boolean = false>(options: Options<NormalizeAddressData, ThrowOnError>) => {
-    return (options.client ?? client).post<NormalizeAddressResponses, unknown, ThrowOnError>({
+    return (options.client ?? client).post<NormalizeAddressResponses, NormalizeAddressErrors, ThrowOnError>({
         security: [
             {
                 name: 'Authorization',
@@ -900,7 +900,7 @@ export const normalizeAddress = <ThrowOnError extends boolean = false>(options: 
  * Searches for existing customers using deterministic and fuzzy matching
  */
 export const dedupeCustomer = <ThrowOnError extends boolean = false>(options: Options<DedupeCustomerData, ThrowOnError>) => {
-    return (options.client ?? client).post<DedupeCustomerResponses, unknown, ThrowOnError>({
+    return (options.client ?? client).post<DedupeCustomerResponses, DedupeCustomerErrors, ThrowOnError>({
         security: [
             {
                 scheme: 'bearer',
@@ -978,7 +978,7 @@ export const mergeDeduplicated = <ThrowOnError extends boolean = false>(options:
  * Performs batch validation of emails, phones, addresses, or tax IDs asynchronously
  */
 export const batchValidate = <ThrowOnError extends boolean = false>(options: Options<BatchValidateData, ThrowOnError>) => {
-    return (options.client ?? client).post<BatchValidateResponses, unknown, ThrowOnError>({
+    return (options.client ?? client).post<BatchValidateResponses, BatchValidateErrors, ThrowOnError>({
         security: [
             {
                 name: 'Authorization',
@@ -1000,7 +1000,7 @@ export const batchValidate = <ThrowOnError extends boolean = false>(options: Opt
  * Performs batch deduplication of customers or addresses asynchronously
  */
 export const batchDedupe = <ThrowOnError extends boolean = false>(options: Options<BatchDedupeData, ThrowOnError>) => {
-    return (options.client ?? client).post<BatchDedupeResponses, unknown, ThrowOnError>({
+    return (options.client ?? client).post<BatchDedupeResponses, BatchDedupeErrors, ThrowOnError>({
         security: [
             {
                 name: 'Authorization',
@@ -1138,7 +1138,7 @@ export const updateUserPlan = <ThrowOnError extends boolean = false>(options: Op
  * Returns all available subscription plans
  */
 export const getAvailablePlans = <ThrowOnError extends boolean = false>(options?: Options<GetAvailablePlansData, ThrowOnError>) => {
-    return (options?.client ?? client).get<GetAvailablePlansResponses, unknown, ThrowOnError>({
+    return (options?.client ?? client).get<GetAvailablePlansResponses, GetAvailablePlansErrors, ThrowOnError>({
         url: '/public/plans',
         ...options
     });

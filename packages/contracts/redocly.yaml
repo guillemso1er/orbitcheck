@@ -1,4 +1,3 @@
-# packages/contract/redocly.yaml
 apis:
   v1:
     root: ./openapi/v1/openapi.yml
