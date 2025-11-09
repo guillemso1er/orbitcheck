@@ -3,6 +3,9 @@ info:
   title: OrbitCheck API
   description: API for validation, deduplication, and risk assessment services
   version: 1.0.0
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
   contact:
     name: OrbitCheck Team
     email: support@orbitcheck.io

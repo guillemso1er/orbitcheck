@@ -1,17 +1,29 @@
-tags:
-  - UI Endpoints
-summary: User logout
-description: Logs out the current user by clearing the session
-operationId: logoutUser
-security: []
-responses:
-  '200':
-    description: Logout successful
-    content:
-      application/json:
-        schema:
-          type: object
-          properties:
-            message:
-              type: string
-              description: Success message
+post:
+  tags:
+    - UI Endpoints
+  summary: User logout
+  description: Logs out the current user by clearing the session
+  operationId: logoutUser
+  responses:
+    '200':
+      description: Logout successful
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+                description: Success message
+    '401':
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: '../../components/schemas/Error.yml'
+    '422':
+      description: Validation failed
+      content:
+        application/json:
+          schema:
+            $ref: '../../components/schemas/Error.yml'
