@@ -12,7 +12,7 @@ import { createPlansService } from "./plans.js";
 
 
 
-export async function verifyAPIKey<TServer extends RawServerBase = RawServerBase>(request: FastifyRequest<RouteGenericInterface, TServer>, rep: FastifyReply<RouteGenericInterface, TServer>, pool: Pool): Promise<boolean> {
+export async function verifyAPIKey<TServer extends RawServerBase = RawServerBase>(request: FastifyRequest<RouteGenericInterface, TServer>, _rep: FastifyReply<RouteGenericInterface, TServer>, pool: Pool): Promise<boolean> {
     const header = request.headers["authorization"];
     if (!header || !header.startsWith("Bearer ")) {
         request.log.info('No Bearer header for API key auth');

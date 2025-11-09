@@ -54,9 +54,8 @@ export async function createWebhook(
 
     try {
         // Validate URL
-        let parsedUrl;
         try {
-            parsedUrl = new URL(url);
+            new URL(url);
         } catch {
             return sendError(rep, HTTP_STATUS.BAD_REQUEST, 'INVALID_URL', 'Invalid webhook URL', request_id);
         }

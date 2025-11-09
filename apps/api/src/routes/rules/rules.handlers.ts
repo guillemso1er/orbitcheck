@@ -388,12 +388,12 @@ export async function handleTestRules(
  * Handles the logic for registering new custom rules.
  */
 export async function handleRegisterCustomRules(
-    request: FastifyRequest<{ Body: RegisterCustomRulesData['body'] }>,
+    request: FastifyRequest,
     reply: FastifyReply,
     pool: Pool
 ) {
     const project_id = (request as any).project_id;
-    const { rules } = request.body;
+    const { rules } = request.body as RegisterCustomRulesData['body'];
     const request_id = generateRequestId();
 
     if (!rules || !Array.isArray(rules)) {
@@ -560,12 +560,12 @@ export async function handleRegisterCustomRules(
  * Handles the logic for deleting a custom rule.
  */
 export async function handleDeleteCustomRule(
-    request: FastifyRequest<{ Params: DeleteCustomRuleData['path'] }>,
+    request: FastifyRequest,
     reply: FastifyReply,
     pool: Pool
 ) {
     const project_id = (request as any).project_id;
-    const ruleId = request.params.id;
+    const ruleId = (request.params as DeleteCustomRuleData['path']).id;
     const request_id = generateRequestId();
 
     if (!ruleId) {

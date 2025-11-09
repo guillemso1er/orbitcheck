@@ -1,7 +1,7 @@
 import type { FastifyReply } from "fastify";
 import type { Redis as IORedisType } from 'ioredis';
 import type { Pool } from "pg";
-import { API_VERSION, ROUTES } from "../config.js";
+import { API_VERSION } from "../config.js";
 
 export async function getStatus(
     rep: FastifyReply

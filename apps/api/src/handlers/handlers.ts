@@ -1,4 +1,5 @@
 import type { Redis as IORedisType } from "ioredis";
+import crypto from 'node:crypto';
 import { Pool } from "pg";
 import { RouteHandlers } from "../generated/fastify/fastify.gen.js";
 import { createApiKey, listApiKeys, revokeApiKey } from "../services/api-keys.js";
@@ -72,11 +73,13 @@ export const serviceHandlers = (pool: Pool, redis: IORedisType): RouteHandlers =
     createCustomerPortalSession: async (request, reply) => createStripeCustomerPortalSession(request, reply, pool),
 
     // User management handlers (placeholder implementations)
-    listUsers: async (request, reply) => {
-        return reply.status(501).send({ error: { code: 'not_implemented', message: 'List users not implemented' } });
+    listUsers: async (_request, reply) => {
+        // Placeholder implementation returning empty list
+        return reply.status(200).send({ data: [], request_id: crypto.randomUUID?.() });
     },
-    createUser: async (request, reply) => {
-        return reply.status(501).send({ error: { code: 'not_implemented', message: 'Create user not implemented' } });
+    createUser: async (_request, reply) => {
+        // Placeholder implementation returning error (bad request)
+        return reply.status(400).send({ error: { code: 'INVALID_INPUT', message: 'Create user not implemented' }, request_id: crypto.randomUUID?.() });
     },
 
     // Normalization handlers
@@ -102,20 +105,54 @@ export const serviceHandlers = (pool: Pool, redis: IORedisType): RouteHandlers =
     // Plan handlers
     getUserPlan: async (request, reply) => {
         const plansService = new PlansService(pool);
-        return plansService.getUserPlan((request as any).user_id);
+        const userPlan = await plansService.getUserPlan((request as any).user_id);
+        const response = {
+            id: userPlan.id,
+            email: userPlan.email,
+            monthlyValidationsUsed: userPlan.monthlyValidationsUsed,
+            subscriptionStatus: userPlan.subscriptionStatus,
+            trialEndDate: userPlan.trialEndDate,
+            projectsCount: userPlan.projectsCount,
+            plan: { ...userPlan.plan }
+        };
+        return reply.status(200).send(response);
     },
     updateUserPlan: async (request, reply) => {
         const plansService = new PlansService(pool);
-        const { plan_slug, trial_days } = request.body as any;
-        return plansService.updateUserPlan((request as any).user_id, plan_slug, trial_days);
+        const { planSlug, trialDays } = request.body as any; // Align with generated types
+        if (!planSlug || typeof planSlug !== 'string') {
+            return reply.status(400).send({ error: { code: 'INVALID_INPUT', message: 'planSlug is required' } });
+        }
+        const userPlan = await plansService.updateUserPlan((request as any).user_id, planSlug, trialDays);
+        const response = {
+            id: userPlan.id,
+            email: userPlan.email,
+            monthlyValidationsUsed: userPlan.monthlyValidationsUsed,
+            subscriptionStatus: userPlan.subscriptionStatus,
+            trialEndDate: userPlan.trialEndDate,
+            projectsCount: userPlan.projectsCount,
+            plan: { ...userPlan.plan }
+        };
+        return reply.status(200).send(response);
     },
-    getAvailablePlans: async (request, reply) => {
+    getAvailablePlans: async (_request, reply) => {
         const plansService = new PlansService(pool);
-        return plansService.getPlanBySlug('free'); // This would need to be updated to get all plans
+        // Temporary: return only the free plan as array, shape matching spec
+        const free = await plansService.getPlanBySlug('free');
+        const arr = free ? [{ id: free.id, name: free.name, slug: free.slug, price: free.price, validationsLimit: free.validationsLimit, projectsLimit: free.projectsLimit, features: free.features }] : [];
+        return reply.status(200).send(arr);
     },
     checkValidationLimits: async (request, reply) => {
         const plansService = new PlansService(pool);
         const { count = 1 } = request.body as any;
-        return plansService.checkValidationLimit((request as any).user_id, count);
+        const usage = await plansService.checkValidationLimit((request as any).user_id, count);
+        const response = {
+            canProceed: usage.remainingValidations > 0 || usage.overageAllowed,
+            remainingValidations: usage.remainingValidations,
+            overageAllowed: usage.overageAllowed,
+            monthlyValidationsUsed: usage.monthlyValidationsUsed,
+            planValidationsLimit: usage.planValidationsLimit
+        };
+        return reply.status(200).send(response);
     }
 })
