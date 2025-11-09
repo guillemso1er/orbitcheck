@@ -2,13 +2,13 @@ import { MGMT_V1_ROUTES } from "@orbitcheck/contracts";
 import { errorCodes, type FastifyReply, type FastifyRequest } from "fastify";
 import type { Redis as IORedisType } from "ioredis";
 import type { Pool } from "pg";
-import type { DeleteCustomRuleData, GetAvailableRulesResponses, GetErrorCodeCatalogResponses, RegisterCustomRulesData, TestRulesAgainstPayloadData } from "../generated/fastify/types.gen.js";
-import { getBuiltInRules } from "../routes/rules/rules.constants.js";
-import { handleDeleteCustomRule, handleRegisterCustomRules, handleTestRules } from "../routes/rules/rules.handlers.js";
-import { generateRequestId, sendServerError } from "../routes/utils.js";
+import { getBuiltInRules } from "../../routes/rules/rules.constants.js";
+import { handleDeleteCustomRule, handleRegisterCustomRules, handleTestRules } from "../../routes/rules/rules.handlers.js";
+import { generateRequestId, sendServerError } from "../../routes/utils.js";
+import { GetAvailableRulesResponses, GetErrorCodeCatalogResponses, TestRulesAgainstPayloadData, RegisterCustomRulesData, DeleteCustomRuleData } from "../../generated/fastify/types.gen.js";
 
 export async function getAvailableRules(
-    request: FastifyRequest,
+    _request: FastifyRequest,
     rep: FastifyReply
 ): Promise<FastifyReply> {
     const request_id = generateRequestId();

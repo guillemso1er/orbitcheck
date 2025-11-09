@@ -228,21 +228,5 @@ export function registerRoutes<TServer extends RawServerBase = RawServerBase>(ap
 
     app.register(openapiGlue, { serviceHandlers: serviceHandlers, specification: '../../packages/contracts/dist/openapi.v1.json' });
 
-    // Register modular route groups with shared dependencies
-    // registerAuthRoutes(app as any, pool);
-    // registerApiKeysRoutes(app as any, pool);
-    // registerValidationRoutes(app as any, pool, redis);
-    // registerPlanRoutes(app as any, pool);
-    // registerProjectRoutes(app as any, pool);
-    // registerNormalizeRoutes(app as any, pool);
-    // registerDedupeRoutes(app as any, pool);
-    // registerOrderRoutes(app as any, pool, redis);
-    // registerDataRoutes(app as any, pool);
-    // registerSettingsRoutes(app as any, pool);
-    // registerWebhookRoutes(app as any, pool);
-    // registerBillingRoutes(app as any, pool);
-    // registerRulesRoutes(app as any, pool, redis);
-    // registerBatchRoutes(app as any, pool, redis);
-    // registerJobRoutes(app as any, pool);
-    // registerPatRoutes(app as any, pool);
+
 }

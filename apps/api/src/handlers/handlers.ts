@@ -10,9 +10,10 @@ import { dedupeAddress, dedupeCustomer, mergeDeduplicatedRecords } from "../serv
 import { getJobStatus } from "../services/jobs.js";
 import { normalizeAddressCheap } from "../services/normalize.js";
 import { evaluateOrderForRiskAndRules } from "../services/orders.js";
+import { createPersonalAccessToken, listPersonalAccessTokens, revokePersonalAccessToken } from "../services/pats.js";
 import { PlansService } from "../services/plans.js";
 import { createProject, deleteProject, getUserProjects } from "../services/projects.js";
-import { deleteCustomRule, getAvailableRules, getErrorCodeCatalog, getReasonCodeCatalog, registerCustomRules, testRulesAgainstPayload } from "../services/rules.js";
+import { deleteCustomRule, getAvailableRules, getErrorCodeCatalog, getReasonCodeCatalog, registerCustomRules, testRulesAgainstPayload } from "../services/rules/rules.js";
 import { getTenantSettings, updateTenantSettings } from "../services/settings.js";
 import { validateAddress, validateEmailAddress, validateName, validatePhoneNumber, validateTaxId, verifyPhoneOtp } from "../services/validation.js";
 import { createWebhook, deleteWebhook, listWebhooks, testWebhook } from "../services/webhook.js";
@@ -57,16 +58,10 @@ export const serviceHandlers = (pool: Pool, redis: IORedisType): RouteHandlers =
     deleteLog: async (request, reply) => deleteLogEntry(request, reply, pool),
     eraseData: async (request, reply) => eraseUserData(request, reply, pool),
 
-    // Personal Access Token handlers (placeholder implementations)
-    listPersonalAccessTokens: async (request, reply) => {
-        return reply.status(501).send({ error: { code: 'not_implemented', message: 'List PATs not implemented' } });
-    },
-    createPersonalAccessToken: async (request, reply) => {
-        return reply.status(501).send({ error: { code: 'not_implemented', message: 'Create PAT not implemented' } });
-    },
-    revokePersonalAccessToken: async (request, reply) => {
-        return reply.status(501).send({ error: { code: 'not_implemented', message: 'Revoke PAT not implemented' } });
-    },
+    // Personal Access Token handlers
+    listPersonalAccessTokens: async (request, reply) => listPersonalAccessTokens(request, reply, pool),
+    createPersonalAccessToken: async (request, reply) => createPersonalAccessToken(request, reply, pool),
+    revokePersonalAccessToken: async (request, reply) => revokePersonalAccessToken(request, reply, pool),
 
     // Settings handlers
     getSettings: async (request, reply) => getTenantSettings(request, reply, pool),

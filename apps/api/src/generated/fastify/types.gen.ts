@@ -1564,25 +1564,274 @@ export type TestRulesAgainstPayloadResponses = {
      * Rule test results
      */
     200: {
-        triggered_rules?: Array<{
+        /**
+         * Validation results for each field
+         */
+        results?: {
+            email?: {
+                valid?: boolean;
+                confidence?: number;
+                reason_codes?: Array<string>;
+                risk_score?: number;
+                processing_time_ms?: number;
+                provider?: string;
+                normalized?: string;
+                disposable?: boolean;
+                domain_reputation?: number;
+                mx_records?: boolean;
+                smtp_check?: boolean;
+                catch_all?: boolean;
+                role_account?: boolean;
+                free_provider?: boolean;
+                domain?: string;
+                metadata?: {
+                    [key: string]: unknown;
+                };
+            };
+            phone?: {
+                valid?: boolean;
+                confidence?: number;
+                reason_codes?: Array<string>;
+                risk_score?: number;
+                processing_time_ms?: number;
+                provider?: string;
+                e164?: string;
+                country?: string;
+                carrier?: string;
+                line_type?: string;
+                reachable?: boolean;
+                ported?: boolean;
+                roaming?: boolean;
+                metadata?: {
+                    [key: string]: unknown;
+                };
+            };
+            address?: {
+                valid?: boolean;
+                confidence?: number;
+                reason_codes?: Array<string>;
+                risk_score?: number;
+                processing_time_ms?: number;
+                provider?: string;
+                normalized?: {
+                    [key: string]: unknown;
+                };
+                po_box?: boolean;
+                residential?: boolean;
+                deliverable?: boolean;
+                dpv_confirmed?: boolean;
+                geocode?: {
+                    lat?: number;
+                    lng?: number;
+                };
+                postal_code_mismatch?: boolean;
+                city?: string;
+                postal_code?: string;
+                metadata?: {
+                    [key: string]: unknown;
+                };
+            };
+            name?: {
+                valid?: boolean;
+                confidence?: number;
+                reason_codes?: Array<string>;
+                risk_score?: number;
+                processing_time_ms?: number;
+                provider?: string;
+                normalized?: string;
+                parts?: {
+                    first?: string;
+                    middle?: string;
+                    last?: string;
+                };
+                gender?: string;
+                salutation?: string;
+                metadata?: {
+                    [key: string]: unknown;
+                };
+            };
+            ip?: {
+                valid?: boolean;
+                confidence?: number;
+                reason_codes?: Array<string>;
+                risk_score?: number;
+                processing_time_ms?: number;
+                provider?: string;
+                country?: string;
+                region?: string;
+                city?: string;
+                is_vpn?: boolean;
+                is_proxy?: boolean;
+                is_tor?: boolean;
+                is_datacenter?: boolean;
+                asn?: string;
+                org?: string;
+                metadata?: {
+                    [key: string]: unknown;
+                };
+            };
+            device?: {
+                valid?: boolean;
+                confidence?: number;
+                reason_codes?: Array<string>;
+                risk_score?: number;
+                processing_time_ms?: number;
+                provider?: string;
+                type?: string;
+                os?: string;
+                browser?: string;
+                is_bot?: boolean;
+                fingerprint?: string;
+                metadata?: {
+                    [key: string]: unknown;
+                };
+            };
+        };
+        rule_evaluations?: Array<{
             /**
-             * ID of triggered rule
+             * ID of the rule
              */
             rule_id?: string;
             /**
-             * Name of triggered rule
+             * Name of the rule
              */
             rule_name?: string;
             /**
-             * Rule severity
+             * Rule description
              */
-            severity?: 'low' | 'medium' | 'high' | 'critical';
+            description?: string;
             /**
-             * Reason codes generated
+             * Rule condition/logic
              */
-            reason_codes?: Array<string>;
+            condition?: string;
+            /**
+             * Whether the rule was triggered
+             */
+            triggered?: boolean;
+            /**
+             * Action to take if triggered
+             */
+            action?: 'approve' | 'hold' | 'block';
+            /**
+             * Rule priority
+             */
+            priority?: number;
+            /**
+             * Time taken to evaluate the rule
+             */
+            evaluation_time_ms?: number;
+            /**
+             * Confidence score of the evaluation
+             */
+            confidence_score?: number;
+            /**
+             * Reason for the evaluation result
+             */
+            reason?: string;
+            /**
+             * Error message if evaluation failed
+             */
+            error?: string;
+            metadata?: {
+                [key: string]: unknown;
+            };
         }>;
+        final_decision?: {
+            /**
+             * Final action to take
+             */
+            action?: 'approve' | 'hold' | 'block' | 'review';
+            /**
+             * Confidence in the decision
+             */
+            confidence?: number;
+            /**
+             * Reasons for the decision
+             */
+            reasons?: Array<string>;
+            /**
+             * Overall risk score
+             */
+            risk_score?: number;
+            /**
+             * Risk level
+             */
+            risk_level?: 'low' | 'medium' | 'high' | 'critical';
+            /**
+             * Recommended actions to take
+             */
+            recommended_actions?: Array<string>;
+        };
+        performance_metrics?: {
+            /**
+             * Total request duration
+             */
+            total_duration_ms?: number;
+            /**
+             * Validation duration
+             */
+            validation_duration_ms?: number;
+            /**
+             * Rule evaluation duration
+             */
+            rule_evaluation_duration_ms?: number;
+            /**
+             * Whether validations were run in parallel
+             */
+            parallel_validations?: boolean;
+            /**
+             * Number of cache hits
+             */
+            cache_hits?: number;
+            /**
+             * Number of cache misses
+             */
+            cache_misses?: number;
+        };
+        /**
+         * Request identifier
+         */
         request_id?: string;
+        /**
+         * Response timestamp
+         */
+        timestamp?: string;
+        /**
+         * Project identifier
+         */
+        project_id?: string;
+        /**
+         * Environment
+         */
+        environment?: 'test' | 'production';
+        /**
+         * Debug information (only when X-Debug header is set)
+         */
+        debug_info?: {
+            /**
+             * Number of rules evaluated
+             */
+            rules_evaluated?: number;
+            /**
+             * Number of rules triggered
+             */
+            rules_triggered?: number;
+            /**
+             * Validation providers used
+             */
+            validation_providers_used?: Array<string>;
+            /**
+             * Errors encountered
+             */
+            errors?: Array<{
+                field?: string;
+                error?: string;
+            }>;
+            /**
+             * Warnings encountered
+             */
+            warnings?: Array<string>;
+        };
     };
 };
 
@@ -1593,7 +1842,11 @@ export type RegisterCustomRulesData = {
         /**
          * Array of custom rules to register
          */
-        rules: Array<unknown & {
+        rules: Array<{
+            /**
+             * Optional rule ID (UUID format). If provided, will update existing rule if found.
+             */
+            id?: string;
             /**
              * Custom rule name
              */
@@ -1606,6 +1859,10 @@ export type RegisterCustomRulesData = {
              * A string containing the rule's logic expression.
              */
             condition?: string;
+            /**
+             * A string containing the rule's logic expression (alias for condition).
+             */
+            logic?: string;
             /**
              * A structured JSON object defining the rule's logic.
              */
@@ -1621,9 +1878,27 @@ export type RegisterCustomRulesData = {
              */
             enabled?: boolean;
             /**
-             * Actions to take when the rule is triggered
+             * Action to take when the rule is triggered
              */
-            actions?: Array<'approve' | 'hold' | 'block'>;
+            action?: 'approve' | 'hold' | 'block';
+            /**
+             * Actions object (legacy format)
+             */
+            actions?: {
+                block?: boolean;
+                approve?: boolean;
+                hold?: boolean;
+            };
+            /**
+             * Rule priority (higher values = higher priority)
+             */
+            priority?: number;
+            /**
+             * Additional metadata for the rule
+             */
+            metadata?: {
+                [key: string]: unknown;
+            };
         }>;
     };
     path?: never;
@@ -1679,24 +1954,18 @@ export type RegisterCustomRulesResponses = {
      * Custom rules registered successfully
      */
     201: {
-        registered_rules?: Array<{
-            /**
-             * Registered rule ID
-             */
-            id?: string;
-            /**
-             * Rule name
-             */
-            name?: string;
-            /**
-             * Registration status
-             */
-            status?: string;
-        }>;
         /**
-         * Number of rules registered
+         * Success message
          */
-        count?: number;
+        message?: string;
+        /**
+         * List of updated rule IDs
+         */
+        updated_rules?: Array<string>;
+        /**
+         * List of newly created rule IDs
+         */
+        registered_rules?: Array<string>;
         request_id?: string;
     };
 };
@@ -1739,20 +2008,18 @@ export type DeleteCustomRuleErrors = {
      * Custom rule not found
      */
     404: {
-        error?: {
-            /**
-             * Error code
-             */
-            code?: string;
-            /**
-             * Error message
-             */
-            message?: string;
-        };
+        /**
+         * Error message
+         */
+        error?: string;
         /**
          * Request identifier
          */
         request_id?: string;
+        /**
+         * Additional error details
+         */
+        details?: string;
     };
 };
 
@@ -1764,13 +2031,13 @@ export type DeleteCustomRuleResponses = {
      */
     200: {
         /**
-         * Deleted rule ID
+         * Success message
          */
-        id?: string;
+        message?: string;
         /**
-         * Indicates if the rule was deleted
+         * ID of the deleted rule
          */
-        deleted?: boolean;
+        deleted_rule_id?: string;
         request_id?: string;
     };
 };

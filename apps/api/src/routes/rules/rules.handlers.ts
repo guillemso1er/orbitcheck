@@ -2,9 +2,16 @@
 
 import type { FastifyReply, FastifyRequest } from "fastify";
 import type { Pool } from "pg";
+import type {
+    DeleteCustomRuleData,
+    DeleteCustomRuleResponse,
+    RegisterCustomRulesData,
+    RegisterCustomRulesResponse,
+    TestRulesAgainstPayloadResponse
+} from "../../generated/fastify/types.gen.js";
 import { generateRequestId } from "../utils.js";
 import { convertConditionsToLogic, getBuiltInRules, inferActionFromConditions, registerBuiltInRuleOverride } from "./rules.constants.js";
-import { RuleEvaluationResult, TestRulesResponse, ValidationPayload } from "./rules.types.js";
+import { RuleEvaluationResult, ValidationPayload } from "./rules.types.js";
 import { validatePayload } from "./rules.validation.js";
 import { RiskScoreCalculator, RuleEvaluator } from "./test-rules.js";
 
@@ -321,7 +328,7 @@ export async function handleTestRules(
     console.log(`[DEBUG] handleTestRules - first few rule_evaluations: ${JSON.stringify(ruleEvaluations.slice(0, 3))}`);
     console.log(`[DEBUG] handleTestRules - email_format in evaluations: ${ruleEvaluations.find((r) => r.rule_id === 'email_format') ? 'FOUND' : 'NOT FOUND'}`);
 
-    const response: TestRulesResponse = {
+    const response: TestRulesAgainstPayloadResponse = {
         results: {
             ...results,
             ...(results.email && {
@@ -344,7 +351,7 @@ export async function handleTestRules(
             reasons: finalReasons,
             risk_score: riskAnalysis.score,
             risk_level: riskAnalysis.level,
-            recommended_actions: recommendedActions.length > 0 ? recommendedActions : undefined, // snake_case key, camelCase variable
+            recommended_actions: recommendedActions.length > 0 ? recommendedActions : undefined,
         },
         performance_metrics: {
             total_duration_ms: endTime - startTime,
@@ -365,9 +372,9 @@ export async function handleTestRules(
         {
             request_id,
             project_id,
-            total_duration_ms: response.performance_metrics.total_duration_ms,
-            risk_score: response.final_decision.risk_score,
-            final_action: response.final_decision.action,
+            total_duration_ms: response.performance_metrics?.total_duration_ms,
+            risk_score: response.final_decision?.risk_score,
+            final_action: response.final_decision?.action,
             rules_triggered: debug_info.rules_triggered,
             cache_hit_rate: metrics.cache_hits / (metrics.cache_hits + metrics.cache_misses),
         },
@@ -381,12 +388,12 @@ export async function handleTestRules(
  * Handles the logic for registering new custom rules.
  */
 export async function handleRegisterCustomRules(
-    request: FastifyRequest,
+    request: FastifyRequest<{ Body: RegisterCustomRulesData['body'] }>,
     reply: FastifyReply,
     pool: Pool
 ) {
     const project_id = (request as any).project_id;
-    const { rules } = request.body as { rules: any[] };
+    const { rules } = request.body;
     const request_id = generateRequestId();
 
     if (!rules || !Array.isArray(rules)) {
@@ -458,12 +465,12 @@ export async function handleRegisterCustomRules(
     // Process existing rules (updates) and new rules
     const rulesToProcess: any[] = [...existingById, ...existingByName];
     const processedRules: any[] = [];
-    
+
     // Update existing rules
     for (const rule of rulesToProcess) {
         const logic = rule.logic || rule.condition || convertConditionsToLogic(rule.conditions) || '';
         const action = rule.action || (inferActionFromConditions(rule.conditions) || 'hold');
-        
+
         await pool.query(
             'UPDATE rules SET name = $1, description = $2, logic = $3, severity = $4, action = $5, priority = $6, enabled = $7 WHERE id = $8',
             [rule.name, rule.description, logic, rule.severity || 'medium', action, rule.priority || 0, rule.enabled !== false, rule.existing.id]
@@ -480,7 +487,7 @@ export async function handleRegisterCustomRules(
                 enabled: rule.enabled !== false,
             });
         }
-        
+
         processedRules.push({ ...rule.existing, ...rule });
     }
 
@@ -540,7 +547,7 @@ export async function handleRegisterCustomRules(
         insertedRules.push({ ...rule, id: result.rows[0].id });
     }
 
-    const response = {
+    const response: RegisterCustomRulesResponse = {
         message: `Rules processed successfully. ${existingById.length + existingByName.length} updated, ${insertedRules.length} created.`,
         updated_rules: processedRules.map(r => r.id),
         registered_rules: insertedRules.map(r => r.id),
@@ -553,12 +560,12 @@ export async function handleRegisterCustomRules(
  * Handles the logic for deleting a custom rule.
  */
 export async function handleDeleteCustomRule(
-    request: FastifyRequest,
+    request: FastifyRequest<{ Params: DeleteCustomRuleData['path'] }>,
     reply: FastifyReply,
     pool: Pool
 ) {
     const project_id = (request as any).project_id;
-    const ruleId = (request.params as any).id;
+    const ruleId = request.params.id;
     const request_id = generateRequestId();
 
     if (!ruleId) {
@@ -595,11 +602,12 @@ export async function handleDeleteCustomRule(
             });
         }
 
-        return reply.status(200).send({
+        const response: DeleteCustomRuleResponse = {
             message: `Rule "${ruleName}" deleted successfully`,
             deleted_rule_id: ruleId,
             request_id
-        });
+        };
+        return reply.status(200).send(response);
 
     } catch (error) {
         console.error('Error deleting rule:', error);

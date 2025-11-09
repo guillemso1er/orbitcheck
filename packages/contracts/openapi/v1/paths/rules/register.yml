@@ -20,6 +20,9 @@ requestBody:
               required:
                 - name
               properties:
+                id:
+                  type: string
+                  description: Optional rule ID (UUID format). If provided, will update existing rule if found.
                 name:
                   type: string
                   description: Custom rule name
@@ -29,6 +32,9 @@ requestBody:
                 condition:
                   type: string
                   description: A string containing the rule's logic expression.
+                logic:
+                  type: string
+                  description: A string containing the rule's logic expression (alias for condition).
                 conditions:
                   type: object
                   description: A structured JSON object defining the rule's logic.
@@ -42,15 +48,28 @@ requestBody:
                   type: boolean
                   default: true
                   description: Whether the rule is enabled
+                action:
+                  type: string
+                  enum: [approve, hold, block]
+                  description: Action to take when the rule is triggered
                 actions:
-                  type: array
-                  description: Actions to take when the rule is triggered
-                  items:
-                    type: string
-                    enum: [approve, hold, block]
-              oneOf:
-                - required: [condition]
-                - required: [conditions]
+                  type: object
+                  description: Actions object (legacy format)
+                  properties:
+                    block:
+                      type: boolean
+                    approve:
+                      type: boolean
+                    hold:
+                      type: boolean
+                priority:
+                  type: number
+                  default: 0
+                  description: Rule priority (higher values = higher priority)
+                metadata:
+                  type: object
+                  additionalProperties: true
+                  description: Additional metadata for the rule
 responses:
   '201':
     description: Custom rules registered successfully
@@ -59,23 +78,19 @@ responses:
         schema:
           type: object
           properties:
+            message:
+              type: string
+              description: Success message
+            updated_rules:
+              type: array
+              items:
+                type: string
+              description: List of updated rule IDs
             registered_rules:
               type: array
               items:
-                type: object
-                properties:
-                  id:
-                    type: string
-                    description: Registered rule ID
-                  name:
-                    type: string
-                    description: Rule name
-                  status:
-                    type: string
-                    description: Registration status
-            count:
-              type: integer
-              description: Number of rules registered
+                type: string
+              description: List of newly created rule IDs
             request_id:
               type: string
   '400':
