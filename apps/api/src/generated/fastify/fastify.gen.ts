@@ -2,19 +2,192 @@
 
 import type { RouteHandler } from 'fastify';
 
-import type { CreateUserData, CreateUserErrors, CreateUserResponses, ListUsersData, ListUsersErrors, ListUsersResponses, LoginUserData, LoginUserErrors, LoginUserResponses } from './types.gen';
+import type { BatchDedupeData, BatchDedupeResponses, BatchValidateData, BatchValidateResponses, CheckValidationLimitsData, CheckValidationLimitsErrors, CheckValidationLimitsResponses, CreateApiKeyData, CreateApiKeyErrors, CreateApiKeyResponses, CreateCheckoutSessionErrors, CreateCheckoutSessionResponses, CreateCustomerPortalSessionErrors, CreateCustomerPortalSessionResponses, CreatePersonalAccessTokenData, CreatePersonalAccessTokenErrors, CreatePersonalAccessTokenResponses, CreateProjectData, CreateProjectErrors, CreateProjectResponses, CreateUserData, CreateUserErrors, CreateUserResponses, CreateWebhookData, CreateWebhookErrors, CreateWebhookResponses, DedupeAddressData, DedupeAddressErrors, DedupeAddressResponses, DedupeCustomerData, DedupeCustomerResponses, DeleteCustomRuleData, DeleteCustomRuleErrors, DeleteCustomRuleResponses, DeleteLogData, DeleteLogErrors, DeleteLogResponses, DeleteProjectData, DeleteProjectErrors, DeleteProjectResponses, DeleteWebhookData, DeleteWebhookErrors, DeleteWebhookResponses, EraseDataData, EraseDataErrors, EraseDataResponses, EvaluateOrderData, EvaluateOrderErrors, EvaluateOrderResponses, GetAvailablePlansResponses, GetAvailableRulesErrors, GetAvailableRulesResponses, GetErrorCodeCatalogErrors, GetErrorCodeCatalogResponses, GetJobStatusByIdData, GetJobStatusByIdErrors, GetJobStatusByIdResponses, GetLogsData, GetLogsErrors, GetLogsResponses, GetReasonCodeCatalogErrors, GetReasonCodeCatalogResponses, GetSettingsErrors, GetSettingsResponses, GetUsageErrors, GetUsageResponses, GetUserPlanErrors, GetUserPlanResponses, GetUserProjectsErrors, GetUserProjectsResponses, ListApiKeysErrors, ListApiKeysResponses, ListPersonalAccessTokensErrors, ListPersonalAccessTokensResponses, ListUsersErrors, ListUsersResponses, ListWebhooksErrors, ListWebhooksResponses, LoginUserData, LoginUserErrors, LoginUserResponses, LogoutUserErrors, LogoutUserResponses, MergeDeduplicatedData, MergeDeduplicatedErrors, MergeDeduplicatedResponses, NormalizeAddressData, NormalizeAddressResponses, RegisterCustomRulesData, RegisterCustomRulesErrors, RegisterCustomRulesResponses, RegisterUserData, RegisterUserErrors, RegisterUserResponses, RevokeApiKeyData, RevokeApiKeyErrors, RevokeApiKeyResponses, RevokePersonalAccessTokenData, RevokePersonalAccessTokenErrors, RevokePersonalAccessTokenResponses, TestRulesAgainstPayloadData, TestRulesAgainstPayloadResponses, TestWebhookData, TestWebhookResponses, UpdateSettingsData, UpdateSettingsErrors, UpdateSettingsResponses, UpdateUserPlanData, UpdateUserPlanErrors, UpdateUserPlanResponses, ValidateAddressData, ValidateAddressResponses, ValidateEmailData, ValidateEmailResponses, ValidateNameData, ValidateNameErrors, ValidateNameResponses, ValidatePhoneData, ValidatePhoneResponses, ValidateTaxIdData, ValidateTaxIdErrors, ValidateTaxIdResponses, VerifyPhoneOtpData, VerifyPhoneOtpErrors, VerifyPhoneOtpResponses } from './types.gen';
 
 export type RouteHandlers = {
     loginUser: RouteHandler<{
         Body: LoginUserData['body'];
         Reply: LoginUserErrors & LoginUserResponses;
     }>;
+    registerUser: RouteHandler<{
+        Body: RegisterUserData['body'];
+        Reply: RegisterUserErrors & RegisterUserResponses;
+    }>;
+    logoutUser: RouteHandler<{
+        Reply: LogoutUserErrors & LogoutUserResponses;
+    }>;
+    listApiKeys: RouteHandler<{
+        Reply: ListApiKeysErrors & ListApiKeysResponses;
+    }>;
+    createApiKey: RouteHandler<{
+        Body: CreateApiKeyData['body'];
+        Reply: CreateApiKeyErrors & CreateApiKeyResponses;
+    }>;
+    revokeApiKey: RouteHandler<{
+        Params: RevokeApiKeyData['path'];
+        Reply: RevokeApiKeyErrors & RevokeApiKeyResponses;
+    }>;
+    listWebhooks: RouteHandler<{
+        Reply: ListWebhooksErrors & ListWebhooksResponses;
+    }>;
+    createWebhook: RouteHandler<{
+        Body: CreateWebhookData['body'];
+        Reply: CreateWebhookErrors & CreateWebhookResponses;
+    }>;
+    deleteWebhook: RouteHandler<{
+        Params: DeleteWebhookData['path'];
+        Reply: DeleteWebhookErrors & DeleteWebhookResponses;
+    }>;
+    testWebhook: RouteHandler<{
+        Body: TestWebhookData['body'];
+        Reply: TestWebhookResponses;
+    }>;
+    getAvailableRules: RouteHandler<{
+        Reply: GetAvailableRulesErrors & GetAvailableRulesResponses;
+    }>;
+    getErrorCodeCatalog: RouteHandler<{
+        Reply: GetErrorCodeCatalogErrors & GetErrorCodeCatalogResponses;
+    }>;
+    getReasonCodeCatalog: RouteHandler<{
+        Reply: GetReasonCodeCatalogErrors & GetReasonCodeCatalogResponses;
+    }>;
+    testRulesAgainstPayload: RouteHandler<{
+        Body: TestRulesAgainstPayloadData['body'];
+        Reply: TestRulesAgainstPayloadResponses;
+    }>;
+    registerCustomRules: RouteHandler<{
+        Body: RegisterCustomRulesData['body'];
+        Reply: RegisterCustomRulesErrors & RegisterCustomRulesResponses;
+    }>;
+    deleteCustomRule: RouteHandler<{
+        Params: DeleteCustomRuleData['path'];
+        Reply: DeleteCustomRuleErrors & DeleteCustomRuleResponses;
+    }>;
+    validateEmail: RouteHandler<{
+        Body: ValidateEmailData['body'];
+        Reply: ValidateEmailResponses;
+    }>;
+    validatePhone: RouteHandler<{
+        Body: ValidatePhoneData['body'];
+        Reply: ValidatePhoneResponses;
+    }>;
+    validateAddress: RouteHandler<{
+        Body: ValidateAddressData['body'];
+        Reply: ValidateAddressResponses;
+    }>;
+    validateTaxId: RouteHandler<{
+        Body: ValidateTaxIdData['body'];
+        Reply: ValidateTaxIdErrors & ValidateTaxIdResponses;
+    }>;
+    validateName: RouteHandler<{
+        Body: ValidateNameData['body'];
+        Reply: ValidateNameErrors & ValidateNameResponses;
+    }>;
+    evaluateOrder: RouteHandler<{
+        Body: EvaluateOrderData['body'];
+        Reply: EvaluateOrderErrors & EvaluateOrderResponses;
+    }>;
+    verifyPhoneOtp: RouteHandler<{
+        Body: VerifyPhoneOtpData['body'];
+        Reply: VerifyPhoneOtpErrors & VerifyPhoneOtpResponses;
+    }>;
+    getLogs: RouteHandler<{
+        Querystring?: GetLogsData['query'];
+        Reply: GetLogsErrors & GetLogsResponses;
+    }>;
+    getUsage: RouteHandler<{
+        Reply: GetUsageErrors & GetUsageResponses;
+    }>;
+    deleteLog: RouteHandler<{
+        Params: DeleteLogData['path'];
+        Reply: DeleteLogErrors & DeleteLogResponses;
+    }>;
+    listPersonalAccessTokens: RouteHandler<{
+        Reply: ListPersonalAccessTokensErrors & ListPersonalAccessTokensResponses;
+    }>;
+    createPersonalAccessToken: RouteHandler<{
+        Body: CreatePersonalAccessTokenData['body'];
+        Reply: CreatePersonalAccessTokenErrors & CreatePersonalAccessTokenResponses;
+    }>;
+    revokePersonalAccessToken: RouteHandler<{
+        Params: RevokePersonalAccessTokenData['path'];
+        Reply: RevokePersonalAccessTokenErrors & RevokePersonalAccessTokenResponses;
+    }>;
+    getSettings: RouteHandler<{
+        Reply: GetSettingsErrors & GetSettingsResponses;
+    }>;
+    updateSettings: RouteHandler<{
+        Body: UpdateSettingsData['body'];
+        Reply: UpdateSettingsErrors & UpdateSettingsResponses;
+    }>;
+    eraseData: RouteHandler<{
+        Body: EraseDataData['body'];
+        Reply: EraseDataErrors & EraseDataResponses;
+    }>;
+    createCheckoutSession: RouteHandler<{
+        Reply: CreateCheckoutSessionErrors & CreateCheckoutSessionResponses;
+    }>;
+    createCustomerPortalSession: RouteHandler<{
+        Reply: CreateCustomerPortalSessionErrors & CreateCustomerPortalSessionResponses;
+    }>;
     listUsers: RouteHandler<{
-        Querystring?: ListUsersData['query'];
         Reply: ListUsersErrors & ListUsersResponses;
     }>;
     createUser: RouteHandler<{
         Body: CreateUserData['body'];
         Reply: CreateUserErrors & CreateUserResponses;
+    }>;
+    normalizeAddress: RouteHandler<{
+        Body: NormalizeAddressData['body'];
+        Reply: NormalizeAddressResponses;
+    }>;
+    dedupeCustomer: RouteHandler<{
+        Body: DedupeCustomerData['body'];
+        Reply: DedupeCustomerResponses;
+    }>;
+    dedupeAddress: RouteHandler<{
+        Body: DedupeAddressData['body'];
+        Reply: DedupeAddressErrors & DedupeAddressResponses;
+    }>;
+    mergeDeduplicated: RouteHandler<{
+        Body: MergeDeduplicatedData['body'];
+        Reply: MergeDeduplicatedErrors & MergeDeduplicatedResponses;
+    }>;
+    batchValidate: RouteHandler<{
+        Body: BatchValidateData['body'];
+        Reply: BatchValidateResponses;
+    }>;
+    batchDedupe: RouteHandler<{
+        Body: BatchDedupeData['body'];
+        Reply: BatchDedupeResponses;
+    }>;
+    getJobStatusById: RouteHandler<{
+        Params: GetJobStatusByIdData['path'];
+        Reply: GetJobStatusByIdErrors & GetJobStatusByIdResponses;
+    }>;
+    getUserProjects: RouteHandler<{
+        Reply: GetUserProjectsErrors & GetUserProjectsResponses;
+    }>;
+    createProject: RouteHandler<{
+        Body: CreateProjectData['body'];
+        Reply: CreateProjectErrors & CreateProjectResponses;
+    }>;
+    deleteProject: RouteHandler<{
+        Params: DeleteProjectData['path'];
+        Reply: DeleteProjectErrors & DeleteProjectResponses;
+    }>;
+    getUserPlan: RouteHandler<{
+        Reply: GetUserPlanErrors & GetUserPlanResponses;
+    }>;
+    updateUserPlan: RouteHandler<{
+        Body: UpdateUserPlanData['body'];
+        Reply: UpdateUserPlanErrors & UpdateUserPlanResponses;
+    }>;
+    getAvailablePlans: RouteHandler<{
+        Reply: GetAvailablePlansResponses;
+    }>;
+    checkValidationLimits: RouteHandler<{
+        Body: CheckValidationLimitsData['body'];
+        Reply: CheckValidationLimitsErrors & CheckValidationLimitsResponses;
     }>;
 };

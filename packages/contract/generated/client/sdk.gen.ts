@@ -2,7 +2,7 @@
 
 import type { Client, Options as Options2, TDataShape } from './client';
 import { client } from './client.gen';
-import type { CreateUserData, CreateUserErrors, CreateUserResponses, ListUsersData, ListUsersErrors, ListUsersResponses, LoginUserData, LoginUserErrors, LoginUserResponses } from './types.gen';
+import type { BatchDedupeData, BatchDedupeResponses, BatchValidateData, BatchValidateResponses, CheckValidationLimitsData, CheckValidationLimitsErrors, CheckValidationLimitsResponses, CreateApiKeyData, CreateApiKeyErrors, CreateApiKeyResponses, CreateCheckoutSessionData, CreateCheckoutSessionErrors, CreateCheckoutSessionResponses, CreateCustomerPortalSessionData, CreateCustomerPortalSessionErrors, CreateCustomerPortalSessionResponses, CreatePersonalAccessTokenData, CreatePersonalAccessTokenErrors, CreatePersonalAccessTokenResponses, CreateProjectData, CreateProjectErrors, CreateProjectResponses, CreateUserData, CreateUserErrors, CreateUserResponses, CreateWebhookData, CreateWebhookErrors, CreateWebhookResponses, DedupeAddressData, DedupeAddressErrors, DedupeAddressResponses, DedupeCustomerData, DedupeCustomerResponses, DeleteCustomRuleData, DeleteCustomRuleErrors, DeleteCustomRuleResponses, DeleteLogData, DeleteLogErrors, DeleteLogResponses, DeleteProjectData, DeleteProjectErrors, DeleteProjectResponses, DeleteWebhookData, DeleteWebhookErrors, DeleteWebhookResponses, EraseDataData, EraseDataErrors, EraseDataResponses, EvaluateOrderData, EvaluateOrderErrors, EvaluateOrderResponses, GetAvailablePlansData, GetAvailablePlansResponses, GetAvailableRulesData, GetAvailableRulesErrors, GetAvailableRulesResponses, GetErrorCodeCatalogData, GetErrorCodeCatalogErrors, GetErrorCodeCatalogResponses, GetJobStatusByIdData, GetJobStatusByIdErrors, GetJobStatusByIdResponses, GetLogsData, GetLogsErrors, GetLogsResponses, GetReasonCodeCatalogData, GetReasonCodeCatalogErrors, GetReasonCodeCatalogResponses, GetSettingsData, GetSettingsErrors, GetSettingsResponses, GetUsageData, GetUsageErrors, GetUsageResponses, GetUserPlanData, GetUserPlanErrors, GetUserPlanResponses, GetUserProjectsData, GetUserProjectsErrors, GetUserProjectsResponses, ListApiKeysData, ListApiKeysErrors, ListApiKeysResponses, ListPersonalAccessTokensData, ListPersonalAccessTokensErrors, ListPersonalAccessTokensResponses, ListUsersData, ListUsersErrors, ListUsersResponses, ListWebhooksData, ListWebhooksErrors, ListWebhooksResponses, LoginUserData, LoginUserErrors, LoginUserResponses, LogoutUserData, LogoutUserErrors, LogoutUserResponses, MergeDeduplicatedData, MergeDeduplicatedErrors, MergeDeduplicatedResponses, NormalizeAddressData, NormalizeAddressResponses, RegisterCustomRulesData, RegisterCustomRulesErrors, RegisterCustomRulesResponses, RegisterUserData, RegisterUserErrors, RegisterUserResponses, RevokeApiKeyData, RevokeApiKeyErrors, RevokeApiKeyResponses, RevokePersonalAccessTokenData, RevokePersonalAccessTokenErrors, RevokePersonalAccessTokenResponses, TestRulesAgainstPayloadData, TestRulesAgainstPayloadResponses, TestWebhookData, TestWebhookResponses, UpdateSettingsData, UpdateSettingsErrors, UpdateSettingsResponses, UpdateUserPlanData, UpdateUserPlanErrors, UpdateUserPlanResponses, ValidateAddressData, ValidateAddressResponses, ValidateEmailData, ValidateEmailResponses, ValidateNameData, ValidateNameErrors, ValidateNameResponses, ValidatePhoneData, ValidatePhoneResponses, ValidateTaxIdData, ValidateTaxIdErrors, ValidateTaxIdResponses, VerifyPhoneOtpData, VerifyPhoneOtpErrors, VerifyPhoneOtpResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean> = Options2<TData, ThrowOnError> & {
     /**
@@ -25,6 +25,16 @@ export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends 
  */
 export const loginUser = <ThrowOnError extends boolean = false>(options: Options<LoginUserData, ThrowOnError>) => {
     return (options.client ?? client).post<LoginUserResponses, LoginUserErrors, ThrowOnError>({
+        security: [
+            {
+                scheme: 'bearer',
+                type: 'http'
+            },
+            {
+                name: 'Authorization',
+                type: 'apiKey'
+            }
+        ],
         url: '/auth/login',
         ...options,
         headers: {
@@ -35,9 +45,789 @@ export const loginUser = <ThrowOnError extends boolean = false>(options: Options
 };
 
 /**
+ * Register new user
+ *
+ * Creates a new user account with default project and API key
+ */
+export const registerUser = <ThrowOnError extends boolean = false>(options: Options<RegisterUserData, ThrowOnError>) => {
+    return (options.client ?? client).post<RegisterUserResponses, RegisterUserErrors, ThrowOnError>({
+        security: [
+            {
+                scheme: 'bearer',
+                type: 'http'
+            },
+            {
+                name: 'Authorization',
+                type: 'apiKey'
+            }
+        ],
+        url: '/auth/register',
+        ...options,
+        headers: {
+            'Content-Type': 'application/json',
+            ...options.headers
+        }
+    });
+};
+
+/**
+ * User logout
+ *
+ * Logs out the current user by clearing the session
+ */
+export const logoutUser = <ThrowOnError extends boolean = false>(options?: Options<LogoutUserData, ThrowOnError>) => {
+    return (options?.client ?? client).post<LogoutUserResponses, LogoutUserErrors, ThrowOnError>({
+        security: [
+            {
+                scheme: 'bearer',
+                type: 'http'
+            },
+            {
+                name: 'Authorization',
+                type: 'apiKey'
+            }
+        ],
+        url: '/auth/logout',
+        ...options
+    });
+};
+
+/**
+ * List API keys
+ *
+ * Retrieves API keys for the authenticated project
+ */
+export const listApiKeys = <ThrowOnError extends boolean = false>(options?: Options<ListApiKeysData, ThrowOnError>) => {
+    return (options?.client ?? client).get<ListApiKeysResponses, ListApiKeysErrors, ThrowOnError>({
+        security: [
+            {
+                scheme: 'bearer',
+                type: 'http'
+            },
+            {
+                name: 'Authorization',
+                type: 'apiKey'
+            }
+        ],
+        url: '/v1/api-keys',
+        ...options
+    });
+};
+
+/**
+ * Create API key
+ *
+ * Generates a new API key for the authenticated project
+ */
+export const createApiKey = <ThrowOnError extends boolean = false>(options: Options<CreateApiKeyData, ThrowOnError>) => {
+    return (options.client ?? client).post<CreateApiKeyResponses, CreateApiKeyErrors, ThrowOnError>({
+        security: [
+            {
+                scheme: 'bearer',
+                type: 'http'
+            },
+            {
+                name: 'Authorization',
+                type: 'apiKey'
+            }
+        ],
+        url: '/v1/api-keys',
+        ...options,
+        headers: {
+            'Content-Type': 'application/json',
+            ...options.headers
+        }
+    });
+};
+
+/**
+ * Revoke API key
+ *
+ * Revokes an API key by setting its status to revoked
+ */
+export const revokeApiKey = <ThrowOnError extends boolean = false>(options: Options<RevokeApiKeyData, ThrowOnError>) => {
+    return (options.client ?? client).delete<RevokeApiKeyResponses, RevokeApiKeyErrors, ThrowOnError>({
+        security: [
+            {
+                scheme: 'bearer',
+                type: 'http'
+            },
+            {
+                name: 'Authorization',
+                type: 'apiKey'
+            }
+        ],
+        url: '/v1/api-keys/{id}',
+        ...options
+    });
+};
+
+/**
+ * List webhooks
+ *
+ * Retrieves all webhooks for the authenticated project
+ */
+export const listWebhooks = <ThrowOnError extends boolean = false>(options?: Options<ListWebhooksData, ThrowOnError>) => {
+    return (options?.client ?? client).get<ListWebhooksResponses, ListWebhooksErrors, ThrowOnError>({
+        security: [
+            {
+                scheme: 'bearer',
+                type: 'http'
+            },
+            {
+                name: 'Authorization',
+                type: 'apiKey'
+            }
+        ],
+        url: '/v1/webhooks',
+        ...options
+    });
+};
+
+/**
+ * Create webhook
+ *
+ * Creates a new webhook subscription for the authenticated project
+ */
+export const createWebhook = <ThrowOnError extends boolean = false>(options: Options<CreateWebhookData, ThrowOnError>) => {
+    return (options.client ?? client).post<CreateWebhookResponses, CreateWebhookErrors, ThrowOnError>({
+        security: [
+            {
+                scheme: 'bearer',
+                type: 'http'
+            },
+            {
+                name: 'Authorization',
+                type: 'apiKey'
+            }
+        ],
+        url: '/v1/webhooks',
+        ...options,
+        headers: {
+            'Content-Type': 'application/json',
+            ...options.headers
+        }
+    });
+};
+
+/**
+ * Delete webhook
+ *
+ * Deletes a webhook subscription
+ */
+export const deleteWebhook = <ThrowOnError extends boolean = false>(options: Options<DeleteWebhookData, ThrowOnError>) => {
+    return (options.client ?? client).delete<DeleteWebhookResponses, DeleteWebhookErrors, ThrowOnError>({
+        security: [
+            {
+                scheme: 'bearer',
+                type: 'http'
+            },
+            {
+                name: 'Authorization',
+                type: 'apiKey'
+            }
+        ],
+        url: '/v1/webhooks/{id}',
+        ...options
+    });
+};
+
+/**
+ * Test Webhook
+ *
+ * Sends a sample payload to the provided webhook URL and returns the response. Useful for testing webhook configurations.
+ */
+export const testWebhook = <ThrowOnError extends boolean = false>(options: Options<TestWebhookData, ThrowOnError>) => {
+    return (options.client ?? client).post<TestWebhookResponses, unknown, ThrowOnError>({
+        security: [
+            {
+                scheme: 'bearer',
+                type: 'http'
+            },
+            {
+                name: 'Authorization',
+                type: 'apiKey'
+            }
+        ],
+        url: '/v1/webhooks/test',
+        ...options,
+        headers: {
+            'Content-Type': 'application/json',
+            ...options.headers
+        }
+    });
+};
+
+/**
+ * Get available rules
+ *
+ * Retrieves a list of all available validation rules and their configurations
+ */
+export const getAvailableRules = <ThrowOnError extends boolean = false>(options?: Options<GetAvailableRulesData, ThrowOnError>) => {
+    return (options?.client ?? client).get<GetAvailableRulesResponses, GetAvailableRulesErrors, ThrowOnError>({
+        security: [
+            {
+                scheme: 'bearer',
+                type: 'http'
+            },
+            {
+                name: 'Authorization',
+                type: 'apiKey'
+            }
+        ],
+        url: '/v1/rules',
+        ...options
+    });
+};
+
+/**
+ * Get error code catalog
+ *
+ * Retrieves a catalog of all possible error codes and their descriptions
+ */
+export const getErrorCodeCatalog = <ThrowOnError extends boolean = false>(options?: Options<GetErrorCodeCatalogData, ThrowOnError>) => {
+    return (options?.client ?? client).get<GetErrorCodeCatalogResponses, GetErrorCodeCatalogErrors, ThrowOnError>({
+        security: [
+            {
+                scheme: 'bearer',
+                type: 'http'
+            },
+            {
+                name: 'Authorization',
+                type: 'apiKey'
+            }
+        ],
+        url: '/v1/rules/error-codes',
+        ...options
+    });
+};
+
+/**
+ * Get reason code catalog
+ *
+ * Retrieves a catalog of all possible reason codes and their descriptions
+ */
+export const getReasonCodeCatalog = <ThrowOnError extends boolean = false>(options?: Options<GetReasonCodeCatalogData, ThrowOnError>) => {
+    return (options?.client ?? client).get<GetReasonCodeCatalogResponses, GetReasonCodeCatalogErrors, ThrowOnError>({
+        security: [
+            {
+                scheme: 'bearer',
+                type: 'http'
+            },
+            {
+                name: 'Authorization',
+                type: 'apiKey'
+            }
+        ],
+        url: '/v1/rules/catalog',
+        ...options
+    });
+};
+
+/**
+ * Test rules against payload
+ *
+ * Tests rules against a sample payload and returns triggered rules
+ */
+export const testRulesAgainstPayload = <ThrowOnError extends boolean = false>(options: Options<TestRulesAgainstPayloadData, ThrowOnError>) => {
+    return (options.client ?? client).post<TestRulesAgainstPayloadResponses, unknown, ThrowOnError>({
+        security: [
+            {
+                scheme: 'bearer',
+                type: 'http'
+            },
+            {
+                name: 'Authorization',
+                type: 'apiKey'
+            }
+        ],
+        url: '/v1/rules/test',
+        ...options,
+        headers: {
+            'Content-Type': 'application/json',
+            ...options.headers
+        }
+    });
+};
+
+/**
+ * Register custom rules
+ *
+ * Registers new custom validation rules for the project
+ */
+export const registerCustomRules = <ThrowOnError extends boolean = false>(options: Options<RegisterCustomRulesData, ThrowOnError>) => {
+    return (options.client ?? client).post<RegisterCustomRulesResponses, RegisterCustomRulesErrors, ThrowOnError>({
+        security: [
+            {
+                scheme: 'bearer',
+                type: 'http'
+            },
+            {
+                name: 'Authorization',
+                type: 'apiKey'
+            }
+        ],
+        url: '/v1/rules/register',
+        ...options,
+        headers: {
+            'Content-Type': 'application/json',
+            ...options.headers
+        }
+    });
+};
+
+/**
+ * Delete custom rule
+ *
+ * Deletes a custom validation rule by its ID
+ */
+export const deleteCustomRule = <ThrowOnError extends boolean = false>(options: Options<DeleteCustomRuleData, ThrowOnError>) => {
+    return (options.client ?? client).delete<DeleteCustomRuleResponses, DeleteCustomRuleErrors, ThrowOnError>({
+        security: [
+            {
+                scheme: 'bearer',
+                type: 'http'
+            },
+            {
+                name: 'Authorization',
+                type: 'apiKey'
+            }
+        ],
+        url: '/v1/rules/{id}',
+        ...options
+    });
+};
+
+/**
+ * Validate email
+ *
+ * Validates an email address
+ */
+export const validateEmail = <ThrowOnError extends boolean = false>(options: Options<ValidateEmailData, ThrowOnError>) => {
+    return (options.client ?? client).post<ValidateEmailResponses, unknown, ThrowOnError>({
+        security: [
+            {
+                name: 'Authorization',
+                type: 'apiKey'
+            }
+        ],
+        url: '/v1/validate/email',
+        ...options,
+        headers: {
+            'Content-Type': 'application/json',
+            ...options.headers
+        }
+    });
+};
+
+/**
+ * Validate phone
+ *
+ * Validates a phone number
+ */
+export const validatePhone = <ThrowOnError extends boolean = false>(options: Options<ValidatePhoneData, ThrowOnError>) => {
+    return (options.client ?? client).post<ValidatePhoneResponses, unknown, ThrowOnError>({
+        security: [
+            {
+                name: 'Authorization',
+                type: 'apiKey'
+            }
+        ],
+        url: '/v1/validate/phone',
+        ...options,
+        headers: {
+            'Content-Type': 'application/json',
+            ...options.headers
+        }
+    });
+};
+
+/**
+ * Validate address
+ *
+ * Validates an address
+ */
+export const validateAddress = <ThrowOnError extends boolean = false>(options: Options<ValidateAddressData, ThrowOnError>) => {
+    return (options.client ?? client).post<ValidateAddressResponses, unknown, ThrowOnError>({
+        security: [
+            {
+                name: 'Authorization',
+                type: 'apiKey'
+            }
+        ],
+        url: '/v1/validate/address',
+        ...options,
+        headers: {
+            'Content-Type': 'application/json',
+            ...options.headers
+        }
+    });
+};
+
+/**
+ * Validate tax ID
+ *
+ * Validates a tax identification number
+ */
+export const validateTaxId = <ThrowOnError extends boolean = false>(options: Options<ValidateTaxIdData, ThrowOnError>) => {
+    return (options.client ?? client).post<ValidateTaxIdResponses, ValidateTaxIdErrors, ThrowOnError>({
+        security: [
+            {
+                scheme: 'bearer',
+                type: 'http'
+            },
+            {
+                name: 'Authorization',
+                type: 'apiKey'
+            }
+        ],
+        url: '/v1/validate/tax-id',
+        ...options,
+        headers: {
+            'Content-Type': 'application/json',
+            ...options.headers
+        }
+    });
+};
+
+/**
+ * Validate name
+ *
+ * Validates and normalizes a name string
+ */
+export const validateName = <ThrowOnError extends boolean = false>(options: Options<ValidateNameData, ThrowOnError>) => {
+    return (options.client ?? client).post<ValidateNameResponses, ValidateNameErrors, ThrowOnError>({
+        security: [
+            {
+                scheme: 'bearer',
+                type: 'http'
+            },
+            {
+                name: 'Authorization',
+                type: 'apiKey'
+            }
+        ],
+        url: '/v1/validate/name',
+        ...options,
+        headers: {
+            'Content-Type': 'application/json',
+            ...options.headers
+        }
+    });
+};
+
+/**
+ * Evaluate order for risk and rules
+ *
+ * Evaluates an order for deduplication, validation, and applies business rules
+ */
+export const evaluateOrder = <ThrowOnError extends boolean = false>(options: Options<EvaluateOrderData, ThrowOnError>) => {
+    return (options.client ?? client).post<EvaluateOrderResponses, EvaluateOrderErrors, ThrowOnError>({
+        security: [
+            {
+                scheme: 'bearer',
+                type: 'http'
+            },
+            {
+                name: 'Authorization',
+                type: 'apiKey'
+            }
+        ],
+        url: '/v1/orders/evaluate',
+        ...options,
+        headers: {
+            'Content-Type': 'application/json',
+            ...options.headers
+        }
+    });
+};
+
+/**
+ * Verify phone OTP
+ *
+ * Verifies OTP sent to phone number
+ */
+export const verifyPhoneOtp = <ThrowOnError extends boolean = false>(options: Options<VerifyPhoneOtpData, ThrowOnError>) => {
+    return (options.client ?? client).post<VerifyPhoneOtpResponses, VerifyPhoneOtpErrors, ThrowOnError>({
+        security: [
+            {
+                scheme: 'bearer',
+                type: 'http'
+            },
+            {
+                name: 'Authorization',
+                type: 'apiKey'
+            }
+        ],
+        url: '/v1/verify/phone',
+        ...options,
+        headers: {
+            'Content-Type': 'application/json',
+            ...options.headers
+        }
+    });
+};
+
+/**
+ * Get event logs
+ *
+ * Retrieves event logs for the project with optional filters
+ */
+export const getLogs = <ThrowOnError extends boolean = false>(options?: Options<GetLogsData, ThrowOnError>) => {
+    return (options?.client ?? client).get<GetLogsResponses, GetLogsErrors, ThrowOnError>({
+        security: [
+            {
+                scheme: 'bearer',
+                type: 'http'
+            },
+            {
+                name: 'Authorization',
+                type: 'apiKey'
+            }
+        ],
+        url: '/v1/data/logs',
+        ...options
+    });
+};
+
+/**
+ * Get usage statistics
+ *
+ * Retrieves usage statistics for the project
+ */
+export const getUsage = <ThrowOnError extends boolean = false>(options?: Options<GetUsageData, ThrowOnError>) => {
+    return (options?.client ?? client).get<GetUsageResponses, GetUsageErrors, ThrowOnError>({
+        security: [
+            {
+                scheme: 'bearer',
+                type: 'http'
+            },
+            {
+                name: 'Authorization',
+                type: 'apiKey'
+            }
+        ],
+        url: '/v1/data/usage',
+        ...options
+    });
+};
+
+/**
+ * Delete log entry
+ *
+ * Deletes a specific log entry
+ */
+export const deleteLog = <ThrowOnError extends boolean = false>(options: Options<DeleteLogData, ThrowOnError>) => {
+    return (options.client ?? client).delete<DeleteLogResponses, DeleteLogErrors, ThrowOnError>({
+        security: [
+            {
+                scheme: 'bearer',
+                type: 'http'
+            },
+            {
+                name: 'Authorization',
+                type: 'apiKey'
+            }
+        ],
+        url: '/v1/logs/{id}',
+        ...options
+    });
+};
+
+/**
+ * List Personal Access Tokens
+ *
+ * Retrieves personal access tokens for the authenticated user
+ */
+export const listPersonalAccessTokens = <ThrowOnError extends boolean = false>(options?: Options<ListPersonalAccessTokensData, ThrowOnError>) => {
+    return (options?.client ?? client).get<ListPersonalAccessTokensResponses, ListPersonalAccessTokensErrors, ThrowOnError>({
+        security: [
+            {
+                scheme: 'bearer',
+                type: 'http'
+            },
+            {
+                name: 'Authorization',
+                type: 'apiKey'
+            }
+        ],
+        url: '/v1/pats',
+        ...options
+    });
+};
+
+/**
+ * Create Personal Access Token
+ *
+ * Creates a new personal access token for management API access
+ */
+export const createPersonalAccessToken = <ThrowOnError extends boolean = false>(options: Options<CreatePersonalAccessTokenData, ThrowOnError>) => {
+    return (options.client ?? client).post<CreatePersonalAccessTokenResponses, CreatePersonalAccessTokenErrors, ThrowOnError>({
+        security: [
+            {
+                scheme: 'bearer',
+                type: 'http'
+            },
+            {
+                name: 'Authorization',
+                type: 'apiKey'
+            }
+        ],
+        url: '/v1/pats',
+        ...options,
+        headers: {
+            'Content-Type': 'application/json',
+            ...options.headers
+        }
+    });
+};
+
+/**
+ * Revoke Personal Access Token
+ *
+ * Revokes a personal access token by disabling it
+ */
+export const revokePersonalAccessToken = <ThrowOnError extends boolean = false>(options: Options<RevokePersonalAccessTokenData, ThrowOnError>) => {
+    return (options.client ?? client).delete<RevokePersonalAccessTokenResponses, RevokePersonalAccessTokenErrors, ThrowOnError>({
+        security: [
+            {
+                scheme: 'bearer',
+                type: 'http'
+            },
+            {
+                name: 'Authorization',
+                type: 'apiKey'
+            }
+        ],
+        url: '/v1/pats/{token_id}',
+        ...options
+    });
+};
+
+/**
+ * Get tenant settings
+ *
+ * Retrieves tenant settings including country defaults, formatting, and risk thresholds
+ *
+ */
+export const getSettings = <ThrowOnError extends boolean = false>(options?: Options<GetSettingsData, ThrowOnError>) => {
+    return (options?.client ?? client).get<GetSettingsResponses, GetSettingsErrors, ThrowOnError>({
+        security: [
+            {
+                scheme: 'bearer',
+                type: 'http'
+            },
+            {
+                name: 'Authorization',
+                type: 'apiKey'
+            }
+        ],
+        url: '/v1/settings',
+        ...options
+    });
+};
+
+/**
+ * Update tenant settings
+ *
+ * Updates tenant settings including country defaults, formatting, and risk thresholds
+ *
+ */
+export const updateSettings = <ThrowOnError extends boolean = false>(options: Options<UpdateSettingsData, ThrowOnError>) => {
+    return (options.client ?? client).put<UpdateSettingsResponses, UpdateSettingsErrors, ThrowOnError>({
+        security: [
+            {
+                scheme: 'bearer',
+                type: 'http'
+            },
+            {
+                name: 'Authorization',
+                type: 'apiKey'
+            }
+        ],
+        url: '/v1/settings',
+        ...options,
+        headers: {
+            'Content-Type': 'application/json',
+            ...options.headers
+        }
+    });
+};
+
+/**
+ * Erase user data
+ *
+ * Initiates data erasure for GDPR/CCPA compliance
+ */
+export const eraseData = <ThrowOnError extends boolean = false>(options: Options<EraseDataData, ThrowOnError>) => {
+    return (options.client ?? client).post<EraseDataResponses, EraseDataErrors, ThrowOnError>({
+        security: [
+            {
+                scheme: 'bearer',
+                type: 'http'
+            },
+            {
+                name: 'Authorization',
+                type: 'apiKey'
+            }
+        ],
+        url: '/v1/data/erase',
+        ...options,
+        headers: {
+            'Content-Type': 'application/json',
+            ...options.headers
+        }
+    });
+};
+
+/**
+ * Create Stripe Checkout session
+ *
+ * Creates a Stripe Checkout session with base plan and usage-based line items
+ */
+export const createCheckoutSession = <ThrowOnError extends boolean = false>(options?: Options<CreateCheckoutSessionData, ThrowOnError>) => {
+    return (options?.client ?? client).post<CreateCheckoutSessionResponses, CreateCheckoutSessionErrors, ThrowOnError>({
+        security: [
+            {
+                scheme: 'bearer',
+                type: 'http'
+            },
+            {
+                name: 'Authorization',
+                type: 'apiKey'
+            }
+        ],
+        url: '/v1/billing/checkout',
+        ...options
+    });
+};
+
+/**
+ * Create Stripe Customer Portal session
+ *
+ * Creates a Stripe Customer Portal session for managing billing
+ */
+export const createCustomerPortalSession = <ThrowOnError extends boolean = false>(options?: Options<CreateCustomerPortalSessionData, ThrowOnError>) => {
+    return (options?.client ?? client).post<CreateCustomerPortalSessionResponses, CreateCustomerPortalSessionErrors, ThrowOnError>({
+        security: [
+            {
+                scheme: 'bearer',
+                type: 'http'
+            },
+            {
+                name: 'Authorization',
+                type: 'apiKey'
+            }
+        ],
+        url: '/v1/billing/portal',
+        ...options
+    });
+};
+
+/**
  * List users
  *
- * Retrieves a list of users
+ * Retrieves a list of users in the project
  */
 export const listUsers = <ThrowOnError extends boolean = false>(options?: Options<ListUsersData, ThrowOnError>) => {
     return (options?.client ?? client).get<ListUsersResponses, ListUsersErrors, ThrowOnError>({
@@ -45,9 +835,13 @@ export const listUsers = <ThrowOnError extends boolean = false>(options?: Option
             {
                 scheme: 'bearer',
                 type: 'http'
+            },
+            {
+                name: 'Authorization',
+                type: 'apiKey'
             }
         ],
-        url: '/users',
+        url: '/v1/users',
         ...options
     });
 };
@@ -55,7 +849,7 @@ export const listUsers = <ThrowOnError extends boolean = false>(options?: Option
 /**
  * Create user
  *
- * Creates a new user
+ * Creates a new user in the project
  */
 export const createUser = <ThrowOnError extends boolean = false>(options: Options<CreateUserData, ThrowOnError>) => {
     return (options.client ?? client).post<CreateUserResponses, CreateUserErrors, ThrowOnError>({
@@ -63,9 +857,307 @@ export const createUser = <ThrowOnError extends boolean = false>(options: Option
             {
                 scheme: 'bearer',
                 type: 'http'
+            },
+            {
+                name: 'Authorization',
+                type: 'apiKey'
             }
         ],
-        url: '/users',
+        url: '/v1/users',
+        ...options,
+        headers: {
+            'Content-Type': 'application/json',
+            ...options.headers
+        }
+    });
+};
+
+/**
+ * Normalize Address (Cheap)
+ *
+ * Performs basic address normalization without geocoding or external lookups
+ */
+export const normalizeAddress = <ThrowOnError extends boolean = false>(options: Options<NormalizeAddressData, ThrowOnError>) => {
+    return (options.client ?? client).post<NormalizeAddressResponses, unknown, ThrowOnError>({
+        security: [
+            {
+                name: 'Authorization',
+                type: 'apiKey'
+            }
+        ],
+        url: '/v1/normalize/address',
+        ...options,
+        headers: {
+            'Content-Type': 'application/json',
+            ...options.headers
+        }
+    });
+};
+
+/**
+ * Deduplicate customer
+ *
+ * Searches for existing customers using deterministic and fuzzy matching
+ */
+export const dedupeCustomer = <ThrowOnError extends boolean = false>(options: Options<DedupeCustomerData, ThrowOnError>) => {
+    return (options.client ?? client).post<DedupeCustomerResponses, unknown, ThrowOnError>({
+        security: [
+            {
+                scheme: 'bearer',
+                type: 'http'
+            },
+            {
+                name: 'Authorization',
+                type: 'apiKey'
+            }
+        ],
+        url: '/v1/dedupe/customer',
+        ...options,
+        headers: {
+            'Content-Type': 'application/json',
+            ...options.headers
+        }
+    });
+};
+
+/**
+ * Deduplicate address
+ *
+ * Searches for existing addresses using deterministic and fuzzy matching
+ */
+export const dedupeAddress = <ThrowOnError extends boolean = false>(options: Options<DedupeAddressData, ThrowOnError>) => {
+    return (options.client ?? client).post<DedupeAddressResponses, DedupeAddressErrors, ThrowOnError>({
+        security: [
+            {
+                scheme: 'bearer',
+                type: 'http'
+            },
+            {
+                name: 'Authorization',
+                type: 'apiKey'
+            }
+        ],
+        url: '/v1/dedupe/address',
+        ...options,
+        headers: {
+            'Content-Type': 'application/json',
+            ...options.headers
+        }
+    });
+};
+
+/**
+ * Merge deduplicated records
+ *
+ * Merges multiple customer or address records into a canonical one
+ */
+export const mergeDeduplicated = <ThrowOnError extends boolean = false>(options: Options<MergeDeduplicatedData, ThrowOnError>) => {
+    return (options.client ?? client).post<MergeDeduplicatedResponses, MergeDeduplicatedErrors, ThrowOnError>({
+        security: [
+            {
+                scheme: 'bearer',
+                type: 'http'
+            },
+            {
+                name: 'Authorization',
+                type: 'apiKey'
+            }
+        ],
+        url: '/v1/dedupe/merge',
+        ...options,
+        headers: {
+            'Content-Type': 'application/json',
+            ...options.headers
+        }
+    });
+};
+
+/**
+ * Batch validate data
+ *
+ * Performs batch validation of emails, phones, addresses, or tax IDs asynchronously
+ */
+export const batchValidate = <ThrowOnError extends boolean = false>(options: Options<BatchValidateData, ThrowOnError>) => {
+    return (options.client ?? client).post<BatchValidateResponses, unknown, ThrowOnError>({
+        security: [
+            {
+                name: 'Authorization',
+                type: 'apiKey'
+            }
+        ],
+        url: '/v1/batch/validate',
+        ...options,
+        headers: {
+            'Content-Type': 'application/json',
+            ...options.headers
+        }
+    });
+};
+
+/**
+ * Batch deduplicate data
+ *
+ * Performs batch deduplication of customers or addresses asynchronously
+ */
+export const batchDedupe = <ThrowOnError extends boolean = false>(options: Options<BatchDedupeData, ThrowOnError>) => {
+    return (options.client ?? client).post<BatchDedupeResponses, unknown, ThrowOnError>({
+        security: [
+            {
+                name: 'Authorization',
+                type: 'apiKey'
+            }
+        ],
+        url: '/v1/batch/dedupe',
+        ...options,
+        headers: {
+            'Content-Type': 'application/json',
+            ...options.headers
+        }
+    });
+};
+
+/**
+ * Get job status
+ *
+ * Retrieves the status and results of an asynchronous job
+ */
+export const getJobStatusById = <ThrowOnError extends boolean = false>(options: Options<GetJobStatusByIdData, ThrowOnError>) => {
+    return (options.client ?? client).get<GetJobStatusByIdResponses, GetJobStatusByIdErrors, ThrowOnError>({
+        security: [
+            {
+                name: 'Authorization',
+                type: 'apiKey'
+            }
+        ],
+        url: '/v1/jobs/{id}',
+        ...options
+    });
+};
+
+/**
+ * List user's projects
+ *
+ * Retrieves the list of projects for the authenticated user along with plan information
+ */
+export const getUserProjects = <ThrowOnError extends boolean = false>(options?: Options<GetUserProjectsData, ThrowOnError>) => {
+    return (options?.client ?? client).get<GetUserProjectsResponses, GetUserProjectsErrors, ThrowOnError>({
+        security: [
+            {
+                scheme: 'bearer',
+                type: 'http'
+            }
+        ],
+        url: '/projects',
+        ...options
+    });
+};
+
+/**
+ * Create new project
+ *
+ * Creates a new project for the authenticated user
+ */
+export const createProject = <ThrowOnError extends boolean = false>(options: Options<CreateProjectData, ThrowOnError>) => {
+    return (options.client ?? client).post<CreateProjectResponses, CreateProjectErrors, ThrowOnError>({
+        security: [
+            {
+                scheme: 'bearer',
+                type: 'http'
+            }
+        ],
+        url: '/projects',
+        ...options,
+        headers: {
+            'Content-Type': 'application/json',
+            ...options.headers
+        }
+    });
+};
+
+/**
+ * Delete project
+ *
+ * Deletes a project by ID for the authenticated user
+ */
+export const deleteProject = <ThrowOnError extends boolean = false>(options: Options<DeleteProjectData, ThrowOnError>) => {
+    return (options.client ?? client).delete<DeleteProjectResponses, DeleteProjectErrors, ThrowOnError>({
+        security: [
+            {
+                scheme: 'bearer',
+                type: 'http'
+            }
+        ],
+        url: '/projects/{id}',
+        ...options
+    });
+};
+
+/**
+ * Get current user plan
+ *
+ * Retrieves the current plan and usage information for the authenticated user
+ */
+export const getUserPlan = <ThrowOnError extends boolean = false>(options?: Options<GetUserPlanData, ThrowOnError>) => {
+    return (options?.client ?? client).get<GetUserPlanResponses, GetUserPlanErrors, ThrowOnError>({
+        security: [
+            {
+                scheme: 'bearer',
+                type: 'http'
+            }
+        ],
+        url: '/user/plan',
+        ...options
+    });
+};
+
+/**
+ * Update user plan
+ *
+ * Updates the user's subscription plan
+ */
+export const updateUserPlan = <ThrowOnError extends boolean = false>(options: Options<UpdateUserPlanData, ThrowOnError>) => {
+    return (options.client ?? client).patch<UpdateUserPlanResponses, UpdateUserPlanErrors, ThrowOnError>({
+        security: [
+            {
+                scheme: 'bearer',
+                type: 'http'
+            }
+        ],
+        url: '/user/plan',
+        ...options,
+        headers: {
+            'Content-Type': 'application/json',
+            ...options.headers
+        }
+    });
+};
+
+/**
+ * Get available plans
+ *
+ * Returns all available subscription plans
+ */
+export const getAvailablePlans = <ThrowOnError extends boolean = false>(options?: Options<GetAvailablePlansData, ThrowOnError>) => {
+    return (options?.client ?? client).get<GetAvailablePlansResponses, unknown, ThrowOnError>({
+        url: '/public/plans',
+        ...options
+    });
+};
+
+/**
+ * Check validation limits
+ *
+ * Checks if the user has enough validation quota remaining
+ */
+export const checkValidationLimits = <ThrowOnError extends boolean = false>(options: Options<CheckValidationLimitsData, ThrowOnError>) => {
+    return (options.client ?? client).post<CheckValidationLimitsResponses, CheckValidationLimitsErrors, ThrowOnError>({
+        security: [
+            {
+                scheme: 'bearer',
+                type: 'http'
+            }
+        ],
+        url: '/user/plan/usage/check',
         ...options,
         headers: {
             'Content-Type': 'application/json',
