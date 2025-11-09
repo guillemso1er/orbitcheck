@@ -22,7 +22,6 @@ import { setupCors } from "./plugins/cors.js";
 import { setupDocumentation } from "./plugins/documentation.js";
 import { setupErrorHandler } from "./plugins/errorHandler.js";
 import { setupSecurityHeaders } from "./plugins/securityHeaders.js";
-import { registerAuthenticatedDocsRoutes } from "./routes/authenticatedDocs.js";
 import { registerHealthRoutes } from "./routes/health.js";
 import startupGuard from './startup-guard.js';
 import { registerRoutes } from "./web.js";
@@ -83,9 +82,6 @@ export async function build(pool: Pool, redis: IORedisType): Promise<FastifyInst
 
     // Setup error handler
     await setupErrorHandler(app);
-
-    // Register authenticated documentation routes
-    await registerAuthenticatedDocsRoutes(app, pool);
 
     // Setup CORS
     await setupCors(app);

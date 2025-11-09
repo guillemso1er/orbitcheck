@@ -151,6 +151,11 @@ jest.mock('node:fs', () => ({
   readFileSync: jest.fn().mockReturnValue('openapi: 3.0.3'),
 }));
 
+// Mock fastify-openapi-glue to prevent OpenAPI validation errors in tests
+jest.mock('fastify-openapi-glue', () => {
+  return jest.fn().mockImplementation(() => Promise.resolve());
+});
+
 // Mock contracts
 jest.mock('@orbitcheck/contracts', () => ({
   DASHBOARD_ROUTES: {
@@ -317,6 +322,12 @@ jest.mock('jsonwebtoken', () => ({
   verify: jest.fn(),
 }));
 
+// Mock argon2 for PAT hashing
+jest.mock('argon2', () => ({
+  hash: jest.fn(),
+  verify: jest.fn(),
+}));
+
 // Mock BullMQ
 jest.mock('bullmq', () => ({
   Queue: jest.fn().mockImplementation(() => ({
@@ -350,12 +361,6 @@ jest.mock('../lib/libpostal-cli', () => ({
 }));
 
 // Test route registration functions
-let registerAuthRoutesFunction: unknown;
-let verifySessionFunction: unknown;
-let verifyPATFunction: unknown;
-let verifyAPIKeyFunction: unknown;
-let rateLimitFunction: unknown;
-let idempotencyFunction: unknown;
 let registerRoutesFunction: unknown;
 
 export const createApp = async (): Promise<FastifyInstance> => {
@@ -371,38 +376,9 @@ export const createApp = async (): Promise<FastifyInstance> => {
     }
   });
 
-  // Register routes needed for tests
-  const { registerAuthRoutes } = await import('../routes/auth.js');
-  const { registerApiKeysRoutes } = await import('../routes/api-keys.js');
-  const { registerBatchRoutes } = await import('../routes/batch.js');
-  const { registerDataRoutes } = await import('../routes/data.js');
-  const { registerDedupeRoutes } = await import('../routes/dedupe.js');
-  const { registerJobRoutes } = await import('../routes/jobs.js');
-  const { registerNormalizeRoutes } = await import('../routes/normalize.js');
-  const { registerOrderRoutes } = await import('../routes/orders.js');
-  const { registerRulesRoutes } = await import('../routes/rules/rules.routes.js');
-  const { registerValidationRoutes } = await import('../routes/validation.js');
-  const { registerWebhookRoutes } = await import('../routes/webhook.js');
-  const { registerSettingsRoutes } = await import('../routes/settings.js');
-  const { registerPatRoutes } = await import('../routes/pats.js');
-
-
-
-  registerAuthRoutes(app, mockPool as any);
-  registerApiKeysRoutes(app, mockPool as any);
-  registerBatchRoutes(app, mockPool as any, mockRedisInstance as any);
-  registerDataRoutes(app, mockPool as any);
-  registerDedupeRoutes(app, mockPool as any);
-  registerJobRoutes(app, mockPool as any);
-  registerNormalizeRoutes(app, mockPool as any);
-  registerOrderRoutes(app, mockPool as any, mockRedisInstance as any);
-  registerRulesRoutes(app, mockPool as any, mockRedisInstance as any);
-  registerSettingsRoutes(app, mockPool as any);
-  registerValidationRoutes(app, mockPool as any, mockRedisInstance as any);
-  registerWebhookRoutes(app, mockPool as any);
-  registerPatRoutes(app, mockPool as any);
-  const { registerBillingRoutes } = await import('../routes/billing.js');
-  registerBillingRoutes(app, mockPool as any);
+  // Use the unified registerRoutes from web.ts which uses fastify-openapi-glue
+  const { registerRoutes } = await import('../web.js');
+  registerRoutes(app, mockPool as any, mockRedisInstance as any);
 
   // Add security headers hook like in server.ts
   app.addHook('onSend', async (request, reply, payload) => {
@@ -432,17 +408,7 @@ export const setupBeforeAll = async (): Promise<void> => {
   process.env.SESSION_SECRET = '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef';
   process.env.ENCRYPTION_KEY = '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef';
 
-  // Load modules
-  const authModule = await import('../routes/auth.js');
-  registerAuthRoutesFunction = authModule.registerAuthRoutes;
-  verifySessionFunction = authModule.verifySession;
-  verifyPATFunction = authModule.verifyPAT;
-  verifyAPIKeyFunction = authModule.verifyAPIKey;
-
-  const hooksModule = await import('../hooks.js');
-  rateLimitFunction = hooksModule.rateLimit;
-  idempotencyFunction = hooksModule.idempotency;
-
+  // Load the unified registerRoutes function
   const webModule = await import('../web.js');
   registerRoutesFunction = webModule.registerRoutes;
 
@@ -454,6 +420,10 @@ export const setupBeforeAll = async (): Promise<void> => {
   const jwt = await import('jsonwebtoken');
   (jwt.sign as jest.Mock).mockReturnValue('mock_jwt_token');
   (jwt.verify as jest.Mock).mockReturnValue({ user_id: 'test_user' });
+
+  const argon2 = await import('argon2');
+  (argon2.hash as jest.Mock).mockResolvedValue('hashed_pat_secret');
+  (argon2.verify as jest.Mock).mockResolvedValue(true);
 
   // Default pool query responses
   mockPool.query.mockResolvedValue({ rows: [] });
@@ -478,7 +448,7 @@ export const mockValidatePhone = jest.requireMock('../validators/phone.js').vali
 export const libphone = jest.requireMock('libphonenumber-js');
 
 // Export loaded functions for tests
-export { idempotencyFunction, rateLimitFunction, registerAuthRoutesFunction, registerRoutesFunction, verifyAPIKeyFunction, verifyPATFunction, verifySessionFunction };
+export { registerRoutesFunction };
 
 describe('Test Setup', () => {
   it('should setup tests', () => {

@@ -3,12 +3,12 @@ import type { FastifyReply, FastifyRequest } from "fastify";
 import crypto from "node:crypto";
 import type { Pool } from "pg";
 import Stripe from 'stripe';
-import { CONTENT_TYPES, CRYPTO_KEY_BYTES, STRIPE_API_VERSION, STRIPE_DEFAULT_SECRET_KEY, USER_AGENT_WEBHOOK_TESTER, WEBHOOK_TEST_LOW_RISK_TAG, WEBHOOK_TEST_ORDER_ID, WEBHOOK_TEST_RISK_SCORE } from "../config.js";
+import { CONTENT_TYPES, CRYPTO_KEY_BYTES, MESSAGES, STRIPE_API_VERSION, STRIPE_DEFAULT_SECRET_KEY, USER_AGENT_WEBHOOK_TESTER, WEBHOOK_TEST_LOW_RISK_TAG, WEBHOOK_TEST_ORDER_ID, WEBHOOK_TEST_RISK_SCORE } from "../config.js";
 import { ERROR_CODES, ERROR_MESSAGES, HTTP_STATUS } from "../errors.js";
-import type { CreateWebhookData, CreateWebhookResponses, DeleteWebhookData, DeleteWebhookResponses, ListWebhooksResponses, TestWebhookData } from "../generated/fastify/types.gen.js";
+import type { CreateWebhookData, CreateWebhookResponses, DeleteWebhookData, ListWebhooksResponses, TestWebhookData } from "../generated/fastify/types.gen.js";
 import { logEvent } from "../hooks.js";
-import { generateRequestId, sendError, sendServerError } from "../routes/utils.js";
 import { EVENT_TYPES, ORDER_ACTIONS, PAYLOAD_TYPES, REASON_CODES } from "../validation.js";
+import { generateRequestId, sendError, sendServerError } from "./utils.js";
 
 let stripe: Stripe | null = null;
 
@@ -47,47 +47,70 @@ export async function createWebhook(
     rep: FastifyReply,
     pool: Pool
 ): Promise<FastifyReply> {
-    const project_id = (request as any).project_id!;
-    const request_id = generateRequestId();
+    const project_id = request.project_id!;
     const body = request.body as CreateWebhookData['body'];
-    const { url, events, secret } = body;
+    const { url, events } = body;
+    const request_id = generateRequestId();
 
     try {
         // Validate URL
         try {
-            new URL(url);
+            const parsedUrl = new URL(url);
+            if (parsedUrl.protocol !== 'http:' && parsedUrl.protocol !== 'https:') {
+                throw new Error('Invalid protocol');
+            }
         } catch {
-            return sendError(rep, HTTP_STATUS.BAD_REQUEST, 'INVALID_URL', 'Invalid webhook URL', request_id);
+            return await sendError(rep, HTTP_STATUS.BAD_REQUEST, ERROR_CODES.INVALID_URL, ERROR_MESSAGES[ERROR_CODES.INVALID_URL], request_id);
         }
 
         // Validate events
-        const validEvents = ['validation.completed', 'order.evaluated', 'job.completed', 'job.failed'];
-        const filteredEvents = events.filter(event => validEvents.includes(event));
-
-        if (filteredEvents.length === 0) {
-            return sendError(rep, HTTP_STATUS.BAD_REQUEST, 'INVALID_EVENTS', 'No valid events provided', request_id);
+        const validEvents = Object.values(EVENT_TYPES);
+        const invalidEvents = events.filter((event: string) => !validEvents.includes(event as any));
+        if (invalidEvents.length > 0) {
+            // Updated to match the expected error format
+            return await sendError(
+                rep,
+                HTTP_STATUS.BAD_REQUEST,
+                ERROR_CODES.INVALID_TYPE,
+                `Invalid event(s): ${invalidEvents.join(', ')}`,
+                request_id
+            );
         }
 
-        // Generate secret if not provided
-        const webhookSecret = secret || crypto.randomBytes(CRYPTO_KEY_BYTES).toString('hex');
+        const secret = await new Promise<string>((resolve, reject) => {
+            crypto.randomBytes(CRYPTO_KEY_BYTES, (error, buf) => {
+                if (error) reject(error);
+                else resolve(buf.toString('hex'));
+            });
+        });
 
-        const { rows } = await pool.query(
-            "INSERT INTO webhooks (project_id, url, events, secret, status) VALUES ($1, $2, $3, $4, $5) RETURNING id, url, events, status, created_at",
-            [project_id, url, filteredEvents, webhookSecret, 'active']
+        const result = await pool.query(
+            'INSERT INTO webhooks (project_id, url, events, secret, status) VALUES ($1, $2, $3, $4, $5) RETURNING id, url, events, secret, status, created_at',
+            [project_id, url, events, secret, 'active']
         );
 
+        const webhook = result.rows[0];
+
+        await logEvent(project_id, 'webhook_create', "/v1/webhooks", [], HTTP_STATUS.CREATED, { webhook_id: webhook.id }, pool);
         const response: CreateWebhookResponses[201] = {
-            id: rows[0].id,
-            url: rows[0].url,
-            events: rows[0].events,
-            status: rows[0].status,
-            secret: webhookSecret,
-            created_at: rows[0].created_at,
+            id: result.rows[0].id,
+            url: result.rows[0].url,
+            events: result.rows[0].events,
+            status: result.rows[0].status,
+            secret: result.rows[0].secret,
+            created_at: result.rows[0].created_at,
             request_id
         };
-        return rep.status(HTTP_STATUS.CREATED).send(response);
+
+
+        return rep.status(HTTP_STATUS.CREATED).send({
+            response,
+            request_id
+        });
     } catch (error) {
-        return sendServerError(request, rep, error, MGMT_V1_ROUTES.WEBHOOKS.CREATE_WEBHOOK, request_id);
+        const errorMessage = error instanceof globalThis.Error ? error.message : MESSAGES.DATABASE_ERROR;
+        await logEvent(project_id, 'webhook_create', "/v1/webhooks", [REASON_CODES.WEBHOOK_SEND_FAILED], HTTP_STATUS.INTERNAL_SERVER_ERROR, { error: errorMessage }, pool);
+        return sendError(rep, HTTP_STATUS.INTERNAL_SERVER_ERROR, ERROR_CODES.SERVER_ERROR, errorMessage, request_id);
     }
 }
 
@@ -96,24 +119,32 @@ export async function deleteWebhook(
     rep: FastifyReply,
     pool: Pool
 ): Promise<FastifyReply> {
-    const project_id = (request as any).project_id!;
+    const project_id = request.project_id!;
+    const { id } = request.params as any;
     const request_id = generateRequestId();
-    const { id } = request.params as DeleteWebhookData['path'];
 
     try {
-        const { rowCount } = await pool.query(
-            "DELETE FROM webhooks WHERE id = $1 AND project_id = $2",
-            [id, project_id]
+        const result = await pool.query(
+            'UPDATE webhooks SET status = $1 WHERE id = $2 AND project_id = $3 AND status != $1 RETURNING id, status',
+            ['deleted', id, project_id]
         );
 
-        if (rowCount === 0) {
-            return sendError(rep, HTTP_STATUS.NOT_FOUND, 'NOT_FOUND', 'Webhook not found', request_id);
+        if (result.rowCount === 0) {
+            return await sendError(rep, HTTP_STATUS.NOT_FOUND, ERROR_CODES.NOT_FOUND, MESSAGES.WEBHOOK_NOT_FOUND, request_id);
         }
 
-        const response: DeleteWebhookResponses[200] = { id, status: 'Webhook deleted successfully', request_id };
-        return rep.send(response);
+        const webhook = result.rows[0];
+
+        await logEvent(project_id, 'webhook_delete', "/v1/webhooks/:id", [], HTTP_STATUS.OK, { webhook_id: webhook.id }, pool);
+
+        return rep.send({
+            ...webhook,
+            request_id
+        });
     } catch (error) {
-        return sendServerError(request, rep, error, MGMT_V1_ROUTES.WEBHOOKS.DELETE_WEBHOOK, request_id);
+        const errorMessage = error instanceof globalThis.Error ? error.message : MESSAGES.DATABASE_ERROR;
+        await logEvent(project_id, 'webhook_delete', "", [REASON_CODES.WEBHOOK_SEND_FAILED], HTTP_STATUS.INTERNAL_SERVER_ERROR, { error: errorMessage }, pool);
+        return sendError(rep, HTTP_STATUS.INTERNAL_SERVER_ERROR, ERROR_CODES.SERVER_ERROR, errorMessage, request_id);
     }
 }
 
@@ -246,6 +277,7 @@ export async function testWebhook(
         return sendError(rep, HTTP_STATUS.BAD_GATEWAY, ERROR_CODES.WEBHOOK_SEND_FAILED, errorMessage, request_id);
     }
 }
+
 
 export async function handleStripeWebhook(
     request: FastifyRequest,

@@ -3,8 +3,8 @@ import type { FastifyReply, FastifyRequest } from "fastify";
 import type { Pool } from "pg";
 import { HTTP_STATUS } from "../errors.js";
 import type { CreateProjectData, CreateProjectResponses, DeleteProjectData, DeleteProjectResponses, GetUserProjectsResponses } from "../generated/fastify/types.gen.js";
-import { generateRequestId, sendServerError } from "../routes/utils.js";
 import { createPlansService } from "./plans.js";
+import { generateRequestId, sendServerError } from "./utils.js";
 
 export async function getUserProjects(
     request: FastifyRequest,

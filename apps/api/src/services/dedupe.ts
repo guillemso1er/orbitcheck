@@ -5,8 +5,8 @@ import { dedupeAddress as dedupeAddressLogic, dedupeCustomer as dedupeCustomerLo
 import { HTTP_STATUS } from "../errors.js";
 import type { DedupeAddressData, DedupeAddressResponses, DedupeCustomerData, DedupeCustomerResponses, MergeDeduplicatedData, MergeDeduplicatedResponses } from "../generated/fastify/types.gen.js";
 import { logEvent } from "../hooks.js";
-import { generateRequestId, sendServerError } from "../routes/utils.js";
 import { MERGE_TYPES } from "../validation.js";
+import { generateRequestId, sendServerError } from "./utils.js";
 export async function dedupeCustomer(
     request: FastifyRequest<{ Body: DedupeCustomerData['body'] }>,
     rep: FastifyReply,

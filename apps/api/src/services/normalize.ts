@@ -1,7 +1,7 @@
 import { API_V1_ROUTES } from "@orbitcheck/contracts";
 import type { FastifyReply, FastifyRequest } from "fastify";
 import type { NormalizeAddressData, NormalizeAddressResponses } from "../generated/fastify/types.gen.js";
-import { generateRequestId, sendServerError } from "../routes/utils.js";
+import { generateRequestId, sendServerError } from "./utils.js";
 
 export async function normalizeAddressCheap(
     request: FastifyRequest<{ Body: NormalizeAddressData['body'] }>,

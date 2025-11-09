@@ -2,7 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import Fastify from 'fastify';
 import request from 'supertest';
 
-import { mockPool, mockSession, setupBeforeAll } from './testSetup.js';
+import { mockPool, mockRedisInstance, mockSession, setupBeforeAll } from './testSetup.js';
 
 describe('Normalize Routes', () => {
     let app: FastifyInstance;
@@ -30,9 +30,9 @@ describe('Normalize Routes', () => {
             }
         });
 
-        // Register normalize routes manually since they're not in createApp
-        const { registerNormalizeRoutes } = await import('../routes/normalize.js');
-        registerNormalizeRoutes(app, mockPool as any);
+        // Register routes using the unified registerRoutes from web.ts
+        const { registerRoutes } = await import('../web.js');
+        registerRoutes(app, mockPool as any, mockRedisInstance as any);
 
         // Add input sanitization middleware to match production setup
         const { inputSanitizationHook } = await import('../middleware/inputSanitization.js');

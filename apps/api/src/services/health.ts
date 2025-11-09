@@ -1,4 +1,4 @@
-import type { FastifyReply } from "fastify";
+import type { FastifyInstance, FastifyReply, RawServerBase } from "fastify";
 import type { Redis as IORedisType } from 'ioredis';
 import type { Pool } from "pg";
 import { API_VERSION } from "../config.js";
@@ -23,7 +23,8 @@ export async function getHealth(
     return rep.send(response);
 }
 
-export async function getReady(
+export async function getReady<TServer extends RawServerBase = RawServerBase>(
+    app: FastifyInstance<TServer>,
     rep: FastifyReply,
     pool: Pool,
     redis: IORedisType
@@ -34,17 +35,19 @@ export async function getReady(
     };
 
     try {
+        // Check database
         const dbResult = await pool.query('SELECT 1');
         checks.database = dbResult.rows.length > 0;
     } catch (error) {
-        // Database check failed
+        app.log.error({ err: error }, 'Database health check failed');
     }
 
     try {
+        // Check Redis
         await redis.ping();
         checks.redis = true;
     } catch (error) {
-        // Redis check failed
+        app.log.error({ err: error }, 'Redis health check failed');
     }
 
     const ready = Object.values(checks).every(status => status);

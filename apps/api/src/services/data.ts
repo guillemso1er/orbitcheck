@@ -1,11 +1,11 @@
-import type { FastifyReply, FastifyRequest } from "fastify";
-import type { Pool } from "pg";
-import nodemailer from "nodemailer";
 import { MGMT_V1_ROUTES } from "@orbitcheck/contracts";
-import type { DeleteLogData, DeleteLogResponses, EraseDataData, EraseDataResponses, GetLogsData, GetLogsResponses, GetUsageResponses } from "../generated/fastify/types.gen.js";
+import type { FastifyReply, FastifyRequest } from "fastify";
+import nodemailer from "nodemailer";
+import type { Pool } from "pg";
 import { CACHE_HIT_PLACEHOLDER, COMPLIANCE_REASONS, LOGS_DEFAULT_LIMIT, LOGS_MAX_LIMIT, MESSAGES, TOP_REASONS_LIMIT, USAGE_DAYS, USAGE_PERIOD } from "../config.js";
 import { ERROR_CODES, HTTP_STATUS } from "../errors.js";
-import { generateRequestId, sendServerError, sendError } from "../routes/utils.js";
+import type { DeleteLogData, DeleteLogResponses, EraseDataData, EraseDataResponses, GetLogsData, GetLogsResponses, GetUsageResponses } from "../generated/fastify/types.gen.js";
+import { generateRequestId, sendError, sendServerError } from "./utils.js";
 
 export async function getEventLogs(
     request: FastifyRequest<{ Querystring?: GetLogsData['query'] }>,

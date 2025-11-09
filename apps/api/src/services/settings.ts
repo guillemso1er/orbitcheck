@@ -1,8 +1,8 @@
+import { MGMT_V1_ROUTES } from "@orbitcheck/contracts";
 import type { FastifyReply, FastifyRequest } from "fastify";
 import type { Pool } from "pg";
-import { MGMT_V1_ROUTES } from "@orbitcheck/contracts";
 import type { GetSettingsResponses, UpdateSettingsData, UpdateSettingsResponses } from "../generated/fastify/types.gen.js";
-import { generateRequestId, sendServerError } from "../routes/utils.js";
+import { generateRequestId, sendServerError } from "./utils.js";
 
 export async function getTenantSettings(
     request: FastifyRequest,

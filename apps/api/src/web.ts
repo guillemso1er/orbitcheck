@@ -8,7 +8,7 @@ import { ROUTES } from "./config.js";
 import { HTTP_STATUS } from "./errors.js";
 import { serviceHandlers } from "./handlers/handlers.js";
 import { idempotency, rateLimit } from "./hooks.js";
-import { authenticateRouteRequest } from "./routes/auth.js";
+import { authenticateRouteRequest } from "./services/auth.js";
 import { createPlansService } from './services/plans.js';
 
 const AUTH_REGISTER = DASHBOARD_ROUTES.REGISTER_NEW_USER;
@@ -211,7 +211,9 @@ export function registerRoutes<TServer extends RawServerBase = RawServerBase>(ap
         return;
     });
 
-    app.register(openapiGlue, { serviceHandlers: serviceHandlers, specification: '../../packages/contracts/dist/openapi.v1.json' });
-
+    app.register(openapiGlue, {
+        serviceHandlers: serviceHandlers(pool, redis, app),
+        specification: '../../packages/contracts/dist/openapi.v1.json'
+    });
 
 }

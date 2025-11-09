@@ -4,7 +4,7 @@ import Stripe from 'stripe';
 import { STRIPE_API_VERSION, STRIPE_DEFAULT_SECRET_KEY } from "../config.js";
 import { HTTP_STATUS } from "../errors.js";
 import type { CreateCheckoutSessionResponses, CreateCustomerPortalSessionResponses } from "../generated/fastify/types.gen.js";
-import { generateRequestId, sendError } from "../routes/utils.js";
+import { generateRequestId, sendError } from "./utils.js";
 
 let stripe: Stripe | null = null;
 

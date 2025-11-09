@@ -1,3 +1,4 @@
+import { FastifyInstance, RawServerBase } from "fastify";
 import type { Redis as IORedisType } from "ioredis";
 import crypto from 'node:crypto';
 import { Pool } from "pg";
@@ -19,7 +20,7 @@ import { getTenantSettings, updateTenantSettings } from "../services/settings.js
 import { validateAddress, validateEmailAddress, validateName, validatePhoneNumber, validateTaxId, verifyPhoneOtp } from "../services/validation.js";
 import { createWebhook, deleteWebhook, listWebhooks, testWebhook } from "../services/webhook.js";
 
-export const serviceHandlers = (pool: Pool, redis: IORedisType): RouteHandlers => ({
+export const serviceHandlers = <TServer extends RawServerBase = RawServerBase>(pool: Pool, redis: IORedisType, app: FastifyInstance<TServer>): RouteHandlers => ({
     // Auth handlers
     loginUser: async (request, reply) => loginUser(request, reply, pool),
     registerUser: async (request, reply) => registerUser(request, reply, pool),
@@ -37,7 +38,7 @@ export const serviceHandlers = (pool: Pool, redis: IORedisType): RouteHandlers =
     testWebhook: async (request, reply) => testWebhook(request, reply, pool),
 
     // Rules handlers
-    getAvailableRules: async (request, reply) => getAvailableRules(request, reply),
+    getAvailableRules: async (request, reply) => getAvailableRules(request, reply, pool),
     getErrorCodeCatalog: async (request, reply) => getErrorCodeCatalog(request, reply),
     getReasonCodeCatalog: async (request, reply) => getReasonCodeCatalog(request, reply),
     testRulesAgainstPayload: async (request, reply) => testRulesAgainstPayload(request, reply, pool, redis),
@@ -50,7 +51,7 @@ export const serviceHandlers = (pool: Pool, redis: IORedisType): RouteHandlers =
     validateAddress: async (request, reply) => validateAddress(request, reply, pool, redis),
     validateTaxId: async (request, reply) => validateTaxId(request, reply, pool, redis),
     validateName: async (request, reply) => validateName(request, reply),
-    evaluateOrder: async (request, reply) => evaluateOrderForRiskAndRules(request, reply, pool, redis),
+    evaluateOrder: async (request, reply) => evaluateOrderForRiskAndRules(app, request, reply, pool, redis),
     verifyPhoneOtp: async (request, reply) => verifyPhoneOtp(request, reply, pool),
 
     // Data handlers

@@ -1,24 +1,42 @@
 import { MGMT_V1_ROUTES } from "@orbitcheck/contracts";
-import { errorCodes, type FastifyReply, type FastifyRequest } from "fastify";
+import { type FastifyReply, type FastifyRequest } from "fastify";
 import type { Redis as IORedisType } from "ioredis";
 import type { Pool } from "pg";
-import { getBuiltInRules } from "../../routes/rules/rules.constants.js";
-import { handleDeleteCustomRule, handleRegisterCustomRules, handleTestRules } from "../../routes/rules/rules.handlers.js";
-import { generateRequestId, sendServerError } from "../../routes/utils.js";
-import { GetAvailableRulesResponses, GetErrorCodeCatalogResponses, TestRulesAgainstPayloadData, RegisterCustomRulesData, DeleteCustomRuleData } from "../../generated/fastify/types.gen.js";
+import { DeleteCustomRuleData, GetAvailableRulesResponses, GetErrorCodeCatalogResponses, GetReasonCodeCatalogResponses, RegisterCustomRulesData, TestRulesAgainstPayloadData } from "../../generated/fastify/types.gen.js";
+import { generateRequestId, sendServerError } from "../utils.js";
+import { getBuiltInRules, reasonCodes } from "./rules.constants.js";
+import { handleDeleteCustomRule, handleRegisterCustomRules, handleTestRules } from "./rules.handlers.js";
 
 export async function getAvailableRules(
-    _request: FastifyRequest,
-    rep: FastifyReply
+    request: FastifyRequest,
+    rep: FastifyReply,
+    pool?: Pool
 ): Promise<FastifyReply> {
-    const request_id = generateRequestId();
-    const builtInRules = getBuiltInRules();
+    try {
+        const request_id = generateRequestId();
+        const project_id = (request as any).project_id;
 
-    const response: GetAvailableRulesResponses[200] = {
-        rules: builtInRules,
-        request_id
-    };
-    return rep.send(response);
+        // Start with built-in rules (enabled only)
+        const builtInRules = getBuiltInRules().filter((r: any) => r.enabled !== false);
+
+        // Optionally merge project custom rules from DB if pool and project_id are available
+        let dbRules: any[] = [];
+        if (pool && project_id) {
+            const res = await pool.query(
+                "SELECT id, name, description, logic as condition, severity, 'custom' as category, enabled FROM rules WHERE project_id = $1",
+                [project_id]
+            );
+            dbRules = res.rows.map((rule: any) => ({ ...rule, condition: rule.condition || (rule as any).logic }));
+        }
+
+        const response: GetAvailableRulesResponses[200] = {
+            rules: [...builtInRules, ...dbRules],
+            request_id
+        };
+        return rep.send(response);
+    } catch (error) {
+        return sendServerError(request, rep, error, MGMT_V1_ROUTES.RULES.GET_AVAILABLE_RULES, generateRequestId());
+    }
 }
 
 export async function getErrorCodeCatalog(
@@ -63,9 +81,10 @@ export async function getReasonCodeCatalog(
 ): Promise<FastifyReply> {
     try {
         const request_id = generateRequestId();
-        return rep.send({ error_codes: errorCodes, request_id });
+        const response: GetReasonCodeCatalogResponses[200] = { reason_codes: reasonCodes, request_id };
+        return rep.send(response);
     } catch (error) {
-        return sendServerError(request, rep, error, MGMT_V1_ROUTES.RULES.GET_ERROR_CODE_CATALOG, generateRequestId());
+        return sendServerError(request, rep, error, MGMT_V1_ROUTES.RULES.GET_REASON_CODE_CATALOG, generateRequestId());
     }
 }
 

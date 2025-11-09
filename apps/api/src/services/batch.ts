@@ -1,12 +1,12 @@
+import { API_V1_ROUTES } from "@orbitcheck/contracts";
 import { Queue } from 'bullmq';
 import type { FastifyReply, FastifyRequest } from "fastify";
 import type { Redis as IORedisType } from 'ioredis';
 import type { Pool } from "pg";
-import { API_V1_ROUTES } from "@orbitcheck/contracts";
-import type { BatchDedupeData, BatchDedupeResponses, BatchValidateData, BatchValidateResponses } from "../generated/fastify/types.gen.js";
 import { HTTP_STATUS } from "../errors.js";
+import type { BatchDedupeData, BatchDedupeResponses, BatchValidateData, BatchValidateResponses } from "../generated/fastify/types.gen.js";
 import { logEvent } from "../hooks.js";
-import { generateRequestId, sendServerError } from "../routes/utils.js";
+import { generateRequestId, sendServerError } from "./utils.js";
 
 export async function batchValidateData(
     request: FastifyRequest<{ Body: BatchValidateData['body'] }>,

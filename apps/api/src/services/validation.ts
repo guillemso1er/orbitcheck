@@ -8,11 +8,11 @@ import { environment } from "../environment.js";
 import { HTTP_STATUS } from "../errors.js";
 import type { ValidateAddressData, ValidateAddressResponses, ValidateEmailData, ValidateEmailResponses, ValidateNameData, ValidateNameResponses, ValidatePhoneData, ValidatePhoneResponses, ValidateTaxIdData, ValidateTaxIdResponses, VerifyPhoneOtpData, VerifyPhoneOtpResponses } from "../generated/fastify/types.gen.js";
 import { logEvent } from "../hooks.js";
-import { generateRequestId, sendServerError } from "../routes/utils.js";
+import { validateAddress as validateAddressLogic } from "../validators/address.js";
 import { validateEmail } from "../validators/email.js";
 import { validatePhone } from "../validators/phone.js";
-import { validateAddress as validateAddressLogic } from "../validators/address.js";
-import { validateTaxId  as validateTaxIdLogic } from "../validators/taxid.js";
+import { validateTaxId as validateTaxIdLogic } from "../validators/taxid.js";
+import { generateRequestId, sendServerError } from "./utils.js";
 
 export async function validateEmailAddress(
     request: FastifyRequest<{ Body: ValidateEmailData['body'] }>,

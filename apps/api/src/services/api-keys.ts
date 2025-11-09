@@ -1,12 +1,12 @@
-import crypto, { webcrypto as nodeWebCrypto } from "node:crypto";
-import type { FastifyReply, FastifyRequest } from "fastify";
-import type { Pool } from "pg";
 import { MGMT_V1_ROUTES } from "@orbitcheck/contracts";
-import type { CreateApiKeyData, CreateApiKeyResponses, ListApiKeysResponses, RevokeApiKeyData, RevokeApiKeyResponses } from "../generated/fastify/types.gen.js";
+import type { FastifyReply, FastifyRequest } from "fastify";
+import crypto, { webcrypto as nodeWebCrypto } from "node:crypto";
+import type { Pool } from "pg";
 import { API_KEY_PREFIX, CRYPTO_IV_BYTES, CRYPTO_KEY_BYTES, ENCODING_HEX, ENCODING_UTF8, ENCRYPTION_ALGORITHM, HASH_ALGORITHM, STATUS } from "../config.js";
 import { environment } from "../environment.js";
 import { HTTP_STATUS } from "../errors.js";
-import { generateRequestId, sendServerError } from "../routes/utils.js";
+import type { CreateApiKeyData, CreateApiKeyResponses, ListApiKeysResponses, RevokeApiKeyData, RevokeApiKeyResponses } from "../generated/fastify/types.gen.js";
+import { generateRequestId, sendServerError } from "./utils.js";
 
 export async function listApiKeys(
     request: FastifyRequest,

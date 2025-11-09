@@ -11,7 +11,7 @@ import {
     PAT_SCOPES
 } from "../config.js";
 import { ERROR_CODES, ERROR_MESSAGES, HTTP_STATUS } from "../errors.js";
-import { generateRequestId, sendError, sendServerError } from "../routes/utils.js";
+import { generateRequestId, sendError, sendServerError } from "./utils.js";
 
 // Token prefix for OrbitCheck PATs
 const OC_PAT_PREFIX = 'oc_pat_' as const;

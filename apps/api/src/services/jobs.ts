@@ -1,10 +1,10 @@
+import { API_V1_ROUTES } from "@orbitcheck/contracts";
 import type { FastifyReply, FastifyRequest } from "fastify";
 import type { Pool } from "pg";
-import { API_V1_ROUTES } from "@orbitcheck/contracts";
-import type { GetJobStatusByIdData, GetJobStatusByIdResponses } from "../generated/fastify/types.gen.js";
 import { HTTP_STATUS } from "../errors.js";
+import type { GetJobStatusByIdData, GetJobStatusByIdResponses } from "../generated/fastify/types.gen.js";
 import { logEvent } from "../hooks.js";
-import { generateRequestId, sendServerError } from "../routes/utils.js";
+import { generateRequestId, sendServerError } from "./utils.js";
 
 export async function getJobStatus(
     request: FastifyRequest<{ Params: GetJobStatusByIdData['path'] }>,

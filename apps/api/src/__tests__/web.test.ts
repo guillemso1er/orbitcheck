@@ -15,7 +15,7 @@ describe('Web Module', () => {
     await setupBeforeAll();
 
     // Import functions
-    const authModule = await import('../routes/auth.js');
+    const authModule = await import('../services/auth.js');
     verifySession = authModule.verifySession;
     verifyPAT = authModule.verifyPAT;
     auth = authModule.verifyAPIKey;
