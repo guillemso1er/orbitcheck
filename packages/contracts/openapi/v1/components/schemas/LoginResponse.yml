@@ -1,13 +1,13 @@
 type: object
 properties:
-  token:
+  pat_token:
     type: string
-    description: JWT authentication token
+    description: PAT token for authentication
   user:
     $ref: './User.yml'
   request_id:
     type: string
     description: Request identifier
 required:
-  - token
+  - pat_token
   - user

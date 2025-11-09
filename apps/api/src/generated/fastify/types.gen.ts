@@ -521,9 +521,9 @@ export type LoginRequest = {
 
 export type LoginResponse = {
     /**
-     * JWT authentication token
+     * PAT token for authentication
      */
-    token: string;
+    pat_token: string;
     user: {
         /**
          * User ID
