@@ -5,7 +5,10 @@ export default defineConfig({
   input: '../../packages/contracts/dist/openapi.v1.json',
   output: 'src/generated/fastify',
   plugins: [
-    'fastify'
-    // Optionally: ['fastify', { prefix: '/api' }]
+    {
+      name: 'fastify',
+      // Optional: make “glue” and related types available from ./client/index.ts
+      exportFromIndex: true,
+    },
   ]
 });

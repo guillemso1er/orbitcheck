@@ -2,7 +2,7 @@
 
 import type { RouteHandler } from 'fastify';
 
-import type { BatchDedupeData, BatchDedupeResponses, BatchValidateData, BatchValidateResponses, CheckValidationLimitsData, CheckValidationLimitsErrors, CheckValidationLimitsResponses, CreateApiKeyData, CreateApiKeyErrors, CreateApiKeyResponses, CreateCheckoutSessionErrors, CreateCheckoutSessionResponses, CreateCustomerPortalSessionErrors, CreateCustomerPortalSessionResponses, CreatePersonalAccessTokenData, CreatePersonalAccessTokenErrors, CreatePersonalAccessTokenResponses, CreateProjectData, CreateProjectErrors, CreateProjectResponses, CreateUserData, CreateUserErrors, CreateUserResponses, CreateWebhookData, CreateWebhookErrors, CreateWebhookResponses, DedupeAddressData, DedupeAddressErrors, DedupeAddressResponses, DedupeCustomerData, DedupeCustomerResponses, DeleteCustomRuleData, DeleteCustomRuleErrors, DeleteCustomRuleResponses, DeleteLogData, DeleteLogErrors, DeleteLogResponses, DeleteProjectData, DeleteProjectErrors, DeleteProjectResponses, DeleteWebhookData, DeleteWebhookErrors, DeleteWebhookResponses, EraseDataData, EraseDataErrors, EraseDataResponses, EvaluateOrderData, EvaluateOrderErrors, EvaluateOrderResponses, GetAvailablePlansResponses, GetAvailableRulesErrors, GetAvailableRulesResponses, GetErrorCodeCatalogErrors, GetErrorCodeCatalogResponses, GetJobStatusByIdData, GetJobStatusByIdErrors, GetJobStatusByIdResponses, GetLogsData, GetLogsErrors, GetLogsResponses, GetReasonCodeCatalogErrors, GetReasonCodeCatalogResponses, GetSettingsErrors, GetSettingsResponses, GetUsageErrors, GetUsageResponses, GetUserPlanErrors, GetUserPlanResponses, GetUserProjectsErrors, GetUserProjectsResponses, ListApiKeysErrors, ListApiKeysResponses, ListPersonalAccessTokensErrors, ListPersonalAccessTokensResponses, ListUsersErrors, ListUsersResponses, ListWebhooksErrors, ListWebhooksResponses, LoginUserData, LoginUserErrors, LoginUserResponses, LogoutUserErrors, LogoutUserResponses, MergeDeduplicatedData, MergeDeduplicatedErrors, MergeDeduplicatedResponses, NormalizeAddressData, NormalizeAddressResponses, RegisterCustomRulesData, RegisterCustomRulesErrors, RegisterCustomRulesResponses, RegisterUserData, RegisterUserErrors, RegisterUserResponses, RevokeApiKeyData, RevokeApiKeyErrors, RevokeApiKeyResponses, RevokePersonalAccessTokenData, RevokePersonalAccessTokenErrors, RevokePersonalAccessTokenResponses, TestRulesAgainstPayloadData, TestRulesAgainstPayloadResponses, TestWebhookData, TestWebhookResponses, UpdateSettingsData, UpdateSettingsErrors, UpdateSettingsResponses, UpdateUserPlanData, UpdateUserPlanErrors, UpdateUserPlanResponses, ValidateAddressData, ValidateAddressResponses, ValidateEmailData, ValidateEmailResponses, ValidateNameData, ValidateNameErrors, ValidateNameResponses, ValidatePhoneData, ValidatePhoneResponses, ValidateTaxIdData, ValidateTaxIdErrors, ValidateTaxIdResponses, VerifyPhoneOtpData, VerifyPhoneOtpErrors, VerifyPhoneOtpResponses } from './types.gen';
+import type { BatchDedupeData, BatchDedupeErrors, BatchDedupeResponses, BatchValidateData, BatchValidateErrors, BatchValidateResponses, CheckValidationLimitsData, CheckValidationLimitsErrors, CheckValidationLimitsResponses, CreateApiKeyData, CreateApiKeyErrors, CreateApiKeyResponses, CreateCheckoutSessionErrors, CreateCheckoutSessionResponses, CreateCustomerPortalSessionErrors, CreateCustomerPortalSessionResponses, CreatePersonalAccessTokenData, CreatePersonalAccessTokenErrors, CreatePersonalAccessTokenResponses, CreateProjectData, CreateProjectErrors, CreateProjectResponses, CreateUserData, CreateUserErrors, CreateUserResponses, CreateWebhookData, CreateWebhookErrors, CreateWebhookResponses, DedupeAddressData, DedupeAddressErrors, DedupeAddressResponses, DedupeCustomerData, DedupeCustomerErrors, DedupeCustomerResponses, DeleteCustomRuleData, DeleteCustomRuleErrors, DeleteCustomRuleResponses, DeleteLogData, DeleteLogErrors, DeleteLogResponses, DeleteProjectData, DeleteProjectErrors, DeleteProjectResponses, DeleteWebhookData, DeleteWebhookErrors, DeleteWebhookResponses, EraseDataData, EraseDataErrors, EraseDataResponses, EvaluateOrderData, EvaluateOrderErrors, EvaluateOrderResponses, GetAvailablePlansErrors, GetAvailablePlansResponses, GetAvailableRulesErrors, GetAvailableRulesResponses, GetErrorCodeCatalogErrors, GetErrorCodeCatalogResponses, GetJobStatusByIdData, GetJobStatusByIdErrors, GetJobStatusByIdResponses, GetLogsData, GetLogsErrors, GetLogsResponses, GetReasonCodeCatalogErrors, GetReasonCodeCatalogResponses, GetSettingsErrors, GetSettingsResponses, GetUsageErrors, GetUsageResponses, GetUserPlanErrors, GetUserPlanResponses, GetUserProjectsErrors, GetUserProjectsResponses, ListApiKeysErrors, ListApiKeysResponses, ListPersonalAccessTokensErrors, ListPersonalAccessTokensResponses, ListUsersErrors, ListUsersResponses, ListWebhooksErrors, ListWebhooksResponses, LoginUserData, LoginUserErrors, LoginUserResponses, LogoutUserErrors, LogoutUserResponses, MergeDeduplicatedData, MergeDeduplicatedErrors, MergeDeduplicatedResponses, NormalizeAddressData, NormalizeAddressErrors, NormalizeAddressResponses, RegisterCustomRulesData, RegisterCustomRulesErrors, RegisterCustomRulesResponses, RegisterUserData, RegisterUserErrors, RegisterUserResponses, RevokeApiKeyData, RevokeApiKeyErrors, RevokeApiKeyResponses, RevokePersonalAccessTokenData, RevokePersonalAccessTokenErrors, RevokePersonalAccessTokenResponses, TestRulesAgainstPayloadData, TestRulesAgainstPayloadErrors, TestRulesAgainstPayloadResponses, TestWebhookData, TestWebhookErrors, TestWebhookResponses, UpdateSettingsData, UpdateSettingsErrors, UpdateSettingsResponses, UpdateUserPlanData, UpdateUserPlanErrors, UpdateUserPlanResponses, ValidateAddressData, ValidateAddressErrors, ValidateAddressResponses, ValidateEmailData, ValidateEmailErrors, ValidateEmailResponses, ValidateNameData, ValidateNameErrors, ValidateNameResponses, ValidatePhoneData, ValidatePhoneErrors, ValidatePhoneResponses, ValidateTaxIdData, ValidateTaxIdErrors, ValidateTaxIdResponses, VerifyPhoneOtpData, VerifyPhoneOtpErrors, VerifyPhoneOtpResponses } from './types.gen';
 
 export type RouteHandlers = {
     loginUser: RouteHandler<{
@@ -40,7 +40,7 @@ export type RouteHandlers = {
     }>;
     testWebhook: RouteHandler<{
         Body: TestWebhookData['body'];
-        Reply: TestWebhookResponses;
+        Reply: TestWebhookErrors & TestWebhookResponses;
     }>;
     getAvailableRules: RouteHandler<{
         Reply: GetAvailableRulesErrors & GetAvailableRulesResponses;
@@ -53,7 +53,7 @@ export type RouteHandlers = {
     }>;
     testRulesAgainstPayload: RouteHandler<{
         Body: TestRulesAgainstPayloadData['body'];
-        Reply: TestRulesAgainstPayloadResponses;
+        Reply: TestRulesAgainstPayloadErrors & TestRulesAgainstPayloadResponses;
     }>;
     registerCustomRules: RouteHandler<{
         Body: RegisterCustomRulesData['body'];
@@ -65,15 +65,15 @@ export type RouteHandlers = {
     }>;
     validateEmail: RouteHandler<{
         Body: ValidateEmailData['body'];
-        Reply: ValidateEmailResponses;
+        Reply: ValidateEmailErrors & ValidateEmailResponses;
     }>;
     validatePhone: RouteHandler<{
         Body: ValidatePhoneData['body'];
-        Reply: ValidatePhoneResponses;
+        Reply: ValidatePhoneErrors & ValidatePhoneResponses;
     }>;
     validateAddress: RouteHandler<{
         Body: ValidateAddressData['body'];
-        Reply: ValidateAddressResponses;
+        Reply: ValidateAddressErrors & ValidateAddressResponses;
     }>;
     validateTaxId: RouteHandler<{
         Body: ValidateTaxIdData['body'];
@@ -139,11 +139,11 @@ export type RouteHandlers = {
     }>;
     normalizeAddress: RouteHandler<{
         Body: NormalizeAddressData['body'];
-        Reply: NormalizeAddressResponses;
+        Reply: NormalizeAddressErrors & NormalizeAddressResponses;
     }>;
     dedupeCustomer: RouteHandler<{
         Body: DedupeCustomerData['body'];
-        Reply: DedupeCustomerResponses;
+        Reply: DedupeCustomerErrors & DedupeCustomerResponses;
     }>;
     dedupeAddress: RouteHandler<{
         Body: DedupeAddressData['body'];
@@ -155,11 +155,11 @@ export type RouteHandlers = {
     }>;
     batchValidate: RouteHandler<{
         Body: BatchValidateData['body'];
-        Reply: BatchValidateResponses;
+        Reply: BatchValidateErrors & BatchValidateResponses;
     }>;
     batchDedupe: RouteHandler<{
         Body: BatchDedupeData['body'];
-        Reply: BatchDedupeResponses;
+        Reply: BatchDedupeErrors & BatchDedupeResponses;
     }>;
     getJobStatusById: RouteHandler<{
         Params: GetJobStatusByIdData['path'];
@@ -184,7 +184,7 @@ export type RouteHandlers = {
         Reply: UpdateUserPlanErrors & UpdateUserPlanResponses;
     }>;
     getAvailablePlans: RouteHandler<{
-        Reply: GetAvailablePlansResponses;
+        Reply: GetAvailablePlansErrors & GetAvailablePlansResponses;
     }>;
     checkValidationLimits: RouteHandler<{
         Body: CheckValidationLimitsData['body'];

@@ -1,17 +1,26 @@
-import crypto from "node:crypto";
-import { webcrypto as nodeWebCrypto } from "node:crypto";
+import crypto, { webcrypto as nodeWebCrypto } from "node:crypto";
 
 import { MGMT_V1_ROUTES } from "@orbitcheck/contracts";
 import type { FastifyInstance } from "fastify";
 import type { Pool } from "pg";
 
+import openapiGlue from "fastify-openapi-glue";
 import { API_KEY_PREFIX, CRYPTO_IV_BYTES, CRYPTO_KEY_BYTES, ENCODING_HEX, ENCODING_UTF8, ENCRYPTION_ALGORITHM, HASH_ALGORITHM, STATUS } from "../config.js";
 import { environment } from "../environment.js";
 import { ERROR_CODES, ERROR_MESSAGES, HTTP_STATUS } from "../errors.js";
+import { RouteHandlers } from "../generated/fastify/fastify.gen.js";
 import { errorSchema, generateRequestId, MGMT_V1_SECURITY, rateLimitResponse, securityHeader, sendError, sendServerError, unauthorizedResponse } from "./utils.js";
 
 
 export function registerApiKeysRoutes(app: FastifyInstance, pool: Pool): void {
+    const serviceHandlers: RouteHandlers = {
+        listApiKeys: async (request, reply) => {
+            // Implementation moved to inline route definition
+        }
+    };
+
+
+
     app.get(MGMT_V1_ROUTES.API_KEYS.LIST_API_KEYS, {
         schema: {
             summary: 'List API Keys',
@@ -115,7 +124,7 @@ export function registerApiKeysRoutes(app: FastifyInstance, pool: Pool): void {
                     else resolve(buf);
                 });
             });
-            
+
             // Use Web Crypto API for async encryption
             const cryptoKey = await nodeWebCrypto.subtle.importKey(
                 'raw',
@@ -124,7 +133,7 @@ export function registerApiKeysRoutes(app: FastifyInstance, pool: Pool): void {
                 false,
                 ['encrypt']
             );
-            
+
             const encryptedBuffer = await nodeWebCrypto.subtle.encrypt(
                 {
                     name: ENCRYPTION_ALGORITHM,
@@ -133,7 +142,7 @@ export function registerApiKeysRoutes(app: FastifyInstance, pool: Pool): void {
                 cryptoKey,
                 Buffer.from(full_key, ENCODING_UTF8)
             );
-            
+
             const encrypted = Buffer.from(encryptedBuffer).toString(ENCODING_HEX);
             const encryptedWithIv = ivBuffer.toString('hex') + ':' + encrypted;
 

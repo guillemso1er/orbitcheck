@@ -1250,6 +1250,33 @@ export type TestWebhookData = {
     url: '/v1/webhooks/test';
 };
 
+export type TestWebhookErrors = {
+    /**
+     * Bad request
+     */
+    400: {
+        error?: {
+            code?: 'INVALID_INPUT' | 'INVALID_PLAN';
+            /**
+             * Error message
+             */
+            message?: string;
+        };
+    };
+    /**
+     * Rate limit exceeded
+     */
+    429: {
+        code?: 'LIMIT_EXCEEDED';
+        /**
+         * Error message
+         */
+        message?: string;
+    };
+};
+
+export type TestWebhookError = TestWebhookErrors[keyof TestWebhookErrors];
+
 export type TestWebhookResponses = {
     /**
      * Webhook test result
@@ -1485,6 +1512,33 @@ export type TestRulesAgainstPayloadData = {
     url: '/v1/rules/test';
 };
 
+export type TestRulesAgainstPayloadErrors = {
+    /**
+     * Bad request
+     */
+    400: {
+        error?: {
+            code?: 'INVALID_INPUT' | 'INVALID_PLAN';
+            /**
+             * Error message
+             */
+            message?: string;
+        };
+    };
+    /**
+     * Rate limit exceeded
+     */
+    429: {
+        code?: 'LIMIT_EXCEEDED';
+        /**
+         * Error message
+         */
+        message?: string;
+    };
+};
+
+export type TestRulesAgainstPayloadError = TestRulesAgainstPayloadErrors[keyof TestRulesAgainstPayloadErrors];
+
 export type TestRulesAgainstPayloadResponses = {
     /**
      * Rule test results
@@ -1703,6 +1757,43 @@ export type ValidateEmailData = {
     url: '/v1/validate/email';
 };
 
+export type ValidateEmailErrors = {
+    /**
+     * Bad request
+     */
+    400: {
+        error?: {
+            code?: 'INVALID_INPUT' | 'INVALID_PLAN';
+            /**
+             * Error message
+             */
+            message?: string;
+        };
+    };
+    /**
+     * Unauthorized
+     */
+    401: {
+        code?: 'UNAUTHORIZED';
+        /**
+         * Error message
+         */
+        message?: string;
+    };
+    /**
+     * Rate limit exceeded
+     */
+    429: {
+        code?: 'LIMIT_EXCEEDED';
+        /**
+         * Error message
+         */
+        message?: string;
+    };
+};
+
+export type ValidateEmailError = ValidateEmailErrors[keyof ValidateEmailErrors];
+
 export type ValidateEmailResponses = {
     /**
      * Email validation result
@@ -1737,6 +1828,43 @@ export type ValidatePhoneData = {
     query?: never;
     url: '/v1/validate/phone';
 };
+
+export type ValidatePhoneErrors = {
+    /**
+     * Bad request
+     */
+    400: {
+        error?: {
+            code?: 'INVALID_INPUT' | 'INVALID_PLAN';
+            /**
+             * Error message
+             */
+            message?: string;
+        };
+    };
+    /**
+     * Unauthorized
+     */
+    401: {
+        code?: 'UNAUTHORIZED';
+        /**
+         * Error message
+         */
+        message?: string;
+    };
+    /**
+     * Rate limit exceeded
+     */
+    429: {
+        code?: 'LIMIT_EXCEEDED';
+        /**
+         * Error message
+         */
+        message?: string;
+    };
+};
+
+export type ValidatePhoneError = ValidatePhoneErrors[keyof ValidatePhoneErrors];
 
 export type ValidatePhoneResponses = {
     /**
@@ -1790,6 +1918,43 @@ export type ValidateAddressData = {
     query?: never;
     url: '/v1/validate/address';
 };
+
+export type ValidateAddressErrors = {
+    /**
+     * Bad request
+     */
+    400: {
+        error?: {
+            code?: 'INVALID_INPUT' | 'INVALID_PLAN';
+            /**
+             * Error message
+             */
+            message?: string;
+        };
+    };
+    /**
+     * Unauthorized
+     */
+    401: {
+        code?: 'UNAUTHORIZED';
+        /**
+         * Error message
+         */
+        message?: string;
+    };
+    /**
+     * Rate limit exceeded
+     */
+    429: {
+        code?: 'LIMIT_EXCEEDED';
+        /**
+         * Error message
+         */
+        message?: string;
+    };
+};
+
+export type ValidateAddressError = ValidateAddressErrors[keyof ValidateAddressErrors];
 
 export type ValidateAddressResponses = {
     /**
@@ -3287,6 +3452,43 @@ export type NormalizeAddressData = {
     url: '/v1/normalize/address';
 };
 
+export type NormalizeAddressErrors = {
+    /**
+     * Bad request
+     */
+    400: {
+        error?: {
+            code?: 'INVALID_INPUT' | 'INVALID_PLAN';
+            /**
+             * Error message
+             */
+            message?: string;
+        };
+    };
+    /**
+     * Unauthorized
+     */
+    401: {
+        code?: 'UNAUTHORIZED';
+        /**
+         * Error message
+         */
+        message?: string;
+    };
+    /**
+     * Rate limit exceeded
+     */
+    429: {
+        code?: 'LIMIT_EXCEEDED';
+        /**
+         * Error message
+         */
+        message?: string;
+    };
+};
+
+export type NormalizeAddressError = NormalizeAddressErrors[keyof NormalizeAddressErrors];
+
 export type NormalizeAddressResponses = {
     /**
      * Successful normalization response
@@ -3329,6 +3531,33 @@ export type DedupeCustomerData = {
     query?: never;
     url: '/v1/dedupe/customer';
 };
+
+export type DedupeCustomerErrors = {
+    /**
+     * Bad request
+     */
+    400: {
+        error?: {
+            code?: 'INVALID_INPUT' | 'INVALID_PLAN';
+            /**
+             * Error message
+             */
+            message?: string;
+        };
+    };
+    /**
+     * Rate limit exceeded
+     */
+    429: {
+        code?: 'LIMIT_EXCEEDED';
+        /**
+         * Error message
+         */
+        message?: string;
+    };
+};
+
+export type DedupeCustomerError = DedupeCustomerErrors[keyof DedupeCustomerErrors];
 
 export type DedupeCustomerResponses = {
     /**
@@ -3577,6 +3806,43 @@ export type BatchValidateData = {
     url: '/v1/batch/validate';
 };
 
+export type BatchValidateErrors = {
+    /**
+     * Bad request
+     */
+    400: {
+        error?: {
+            code?: 'INVALID_INPUT' | 'INVALID_PLAN';
+            /**
+             * Error message
+             */
+            message?: string;
+        };
+    };
+    /**
+     * Unauthorized
+     */
+    401: {
+        code?: 'UNAUTHORIZED';
+        /**
+         * Error message
+         */
+        message?: string;
+    };
+    /**
+     * Rate limit exceeded
+     */
+    429: {
+        code?: 'LIMIT_EXCEEDED';
+        /**
+         * Error message
+         */
+        message?: string;
+    };
+};
+
+export type BatchValidateError = BatchValidateErrors[keyof BatchValidateErrors];
+
 export type BatchValidateResponses = {
     /**
      * Batch validation job started
@@ -3616,6 +3882,43 @@ export type BatchDedupeData = {
     query?: never;
     url: '/v1/batch/dedupe';
 };
+
+export type BatchDedupeErrors = {
+    /**
+     * Bad request
+     */
+    400: {
+        error?: {
+            code?: 'INVALID_INPUT' | 'INVALID_PLAN';
+            /**
+             * Error message
+             */
+            message?: string;
+        };
+    };
+    /**
+     * Unauthorized
+     */
+    401: {
+        code?: 'UNAUTHORIZED';
+        /**
+         * Error message
+         */
+        message?: string;
+    };
+    /**
+     * Rate limit exceeded
+     */
+    429: {
+        code?: 'LIMIT_EXCEEDED';
+        /**
+         * Error message
+         */
+        message?: string;
+    };
+};
+
+export type BatchDedupeError = BatchDedupeErrors[keyof BatchDedupeErrors];
 
 export type BatchDedupeResponses = {
     /**
@@ -4062,6 +4365,33 @@ export type GetAvailablePlansData = {
     query?: never;
     url: '/public/plans';
 };
+
+export type GetAvailablePlansErrors = {
+    /**
+     * Bad request
+     */
+    400: {
+        error?: {
+            code?: 'INVALID_INPUT' | 'INVALID_PLAN';
+            /**
+             * Error message
+             */
+            message?: string;
+        };
+    };
+    /**
+     * Rate limit exceeded
+     */
+    429: {
+        code?: 'LIMIT_EXCEEDED';
+        /**
+         * Error message
+         */
+        message?: string;
+    };
+};
+
+export type GetAvailablePlansError = GetAvailablePlansErrors[keyof GetAvailablePlansErrors];
 
 export type GetAvailablePlansResponses = {
     /**

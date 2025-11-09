@@ -431,7 +431,7 @@ const ApiKeys: React.FC<ApiKeysProps> = () => {
     fetchKeys();
   }, [fetchKeys]);
 
-  const handleCreate = async (name: string) => {
+  const handleCreate = useCallback(async (name: string) => {
     try {
       setCreating(true);
       setError(null);
@@ -491,7 +491,7 @@ const ApiKeys: React.FC<ApiKeysProps> = () => {
         try {
           setError(null);
           const newData = await createApiKey({ client: apiClient, body: { name: key.name || undefined } });
-          setNewKey({ prefix: newData.data?.prefix || '', full_key: newData.data?.full_key || '' });
+          setNewKey({ prefix: newData.data?.prefix ?? '', full_key: newData.data?.full_key ?? '' });
           await revokeApiKey({ client: apiClient, path: { id: key.id || '' } });
           setSuccessMessage('API key rotated successfully');
           await fetchKeys();

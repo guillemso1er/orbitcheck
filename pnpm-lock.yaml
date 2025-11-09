@@ -111,6 +111,9 @@ importers:
       fastify:
         specifier: 5.6.1
         version: 5.6.1
+      fastify-openapi-glue:
+        specifier: ^4.10.0
+        version: 4.10.0
       fastify-plugin:
         specifier: 5.0.1
         version: 5.0.1
@@ -2581,6 +2584,10 @@ packages:
       '@opentelemetry/core': ^1.30.1 || ^2.1.0
       '@opentelemetry/sdk-trace-base': ^1.30.1 || ^2.1.0
       '@opentelemetry/semantic-conventions': ^1.37.0
+
+  '@seriousme/openapi-schema-validator@2.7.0':
+    resolution: {integrity: sha512-7GrE9T3UWTWpIyaUq+r+UlsaMJhHFhzGtXkjBMZDIo5Pz+iNDT3oBt0N/EdGX7HDRt5TDmdIJGR8co3O/qOvWw==}
+    hasBin: true
 
   '@shikijs/engine-oniguruma@3.13.0':
     resolution: {integrity: sha512-O42rBGr4UDSlhT2ZFMxqM7QzIU+IcpoTMzb3W7AlziI1ZF7R8eS2M0yt5Ry35nnnTX/LTLXFPUjRFCIW+Operg==}
@@ -5158,6 +5165,11 @@ packages:
 
   fast-xml-parser@5.2.5:
     resolution: {integrity: sha512-pfX9uG9Ki0yekDHx2SiuRIyFdyAr1kMIMitPvb0YBo8SUfKvia7w7FIyd/l6av85pFYRhZscS75MwMnbvY+hcQ==}
+    hasBin: true
+
+  fastify-openapi-glue@4.10.0:
+    resolution: {integrity: sha512-6VTuX53QYtCpKVF63n2ZbSJoI1rniud8al3tyeKIySUQ3F+WMpWMGcg+csqneRrOJjUTSs5zLI59KHXB5ZaBoQ==}
+    engines: {node: '>=14.0.0'}
     hasBin: true
 
   fastify-plugin@4.5.1:
@@ -11834,6 +11846,13 @@ snapshots:
       '@opentelemetry/semantic-conventions': 1.37.0
       '@sentry/core': 10.15.0
 
+  '@seriousme/openapi-schema-validator@2.7.0':
+    dependencies:
+      ajv: 8.17.1
+      ajv-draft-04: 1.0.0(ajv@8.17.1)
+      ajv-formats: 3.0.1(ajv@8.17.1)
+      js-yaml: 4.1.0
+
   '@shikijs/engine-oniguruma@3.13.0':
     dependencies:
       '@shikijs/types': 3.13.0
@@ -15281,6 +15300,12 @@ snapshots:
   fast-xml-parser@5.2.5:
     dependencies:
       strnum: 2.1.1
+
+  fastify-openapi-glue@4.10.0:
+    dependencies:
+      '@seriousme/openapi-schema-validator': 2.7.0
+      fastify-plugin: 5.0.1
+      js-yaml: 4.1.0
 
   fastify-plugin@4.5.1: {}
 
