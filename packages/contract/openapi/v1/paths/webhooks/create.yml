@@ -1,0 +1,56 @@
+tags:
+  - Management API
+summary: Create webhook
+description: Creates a new webhook subscription for the authenticated project
+operationId: createWebhook
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        required:
+          - url
+          - events
+        properties:
+          url:
+            type: string
+            format: uri
+            description: The webhook URL to send events to
+          events:
+            type: array
+            items:
+              type: string
+            description: Events to subscribe to
+responses:
+  '201':
+    description: Webhook created successfully
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            id:
+              type: string
+            url:
+              type: string
+              format: uri
+            events:
+              type: array
+              items:
+                type: string
+            secret:
+              type: string
+            status:
+              type: string
+            created_at:
+              type: string
+              format: date-time
+            request_id:
+              type: string
+  '401':
+    description: Unauthorized
+    content:
+      application/json:
+        schema:
+          $ref: '../../components/schemas/Error.yml'

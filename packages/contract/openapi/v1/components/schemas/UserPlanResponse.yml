@@ -1,0 +1,24 @@
+type: object
+properties:
+  id:
+    type: string
+    description: User ID
+  email:
+    type: string
+    description: User email
+  plan:
+    type: object
+    description: Current plan details
+  monthlyValidationsUsed:
+    type: integer
+    description: Number of validations used this month
+  subscriptionStatus:
+    type: string
+    description: Subscription status
+  trialEndDate:
+    type: [string, "null"]
+    format: date-time
+    description: Trial end date if applicable
+  projectsCount:
+    type: integer
+    description: Number of projects

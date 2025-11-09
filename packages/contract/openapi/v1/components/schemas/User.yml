@@ -1,0 +1,28 @@
+type: object
+properties:
+  id:
+    type: string
+    description: User ID
+  email:
+    type: string
+    format: email
+    description: User email address
+  first_name:
+    type: string
+    description: User first name
+  last_name:
+    type: string
+    description: User last name
+  created_at:
+    type: string
+    format: date-time
+    description: Creation timestamp
+  updated_at:
+    type: string
+    format: date-time
+    description: Last update timestamp
+required:
+  - id
+  - email
+  - first_name
+  - last_name

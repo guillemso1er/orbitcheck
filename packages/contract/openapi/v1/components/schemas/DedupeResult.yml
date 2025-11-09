@@ -1,0 +1,23 @@
+type: object
+properties:
+  matches:
+    type: array
+    items:
+      type: object
+      properties:
+        id:
+          type: string
+        similarity_score:
+          type: number
+        match_type:
+          type: string
+        data:
+          type: object
+  suggested_action:
+    type: string
+    enum:
+      - create_new
+      - merge_with
+      - review
+  canonical_id:
+    type: [string, "null"]

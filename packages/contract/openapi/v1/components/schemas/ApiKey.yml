@@ -1,0 +1,25 @@
+type: object
+properties:
+  id:
+    type: string
+    description: API key ID
+  prefix:
+    type: string
+    description: API key prefix (first 6 characters)
+  status:
+    type: string
+    enum:
+      - active
+      - revoked
+    description: API key status
+  name:
+    type: [string, "null"]
+    description: Optional name for the API key
+  created_at:
+    type: string
+    format: date-time
+    description: Creation timestamp
+  last_used_at:
+    type: [string, "null"]
+    format: date-time
+    description: Last usage timestamp

@@ -1,0 +1,83 @@
+tags:
+  - Management API
+summary: Register custom rules
+description: Registers new custom validation rules for the project
+operationId: registerCustomRules
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        required:
+          - rules
+        properties:
+          rules:
+            type: array
+            description: Array of custom rules to register
+            items:
+              type: object
+              required:
+                - name
+              properties:
+                name:
+                  type: string
+                  description: Custom rule name
+                description:
+                  type: string
+                  description: Rule description
+                condition:
+                  type: string
+                  description: A string containing the rule's logic expression.
+                conditions:
+                  type: object
+                  description: A structured JSON object defining the rule's logic.
+                  additionalProperties: true
+                severity:
+                  type: string
+                  enum: [low, medium, high, critical]
+                  default: medium
+                  description: Rule severity
+                enabled:
+                  type: boolean
+                  default: true
+                  description: Whether the rule is enabled
+              oneOf:
+                - required: [condition]
+                - required: [conditions]
+responses:
+  '201':
+    description: Custom rules registered successfully
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            registered_rules:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    description: Registered rule ID
+                  name:
+                    type: string
+                    description: Rule name
+                  status:
+                    type: string
+                    description: Registration status
+            request_id:
+              type: string
+  '400':
+    description: Invalid rule definitions
+    content:
+      application/json:
+        schema:
+          $ref: '../../components/schemas/Error.yml'
+  '401':
+    description: Unauthorized
+    content:
+      application/json:
+        schema:
+          $ref: '../../components/schemas/Error.yml'

@@ -1,0 +1,43 @@
+tags:
+  - UI Endpoints
+summary: Delete project
+description: Deletes a project by ID for the authenticated user
+operationId: deleteProject
+security:
+  - BearerAuth: []
+parameters:
+  - name: id
+    in: path
+    required: true
+    schema:
+      type: string
+    description: Project ID
+responses:
+  '200':
+    description: Project deleted successfully
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            message:
+              type: string
+              description: Success message
+  '401':
+    description: Unauthorized
+    content:
+      application/json:
+        schema:
+          $ref: '../../components/schemas/UnauthorizedError.yml'
+  '404':
+    description: Project not found
+    content:
+      application/json:
+        schema:
+          $ref: '../../components/schemas/NotFoundError.yml'
+  '500':
+    description: Internal server error
+    content:
+      application/json:
+        schema:
+          $ref: '../../components/schemas/ServerError.yml'

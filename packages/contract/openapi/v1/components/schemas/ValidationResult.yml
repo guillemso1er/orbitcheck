@@ -1,0 +1,13 @@
+type: object
+properties:
+  valid:
+    type: boolean
+    description: Whether the validation passed
+  reason_codes:
+    type: array
+    items:
+      type: string
+    description: List of reason codes
+  disposable:
+    type: boolean
+    description: Whether the result is disposable (for email)

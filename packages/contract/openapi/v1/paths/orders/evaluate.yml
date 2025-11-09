@@ -1,0 +1,230 @@
+tags:
+  - Runtime API
+summary: Evaluate order for risk and rules
+description: Evaluates an order for deduplication, validation, and applies business rules
+operationId: evaluateOrder
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        required:
+          - order_id
+          - customer
+          - shipping_address
+          - total_amount
+          - currency
+        properties:
+          order_id:
+            type: string
+            description: Unique order identifier
+          customer:
+            type: object
+            properties:
+              email:
+                type: string
+                description: Customer email
+              phone:
+                type: string
+                description: Customer phone
+              first_name:
+                type: string
+                description: Customer first name
+              last_name:
+                type: string
+                description: Customer last name
+          shipping_address:
+            type: object
+            properties:
+              line1:
+                type: string
+                description: Street address line 1
+              line2:
+                type: string
+                description: Street address line 2
+              city:
+                type: string
+                description: City
+              state:
+                type: string
+                description: State or province
+              postal_code:
+                type: string
+                description: Postal code
+              country:
+                type: string
+                description: Two-letter country code
+              lat:
+                type: [number, "null"]
+                description: Latitude
+              lng:
+                type: [number, "null"]
+                description: Longitude
+          total_amount:
+            type: number
+            description: Order total amount
+          currency:
+            type: string
+            pattern: ^[A-Z]{3}$
+            description: Currency code (e.g., USD, EUR)
+          payment_method:
+            type: string
+            enum:
+              - card
+              - cod
+              - bank_transfer
+            description: Payment method
+responses:
+  '200':
+    description: Order evaluation results
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            order_id:
+              type: string
+              description: Order ID
+            risk_score:
+              type: number
+              minimum: 0
+              maximum: 100
+              description: Risk score (0-100)
+            action:
+              type: string
+              enum:
+                - approve
+                - hold
+                - block
+              description: Recommended action
+            tags:
+              type: array
+              items:
+                type: string
+              description: Order tags
+            reason_codes:
+              type: array
+              items:
+                type: string
+              description: List of reason codes
+            customer_dedupe:
+              type: object
+              properties:
+                matches:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                      similarity_score:
+                        type: number
+                      match_type:
+                        type: string
+                      data:
+                        type: object
+                suggested_action:
+                  type: string
+                  enum:
+                    - create_new
+                    - merge_with
+                    - review
+                canonical_id:
+                  type: [string, "null"]
+            address_dedupe:
+              type: object
+              properties:
+                matches:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                      similarity_score:
+                        type: number
+                      match_type:
+                        type: string
+                      data:
+                        type: object
+                suggested_action:
+                  type: string
+                  enum:
+                    - create_new
+                    - merge_with
+                    - review
+                canonical_id:
+                  type: [string, "null"]
+            validations:
+              type: object
+              properties:
+                email:
+                  type: object
+                  properties:
+                    valid:
+                      type: boolean
+                      description: Whether the validation passed
+                    reason_codes:
+                      type: array
+                      items:
+                        type: string
+                      description: List of reason codes
+                    disposable:
+                      type: boolean
+                      description: Whether the result is disposable (for email)
+                phone:
+                  type: object
+                  properties:
+                    valid:
+                      type: boolean
+                      description: Whether the validation passed
+                    reason_codes:
+                      type: array
+                      items:
+                        type: string
+                      description: List of reason codes
+                    disposable:
+                      type: boolean
+                      description: Whether the result is disposable (for email)
+                address:
+                  type: object
+                  properties:
+                    valid:
+                      type: boolean
+                      description: Whether the address is valid
+                    reason_codes:
+                      type: array
+                      items:
+                        type: string
+                      description: List of reason codes
+                    po_box:
+                      type: boolean
+                      description: Whether the address is a P.O. Box
+                    postal_city_match:
+                      type: boolean
+                      description: Whether postal code matches city
+                    in_bounds:
+                      type: boolean
+                      description: Whether the address is within bounds
+            request_id:
+              type: string
+  '400':
+    description: Validation error
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            error:
+              type: object
+              properties:
+                code:
+                  type: string
+                  description: Error code
+                message:
+                  type: string
+                  description: Error message
+            request_id:
+              type: string
+              description: Request identifier

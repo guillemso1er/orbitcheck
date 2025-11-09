@@ -1,0 +1,14 @@
+type: object
+properties:
+  error:
+    type: object
+    properties:
+      code:
+        type: string
+        description: Error code
+      message:
+        type: string
+        description: Error message
+  request_id:
+    type: string
+    description: Request identifier

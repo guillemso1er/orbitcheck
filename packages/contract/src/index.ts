@@ -12,8 +12,6 @@ export { beforeRequest } from './hooks/beforeRequest.js';
 
 // Export the OpenAPI types
 export type * from './openapi-types.js';
-
-// Export route constants from src
+// Export route constants from dist
 export * from '../dist/routes.js';
-
 

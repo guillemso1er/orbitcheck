@@ -1,0 +1,46 @@
+type: object
+properties:
+  id:
+    type: string
+    description: Token ID
+  token_id:
+    type: string
+    description: Public token identifier (last 4 chars shown)
+  name:
+    type: string
+    description: Token name
+  scopes:
+    type: array
+    items:
+      type: string
+    description: Access scopes
+  env:
+    type: string
+    enum: [test, live]
+    description: Environment
+  last_used_at:
+    type: [string, "null"]
+    format: date-time
+    description: Last usage timestamp
+  last_used_ip:
+    type: [string, "null"]
+    description: Last usage IP
+  expires_at:
+    type: [string, "null"]
+    format: date-time
+    description: Expiration date
+  disabled:
+    type: boolean
+    description: Whether token is disabled
+  created_at:
+    type: string
+    format: date-time
+    description: Creation timestamp
+required:
+  - id
+  - token_id
+  - name
+  - scopes
+  - env
+  - disabled
+  - created_at

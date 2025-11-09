@@ -1,0 +1,29 @@
+type: object
+properties:
+  id:
+    type: string
+    description: Webhook ID
+  url:
+    type: string
+    format: uri
+    description: Webhook URL
+  events:
+    type: array
+    items:
+      type: string
+    description: Events this webhook is subscribed to
+  status:
+    type: string
+    enum:
+      - active
+      - inactive
+      - deleted
+    description: Webhook status
+  created_at:
+    type: string
+    format: date-time
+    description: Creation timestamp
+  last_fired_at:
+    type: [string, "null"]
+    format: date-time
+    description: Last time webhook was fired

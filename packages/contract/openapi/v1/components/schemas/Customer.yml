@@ -1,0 +1,14 @@
+type: object
+properties:
+  email:
+    type: string
+    description: Customer email
+  phone:
+    type: string
+    description: Customer phone
+  first_name:
+    type: string
+    description: Customer first name
+  last_name:
+    type: string
+    description: Customer last name

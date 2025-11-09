@@ -1,0 +1,17 @@
+type: object
+properties:
+  id:
+    type: string
+    description: Rule ID
+  name:
+    type: string
+    description: Rule name
+  description:
+    type: string
+    description: Rule description
+  category:
+    type: string
+    description: Rule category
+  enabled:
+    type: boolean
+    description: Whether the rule is enabled

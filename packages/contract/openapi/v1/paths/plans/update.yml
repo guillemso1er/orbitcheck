@@ -1,0 +1,55 @@
+tags:
+  - UI Endpoints
+summary: Update user plan
+description: Updates the user's subscription plan
+operationId: updateUserPlan
+security:
+  - BearerAuth: []
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        required:
+          - planSlug
+        properties:
+          planSlug:
+            type: string
+            enum:
+              - free
+              - starter
+              - growth
+              - scale
+              - enterprise
+            description: Plan slug to update to
+          trialDays:
+            type: [integer, "null"]
+            minimum: 1
+            maximum: 30
+            description: Days for trial period (optional)
+responses:
+  '200':
+    description: Plan updated successfully
+    content:
+      application/json:
+        schema:
+          $ref: '../../components/schemas/UserPlanResponse.yml'
+  '400':
+    description: Invalid plan slug
+    content:
+      application/json:
+        schema:
+          $ref: '../../components/schemas/ValidationError.yml'
+  '401':
+    description: Unauthorized
+    content:
+      application/json:
+        schema:
+          $ref: '../../components/schemas/UnauthorizedError.yml'
+  '500':
+    description: Internal server error
+    content:
+      application/json:
+        schema:
+          $ref: '../../components/schemas/ServerError.yml'

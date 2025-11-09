@@ -1,0 +1,12 @@
+type: object
+properties:
+  error:
+    type: object
+    properties:
+      code:
+        type: string
+        enum:
+          - INTERNAL_SERVER_ERROR
+      message:
+        type: string
+        description: Error message

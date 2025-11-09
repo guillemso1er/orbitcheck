@@ -1,0 +1,46 @@
+tags:
+  - Management API
+summary: Erase user data
+description: Initiates data erasure for GDPR/CCPA compliance
+operationId: eraseData
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        required:
+          - reason
+        properties:
+          reason:
+            type: string
+            description: Reason for data erasure (gdpr/ccpa)
+            enum:
+              - gdpr
+              - ccpa
+responses:
+  '202':
+    description: Data erasure initiated
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            message:
+              type: string
+              description: Confirmation message
+            request_id:
+              type: string
+              description: Request identifier
+  '400':
+    description: Invalid input data
+    content:
+      application/json:
+        schema:
+          $ref: '../../components/schemas/Error.yml'
+  '401':
+    description: Unauthorized
+    content:
+      application/json:
+        schema:
+          $ref: '../../components/schemas/Error.yml'

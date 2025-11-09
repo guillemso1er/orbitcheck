@@ -1,0 +1,39 @@
+delete:
+  tags:
+    - Management API
+  summary: Delete webhook
+  description: Deletes a webhook subscription
+  operationId: deleteWebhook
+  parameters:
+    - name: id
+      in: path
+      required: true
+      description: ID of the webhook to delete
+      schema:
+        type: string
+  responses:
+    '200':
+      description: Webhook deleted successfully
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+              status:
+                type: string
+              request_id:
+                type: string
+    '401':
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: '../../components/schemas/Error.yml'
+    '404':
+      description: Webhook not found
+      content:
+        application/json:
+          schema:
+            $ref: '../../components/schemas/Error.yml'

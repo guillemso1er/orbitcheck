@@ -1,0 +1,32 @@
+tags:
+  - Management API
+summary: Create Stripe Checkout session
+description: Creates a Stripe Checkout session with base plan and usage-based line items
+operationId: createCheckoutSession
+responses:
+  '200':
+    description: Checkout session created
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            session_url:
+              type: string
+              format: uri
+            session_id:
+              type: string
+            request_id:
+              type: string
+  '401':
+    description: Unauthorized
+    content:
+      application/json:
+        schema:
+          $ref: '../../components/schemas/Error.yml'
+  '429':
+    description: Rate limit exceeded
+    content:
+      application/json:
+        schema:
+          $ref: '../../components/schemas/Error.yml'

@@ -1,0 +1,33 @@
+tags:
+  - Management API
+summary: Get tenant settings
+description: >
+  Retrieves tenant settings including country defaults, formatting, and
+  risk thresholds
+operationId: getSettings
+responses:
+  '200':
+    description: Tenant settings
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            country_defaults:
+              type: object
+              description: Country-specific default settings
+            formatting:
+              type: object
+              description: Formatting preferences
+            risk_thresholds:
+              type: object
+              description: Risk assessment thresholds
+            request_id:
+              type: string
+              description: Request identifier
+  '401':
+    description: Unauthorized
+    content:
+      application/json:
+        schema:
+          $ref: '../../components/schemas/Error.yml'

@@ -1,0 +1,35 @@
+tags:
+  - Management API
+summary: Get error code catalog
+description: Retrieves a catalog of all possible error codes and their descriptions
+operationId: getErrorCodeCatalog
+responses:
+  '200':
+    description: Error code catalog
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            error_codes:
+              type: array
+              items:
+                type: object
+                properties:
+                  code:
+                    type: string
+                    description: Error code
+                  description:
+                    type: string
+                    description: Error description
+                  category:
+                    type: string
+                    description: Error category
+            request_id:
+              type: string
+  '401':
+    description: Unauthorized
+    content:
+      application/json:
+        schema:
+          $ref: '../../components/schemas/Error.yml'

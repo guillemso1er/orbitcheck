@@ -1,0 +1,19 @@
+type: object
+properties:
+  page:
+    type: integer
+    description: Current page number
+  limit:
+    type: integer
+    description: Number of items per page
+  total:
+    type: integer
+    description: Total number of items
+  total_pages:
+    type: integer
+    description: Total number of pages
+required:
+  - page
+  - limit
+  - total
+  - total_pages

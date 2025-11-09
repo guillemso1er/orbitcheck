@@ -21,14 +21,19 @@
     "typecheck": "pnpm -r typecheck",
     "lint": "pnpm -r lint",
     "test": "pnpm -r test",
-    "build": "pnpm -r build",
-    "e2e": "pnpm --filter @orbitcheck/dashboard exec playwright test"
+    "e2e": "pnpm --filter @orbitcheck/dashboard exec playwright test",
+    "openapi-ts": "openapi-ts",
+    "build": "turbo run build",
+    "dev": "turbo run dev --parallel",
+    "gen": "turbo run gen"
   },
   "devDependencies": {
+    "@hey-api/openapi-ts": "0.87.1",
     "@types/adm-zip": "^0.5.7",
     "adm-zip": "^0.5.16",
     "dotenv": "^17.2.2",
     "ts-node-dev": "2.0.0",
+    "turbo": "^2.6.0",
     "typescript": "5.9.2"
   },
   "dependencies": {

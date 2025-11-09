@@ -1,0 +1,40 @@
+tags:
+  - Management API
+summary: Revoke API key
+description: Revokes an API key by setting its status to revoked
+operationId: revokeApiKey
+parameters:
+  - name: id
+    in: path
+    required: true
+    description: ID of the API key to revoke
+    schema:
+      type: string
+responses:
+  '200':
+    description: API key revoked successfully
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            id:
+              type: string
+              description: API key ID
+            status:
+              type: string
+              description: API key status
+            request_id:
+              type: string
+  '401':
+    description: Unauthorized
+    content:
+      application/json:
+        schema:
+          $ref: '../../components/schemas/Error.yml'
+  '404':
+    description: API key not found
+    content:
+      application/json:
+        schema:
+          $ref: '../../components/schemas/Error.yml'

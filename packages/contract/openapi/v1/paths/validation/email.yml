@@ -1,0 +1,40 @@
+tags:
+  - Runtime API
+summary: Validate email
+description: Validates an email address
+operationId: validateEmail
+security:
+  - ApiKeyAuth: []
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        required:
+          - email
+        properties:
+          email:
+            type: string
+            description: Email address to validate
+responses:
+  '200':
+    description: Email validation result
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            valid:
+              type: boolean
+              description: Whether the email is valid
+            disposable:
+              type: boolean
+              description: Whether the email is disposable
+            reason_codes:
+              type: array
+              items:
+                type: string
+              description: List of reason codes
+            request_id:
+              type: string

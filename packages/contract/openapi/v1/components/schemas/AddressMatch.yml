@@ -1,0 +1,17 @@
+type: object
+properties:
+  id:
+    type: string
+    description: Customer ID
+  similarity_score:
+    type: number
+    description: Similarity score (0-1)
+  match_type:
+    type: string
+    enum:
+      - exact_email
+      - exact_phone
+      - fuzzy_name
+    description: Type of match
+  data:
+    $ref: 'Customer.yml'

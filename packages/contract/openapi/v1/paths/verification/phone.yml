@@ -1,0 +1,58 @@
+tags:
+  - Runtime API
+summary: Verify phone OTP
+description: Verifies OTP sent to phone number
+operationId: verifyPhoneOtp
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        required:
+          - verification_sid
+          - code
+        properties:
+          verification_sid:
+            type: string
+            description: Twilio Verify SID from validation response
+          code:
+            type: string
+            description: OTP code entered by user
+responses:
+  '200':
+    description: OTP verification result
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            valid:
+              type: boolean
+              description: Whether OTP is valid
+            reason_codes:
+              type: array
+              items:
+                type: string
+              description: List of reason codes
+            request_id:
+              type: string
+  '400':
+    description: Invalid OTP
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            error:
+              type: object
+              properties:
+                code:
+                  type: string
+                  description: Error code
+                message:
+                  type: string
+                  description: Error message
+            request_id:
+              type: string
+              description: Request identifier

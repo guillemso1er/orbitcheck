@@ -1,0 +1,18 @@
+type: object
+properties:
+  code:
+    type: string
+    description: Reason code
+  description:
+    type: string
+    description: Description of the reason code
+  category:
+    type: string
+    description: Category of the reason code
+  severity:
+    type: string
+    enum:
+      - low
+      - medium
+      - high
+    description: Severity level

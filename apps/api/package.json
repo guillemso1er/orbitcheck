@@ -17,7 +17,8 @@
     "scripts": {
         "dev": "cross-env NODE_ENV=development tsx watch src/server.ts",
         "infra": "podman compose -f ../../infra/compose/local.compose.yml up -d",
-        "build": "tsc -p tsconfig.json",
+        "gen" : "openapi-ts",
+        "build": "pnpm gen && tsc -p tsconfig.json",
         "typecheck": "tsc -p tsconfig.json --noEmit",
         "start": "cross-env NODE_ENV=production NODE_OPTIONS=--enable-source-maps node dist/server.js",
         "migrate:local": "node-pg-migrate -m ./migrations --envPath .env.local up",

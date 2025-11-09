@@ -1,0 +1,12 @@
+type: object
+properties:
+  error:
+    type: object
+    properties:
+      code:
+        type: string
+        enum:
+          - NOT_FOUND
+      message:
+        type: string
+        description: Error message

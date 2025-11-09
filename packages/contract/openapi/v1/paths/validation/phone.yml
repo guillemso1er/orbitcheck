@@ -1,0 +1,37 @@
+tags:
+  - Runtime API
+summary: Validate phone
+description: Validates a phone number
+operationId: validatePhone
+security:
+  - ApiKeyAuth: []
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        required:
+          - phone
+        properties:
+          phone:
+            type: string
+            description: Phone number to validate
+responses:
+  '200':
+    description: Phone validation result
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            valid:
+              type: boolean
+              description: Whether the phone is valid
+            reason_codes:
+              type: array
+              items:
+                type: string
+              description: List of reason codes
+            request_id:
+              type: string

@@ -1,0 +1,16 @@
+{
+  "pipeline": {
+    "build": {
+      "dependsOn": ["^build"],
+      "outputs": ["dist/**", "generated/**"]
+    },
+    "gen": {
+      "dependsOn": ["^build"],
+      "outputs": ["**/src/generated/**"],
+      "cache": false
+    },
+    "dev": {
+      "cache": false
+    }
+  }
+}

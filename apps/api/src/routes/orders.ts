@@ -1,8 +1,8 @@
 import { API_V1_ROUTES } from "@orbitcheck/contracts";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import type { Redis } from "ioredis";
-import type { Pool } from "pg";
 import crypto from "node:crypto";
+import type { Pool } from "pg";
 
 import { dedupeAddress, dedupeCustomer } from "../dedupe.js";
 import { HTTP_STATUS } from "../errors.js";
@@ -11,10 +11,10 @@ import { DEDUPE_ACTIONS, HIGH_VALUE_THRESHOLD, ORDER_ACTIONS, ORDER_TAGS, PAYMEN
 import { validateAddress } from "../validators/address.js";
 import { validateEmail } from "../validators/email.js";
 import { validatePhone } from "../validators/phone.js";
-import { API_V1_SECURITY, generateRequestId, rateLimitResponse, runtimeSecurityHeader as securityHeader, sendServerError, unauthorizedResponse, validationErrorResponse } from "./utils.js";
 import { getBuiltInRules } from "./rules/rules.constants.js";
 import { validatePayload } from "./rules/rules.validation.js";
 import { RiskScoreCalculator, RuleEvaluator } from "./rules/test-rules.js";
+import { generateRequestId, rateLimitResponse, runtimeSecurityHeader as securityHeader, sendServerError, unauthorizedResponse, validationErrorResponse } from "./utils.js";
 
 
 /**
@@ -187,7 +187,7 @@ export function registerOrderRoutes(app: FastifyInstance, pool: Pool, redis: Red
         try {
             const body = request.body as any;
             let project_id = (request as any).project_id;
-            
+
             // FIX: If project_id is not set (e.g., in test environment with PAT auth),
             // get it from the database using the project associated with the user
             if (!project_id && (request as any).user_id) {
@@ -211,7 +211,7 @@ export function registerOrderRoutes(app: FastifyInstance, pool: Pool, redis: Red
                     });
                 }
             }
-            
+
             if (!project_id) {
                 return rep.status(HTTP_STATUS.UNAUTHORIZED).send({
                     error: {
@@ -221,7 +221,7 @@ export function registerOrderRoutes(app: FastifyInstance, pool: Pool, redis: Red
                     request_id
                 });
             }
-            
+
             const reason_codes: string[] = [];
             const tags: string[] = [];
             let risk_score = 0;
@@ -547,9 +547,7 @@ export function registerOrderRoutes(app: FastifyInstance, pool: Pool, redis: Red
                 action = action === ORDER_ACTIONS.BLOCK ? ORDER_ACTIONS.BLOCK : ORDER_ACTIONS.HOLD;
             }
 
-            // Create customer and address records for future deduplication
-            let customerId: string | null = null;
-            let addressId: string | null = null;
+
 
             // Create customer record if it doesn't exist
             if (customer && customer.email) {
@@ -557,15 +555,12 @@ export function registerOrderRoutes(app: FastifyInstance, pool: Pool, redis: Red
                     'SELECT id FROM customers WHERE project_id = $1 AND normalized_email = $2',
                     [project_id, (await import('../utils.js')).normalizeEmail(customer.email)]
                 );
-                
+
                 if (existingCustomer.length === 0) {
-                    const { rows: newCustomer } = await pool.query(
+                    await pool.query(
                         'INSERT INTO customers (project_id, email, phone, first_name, last_name) VALUES ($1, $2, $3, $4, $5) RETURNING id',
                         [project_id, customer.email, customer.phone, customer.first_name, customer.last_name]
                     );
-                    customerId = newCustomer[0].id;
-                } else {
-                    customerId = existingCustomer[0].id;
                 }
             }
 
@@ -576,15 +571,12 @@ export function registerOrderRoutes(app: FastifyInstance, pool: Pool, redis: Red
                     'SELECT id FROM addresses WHERE project_id = $1 AND address_hash = $2',
                     [project_id, addrHash]
                 );
-                
+
                 if (existingAddress.length === 0) {
-                    const { rows: newAddress } = await pool.query(
+                    await pool.query(
                         'INSERT INTO addresses (project_id, line1, line2, city, state, postal_code, country, address_hash) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id',
                         [project_id, normAddr.line1, normAddr.line2, normAddr.city, normAddr.state, normAddr.postal_code, normAddr.country, addrHash]
                     );
-                    addressId = newAddress[0].id;
-                } else {
-                    addressId = existingAddress[0].id;
                 }
             }
 

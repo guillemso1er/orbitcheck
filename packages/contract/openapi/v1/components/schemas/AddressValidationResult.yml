@@ -1,0 +1,19 @@
+type: object
+properties:
+  valid:
+    type: boolean
+    description: Whether the address is valid
+  reason_codes:
+    type: array
+    items:
+      type: string
+    description: List of reason codes
+  po_box:
+    type: boolean
+    description: Whether the address is a P.O. Box
+  postal_city_match:
+    type: boolean
+    description: Whether postal code matches city
+  in_bounds:
+    type: boolean
+    description: Whether the address is within bounds

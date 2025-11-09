@@ -1,0 +1,26 @@
+type: object
+properties:
+  id:
+    type: string
+    description: Log entry ID
+  type:
+    type: string
+    description: Log entry type
+  endpoint:
+    type: string
+    description: API endpoint
+  reason_codes:
+    type: array
+    items:
+      type: string
+    description: List of reason codes
+  status:
+    type: integer
+    description: HTTP status code
+  meta:
+    type: object
+    description: Additional metadata
+  created_at:
+    type: string
+    format: date-time
+    description: Creation timestamp

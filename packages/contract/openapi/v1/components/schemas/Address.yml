@@ -1,0 +1,26 @@
+type: object
+properties:
+  line1:
+    type: string
+    description: Street address line 1
+  line2:
+    type: string
+    description: Street address line 2
+  city:
+    type: string
+    description: City
+  state:
+    type: string
+    description: State or province
+  postal_code:
+    type: string
+    description: Postal code
+  country:
+    type: string
+    description: Two-letter country code
+  lat:
+    type: [number, "null"]
+    description: Latitude
+  lng:
+    type: [number, "null"]
+    description: Longitude

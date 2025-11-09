@@ -1,0 +1,63 @@
+tags:
+  - Management API
+summary: Get usage statistics
+description: Retrieves usage statistics for the project
+operationId: getUsage
+responses:
+  '200':
+    description: Usage statistics
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            period:
+              type: string
+              example: month
+              description: Time period
+            totals:
+              type: object
+              properties:
+                validations:
+                  type: integer
+                  description: Total validations
+                orders:
+                  type: integer
+                  description: Total orders
+            by_day:
+              type: array
+              items:
+                type: object
+                properties:
+                  date:
+                    type: string
+                    format: date
+                    description: Date
+                  validations:
+                    type: integer
+                    description: Validations for this day
+                  orders:
+                    type: integer
+                    description: Orders for this day
+            top_reason_codes:
+              type: array
+              items:
+                type: object
+                properties:
+                  code:
+                    type: string
+                    description: Reason code
+                  count:
+                    type: integer
+                    description: Count
+            cache_hit_ratio:
+              type: number
+              description: Cache hit ratio percentage
+            request_id:
+              type: string
+  '401':
+    description: Unauthorized
+    content:
+      application/json:
+        schema:
+          $ref: '../../components/schemas/Error.yml'

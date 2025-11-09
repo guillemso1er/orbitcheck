@@ -1,0 +1,13 @@
+type: object
+properties:
+  error:
+    type: object
+    properties:
+      code:
+        type: string
+        enum:
+          - INVALID_INPUT
+          - INVALID_PLAN
+      message:
+        type: string
+        description: Error message

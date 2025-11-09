@@ -1,0 +1,121 @@
+tags:
+  - Runtime API
+summary: Deduplicate address
+description: Searches for existing addresses using deterministic and fuzzy matching
+operationId: dedupeAddress
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        required:
+          - line1
+          - city
+          - postal_code
+          - country
+        properties:
+          line1:
+            type: string
+            description: Street address line 1
+          line2:
+            type: string
+            description: Street address line 2
+          city:
+            type: string
+            description: City
+          state:
+            type: string
+            description: State or province
+          postal_code:
+            type: string
+            description: Postal code
+          country:
+            type: string
+            minLength: 2
+            maxLength: 2
+            description: Two-letter country code
+responses:
+  '200':
+    description: Deduplication results
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            matches:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    description: Address ID
+                  similarity_score:
+                    type: number
+                    description: Similarity score (0-1)
+                  match_type:
+                    type: string
+                    enum:
+                      - exact_address
+                      - exact_postal
+                      - fuzzy_address
+                    description: Type of match
+                  data:
+                    type: object
+                    properties:
+                      line1:
+                        type: string
+                        description: Street address line 1
+                      line2:
+                        type: string
+                        description: Street address line 2
+                      city:
+                        type: string
+                        description: City
+                      state:
+                        type: string
+                        description: State or province
+                      postal_code:
+                        type: string
+                        description: Postal code
+                      country:
+                        type: string
+                        description: Two-letter country code
+                      lat:
+                        type: [number, "null"]
+                        description: Latitude
+                      lng:
+                        type: [number, "null"]
+                        description: Longitude
+            suggested_action:
+              type: string
+              enum:
+                - create_new
+                - merge_with
+                - review
+              description: Suggested action
+            canonical_id:
+              type: [string, "null"]
+              description: Suggested canonical ID
+            request_id:
+              type: string
+  '400':
+    description: Validation error
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            error:
+              type: object
+              properties:
+                code:
+                  type: string
+                  description: Error code
+                message:
+                  type: string
+                  description: Error message
+            request_id:
+              type: string
+              description: Request identifier

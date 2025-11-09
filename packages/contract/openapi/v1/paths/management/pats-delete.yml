@@ -1,0 +1,43 @@
+tags:
+  - Management API
+summary: Revoke Personal Access Token
+description: Revokes a personal access token by disabling it
+operationId: revokePersonalAccessToken
+parameters:
+  - name: token_id
+    in: path
+    required: true
+    description: Token ID to revoke
+    schema:
+      type: string
+responses:
+  '200':
+    description: Personal access token revoked successfully
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            id:
+              type: string
+              description: Token ID
+            token_id:
+              type: string
+              description: Token identifier
+            disabled:
+              type: boolean
+              description: Whether token is disabled
+            request_id:
+              type: string
+  '401':
+    description: Unauthorized
+    content:
+      application/json:
+        schema:
+          $ref: '../../components/schemas/Error.yml'
+  '404':
+    description: Personal access token not found
+    content:
+      application/json:
+        schema:
+          $ref: '../../components/schemas/Error.yml'
