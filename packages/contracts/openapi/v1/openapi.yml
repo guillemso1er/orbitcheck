@@ -32,11 +32,14 @@ tags:
 paths:
   # Authentication paths
   /auth/login:
-    $ref: './paths/auth/login.yml'
+    post:
+      $ref: './paths/auth/login.yml'
   /auth/register:
-    $ref: './paths/auth/register.yml'
+    post:
+      $ref: './paths/auth/register.yml'
   /auth/logout:
-    $ref: './paths/auth/logout.yml'
+    post:
+      $ref: './paths/auth/logout.yml'
   
   # API Keys paths
   /v1/api-keys:

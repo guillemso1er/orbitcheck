@@ -17,146 +17,6 @@ import { createPat, parsePat } from "./pats.js";
 // PAT pepper constant (same as in pats.ts)
 const PAT_PEPPER = process.env.PAT_PEPPER || '';
 
-// Enum for authentication methods
-enum AuthMethod {
-    SESSION = 'session',
-    PAT = 'pat',
-    API_KEY = 'api_key',
-    HMAC = 'hmac',
-    NONE = 'none'
-}
-
-
-
-export async function verifyAPIKey<TServer extends RawServerBase = RawServerBase>(request: FastifyRequest<RouteGenericInterface, TServer>, _rep: FastifyReply<RouteGenericInterface, TServer>, pool: Pool): Promise<boolean> {
-    const header = request.headers["authorization"];
-    if (!header || !header.startsWith("Bearer ")) {
-        request.log.info('No Bearer header for API key auth');
-        return false;
-    }
-
-    const key = header.slice(7).trim();
-    const prefix = key.slice(0, API_KEY_PREFIX_LENGTH);
-
-    // Compute SHA-256 hash for secure storage and comparison
-    const keyHash = crypto.createHash(HASH_ALGORITHM).update(key).digest('hex');
-
-    // Query for active key matching full hash and prefix
-    const { rows } = await pool.query(
-        "select id, project_id from api_keys where hash=$1 and prefix=$2 and status=$3",
-        [keyHash, prefix, STATUS.ACTIVE]
-    );
-
-    if (rows.length === 0) {
-        request.log.info('Invalid API key provided');
-        return false;
-    }
-
-    // Update usage timestamp for auditing and analytics
-    await pool.query(
-        "UPDATE api_keys SET last_used_at = now() WHERE id = $1",
-        [rows[0].id]
-    );
-
-    // Attach project_id to request for downstream route access
-    (request as any).project_id = rows[0].project_id;
-    return true;
-}
-
-// Refactored HMAC verification (extracted from auth function)
-export async function verifyHMAC<TServer extends RawServerBase = RawServerBase>(request: FastifyRequest<RouteGenericInterface, TServer>, rep: FastifyReply<RouteGenericInterface, TServer>, pool: Pool): Promise<boolean> {
-    const header = request.headers.authorization || '';
-    if (!header.startsWith('HMAC ')) {
-        request.log.info('No HMAC header provided');
-        return false;
-    }
-
-    const params = new URLSearchParams(header.slice(5).trim());
-    const keyId = params.get('keyId');
-    const signature = params.get('signature');
-    const ts = params.get('ts');
-    const nonce = params.get('nonce');
-
-    if (!keyId || !signature || !ts || !nonce) {
-        request.log.info('Missing HMAC parameters');
-        return false;
-    }
-
-    // Check ts is recent (within 5 minutes)
-    const now = Date.now();
-    const requestTs = parseInt(ts);
-    if (Math.abs(now - requestTs) > HMAC_VALIDITY_MINUTES * 60 * 1000) {
-        request.log.info('HMAC ts too old');
-        return false;
-    }
-
-    // Query for active key by prefix
-    const { rows } = await pool.query(
-        "select id, project_id, encrypted_key from api_keys where prefix=$1 and status=$2",
-        [keyId, STATUS.ACTIVE]
-    );
-
-    if (rows.length === 0) {
-        request.log.info('No active API key found for HMAC keyId');
-        return false;
-    }
-
-    // Decrypt the full key
-    const encryptedWithIv = rows[0].encrypted_key;
-    const [ivHex, encrypted] = encryptedWithIv.split(':');
-    const iv = Buffer.from(ivHex, ENCODING_HEX);
-    const decipher = crypto.createDecipheriv(
-        ENCRYPTION_ALGORITHM,
-        Buffer.from(environment.ENCRYPTION_KEY, ENCODING_HEX),
-        iv
-    );
-    let decrypted = decipher.update(encrypted, ENCODING_HEX, ENCODING_UTF8);
-    decrypted += decipher.final(ENCODING_UTF8);
-    const fullKey = decrypted;
-
-    const message = request.method.toUpperCase() + request.url + ts + nonce;
-
-    const expectedSignature = crypto
-        .createHmac('sha256', fullKey)
-        .update(message, 'utf8')
-        .digest('hex');
-
-    // timing-safe compare
-    const ok =
-        signature.length === expectedSignature.length &&
-        crypto.timingSafeEqual(
-            Buffer.from(signature, 'hex'),
-            Buffer.from(expectedSignature, 'hex')
-        );
-
-    if (!ok) {
-        request.log.info('HMAC signature mismatch');
-        rep.status(HTTP_STATUS.UNAUTHORIZED).send({
-            error: {
-                code: ERROR_CODES.UNAUTHORIZED,
-                message: 'Invalid HMAC signature'
-            }
-        });
-        return false;
-    }
-
-    request.log.info('HMAC signature verified');
-
-    // Update usage timestamp
-    await pool.query(
-        "UPDATE api_keys SET last_used_at = now() WHERE id = $1",
-        [rows[0].id]
-    );
-
-    // Attach project_id
-    (request as any).project_id = rows[0].project_id;
-    return true;
-}
-
-
-
-
-
 export async function registerUser(
     request: FastifyRequest<{ Body: RegisterUserData['body'] }>,
     rep: FastifyReply,
@@ -317,6 +177,132 @@ export async function verifySession<TServer extends RawServerBase = RawServerBas
     } catch (error) {
         throw { status: HTTP_STATUS.FORBIDDEN, error: { code: ERROR_CODES.NO_PROJECT, message: ERROR_MESSAGES[ERROR_CODES.NO_PROJECT] } };
     }
+}
+
+
+export async function verifyAPIKey<TServer extends RawServerBase = RawServerBase>(request: FastifyRequest<RouteGenericInterface, TServer>, _rep: FastifyReply<RouteGenericInterface, TServer>, pool: Pool): Promise<boolean> {
+    const header = request.headers["authorization"];
+    if (!header || !header.startsWith("Bearer ")) {
+        request.log.info('No Bearer header for API key auth');
+        return false;
+    }
+
+    const key = header.slice(7).trim();
+    const prefix = key.slice(0, API_KEY_PREFIX_LENGTH);
+
+    // Compute SHA-256 hash for secure storage and comparison
+    const keyHash = crypto.createHash(HASH_ALGORITHM).update(key).digest('hex');
+
+    // Query for active key matching full hash and prefix
+    const { rows } = await pool.query(
+        "select id, project_id from api_keys where hash=$1 and prefix=$2 and status=$3",
+        [keyHash, prefix, STATUS.ACTIVE]
+    );
+
+    if (rows.length === 0) {
+        request.log.info('Invalid API key provided');
+        return false;
+    }
+
+    // Update usage timestamp for auditing and analytics
+    await pool.query(
+        "UPDATE api_keys SET last_used_at = now() WHERE id = $1",
+        [rows[0].id]
+    );
+
+    // Attach project_id to request for downstream route access
+    (request as any).project_id = rows[0].project_id;
+    return true;
+}
+
+// Refactored HMAC verification (extracted from auth function)
+export async function verifyHMAC<TServer extends RawServerBase = RawServerBase>(request: FastifyRequest<RouteGenericInterface, TServer>, rep: FastifyReply<RouteGenericInterface, TServer>, pool: Pool): Promise<boolean> {
+    const header = request.headers.authorization || '';
+    if (!header.startsWith('HMAC ')) {
+        request.log.info('No HMAC header provided');
+        return false;
+    }
+
+    const params = new URLSearchParams(header.slice(5).trim());
+    const keyId = params.get('keyId');
+    const signature = params.get('signature');
+    const ts = params.get('ts');
+    const nonce = params.get('nonce');
+
+    if (!keyId || !signature || !ts || !nonce) {
+        request.log.info('Missing HMAC parameters');
+        return false;
+    }
+
+    // Check ts is recent (within 5 minutes)
+    const now = Date.now();
+    const requestTs = parseInt(ts);
+    if (Math.abs(now - requestTs) > HMAC_VALIDITY_MINUTES * 60 * 1000) {
+        request.log.info('HMAC ts too old');
+        return false;
+    }
+
+    // Query for active key by prefix
+    const { rows } = await pool.query(
+        "select id, project_id, encrypted_key from api_keys where prefix=$1 and status=$2",
+        [keyId, STATUS.ACTIVE]
+    );
+
+    if (rows.length === 0) {
+        request.log.info('No active API key found for HMAC keyId');
+        return false;
+    }
+
+    // Decrypt the full key
+    const encryptedWithIv = rows[0].encrypted_key;
+    const [ivHex, encrypted] = encryptedWithIv.split(':');
+    const iv = Buffer.from(ivHex, ENCODING_HEX);
+    const decipher = crypto.createDecipheriv(
+        ENCRYPTION_ALGORITHM,
+        Buffer.from(environment.ENCRYPTION_KEY, ENCODING_HEX),
+        iv
+    );
+    let decrypted = decipher.update(encrypted, ENCODING_HEX, ENCODING_UTF8);
+    decrypted += decipher.final(ENCODING_UTF8);
+    const fullKey = decrypted;
+
+    const message = request.method.toUpperCase() + request.url + ts + nonce;
+
+    const expectedSignature = crypto
+        .createHmac('sha256', fullKey)
+        .update(message, 'utf8')
+        .digest('hex');
+
+    // timing-safe compare
+    const ok =
+        signature.length === expectedSignature.length &&
+        crypto.timingSafeEqual(
+            Buffer.from(signature, 'hex'),
+            Buffer.from(expectedSignature, 'hex')
+        );
+
+    if (!ok) {
+        request.log.info('HMAC signature mismatch');
+        rep.status(HTTP_STATUS.UNAUTHORIZED).send({
+            error: {
+                code: ERROR_CODES.UNAUTHORIZED,
+                message: 'Invalid HMAC signature'
+            }
+        });
+        return false;
+    }
+
+    request.log.info('HMAC signature verified');
+
+    // Update usage timestamp
+    await pool.query(
+        "UPDATE api_keys SET last_used_at = now() WHERE id = $1",
+        [rows[0].id]
+    );
+
+    // Attach project_id
+    (request as any).project_id = rows[0].project_id;
+    return true;
 }
 
 /**

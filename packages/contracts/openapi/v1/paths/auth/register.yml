@@ -4,6 +4,7 @@ tags:
 summary: Register new user
 description: Creates a new user account with default project and API key
 operationId: registerUser
+security: []
 requestBody:
   required: true
   content:

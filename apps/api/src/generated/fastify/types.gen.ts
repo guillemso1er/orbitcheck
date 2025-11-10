@@ -2621,6 +2621,23 @@ export type EvaluateOrderResponses = {
                 in_bounds?: boolean;
             };
         };
+        rules_evaluation?: {
+            triggered_rules?: Array<{
+                rule_id?: string;
+                rule_name?: string;
+                description?: string;
+                action?: 'approve' | 'hold' | 'block';
+                confidence_score?: number;
+                reason?: string;
+            }>;
+            final_decision?: {
+                action?: 'approve' | 'hold' | 'block' | 'review';
+                confidence?: number;
+                reasons?: Array<string>;
+                risk_score?: number;
+                risk_level?: string;
+            } | null;
+        };
         request_id?: string;
     };
 };

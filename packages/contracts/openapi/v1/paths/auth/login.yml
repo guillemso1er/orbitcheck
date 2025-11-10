@@ -3,6 +3,7 @@ tags:
 summary: User login
 description: Authenticates a user and returns JWT token
 operationId: loginUser
+security: []
 requestBody:
   required: true
   content:

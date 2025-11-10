@@ -25,16 +25,6 @@ export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends 
  */
 export const loginUser = <ThrowOnError extends boolean = false>(options: Options<LoginUserData, ThrowOnError>) => {
     return (options.client ?? client).post<LoginUserResponses, LoginUserErrors, ThrowOnError>({
-        security: [
-            {
-                scheme: 'bearer',
-                type: 'http'
-            },
-            {
-                name: 'Authorization',
-                type: 'apiKey'
-            }
-        ],
         url: '/auth/login',
         ...options,
         headers: {
@@ -51,16 +41,6 @@ export const loginUser = <ThrowOnError extends boolean = false>(options: Options
  */
 export const registerUser = <ThrowOnError extends boolean = false>(options: Options<RegisterUserData, ThrowOnError>) => {
     return (options.client ?? client).post<RegisterUserResponses, RegisterUserErrors, ThrowOnError>({
-        security: [
-            {
-                scheme: 'bearer',
-                type: 'http'
-            },
-            {
-                name: 'Authorization',
-                type: 'apiKey'
-            }
-        ],
         url: '/auth/register',
         ...options,
         headers: {
@@ -77,16 +57,6 @@ export const registerUser = <ThrowOnError extends boolean = false>(options: Opti
  */
 export const logoutUser = <ThrowOnError extends boolean = false>(options?: Options<LogoutUserData, ThrowOnError>) => {
     return (options?.client ?? client).post<LogoutUserResponses, LogoutUserErrors, ThrowOnError>({
-        security: [
-            {
-                scheme: 'bearer',
-                type: 'http'
-            },
-            {
-                name: 'Authorization',
-                type: 'apiKey'
-            }
-        ],
         url: '/auth/logout',
         ...options
     });
@@ -105,7 +75,8 @@ export const listApiKeys = <ThrowOnError extends boolean = false>(options?: Opti
                 type: 'http'
             },
             {
-                name: 'Authorization',
+                in: 'cookie',
+                name: 'sid',
                 type: 'apiKey'
             }
         ],
@@ -127,7 +98,8 @@ export const createApiKey = <ThrowOnError extends boolean = false>(options: Opti
                 type: 'http'
             },
             {
-                name: 'Authorization',
+                in: 'cookie',
+                name: 'sid',
                 type: 'apiKey'
             }
         ],
@@ -153,7 +125,8 @@ export const revokeApiKey = <ThrowOnError extends boolean = false>(options: Opti
                 type: 'http'
             },
             {
-                name: 'Authorization',
+                in: 'cookie',
+                name: 'sid',
                 type: 'apiKey'
             }
         ],
@@ -175,7 +148,8 @@ export const listWebhooks = <ThrowOnError extends boolean = false>(options?: Opt
                 type: 'http'
             },
             {
-                name: 'Authorization',
+                in: 'cookie',
+                name: 'sid',
                 type: 'apiKey'
             }
         ],
@@ -197,7 +171,8 @@ export const createWebhook = <ThrowOnError extends boolean = false>(options: Opt
                 type: 'http'
             },
             {
-                name: 'Authorization',
+                in: 'cookie',
+                name: 'sid',
                 type: 'apiKey'
             }
         ],
@@ -223,7 +198,8 @@ export const deleteWebhook = <ThrowOnError extends boolean = false>(options: Opt
                 type: 'http'
             },
             {
-                name: 'Authorization',
+                in: 'cookie',
+                name: 'sid',
                 type: 'apiKey'
             }
         ],
@@ -245,7 +221,8 @@ export const testWebhook = <ThrowOnError extends boolean = false>(options: Optio
                 type: 'http'
             },
             {
-                name: 'Authorization',
+                in: 'cookie',
+                name: 'sid',
                 type: 'apiKey'
             }
         ],
@@ -271,7 +248,8 @@ export const getAvailableRules = <ThrowOnError extends boolean = false>(options?
                 type: 'http'
             },
             {
-                name: 'Authorization',
+                in: 'cookie',
+                name: 'sid',
                 type: 'apiKey'
             }
         ],
@@ -293,7 +271,8 @@ export const getErrorCodeCatalog = <ThrowOnError extends boolean = false>(option
                 type: 'http'
             },
             {
-                name: 'Authorization',
+                in: 'cookie',
+                name: 'sid',
                 type: 'apiKey'
             }
         ],
@@ -315,7 +294,8 @@ export const getReasonCodeCatalog = <ThrowOnError extends boolean = false>(optio
                 type: 'http'
             },
             {
-                name: 'Authorization',
+                in: 'cookie',
+                name: 'sid',
                 type: 'apiKey'
             }
         ],
@@ -337,7 +317,8 @@ export const testRulesAgainstPayload = <ThrowOnError extends boolean = false>(op
                 type: 'http'
             },
             {
-                name: 'Authorization',
+                in: 'cookie',
+                name: 'sid',
                 type: 'apiKey'
             }
         ],
@@ -363,7 +344,8 @@ export const registerCustomRules = <ThrowOnError extends boolean = false>(option
                 type: 'http'
             },
             {
-                name: 'Authorization',
+                in: 'cookie',
+                name: 'sid',
                 type: 'apiKey'
             }
         ],
@@ -389,7 +371,8 @@ export const deleteCustomRule = <ThrowOnError extends boolean = false>(options: 
                 type: 'http'
             },
             {
-                name: 'Authorization',
+                in: 'cookie',
+                name: 'sid',
                 type: 'apiKey'
             }
         ],
@@ -407,7 +390,15 @@ export const validateEmail = <ThrowOnError extends boolean = false>(options: Opt
     return (options.client ?? client).post<ValidateEmailResponses, ValidateEmailErrors, ThrowOnError>({
         security: [
             {
-                name: 'Authorization',
+                name: 'X-API-Key',
+                type: 'apiKey'
+            },
+            {
+                name: 'Signature-Input',
+                type: 'apiKey'
+            },
+            {
+                name: 'Signature',
                 type: 'apiKey'
             }
         ],
@@ -429,7 +420,15 @@ export const validatePhone = <ThrowOnError extends boolean = false>(options: Opt
     return (options.client ?? client).post<ValidatePhoneResponses, ValidatePhoneErrors, ThrowOnError>({
         security: [
             {
-                name: 'Authorization',
+                name: 'X-API-Key',
+                type: 'apiKey'
+            },
+            {
+                name: 'Signature-Input',
+                type: 'apiKey'
+            },
+            {
+                name: 'Signature',
                 type: 'apiKey'
             }
         ],
@@ -451,7 +450,15 @@ export const validateAddress = <ThrowOnError extends boolean = false>(options: O
     return (options.client ?? client).post<ValidateAddressResponses, ValidateAddressErrors, ThrowOnError>({
         security: [
             {
-                name: 'Authorization',
+                name: 'X-API-Key',
+                type: 'apiKey'
+            },
+            {
+                name: 'Signature-Input',
+                type: 'apiKey'
+            },
+            {
+                name: 'Signature',
                 type: 'apiKey'
             }
         ],
@@ -473,11 +480,15 @@ export const validateTaxId = <ThrowOnError extends boolean = false>(options: Opt
     return (options.client ?? client).post<ValidateTaxIdResponses, ValidateTaxIdErrors, ThrowOnError>({
         security: [
             {
-                scheme: 'bearer',
-                type: 'http'
+                name: 'X-API-Key',
+                type: 'apiKey'
             },
             {
-                name: 'Authorization',
+                name: 'Signature-Input',
+                type: 'apiKey'
+            },
+            {
+                name: 'Signature',
                 type: 'apiKey'
             }
         ],
@@ -499,11 +510,15 @@ export const validateName = <ThrowOnError extends boolean = false>(options: Opti
     return (options.client ?? client).post<ValidateNameResponses, ValidateNameErrors, ThrowOnError>({
         security: [
             {
-                scheme: 'bearer',
-                type: 'http'
+                name: 'X-API-Key',
+                type: 'apiKey'
             },
             {
-                name: 'Authorization',
+                name: 'Signature-Input',
+                type: 'apiKey'
+            },
+            {
+                name: 'Signature',
                 type: 'apiKey'
             }
         ],
@@ -525,11 +540,15 @@ export const evaluateOrder = <ThrowOnError extends boolean = false>(options: Opt
     return (options.client ?? client).post<EvaluateOrderResponses, EvaluateOrderErrors, ThrowOnError>({
         security: [
             {
-                scheme: 'bearer',
-                type: 'http'
+                name: 'X-API-Key',
+                type: 'apiKey'
             },
             {
-                name: 'Authorization',
+                name: 'Signature-Input',
+                type: 'apiKey'
+            },
+            {
+                name: 'Signature',
                 type: 'apiKey'
             }
         ],
@@ -551,11 +570,15 @@ export const verifyPhoneOtp = <ThrowOnError extends boolean = false>(options: Op
     return (options.client ?? client).post<VerifyPhoneOtpResponses, VerifyPhoneOtpErrors, ThrowOnError>({
         security: [
             {
-                scheme: 'bearer',
-                type: 'http'
+                name: 'X-API-Key',
+                type: 'apiKey'
             },
             {
-                name: 'Authorization',
+                name: 'Signature-Input',
+                type: 'apiKey'
+            },
+            {
+                name: 'Signature',
                 type: 'apiKey'
             }
         ],
@@ -581,7 +604,8 @@ export const getLogs = <ThrowOnError extends boolean = false>(options?: Options<
                 type: 'http'
             },
             {
-                name: 'Authorization',
+                in: 'cookie',
+                name: 'sid',
                 type: 'apiKey'
             }
         ],
@@ -603,7 +627,8 @@ export const getUsage = <ThrowOnError extends boolean = false>(options?: Options
                 type: 'http'
             },
             {
-                name: 'Authorization',
+                in: 'cookie',
+                name: 'sid',
                 type: 'apiKey'
             }
         ],
@@ -625,7 +650,8 @@ export const deleteLog = <ThrowOnError extends boolean = false>(options: Options
                 type: 'http'
             },
             {
-                name: 'Authorization',
+                in: 'cookie',
+                name: 'sid',
                 type: 'apiKey'
             }
         ],
@@ -647,7 +673,8 @@ export const listPersonalAccessTokens = <ThrowOnError extends boolean = false>(o
                 type: 'http'
             },
             {
-                name: 'Authorization',
+                in: 'cookie',
+                name: 'sid',
                 type: 'apiKey'
             }
         ],
@@ -669,7 +696,8 @@ export const createPersonalAccessToken = <ThrowOnError extends boolean = false>(
                 type: 'http'
             },
             {
-                name: 'Authorization',
+                in: 'cookie',
+                name: 'sid',
                 type: 'apiKey'
             }
         ],
@@ -695,7 +723,8 @@ export const revokePersonalAccessToken = <ThrowOnError extends boolean = false>(
                 type: 'http'
             },
             {
-                name: 'Authorization',
+                in: 'cookie',
+                name: 'sid',
                 type: 'apiKey'
             }
         ],
@@ -718,7 +747,8 @@ export const getSettings = <ThrowOnError extends boolean = false>(options?: Opti
                 type: 'http'
             },
             {
-                name: 'Authorization',
+                in: 'cookie',
+                name: 'sid',
                 type: 'apiKey'
             }
         ],
@@ -741,7 +771,8 @@ export const updateSettings = <ThrowOnError extends boolean = false>(options: Op
                 type: 'http'
             },
             {
-                name: 'Authorization',
+                in: 'cookie',
+                name: 'sid',
                 type: 'apiKey'
             }
         ],
@@ -767,7 +798,8 @@ export const eraseData = <ThrowOnError extends boolean = false>(options: Options
                 type: 'http'
             },
             {
-                name: 'Authorization',
+                in: 'cookie',
+                name: 'sid',
                 type: 'apiKey'
             }
         ],
@@ -793,7 +825,8 @@ export const createCheckoutSession = <ThrowOnError extends boolean = false>(opti
                 type: 'http'
             },
             {
-                name: 'Authorization',
+                in: 'cookie',
+                name: 'sid',
                 type: 'apiKey'
             }
         ],
@@ -815,7 +848,8 @@ export const createCustomerPortalSession = <ThrowOnError extends boolean = false
                 type: 'http'
             },
             {
-                name: 'Authorization',
+                in: 'cookie',
+                name: 'sid',
                 type: 'apiKey'
             }
         ],
@@ -837,7 +871,8 @@ export const listUsers = <ThrowOnError extends boolean = false>(options?: Option
                 type: 'http'
             },
             {
-                name: 'Authorization',
+                in: 'cookie',
+                name: 'sid',
                 type: 'apiKey'
             }
         ],
@@ -859,7 +894,8 @@ export const createUser = <ThrowOnError extends boolean = false>(options: Option
                 type: 'http'
             },
             {
-                name: 'Authorization',
+                in: 'cookie',
+                name: 'sid',
                 type: 'apiKey'
             }
         ],
@@ -881,7 +917,15 @@ export const normalizeAddress = <ThrowOnError extends boolean = false>(options: 
     return (options.client ?? client).post<NormalizeAddressResponses, NormalizeAddressErrors, ThrowOnError>({
         security: [
             {
-                name: 'Authorization',
+                name: 'X-API-Key',
+                type: 'apiKey'
+            },
+            {
+                name: 'Signature-Input',
+                type: 'apiKey'
+            },
+            {
+                name: 'Signature',
                 type: 'apiKey'
             }
         ],
@@ -903,11 +947,15 @@ export const dedupeCustomer = <ThrowOnError extends boolean = false>(options: Op
     return (options.client ?? client).post<DedupeCustomerResponses, DedupeCustomerErrors, ThrowOnError>({
         security: [
             {
-                scheme: 'bearer',
-                type: 'http'
+                name: 'X-API-Key',
+                type: 'apiKey'
             },
             {
-                name: 'Authorization',
+                name: 'Signature-Input',
+                type: 'apiKey'
+            },
+            {
+                name: 'Signature',
                 type: 'apiKey'
             }
         ],
@@ -929,11 +977,15 @@ export const dedupeAddress = <ThrowOnError extends boolean = false>(options: Opt
     return (options.client ?? client).post<DedupeAddressResponses, DedupeAddressErrors, ThrowOnError>({
         security: [
             {
-                scheme: 'bearer',
-                type: 'http'
+                name: 'X-API-Key',
+                type: 'apiKey'
             },
             {
-                name: 'Authorization',
+                name: 'Signature-Input',
+                type: 'apiKey'
+            },
+            {
+                name: 'Signature',
                 type: 'apiKey'
             }
         ],
@@ -955,11 +1007,15 @@ export const mergeDeduplicated = <ThrowOnError extends boolean = false>(options:
     return (options.client ?? client).post<MergeDeduplicatedResponses, MergeDeduplicatedErrors, ThrowOnError>({
         security: [
             {
-                scheme: 'bearer',
-                type: 'http'
+                name: 'X-API-Key',
+                type: 'apiKey'
             },
             {
-                name: 'Authorization',
+                name: 'Signature-Input',
+                type: 'apiKey'
+            },
+            {
+                name: 'Signature',
                 type: 'apiKey'
             }
         ],
@@ -981,7 +1037,15 @@ export const batchValidate = <ThrowOnError extends boolean = false>(options: Opt
     return (options.client ?? client).post<BatchValidateResponses, BatchValidateErrors, ThrowOnError>({
         security: [
             {
-                name: 'Authorization',
+                name: 'X-API-Key',
+                type: 'apiKey'
+            },
+            {
+                name: 'Signature-Input',
+                type: 'apiKey'
+            },
+            {
+                name: 'Signature',
                 type: 'apiKey'
             }
         ],
@@ -1003,7 +1067,15 @@ export const batchDedupe = <ThrowOnError extends boolean = false>(options: Optio
     return (options.client ?? client).post<BatchDedupeResponses, BatchDedupeErrors, ThrowOnError>({
         security: [
             {
-                name: 'Authorization',
+                name: 'X-API-Key',
+                type: 'apiKey'
+            },
+            {
+                name: 'Signature-Input',
+                type: 'apiKey'
+            },
+            {
+                name: 'Signature',
                 type: 'apiKey'
             }
         ],
@@ -1025,7 +1097,15 @@ export const getJobStatusById = <ThrowOnError extends boolean = false>(options: 
     return (options.client ?? client).get<GetJobStatusByIdResponses, GetJobStatusByIdErrors, ThrowOnError>({
         security: [
             {
-                name: 'Authorization',
+                name: 'X-API-Key',
+                type: 'apiKey'
+            },
+            {
+                name: 'Signature-Input',
+                type: 'apiKey'
+            },
+            {
+                name: 'Signature',
                 type: 'apiKey'
             }
         ],
@@ -1045,6 +1125,11 @@ export const getUserProjects = <ThrowOnError extends boolean = false>(options?: 
             {
                 scheme: 'bearer',
                 type: 'http'
+            },
+            {
+                in: 'cookie',
+                name: 'sid',
+                type: 'apiKey'
             }
         ],
         url: '/projects',
@@ -1063,6 +1148,11 @@ export const createProject = <ThrowOnError extends boolean = false>(options: Opt
             {
                 scheme: 'bearer',
                 type: 'http'
+            },
+            {
+                in: 'cookie',
+                name: 'sid',
+                type: 'apiKey'
             }
         ],
         url: '/projects',
@@ -1085,6 +1175,11 @@ export const deleteProject = <ThrowOnError extends boolean = false>(options: Opt
             {
                 scheme: 'bearer',
                 type: 'http'
+            },
+            {
+                in: 'cookie',
+                name: 'sid',
+                type: 'apiKey'
             }
         ],
         url: '/projects/{id}',
@@ -1103,6 +1198,11 @@ export const getUserPlan = <ThrowOnError extends boolean = false>(options?: Opti
             {
                 scheme: 'bearer',
                 type: 'http'
+            },
+            {
+                in: 'cookie',
+                name: 'sid',
+                type: 'apiKey'
             }
         ],
         url: '/user/plan',
@@ -1121,6 +1221,11 @@ export const updateUserPlan = <ThrowOnError extends boolean = false>(options: Op
             {
                 scheme: 'bearer',
                 type: 'http'
+            },
+            {
+                in: 'cookie',
+                name: 'sid',
+                type: 'apiKey'
             }
         ],
         url: '/user/plan',
@@ -1139,6 +1244,17 @@ export const updateUserPlan = <ThrowOnError extends boolean = false>(options: Op
  */
 export const getAvailablePlans = <ThrowOnError extends boolean = false>(options?: Options<GetAvailablePlansData, ThrowOnError>) => {
     return (options?.client ?? client).get<GetAvailablePlansResponses, GetAvailablePlansErrors, ThrowOnError>({
+        security: [
+            {
+                scheme: 'bearer',
+                type: 'http'
+            },
+            {
+                in: 'cookie',
+                name: 'sid',
+                type: 'apiKey'
+            }
+        ],
         url: '/public/plans',
         ...options
     });
@@ -1155,6 +1271,11 @@ export const checkValidationLimits = <ThrowOnError extends boolean = false>(opti
             {
                 scheme: 'bearer',
                 type: 'http'
+            },
+            {
+                in: 'cookie',
+                name: 'sid',
+                type: 'apiKey'
             }
         ],
         url: '/user/plan/usage/check',

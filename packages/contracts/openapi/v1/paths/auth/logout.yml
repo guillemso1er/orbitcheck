@@ -3,6 +3,7 @@ tags:
 summary: User logout
 description: Logs out the current user by clearing the session
 operationId: logoutUser
+security: []
 responses:
   '200':
     description: Logout successful
