@@ -18,6 +18,11 @@
                     "endsPattern": "something that never matches"
                 }
             }
+        },
+        {
+            "label": "gen:podman-env",
+            "type": "shell",
+            "command": "echo \"DOCKER_HOST=unix://$(podman info --format '{{.Host.RemoteSocket.Path}}')\nTESTCONTAINERS_RYUK_DISABLED=true\" > ${workspaceFolder}/.env.podman"
         }
     ]
 }

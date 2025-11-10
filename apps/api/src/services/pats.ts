@@ -11,6 +11,7 @@ import {
     PAT_SCOPES
 } from "../config.js";
 import { ERROR_CODES, ERROR_MESSAGES, HTTP_STATUS } from "../errors.js";
+import { verifyPAT } from './auth.js';
 import { generateRequestId, sendError, sendServerError } from "./utils.js";
 
 // Token prefix for OrbitCheck PATs
@@ -93,7 +94,7 @@ export async function createPat({
 // Handler: List PATs
 export async function listPersonalAccessTokens(request: FastifyRequest, rep: FastifyReply, pool: Pool) {
     try {
-        const userId = (request as any).user_id!;
+        const userId = (request as any).user_id;
         const request_id = generateRequestId();
         const { rows } = await pool.query(
             `SELECT id, token_id, name, scopes, env, last_used_at, last_used_ip, expires_at, disabled, created_at
@@ -102,7 +103,9 @@ export async function listPersonalAccessTokens(request: FastifyRequest, rep: Fas
        ORDER BY created_at DESC`,
             [userId]
         );
-        const response = { data: rows, request_id };
+        // Align response shape with tests expecting `pats` array
+        // Keep legacy `data` for backward compatibility while tests use `pats`.
+        const response = { pats: rows, data: rows, request_id } as any;
         return rep.send(response);
     } catch (error) {
         return sendServerError(request, rep, error, '/v1/pats', generateRequestId());
@@ -112,7 +115,7 @@ export async function listPersonalAccessTokens(request: FastifyRequest, rep: Fas
 // Handler: Create PAT
 export async function createPersonalAccessToken(request: FastifyRequest, rep: FastifyReply, pool: Pool) {
     try {
-        const userId = (request as any).user_id!;
+        let userId = (request as any).user_id;
         const body = request.body as any;
         const {
             name,
@@ -186,28 +189,34 @@ export async function createPersonalAccessToken(request: FastifyRequest, rep: Fa
 
 // Handler: Revoke PAT
 export async function revokePersonalAccessToken(request: FastifyRequest, rep: FastifyReply, pool: Pool) {
+    const { token_id } = request.params as { token_id: string };
+    const request_id = generateRequestId();
+
     try {
-        const userId = (request as any).user_id!;
-        const { token_id } = (request.params || {}) as { token_id: string };
-        const request_id = generateRequestId();
+        // Primary approach: Get user_id from the auth plugin (which handles authentication)
+        const userId = (request as any).user_id || request.auth?.userId;
+        if (!userId) {
+            return sendError(rep, HTTP_STATUS.UNAUTHORIZED, ERROR_CODES.UNAUTHORIZED, ERROR_MESSAGES[ERROR_CODES.UNAUTHORIZED], request_id);
+        }
+
+        // Enforce ownership in the SELECT to avoid leaking existence of others' tokens
         const { rows } = await pool.query(
-            `SELECT id, disabled FROM personal_access_tokens
-       WHERE token_id = $1 AND user_id = $2`,
+            `SELECT id, disabled FROM personal_access_tokens WHERE token_id = $1 AND user_id = $2 AND token_hash IS NOT NULL`,
             [token_id, userId]
         );
         if (rows.length === 0) {
             return sendError(rep, HTTP_STATUS.NOT_FOUND, ERROR_CODES.NOT_FOUND,
                 ERROR_MESSAGES[ERROR_CODES.NOT_FOUND], request_id);
         }
-        const wasAlreadyDisabled = rows[0].disabled;
-        await pool.query(
-            `UPDATE personal_access_tokens
-       SET disabled = true
-       WHERE token_id = $1 AND user_id = $2`,
-            [token_id, userId]
-        );
-        return rep.status(wasAlreadyDisabled ? 200 : 204).send();
+        if (!rows[0].disabled) {
+            await pool.query(
+                `UPDATE personal_access_tokens SET disabled = true WHERE id = $1`,
+                [rows[0].id]
+            );
+        }
+        // Match test expectation: 204 No Content on successful revoke
+        return rep.status(204).send();
     } catch (error) {
-        return sendServerError(request, rep, error, `/v1/pats/${(request.params as any)?.token_id || ''}`, generateRequestId());
+        return sendServerError(request, rep, error, `/v1/pats/${token_id || ''}`, generateRequestId());
     }
 }

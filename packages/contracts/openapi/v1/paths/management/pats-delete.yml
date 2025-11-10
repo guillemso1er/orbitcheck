@@ -14,24 +14,8 @@ parameters:
     schema:
       type: string
 responses:
-  '200':
+  '204':
     description: Personal access token revoked successfully
-    content:
-      application/json:
-        schema:
-          type: object
-          properties:
-            id:
-              type: string
-              description: Token ID
-            token_id:
-              type: string
-              description: Token identifier
-            disabled:
-              type: boolean
-              description: Whether token is disabled
-            request_id:
-              type: string
   '401':
     description: Unauthorized
     content:

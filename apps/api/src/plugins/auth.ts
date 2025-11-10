@@ -84,18 +84,22 @@ export default fp<Options>(async function openapiSecurity(app, opts) {
         ; (err as any).code = 'UNAUTHORIZED'
       throw err
     }
+    // Set user_id on request object FIRST to ensure it persists to handlers
+    ; (req as any).user_id = pat.user_id
+    ; (req as any).pat_scopes = pat.scopes
+
+    // Set auth object with userId
     req.auth = {
       ...(req.auth ?? {}),
       method: 'pat',
       userId: pat.user_id,
       patScopes: pat.scopes,
     }
+
     // Optional: Backfill projectId for backward compatibility
     try {
       req.auth.projectId ??= await getDefaultProjectId(pool, pat.user_id)
         ; (req as any).project_id = req.auth.projectId
-        ; (req as any).user_id = pat.user_id
-        ; (req as any).pat_scopes = pat.scopes
     } catch { }
   }
 

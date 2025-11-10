@@ -2999,7 +2999,7 @@ export type ListPersonalAccessTokensResponses = {
      * List of personal access tokens
      */
     200: {
-        data?: Array<{
+        pats?: Array<{
             /**
              * Token ID
              */

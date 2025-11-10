@@ -141,29 +141,29 @@ const CreatePATModal: React.FC<{
   }, [show, onClose, creating]);
 
   const handleSubmit = async (e: React.FormEvent) => {
-      e.preventDefault();
-      const data = {
-        name: formData.name,
-        scopes: ['logs:read'], // Default scope
-        env: 'live' as 'test' | 'live', // Default environment
-        expires_at: undefined, // No expiration by default
-        ip_allowlist: [], // No IP restrictions by default
-        project_id: undefined, // No project restriction by default
-      };
-      await onCreate(data);
+    e.preventDefault();
+    const data = {
+      name: formData.name,
+      scopes: ['logs:read'], // Default scope
+      env: 'live' as 'test' | 'live', // Default environment
+      expires_at: undefined, // No expiration by default
+      ip_allowlist: [], // No IP restrictions by default
+      project_id: undefined, // No project restriction by default
+    };
+    await onCreate(data);
+    setFormData({
+      name: '',
+    });
+  };
+
+  const handleClose = () => {
+    if (!creating) {
       setFormData({
         name: '',
       });
-    };
-  
-    const handleClose = () => {
-      if (!creating) {
-        setFormData({
-          name: '',
-        });
-        onClose();
-      }
-    };
+      onClose();
+    }
+  };
 
   if (!show) return null;
 
@@ -389,21 +389,20 @@ const PATsTable: React.FC<{
                 </div>
               </td>
               <td className="px-6 py-4">
-                <span className={`inline-block px-2 py-1 text-xs font-semibold rounded-full ${
-                  token.env === 'live'
+                <span className={`inline-block px-2 py-1 text-xs font-semibold rounded-full ${token.env === 'live'
                     ? 'bg-green-100 text-green-800'
                     : 'bg-yellow-100 text-yellow-800'
-                }`}>
+                  }`}>
                   {token.env.toUpperCase()}
                 </span>
               </td>
               <td className="px-6 py-4">
                 {token.last_used_at
                   ? new Date(token.last_used_at).toLocaleDateString(undefined, {
-                      year: 'numeric',
-                      month: 'short',
-                      day: 'numeric'
-                    })
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric'
+                  })
                   : <span className="text-gray-400">Never</span>
                 }
                 {token.last_used_ip && (
@@ -427,13 +426,12 @@ const PATsTable: React.FC<{
               </td>
               <td className="px-6 py-4">
                 <span
-                  className={`inline-block px-2 py-1 text-xs font-semibold rounded-full ${
-                    token.disabled
+                  className={`inline-block px-2 py-1 text-xs font-semibold rounded-full ${token.disabled
                       ? 'bg-red-100 text-red-800'
                       : isExpired
                         ? 'bg-red-100 text-red-800'
                         : 'bg-green-100 text-green-800'
-                  }`}
+                    }`}
                   role="status"
                   aria-label={`Status: ${token.disabled ? 'disabled' : isExpired ? 'expired' : 'active'}`}
                 >
@@ -576,7 +574,7 @@ const PersonalAccessTokens: React.FC<PersonalAccessTokensProps> = () => {
         try {
           setError(null);
           const { error } = await revokePersonalAccessToken({ client: apiClient, path: { token_id: tokenId } });
-          
+
           if (error) {
             throw new Error((error?.error || {}).message || 'Failed to revoke personal access token');
           }
@@ -637,9 +635,8 @@ const PersonalAccessTokens: React.FC<PersonalAccessTokensProps> = () => {
             token_id: data?.token_id || ''
           });
 
-          // Revoke old token
           const { error: revokeError } = await revokePersonalAccessToken({ client: apiClient, path: { token_id: token.token_id } });
-          
+
           if (revokeError) {
             throw new Error((revokeError?.error || {}).message || 'Failed to revoke old personal access token');
           }

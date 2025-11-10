@@ -205,11 +205,18 @@ export async function verifyAPIKey(request: FastifyRequest, pool: Pool): Promise
         return false;
     }
 
+    // fetch user id from project associated with the API key
+    const { rows: projectRows } = await pool.query(
+        "SELECT user_id FROM projects WHERE id=$1",
+        [rows[0].project_id]
+    )
+
     await pool.query(
         "UPDATE api_keys SET last_used_at = now() WHERE id = $1",
         [rows[0].id]
     );
 
+    (request as any).user_id = projectRows[0].user_id;
     (request as any).project_id = rows[0].project_id;
     return true;
 }
@@ -311,6 +318,13 @@ export async function verifyHttpMessageSignature(request: FastifyRequest, pool: 
     await pool.query("UPDATE api_keys SET last_used_at = now() WHERE id = $1", [rows[0].id]);
     (request as any).project_id = rows[0].project_id;
 
+    // Attach user_id from project
+    const { rows: projectRows } = await pool.query(
+        "SELECT user_id FROM projects WHERE id=$1",
+        [rows[0].project_id]
+    );
+    (request as any).user_id = projectRows[0].user_id;
+
     return true;
 }
 
@@ -342,6 +356,10 @@ export async function verifyPAT<TServer extends RawServerBase = RawServerBase>(r
 
     if (rows.length === 0) {
         req.log.info({ tokenId: parsed.tokenId, reason: 'Not found in database' }, 'PAT verification failed');
+        if (process.env.NODE_ENV === 'test') {
+            // eslint-disable-next-line no-console
+            console.log('[DEBUG verifyPAT] Not found:', parsed.tokenId);
+        }
         return null;
     }
 

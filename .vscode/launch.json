@@ -30,6 +30,30 @@
     {
       "type": "node",
       "request": "launch",
+      "name": "Vitest: current file (Podman, debug)",
+      "program": "${workspaceFolder}/apps/api/node_modules/vitest/vitest.mjs",
+      "cwd": "${workspaceFolder}/apps/api",
+      "args": [
+        "run",
+        "--no-file-parallelism",
+        "${file}"
+      ],
+      "env": {
+        "PATH": "${workspaceFolder}/apps/api/node_modules/.bin:${env:PATH}",
+        "DOCKER_HOST": "unix:///run/user/1000/podman/podman.sock",
+        "TESTCONTAINERS_RYUK_DISABLED": "true"
+      },
+      "autoAttachChildProcesses": true,
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen",
+      "skipFiles": [
+        "<node_internals>/**",
+        "${workspaceFolder}/**/node_modules/**"
+      ]
+    },
+    {
+      "type": "node",
+      "request": "launch",
       "name": "Debug Jest API Tests",
       "program": "${workspaceFolder}/apps/api/node_modules/jest/bin/jest.js",
       "args": [

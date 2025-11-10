@@ -14,7 +14,7 @@ responses:
         schema:
           type: object
           properties:
-            data:
+            pats:
               type: array
               items:
                 type: object
