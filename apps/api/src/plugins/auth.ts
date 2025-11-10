@@ -1,15 +1,22 @@
 import fastifyAuth, { FastifyAuthFunction } from '@fastify/auth'
 import type { FastifyReply, FastifyRequest } from 'fastify'
 import fp from 'fastify-plugin'
+import fs from 'node:fs'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import type { Pool } from 'pg'
-import { verifyAPIKey, verifyHMAC, verifyPAT, verifySession } from 'src/services/auth'
-import { getDefaultProjectId } from 'src/services/utils'
+// Assuming these are your existing service functions
+import { verifyAPIKey, verifyHttpMessageSignature, verifyPAT, verifySession } from '../services/auth.js'
+import { getDefaultProjectId } from '../services/utils.js'
 
-// Optional: Unify the identity object attached by any auth method
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
+
+// Unify the identity object attached by any auth method
 declare module 'fastify' {
   interface FastifyRequest {
     auth?: {
-      method: 'session' | 'pat' | 'apiKey' | 'hmac'
+      method: 'session' | 'pat' | 'apiKey' | 'httpMessageSignature'
       userId?: string
       patScopes?: string[]
       projectId?: string
@@ -18,12 +25,13 @@ declare module 'fastify' {
   }
 }
 
-type SchemeName = 'patAuth' | 'apiKeyAuth' | 'sessionCookie' | 'hmacAuth'
+// Updated scheme names to match the new security architecture
+type SchemeName = 'patAuth' | 'apiKeyAuth' | 'sessionCookie' | 'httpMessageSigAuth'
 
 interface Options {
   pool: Pool
   defaultSecurity?: Array<Record<string, string[]>>
-  // If you need to override any guard, you can pass them here
+  // Override any guard if needed
   guards?: Partial<Record<SchemeName, FastifyAuthFunction>>
 }
 
@@ -32,21 +40,48 @@ export default fp<Options>(async function openapiSecurity(app, opts) {
 
   const { pool } = opts
 
-  // Helper: wrap async checks into auth guards that throw on failure
+  // Load OpenAPI spec to get security requirements
+  // __dirname will be something like /home/user/orbicheck/apps/api/src/plugins
+  // We need to go up to workspace root: ../../../.. then into packages/contracts/dist
+  const specPath = path.resolve(__dirname, '../../../../packages/contracts/dist/openapi.v1.json')
+  const spec = JSON.parse(fs.readFileSync(specPath, 'utf-8'))
+
+  // Build a map of route -> security requirements
+  const routeSecurityMap = new Map<string, Array<Record<string, string[]>>>()
+  for (const [routePath, methods] of Object.entries(spec.paths || {})) {
+    for (const [method, operation] of Object.entries(methods as any)) {
+      if (operation && typeof operation === 'object' && 'security' in operation && Array.isArray(operation.security)) {
+        const key = `${method.toUpperCase()} ${routePath}`
+        routeSecurityMap.set(key, operation.security as Array<Record<string, string[]>>)
+      }
+    }
+  }
+
+  // Helper to wrap async checks into auth guards
   const asGuard = (fn: (req: FastifyRequest, reply: FastifyReply) => Promise<void>): FastifyAuthFunction =>
     async (req, reply) => { await fn(req, reply) } // throw to fail
 
-  // Replace these with your versions that don’t send replies on failure
+  // --- Verification Functions (No Reply Logic) ---
+
   async function verifySessionNoReply(req: FastifyRequest) {
-    await verifySession(req, pool) // should throw on failure
-    req.auth = { ...(req.auth ?? {}), method: 'session', userId: (req as any).user_id }
+    try {
+      await verifySession(req, pool) // Throws on failure
+      req.auth = { ...(req.auth ?? {}), method: 'session', userId: (req as any).user_id }
+    } catch (error: any) {
+      // Convert the thrown object to a proper Error with statusCode
+      const err = new Error(error.error?.message || 'Session authentication required')
+        ; (err as any).statusCode = error.status || 401
+        ; (err as any).code = error.error?.code || 'UNAUTHORIZED'
+      throw err
+    }
   }
 
   async function verifyPatNoReply(req: FastifyRequest) {
-    const pat = await verifyPAT(req, pool) // return object or throw; do not send reply
+    const pat = await verifyPAT(req, pool) // Returns PAT object or null
     if (!pat) {
-      const err = new Error('Invalid PAT')
-      ;(err as any).statusCode = 401
+      const err = new Error('Invalid or missing PAT')
+        ; (err as any).statusCode = 401
+        ; (err as any).code = 'UNAUTHORIZED'
       throw err
     }
     req.auth = {
@@ -55,7 +90,7 @@ export default fp<Options>(async function openapiSecurity(app, opts) {
       userId: pat.user_id,
       patScopes: pat.scopes,
     }
-    // Optional: backfill projectId for backward compatibility
+    // Optional: Backfill projectId for backward compatibility
     try {
       req.auth.projectId ??= await getDefaultProjectId(pool, pat.user_id)
         ; (req as any).project_id = req.auth.projectId
@@ -65,34 +100,46 @@ export default fp<Options>(async function openapiSecurity(app, opts) {
   }
 
   async function verifyApiKeyNoReply(req: FastifyRequest) {
-    const ok = await verifyAPIKey(req, null as any, pool) // reply parameter not used by function
+    const ok = await verifyAPIKey(req, pool)
     if (!ok) {
-      const err = new Error('Invalid API key')
-      ;(err as any).statusCode = 401
+      const err = new Error('Invalid or missing API key')
+        ; (err as any).statusCode = 401
+        ; (err as any).code = 'UNAUTHORIZED'
       throw err
     }
-    req.auth = { ...(req.auth ?? {}), method: 'apiKey' }
+    req.auth = { ...(req.auth ?? {}), method: 'apiKey', projectId: (req as any).project_id }
   }
 
-  async function verifyHmacNoReply(req: FastifyRequest) {
-    // If you need raw body, ensure a raw-body plugin is registered beforehand
-    const ok = await verifyHMAC(req, null as any, pool) // reply parameter present but not critical for validation
+  async function verifyHttpMessageSignatureNoReply(req: FastifyRequest) {
+    const ok = await verifyHttpMessageSignature(req, pool)
     if (!ok) {
-      const err = new Error('Invalid HMAC')
-      ;(err as any).statusCode = 401
+      const err = new Error('Invalid or missing HTTP Message Signature')
+        ; (err as any).statusCode = 401
+        ; (err as any).code = 'UNAUTHORIZED'
       throw err
     }
-    req.auth = { ...(req.auth ?? {}), method: 'hmac' }
+    req.auth = { ...(req.auth ?? {}), method: 'httpMessageSignature', projectId: (req as any).project_id }
   }
 
   const defaultGuards: Record<SchemeName, FastifyAuthFunction> = {
     patAuth: asGuard(verifyPatNoReply),
     apiKeyAuth: asGuard(verifyApiKeyNoReply),
     sessionCookie: asGuard(verifySessionNoReply),
-    hmacAuth: asGuard(verifyHmacNoReply),
+    // Map the new signature scheme to its verification guard
+    httpMessageSigAuth: asGuard(verifyHttpMessageSignatureNoReply),
   }
 
   const guards = { ...defaultGuards, ...opts.guards }
+
+  // Maps OpenAPI scheme names to our internal guard functions
+  const guardMap: Record<string, FastifyAuthFunction> = {
+    patAuth: guards.patAuth,
+    apiKeyAuth: guards.apiKeyAuth,
+    sessionCookie: guards.sessionCookie,
+    // Both RFC 9421 headers are handled by the same guard
+    httpMessageSigInput: guards.httpMessageSigAuth,
+    httpMessageSig: guards.httpMessageSigAuth,
+  }
 
   function composeSecurity(sec?: Array<Record<string, string[]>>) {
     const effective = sec ?? opts.defaultSecurity
@@ -100,9 +147,10 @@ export default fp<Options>(async function openapiSecurity(app, opts) {
     if (Array.isArray(effective) && effective.length === 0) return 'public'
 
     const orGroups = effective.map((obj) => {
-      const andHandlers = Object.keys(obj)
-        .map((name) => guards[name as SchemeName])
-        .filter(Boolean) as FastifyAuthFunction[]
+      // Use a Set to ensure a guard is only added once per 'AND' group
+      const andHandlers = [...new Set(Object.keys(obj)
+        .map((name) => guardMap[name])
+        .filter(Boolean) as FastifyAuthFunction[])]
 
       if (andHandlers.length === 0) return null
       // Combine with AND if multiple handlers are in one group
@@ -115,26 +163,17 @@ export default fp<Options>(async function openapiSecurity(app, opts) {
   }
 
   app.addHook('onRoute', (route) => {
-    const composed = composeSecurity(route.schema?.security as any)
-    if (!composed || composed === 'public') return
+    const routeKey = `${route.method} ${route.url}`
+    const security = routeSecurityMap.get(routeKey)
+
+    const composed = composeSecurity(security)
+    if (!composed || composed === 'public') {
+      return
+    }
 
     const existing = Array.isArray(route.preHandler)
       ? route.preHandler
-      : route.preHandler
-        ? [route.preHandler]
-        : []
+      : route.preHandler ? [route.preHandler] : []
     route.preHandler = [composed, ...existing]
-  })
-
-  // Final 401 handler if all alternatives fail
-  app.setErrorHandler((err, _req, reply) => {
-    if (reply.sent) return // someone already replied
-    if (err && (err.statusCode === 401 || err.code === 'FST_AUTH_NO_AUTH')) {
-      return reply.code(401).send({
-        error: { code: 'UNAUTHORIZED', message: 'Authentication failed' }
-      })
-    }
-    // Fallback to default error handler
-    reply.send(err)
   })
 })

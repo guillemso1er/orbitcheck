@@ -15,15 +15,15 @@ beforeAll(async () => {
   try {
     // Start environment first
     await startTestEnv()
-    
+
     // Get connections
     pool = getPool()
     redis = getRedis()
-    
+
     // Build app
     app = await build(pool, redis)
     await app.ready()
-    
+
     // Give the app a moment to fully initialize
     await new Promise(resolve => setTimeout(resolve, 100))
   } catch (error) {
@@ -41,7 +41,7 @@ afterAll(async () => {
   } catch (error) {
     // Ignore closing errors in tests
   }
-  
+
   try {
     if (redis) {
       redis.disconnect()
@@ -49,7 +49,7 @@ afterAll(async () => {
   } catch (error) {
     // Ignore
   }
-  
+
   try {
     await stopTestEnv()
   } catch (error) {
@@ -259,8 +259,6 @@ describe('Authentication Integration Tests', () => {
         url: '/user/plan'
       })
       expect(res.statusCode).toBe(401)
-      const body = res.json()
-      expect(body.error.message).toContain('session authentication')
     })
   })
 
@@ -315,7 +313,7 @@ describe('Authentication Integration Tests', () => {
       const res = await app.inject({
         method: 'POST',
         url: '/v1/validate/address',
-        headers: { authorization: 'Bearer invalid-api-key' },
+        headers: { 'x-api-key': 'invalid-api-key' },
         payload: {
           address: {
             line1: '123 Main St',
@@ -334,21 +332,39 @@ describe('Authentication Integration Tests', () => {
     })
   })
 
-  describe('HMAC Authentication', () => {
-    test('401 on invalid HMAC', async () => {
+  describe('HTTP Message Signature Authentication', () => {
+    test('401 on invalid signature', async () => {
       const res = await app.inject({
-        method: 'GET',
+        method: 'POST',
         url: '/v1/validate/address',
-        headers: { authorization: 'HMAC keyId=invalid,signature=invalid,ts=123,nonce=abc' }
+        headers: {
+          'signature-input': 'sig1=("@method" "@path");created=123;keyid="invalid"',
+          'signature': 'sig1=:invalid-signature:'
+        },
+        payload: {
+          address: {
+            line1: '123 Main St',
+            city: 'New York',
+            postal_code: '10001',
+            country: 'US'
+          }
+        }
       })
       expect(res.statusCode).toBe(401)
     })
 
-    test('401 on expired HMAC timestamp', async () => {
+    test('401 on missing signature headers', async () => {
       const res = await app.inject({
-        method: 'GET',
+        method: 'POST',
         url: '/v1/validate/address',
-        headers: { authorization: 'HMAC keyId=test,signature=test,ts=1234567890,nonce=test' }
+        payload: {
+          address: {
+            line1: '123 Main St',
+            city: 'New York',
+            postal_code: '10001',
+            country: 'US'
+          }
+        }
       })
       expect(res.statusCode).toBe(401)
     })

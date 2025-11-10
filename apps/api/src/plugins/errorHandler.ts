@@ -35,13 +35,13 @@ export async function setupErrorHandler<TServer extends RawServerBase = RawServe
         }
 
         // Handle authentication errors
-        if (error.statusCode === 401 || error.code === 'UNAUTHORIZED') {
+        if (error.statusCode === 401 || error.code === 'UNAUTHORIZED' || error.code === 'unauthorized' || error.code === 'FST_AUTH_NO_AUTH') {
             // If the error already has a properly formatted error object, use it
             const errorObj = (error as any).error;
             if (errorObj && typeof errorObj === 'object' && errorObj.code) {
                 return reply.status(401).send({ error: errorObj });
             }
-            return reply.status(401).send({ error: { code: 'unauthorized', message: 'Authentication required' } });
+            return reply.status(401).send({ error: { code: 'unauthorized', message: error.message || 'Authentication required' } });
         }
 
         // Handle payload too large errors
@@ -51,11 +51,11 @@ export async function setupErrorHandler<TServer extends RawServerBase = RawServe
             error.statusCode === 413 ||
             (error.statusCode === 400 &&
                 (error.message?.includes('payload') ||
-                 error.message?.includes('too large')) &&
+                    error.message?.includes('too large')) &&
                 !error.message?.includes('property') &&
                 !error.message?.includes('pattern') &&
                 !error.message?.includes('required'));
-        
+
         if (isPayloadTooLarge) {
             return reply.status(413).send({
                 error: {
