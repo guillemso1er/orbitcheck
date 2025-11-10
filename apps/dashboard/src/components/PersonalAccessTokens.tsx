@@ -1,6 +1,6 @@
-import { createApiClient } from '@orbitcheck/contracts';
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { API_BASE } from '../constants';
+import { createPersonalAccessToken, listPersonalAccessTokens, revokePersonalAccessToken } from '@orbitcheck/contracts';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { apiClient } from '../utils/api';
 
 interface PersonalAccessToken {
   id: string;
@@ -659,15 +659,17 @@ const PersonalAccessTokens: React.FC<PersonalAccessTokensProps> = () => {
   } | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
-  // Real API client
-  const apiClient = useMemo(() => createApiClient({ baseURL: API_BASE }), []);
-
   const fetchTokens = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
-      const response = await apiClient.listPersonalAccessTokens();
-      setTokens(((response as any).pats || []).filter((token: PersonalAccessToken): token is PersonalAccessToken =>
+      const { data, error } = await listPersonalAccessTokens({ client: apiClient });
+
+      if (error) {
+        throw new Error((error?.error || {}).message || 'Failed to load personal access tokens');
+      }
+
+      setTokens(((data as any).pats || []).filter((token: PersonalAccessToken): token is PersonalAccessToken =>
         token.id !== undefined &&
         token.token_id !== undefined &&
         token.name !== undefined &&
@@ -689,7 +691,7 @@ const PersonalAccessTokens: React.FC<PersonalAccessTokensProps> = () => {
     fetchTokens();
   }, [fetchTokens]);
 
-  const handleCreate = async (data: {
+  const handleCreate = async (formData: {
     name: string;
     scopes: string[];
     env: 'test' | 'live';
@@ -700,17 +702,25 @@ const PersonalAccessTokens: React.FC<PersonalAccessTokensProps> = () => {
     try {
       setCreating(true);
       setError(null);
-      const response = await apiClient.createPersonalAccessToken({
-        name: data.name,
-        scopes: data.scopes as any, // TODO: Fix type mismatch
-        env: data.env,
-        expires_at: data.expires_at,
-        ip_allowlist: data.ip_allowlist,
-        project_id: data.project_id
+      const { data, error } = await createPersonalAccessToken({
+        client: apiClient,
+        body: {
+          name: formData.name,
+          scopes: formData.scopes as any, // TODO: Fix type mismatch
+          env: formData.env,
+          expires_at: formData.expires_at,
+          ip_allowlist: formData.ip_allowlist,
+          project_id: formData.project_id
+        }
       });
+
+      if (error) {
+        throw new Error((error?.error || {}).message || 'Failed to create personal access token');
+      }
+
       setNewToken({
-        token: response.token || '',
-        token_id: response.token_id || ''
+        token: data?.token || '',
+        token_id: data?.token_id || ''
       });
       setShowCreate(false);
       await fetchTokens();
@@ -734,7 +744,12 @@ const PersonalAccessTokens: React.FC<PersonalAccessTokensProps> = () => {
         setLoadingStates(prev => ({ ...prev, [tokenId]: true }));
         try {
           setError(null);
-          await apiClient.revokePersonalAccessToken(tokenId);
+          const { error } = await revokePersonalAccessToken({ client: apiClient, path: { token_id: tokenId } });
+          
+          if (error) {
+            throw new Error((error?.error || {}).message || 'Failed to revoke personal access token');
+          }
+
           setSuccessMessage('Personal access token revoked successfully');
           await fetchTokens();
         } catch (err) {
@@ -771,20 +786,33 @@ const PersonalAccessTokens: React.FC<PersonalAccessTokensProps> = () => {
             ip_allowlist: [], // Not stored in mock
             project_id: undefined, // Not stored in mock
           };
-          const response = await apiClient.createPersonalAccessToken({
-            name: newTokenData.name,
-            scopes: newTokenData.scopes as any, // TODO: Fix type mismatch
-            env: newTokenData.env,
-            ip_allowlist: newTokenData.ip_allowlist,
-            project_id: newTokenData.project_id
+          const { data, error } = await createPersonalAccessToken({
+            client: apiClient,
+            body: {
+              name: newTokenData.name,
+              scopes: newTokenData.scopes as any, // TODO: Fix type mismatch
+              env: newTokenData.env,
+              ip_allowlist: newTokenData.ip_allowlist,
+              project_id: newTokenData.project_id
+            }
           });
+
+          if (error) {
+            throw new Error((error?.error || {}).message || 'Failed to create new personal access token');
+          }
+
           setNewToken({
-            token: response.token || '',
-            token_id: response.token_id || ''
+            token: data?.token || '',
+            token_id: data?.token_id || ''
           });
 
           // Revoke old token
-          await apiClient.revokePersonalAccessToken(token.token_id);
+          const { error: revokeError } = await revokePersonalAccessToken({ client: apiClient, path: { token_id: token.token_id } });
+          
+          if (revokeError) {
+            throw new Error((revokeError?.error || {}).message || 'Failed to revoke old personal access token');
+          }
+
           setSuccessMessage('Personal access token rotated successfully');
           await fetchTokens();
         } catch (err) {

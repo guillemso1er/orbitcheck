@@ -5,6 +5,7 @@ import { useDebounce } from '../../hooks/useDebounce';
 import { useLocalStorage } from '../../hooks/useLocalStorage';
 import { Rule, RuleTestResult, TestResult } from '../../types';
 import { apiClient } from '../../utils/api';
+import { getAvailableRules, registerCustomRules, deleteCustomRule } from '@orbitcheck/contracts';
 import { ConditionEvaluator } from '../../utils/ConditionEvaluator';
 import { RulesHeader } from './RulesHeader';
 import { RulesList } from './RulesList';
@@ -28,19 +29,28 @@ const Rules: React.FC = () => {
   useEffect(() => {
     const loadRules = async () => {
       try {
-        const response = await apiClient.getAvailableRules();
-        const customRules = (response.rules || [])
-          .filter(rule => rule.id && rule.name && (rule.category === 'custom' || (rule as any).condition || (rule as any).logic))
-          .map(rule => ({
+        const { data, error } = await getAvailableRules({ client: apiClient });
+        
+        if (error) {
+          if ('error' in error && error.error && 'message' in error.error) {
+            throw new Error(error.error.message || 'Failed to load rules');
+          } else {
+            throw new Error('Failed to load rules');
+          }
+        }
+        
+        const customRules = ((data as any)?.rules || [])
+          .filter((rule: any) => rule.id && rule.name && (rule.category === 'custom' || rule.condition || rule.logic))
+          .map((rule: any) => ({
             id: rule.id!,
             name: rule.name!,
             description: rule.description || '',
-            condition: (rule as any).condition || (rule as any).logic || '',
-            action: (rule as any).action || 'hold' as const,
-            priority: (rule as any).priority || 0,
+            condition: rule.condition || rule.logic || '',
+            action: rule.action || 'hold' as const,
+            priority: rule.priority || 0,
             enabled: rule.enabled || false,
-            createdAt: (rule as any).createdAt || new Date().toISOString(),
-            updatedAt: (rule as any).updatedAt || new Date().toISOString(),
+            createdAt: rule.createdAt || new Date().toISOString(),
+            updatedAt: rule.updatedAt || new Date().toISOString(),
           }));
         setRules(customRules);
       } catch (err) {
@@ -114,18 +124,29 @@ const Rules: React.FC = () => {
 
       try {
         // Persist the change to backend
-        await apiClient.registerCustomRules({
-          rules: newRules.map(rule => ({
-            id: rule.id,
-            name: rule.name,
-            description: rule.description,
-            logic: rule.condition,
-            severity: 'high' as const,
-            enabled: rule.enabled,
-            action: rule.action,
-            priority: rule.priority,
-          }))
+        const { error } = await registerCustomRules({
+          client: apiClient,
+          body: {
+            rules: newRules.map(rule => ({
+              id: rule.id,
+              name: rule.name,
+              description: rule.description,
+              logic: rule.condition,
+              severity: 'high' as const,
+              enabled: rule.enabled,
+              action: rule.action,
+              priority: rule.priority,
+            }))
+          }
         });
+        
+        if (error) {
+          if ('error' in error && error.error && 'message' in error.error) {
+            throw new Error(error.error.message || 'Failed to update rule');
+          } else {
+            throw new Error('Failed to update rule');
+          }
+        }
       } catch (err) {
         // Revert local state if backend update fails
         setRules(rules);
@@ -146,7 +167,16 @@ const Rules: React.FC = () => {
 
       try {
         // Call the delete API endpoint
-        await apiClient.deleteCustomRule(ruleId);
+        const { error } = await deleteCustomRule({ client: apiClient, path: { id: ruleId } });
+        
+        if (error) {
+          if (typeof error === 'string') {
+            throw new Error(error);
+          } else {
+            throw new Error('Failed to delete rule');
+          }
+        }
+        
         console.log(`Rule "${ruleName}" deleted successfully`);
       } catch (err) {
         // Revert local state if backend update fails
@@ -215,18 +245,26 @@ const Rules: React.FC = () => {
 
     setSaveStatus('saving');
     try {
-      await apiClient.registerCustomRules({
-        rules: rules.map(rule => ({
-          id: rule.id,
-          name: rule.name,
-          description: rule.description,
-          logic: rule.condition,
-          severity: 'high' as const,
-          enabled: rule.enabled,
-          action: rule.action,
-          priority: rule.priority,
-        }))
+      const { error } = await registerCustomRules({
+        client: apiClient,
+        body: {
+          rules: rules.map(rule => ({
+            id: rule.id,
+            name: rule.name,
+            description: rule.description,
+            logic: rule.condition,
+            severity: 'high' as const,
+            enabled: rule.enabled,
+            action: rule.action,
+            priority: rule.priority,
+          }))
+        }
       });
+      
+      if (error) {
+        throw new Error('Failed to save rules');
+      }
+      
       setSaveStatus('saved');
     } catch (err) {
       setSaveStatus('error');

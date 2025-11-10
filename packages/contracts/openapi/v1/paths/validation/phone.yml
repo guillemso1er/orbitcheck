@@ -4,7 +4,9 @@ summary: Validate phone
 description: Validates a phone number
 operationId: validatePhone
 security:
-  - ApiKeyAuth: []
+  - apiKeyAuth: []
+  - httpMessageSigInput: []
+    httpMessageSig: []
 requestBody:
   required: true
   content:

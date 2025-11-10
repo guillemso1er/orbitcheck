@@ -4,7 +4,9 @@ summary: Validate address
 description: Validates an address
 operationId: validateAddress
 security:
-  - ApiKeyAuth: []
+  - apiKeyAuth: []
+  - httpMessageSigInput: []
+    httpMessageSig: []
 requestBody:
   required: true
   content:

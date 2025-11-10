@@ -1,20 +1,20 @@
-import { createApiClient } from '@orbitcheck/contracts';
+import { batchValidate, getJobStatusById } from '@orbitcheck/contracts';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { API_BASE, UI_STRINGS } from '../constants';
+import { UI_STRINGS } from '../constants';
+import { apiClient } from '../utils/api';
 
 interface JobStatus {
-  job_id?: string;
-  status?: 'pending' | 'processing' | 'completed' | 'failed';
-  progress?: {
-    total?: number;
-    processed?: number;
-    percentage?: number;
-  };
-  result_data?: string;
-  error?: string;
+  id?: string;
+  status?: 'pending' | 'running' | 'completed' | 'failed';
+  progress?: number;
+  result?: {
+    [key: string]: unknown;
+  } | null;
   result_url?: string;
+  error?: string;
   created_at?: string;
   updated_at?: string;
+  request_id?: string;
 }
 
 const BulkCsvTool: React.FC = () => {
@@ -28,17 +28,14 @@ const BulkCsvTool: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const pollingIntervalRef = useRef<number | null>(null);
 
-  const apiClient = createApiClient({
-    baseURL: API_BASE
-  });
-
   // Poll for job status
   useEffect(() => {
     if (jobId && jobId !== 'completed') {
       const pollStatus = async () => {
         try {
-          const status = await apiClient.getJobStatus(jobId);
-          setJobStatus(status as JobStatus);
+          const { data } = await getJobStatusById({ client: apiClient, path: { id: jobId } });
+          const status = data as JobStatus;
+          setJobStatus(status);
 
           if (status.status === 'completed' || status.status === 'failed') {
             if (pollingIntervalRef.current) {
@@ -119,21 +116,19 @@ const BulkCsvTool: React.FC = () => {
 
     // Process validations
     if (emails.length > 0) {
-      const result = await apiClient.batchValidateData({
-        type: 'email',
-        data: emails as any
-      });
-      setJobId(result.job_id || 'completed');
-      setJobStatus({ job_id: result.job_id || 'completed', status: 'pending' });
+      const result = await batchValidate({ client: apiClient, body: { type: 'email', data: emails.map(email => ({ email })) } });
+      if (result.data) {
+        setJobId(result.data.job_id || 'completed');
+        setJobStatus({ id: result.data.job_id || 'completed', status: 'pending' });
+      }
     }
 
     if (phones.length > 0) {
-      const result = await apiClient.batchValidateData({
-        type: 'phone',
-        data: phones as any
-      });
-      setJobId(result.job_id || 'completed');
-      setJobStatus({ job_id: result.job_id || 'completed', status: 'pending' });
+      const result = await batchValidate({ client: apiClient, body: { type: 'phone', data: phones.map(phone => ({ phone })) } });
+      if (result.data) {
+        setJobId(result.data.job_id || 'completed');
+        setJobStatus({ id: result.data.job_id || 'completed', status: 'pending' });
+      }
     }
   };
 
@@ -170,14 +165,10 @@ const BulkCsvTool: React.FC = () => {
       // For now, simulate order processing - in production this would validate orders
       setJobId('orders-completed');
       setJobStatus({
-        job_id: 'orders-completed',
+        id: 'orders-completed',
         status: 'completed',
-        progress: {
-          total: orders.length,
-          processed: orders.length,
-          percentage: 100
-        },
-        result_data: `Processed ${orders.length} orders successfully`
+        progress: 100,
+        result: { message: `Processed ${orders.length} orders successfully` }
       });
     }
   };
@@ -236,10 +227,10 @@ const BulkCsvTool: React.FC = () => {
   };
 
   const downloadResults = () => {
-    if (!jobStatus?.result_data && !jobStatus?.result_url) return;
+    if (!jobStatus?.result && !jobStatus?.result_url) return;
 
-    if (jobStatus.result_data) {
-      const blob = new Blob([jobStatus.result_data], { type: 'text/csv' });
+    if (jobStatus.result) {
+      const blob = new Blob([JSON.stringify(jobStatus.result, null, 2)], { type: 'text/csv' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -315,16 +306,16 @@ const BulkCsvTool: React.FC = () => {
         <div className="border border-gray-300 dark:border-gray-600 rounded-lg p-6 bg-white dark:bg-gray-800">
           <h3 className="text-base font-semibold mb-4 text-gray-900 dark:text-white">Processing Status</h3>
           <div className="space-y-4">
-            <p className="text-gray-700 dark:text-gray-300"><strong>Job ID:</strong> {jobStatus.job_id}</p>
+            <p className="text-gray-700 dark:text-gray-300"><strong>Job ID:</strong> {jobStatus.id}</p>
             <p className="text-gray-700 dark:text-gray-300"><strong>Status:</strong> {jobStatus.status}</p>
-            {jobStatus.progress && (
+            {jobStatus.progress !== undefined && (
               <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-4">
                 <div
                   className="bg-blue-600 h-4 rounded-full transition-all duration-300"
-                  style={{ width: `${jobStatus.progress.percentage}%` }}
+                  style={{ width: `${jobStatus.progress}%` }}
                 ></div>
                 <div className="text-center text-sm mt-1 text-gray-600 dark:text-gray-400">
-                  {jobStatus.progress.processed} / {jobStatus.progress.total}
+                  {Math.floor((jobStatus.progress || 0) * 100 / 100)} / 100
                 </div>
               </div>
             )}

@@ -39,6 +39,9 @@ importers:
       '@aws-sdk/client-s3':
         specifier: ^3.896.0
         version: 3.896.0
+      '@fastify/auth':
+        specifier: ^5.0.3
+        version: 5.0.3
       '@fastify/cookie':
         specifier: ^11.0.2
         version: 11.0.2
@@ -1710,6 +1713,9 @@ packages:
 
   '@fastify/ajv-compiler@4.0.2':
     resolution: {integrity: sha512-Rkiu/8wIjpsf46Rr+Fitd3HRP+VsxUFDDeag0hs9L0ksfnwx2g7SPQQTFL0E8Qv+rfXzQOxBJnjUB9ITUDjfWQ==}
+
+  '@fastify/auth@5.0.3':
+    resolution: {integrity: sha512-vuaSrwco+oyTC5UiIyW+zp9BEwkXardGQtAB//ZJBk2cxEHvCXD5dVZzf83UbQchQJQR+SQbt3MYQrIACFkEQg==}
 
   '@fastify/cookie@11.0.2':
     resolution: {integrity: sha512-GWdwdGlgJxyvNv+QcKiGNevSspMQXncjMZ1J8IvuDQk0jvkzgWWZFNC2En3s+nHndZBGV8IbLwOI/sxCZw/mzA==}
@@ -10401,6 +10407,11 @@ snapshots:
       ajv: 8.17.1
       ajv-formats: 3.0.1(ajv@8.17.1)
       fast-uri: 3.1.0
+
+  '@fastify/auth@5.0.3':
+    dependencies:
+      fastify-plugin: 5.0.1
+      reusify: 1.1.0
 
   '@fastify/cookie@11.0.2':
     dependencies:

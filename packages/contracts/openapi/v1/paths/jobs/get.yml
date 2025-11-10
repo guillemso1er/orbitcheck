@@ -4,7 +4,9 @@ summary: Get job status
 description: Retrieves the status and results of an asynchronous job
 operationId: getJobStatusById
 security:
-  - ApiKeyAuth: []
+  - apiKeyAuth: []
+  - httpMessageSigInput: []
+    httpMessageSig: []
 parameters:
   - name: id
     in: path

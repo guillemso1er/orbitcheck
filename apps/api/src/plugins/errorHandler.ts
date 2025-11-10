@@ -21,7 +21,7 @@ export async function setupErrorHandler<TServer extends RawServerBase = RawServe
 
         // Handle specific error types with safe responses
         if (error.code === 'FST_ERR_REQUEST_TIMEOUT' || error.name === 'RequestTimeoutError') {
-            return reply.status(503).send({ error: 'timeout', message: 'Request timed out' });
+            return reply.status(503).send({ error: { code: 'timeout', message: 'Request timed out' } });
         }
 
         // Handle database errors with specialized handling
@@ -31,12 +31,17 @@ export async function setupErrorHandler<TServer extends RawServerBase = RawServe
 
         // Handle unsupported media type errors
         if (error.statusCode === 415 || error.code === 'FST_ERR_CTP_INVALID_MEDIA_TYPE') {
-            return reply.status(415).send({ error: 'unsupported_media_type', message: 'Unsupported Media Type' });
+            return reply.status(415).send({ error: { code: 'unsupported_media_type', message: 'Unsupported Media Type' } });
         }
 
         // Handle authentication errors
         if (error.statusCode === 401 || error.code === 'UNAUTHORIZED') {
-            return reply.status(401).send({ error: 'unauthorized', message: 'Authentication required' });
+            // If the error already has a properly formatted error object, use it
+            const errorObj = (error as any).error;
+            if (errorObj && typeof errorObj === 'object' && errorObj.code) {
+                return reply.status(401).send({ error: errorObj });
+            }
+            return reply.status(401).send({ error: { code: 'unauthorized', message: 'Authentication required' } });
         }
 
         // Handle payload too large errors
@@ -63,7 +68,11 @@ export async function setupErrorHandler<TServer extends RawServerBase = RawServe
 
         // Handle validation errors - these are generally safe to expose
         if ((error.statusCode === 400 || error.code === 'VALIDATION_ERROR') && ErrorHandler.isSafeToExpose(error)) {
-            return reply.status(400).send(ErrorHandler.createSafeErrorResponse(error, true));
+            // For Fastify validation errors, use 'invalid_input' code
+            const validationError = error.code === 'FST_ERR_VALIDATION'
+                ? { ...error, code: 'invalid_input' }
+                : error;
+            return reply.status(400).send(ErrorHandler.createSafeErrorResponse(validationError, true));
         }
 
         // Handle external service errors
@@ -74,8 +83,10 @@ export async function setupErrorHandler<TServer extends RawServerBase = RawServe
         // Default error response - don't expose internal error details
         const statusCode = error.statusCode && error.statusCode >= 400 && error.statusCode < 600 ? error.statusCode : 500;
         return reply.status(statusCode).send({
-            error: statusCode >= 500 ? 'internal_error' : 'bad_request',
-            message: statusCode >= 500 ? 'An unexpected error occurred' : 'Invalid request'
+            error: {
+                code: statusCode >= 500 ? 'internal_error' : 'bad_request',
+                message: statusCode >= 500 ? 'An unexpected error occurred' : 'Invalid request'
+            }
         });
     });
 }

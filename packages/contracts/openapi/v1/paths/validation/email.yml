@@ -4,7 +4,9 @@ summary: Validate email
 description: Validates an email address
 operationId: validateEmail
 security:
-  - ApiKeyAuth: []
+  - apiKeyAuth: []
+  - httpMessageSigInput: []
+    httpMessageSig: []
 requestBody:
   required: true
   content:

@@ -1,4 +1,4 @@
-import { createApiClient } from '@orbitcheck/contracts';
+import { getUsage } from '@orbitcheck/contracts';
 import {
   ArcElement,
   BarElement,
@@ -14,7 +14,8 @@ import {
 
 import React from 'react';
 import { Bar, Line, Pie } from 'react-chartjs-2';
-import { API_BASE, UI_STRINGS } from '../constants';
+import { UI_STRINGS } from '../constants';
+import { apiClient } from '../utils/api';
 
 ChartJS.register(
   CategoryScale,
@@ -180,34 +181,34 @@ const UsageDashboard: React.FC = () => {
       setLoading(true);
       setError(null);
 
-      const apiClient = createApiClient({
-        baseURL: API_BASE
-      });
+      const { data, error } = await getUsage({ client: apiClient });
 
-      const usageData = await apiClient.getUsage();
+      if (error) {
+        throw new Error((error?.error || {}).message || 'Failed to load usage data');
+      }
 
-      if (!usageData) {
+      if (!data) {
         setData(null);
         return;
       }
 
       setData({
-        period: usageData.period || '',
+        period: data.period || '',
         totals: {
-          validations: usageData.totals?.validations ?? 0,
-          orders: usageData.totals?.orders ?? 0
+          validations: data.totals?.validations ?? 0,
+          orders: data.totals?.orders ?? 0
         },
-        by_day: (usageData.by_day ?? []).map(day => ({
+        by_day: (data.by_day ?? []).map((day: any) => ({
           date: day?.date ?? '',
           validations: day?.validations ?? 0,
           orders: day?.orders ?? 0
         })),
-        top_reason_codes: (usageData.top_reason_codes ?? []).map(code => ({
+        top_reason_codes: (data.top_reason_codes ?? []).map((code: any) => ({
           code: code?.code ?? '',
           count: code?.count ?? 0
         })),
-        cache_hit_ratio: usageData.cache_hit_ratio ?? 0,
-        request_id: usageData.request_id ?? ''
+        cache_hit_ratio: data.cache_hit_ratio ?? 0,
+        request_id: data.request_id ?? ''
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error');
@@ -215,7 +216,7 @@ const UsageDashboard: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [apiClient]);
 
   React.useEffect(() => {
     fetchUsage();

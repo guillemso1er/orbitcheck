@@ -4,7 +4,9 @@ summary: Batch validate data
 description: Performs batch validation of emails, phones, addresses, or tax IDs asynchronously
 operationId: batchValidate
 security:
-  - ApiKeyAuth: []
+  - apiKeyAuth: []
+  - httpMessageSigInput: []
+    httpMessageSig: []
 requestBody:
   required: true
   content:

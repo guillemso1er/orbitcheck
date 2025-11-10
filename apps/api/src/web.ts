@@ -10,6 +10,7 @@ import { serviceHandlers } from "./handlers/handlers.js";
 import { idempotency, rateLimit } from "./hooks.js";
 import { authenticateRouteRequest } from "./services/auth.js";
 import { createPlansService } from './services/plans.js';
+import openapiSecurity from "./plugins/auth.js";
 
 const AUTH_REGISTER = DASHBOARD_ROUTES.REGISTER_NEW_USER;
 const AUTH_LOGIN = DASHBOARD_ROUTES.USER_LOGIN;
@@ -204,8 +205,12 @@ export async function applyRateLimitingAndIdempotency<TServer extends RawServerB
  */
 export function registerRoutes<TServer extends RawServerBase = RawServerBase>(app: FastifyInstance<TServer>, pool: Pool, redis: IORedisType): void {
     // Global preHandler hook chain: authentication + validation limits + rate limiting/idempotency middleware
+    app.register(openapiSecurity, {
+        pool,
+        // If you set a global default in the spec, mirror it here
+        // defaultSecurity: [ { apiKeyAuth: [], hmacAuth: [] }, { patAuth: [] }, { sessionCookie: [] } ],
+    })
     app.addHook("preHandler", async (request, rep) => {
-        await authenticateRequest(request, rep, pool);
         await applyValidationLimits(request, rep, pool);
         await applyRateLimitingAndIdempotency(request, rep, redis);
         return;

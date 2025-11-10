@@ -4,7 +4,9 @@ summary: Batch deduplicate data
 description: Performs batch deduplication of customers or addresses asynchronously
 operationId: batchDedupe
 security:
-  - ApiKeyAuth: []
+  - apiKeyAuth: []
+  - httpMessageSigInput: []
+    httpMessageSig: []
 requestBody:
   required: true
   content:

@@ -4,7 +4,9 @@ summary: Normalize Address (Cheap)
 description: Performs basic address normalization without geocoding or external lookups
 operationId: normalizeAddress
 security:
-  - ApiKeyAuth: []
+  - apiKeyAuth: []
+  - httpMessageSigInput: []
+    httpMessageSig: []
 requestBody:
   required: true
   content:
