@@ -44,11 +44,12 @@ export async function setupErrorHandler<TServer extends RawServerBase = RawServe
             error.code === 'FST_REQ_FILE_TOO_LARGE' ||
             error.code === 'FST_ERR_CTP_INVALID_MEDIA_TYPE' ||
             error.statusCode === 413 ||
-            (error.statusCode === 400 && (
-                error.message?.includes('payload') ||
-                error.message?.includes('too large') ||
-                error.message?.includes('body')
-            ));
+            (error.statusCode === 400 &&
+                (error.message?.includes('payload') ||
+                 error.message?.includes('too large')) &&
+                !error.message?.includes('property') &&
+                !error.message?.includes('pattern') &&
+                !error.message?.includes('required'));
         
         if (isPayloadTooLarge) {
             return reply.status(413).send({

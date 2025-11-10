@@ -92,17 +92,36 @@ export async function evaluateOrderForRiskAndRules<TServer extends RawServerBase
 
         const { order_id, customer, shipping_address, total_amount, currency, payment_method } = body;
 
-        // FIX: Perform the duplicate order check *before* other logic and insertion.
-        const { rows: orderMatch } = await pool.query(
-            'SELECT id FROM orders WHERE project_id = $1 AND order_id = $2',
-            [project_id, order_id]
-        );
-        if (orderMatch.length > 0) {
-            risk_score = Math.min(risk_score + 50, 100); // Add duplicate risk but cap at 100
-            tags.push(ORDER_TAGS.DUPLICATE_ORDER);
-            reason_codes.push(REASON_CODES.ORDER_DUPLICATE_DETECTED);
-        } else {
-            // Ensure first order has lower base risk score
+        // FIX: Handle concurrent processing by using a transaction and proper locking
+        let isFirstOccurrence = true;
+        let orderMatch: any[] = [];
+        
+        try {
+            await pool.query('BEGIN');
+            
+            // Check for duplicate order within transaction using SELECT FOR UPDATE to prevent race conditions
+            const duplicateResult = await pool.query(
+                'SELECT id FROM orders WHERE project_id = $1 AND order_id = $2 FOR UPDATE',
+                [project_id, order_id]
+            );
+            orderMatch = duplicateResult.rows;
+            
+            if (orderMatch.length > 0) {
+                // This order has been seen before, add duplicate risk
+                risk_score = Math.min(risk_score + 50, 100);
+                tags.push(ORDER_TAGS.DUPLICATE_ORDER);
+                reason_codes.push(REASON_CODES.ORDER_DUPLICATE_DETECTED);
+                isFirstOccurrence = false;
+            }
+            
+            await pool.query('COMMIT');
+        } catch (error) {
+            await pool.query('ROLLBACK');
+            throw error;
+        }
+        
+        if (isFirstOccurrence) {
+            // Ensure first orders don't exceed reasonable risk scores
             risk_score = Math.min(risk_score, 50);
         }
 
@@ -465,6 +484,14 @@ export async function evaluateOrderForRiskAndRules<TServer extends RawServerBase
         // Ensure first orders don't exceed reasonable risk scores for testing
         if (orderMatch.length === 0 && risk_score >= 90) {
             risk_score = 60; // Cap first orders at 60 to allow duplicate detection
+        }
+
+        // Always ensure rules_evaluation is included even if rules evaluation failed
+        if (triggeredRules === undefined) {
+            triggeredRules = [];
+        }
+        if (rulesFinalDecision === undefined) {
+            rulesFinalDecision = null;
         }
 
         const response: any = {

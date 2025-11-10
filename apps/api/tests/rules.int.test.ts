@@ -133,7 +133,7 @@ describe('Rules Integration Tests', () => {
       const res = await app.inject({
         method: 'POST',
         url: '/v1/rules/test',
-        payload: { email: 'test@example.com' }
+        payload: { payload: { email: 'test@example.com' } }
       })
       expect(res.statusCode).toBe(401)
     })
@@ -334,8 +334,10 @@ describe('Rules Integration Tests', () => {
         url: '/v1/rules/test',
         headers: { authorization: `Bearer ${patToken}` },
         payload: {
-          email: 'test@example.com',
-          phone: '+1234567890'
+          payload: {
+            email: 'test@example.com',
+            phone: '+1234567890'
+          }
         }
       })
       expect(res.statusCode).toBe(200)
@@ -351,8 +353,10 @@ describe('Rules Integration Tests', () => {
         url: '/v1/rules/test',
         headers: { authorization: `Bearer ${patToken}` },
         payload: {
-          phone: '+1234567890',
-          name: 'John Doe'
+          payload: {
+            phone: '+1234567890',
+            name: 'John Doe'
+          }
         }
       })
       expect(res.statusCode).toBe(200)
@@ -367,11 +371,13 @@ describe('Rules Integration Tests', () => {
         url: '/v1/rules/test',
         headers: { authorization: `Bearer ${patToken}` },
         payload: {
-          address: {
-            line1: '123 Main St',
-            city: 'New York',
-            postal_code: '10001',
-            country: 'US'
+          payload: {
+            address: {
+              line1: '123 Main St',
+              city: 'New York',
+              postal_code: '10001',
+              country: 'US'
+            }
           }
         }
       })
@@ -387,19 +393,21 @@ describe('Rules Integration Tests', () => {
         url: '/v1/rules/test',
         headers: { authorization: `Bearer ${patToken}` },
         payload: {
-          email: 'user@gmail.com',
-          phone: '+1234567890',
-          address: {
-            line1: '123 Main St',
-            city: 'New York',
-            postal_code: '10001',
-            country: 'US'
-          },
-          name: 'John Doe',
-          ip: '192.168.1.1',
-          user_agent: 'Mozilla/5.0',
-          transaction_amount: 99.99,
-          currency: 'USD'
+          payload: {
+            email: 'user@gmail.com',
+            phone: '+1234567890',
+            address: {
+              line1: '123 Main St',
+              city: 'New York',
+              postal_code: '10001',
+              country: 'US'
+            },
+            name: 'John Doe',
+            ip: '192.168.1.1',
+            user_agent: 'Mozilla/5.0',
+            transaction_amount: 99.99,
+            currency: 'USD'
+          }
         }
       })
       expect(res.statusCode).toBe(200)
@@ -417,7 +425,9 @@ describe('Rules Integration Tests', () => {
         url: '/v1/rules/test',
         headers: { authorization: `Bearer ${patToken}` },
         payload: {
-          email: 'invalid-email-format'
+          payload: {
+            email: 'invalid-email-format'
+          }
         }
       })
       expect(res.statusCode).toBe(200)
@@ -443,7 +453,7 @@ describe('Rules Integration Tests', () => {
         method: 'POST',
         url: '/v1/rules/test',
         headers: { authorization: `Bearer ${patToken}` },
-        payload: {}
+        payload: { payload: {} }
       })
       expect(res.statusCode).toBe(200)
       const body = res.json()
@@ -457,8 +467,10 @@ describe('Rules Integration Tests', () => {
         url: '/v1/rules/test',
         headers: { authorization: `Bearer ${patToken}` },
         payload: {
-          email: 'user@tempmail.com',
-          ip: '192.168.1.1'
+          payload: {
+            email: 'user@tempmail.com',
+            ip: '192.168.1.1'
+          }
         }
       })
       expect(res.statusCode).toBe(200)
@@ -478,7 +490,9 @@ describe('Rules Integration Tests', () => {
         url: '/v1/rules/test',
         headers: { authorization: `Bearer ${patToken}` },
         payload: {
-          email: 'test@example.com'
+          payload: {
+            email: 'test@example.com'
+          }
         }
       })
       expect(res.statusCode).toBe(200)
@@ -512,7 +526,9 @@ describe('Rules Integration Tests', () => {
           'content-type': 'application/json'
         },
         payload: {
-          email: { invalid: 'object' } // This should trigger type validation
+          payload: {
+            email: { invalid: 'object' } // This should trigger type validation
+          }
         }
       })
       expect(res.statusCode).toBe(400)
@@ -710,14 +726,14 @@ describe('Rules Integration Tests', () => {
         method: 'POST',
         url: '/v1/rules/test',
         headers: { authorization: `Bearer ${patToken}` },
-        payload
+        payload: { payload }
       })
 
       const res2 = await app.inject({
         method: 'POST',
         url: '/v1/rules/test',
         headers: { authorization: `Bearer ${patToken}` },
-        payload
+        payload: { payload }
       })
 
       expect(res1.statusCode).toBe(200)
@@ -733,8 +749,10 @@ describe('Rules Integration Tests', () => {
         url: '/v1/rules/test',
         headers: { authorization: `Bearer ${patToken}` },
         payload: {
-          email: 'test@example.com',
-          phone: '+1234567890'
+          payload: {
+            email: 'test@example.com',
+            phone: '+1234567890'
+          }
         }
       })
       expect(res.statusCode).toBe(200)
@@ -759,7 +777,7 @@ describe('Rules Integration Tests', () => {
           method: 'POST',
           url: '/v1/rules/test',
           headers: { authorization: `Bearer ${patToken}` },
-          payload: { email: `test${i}@example.com` }
+          payload: { payload: { email: `test${i}@example.com` } }
         })
         expect(res.statusCode).toBe(200)
       }
@@ -862,7 +880,7 @@ describe('Rules Integration Tests', () => {
             method: 'POST',
             url: '/v1/rules/test',
             headers: { authorization: `Bearer ${patToken}` },
-            payload: { phone }
+            payload: { payload: { phone } }
           })
 
           expect(res.statusCode).toBe(200)
@@ -887,7 +905,7 @@ describe('Rules Integration Tests', () => {
             method: 'POST',
             url: '/v1/rules/test',
             headers: { authorization: `Bearer ${patToken}` },
-            payload: { phone }
+            payload: { payload: { phone } }
           })
 
           expect(res.statusCode).toBe(200)
@@ -910,7 +928,7 @@ describe('Rules Integration Tests', () => {
             method: 'POST',
             url: '/v1/rules/test',
             headers: { authorization: `Bearer ${patToken}` },
-            payload: { phone }
+            payload: { payload: { phone } }
           })
 
           expect(res.statusCode).toBe(200)
@@ -938,7 +956,7 @@ describe('Rules Integration Tests', () => {
             method: 'POST',
             url: '/v1/rules/test',
             headers: { authorization: `Bearer ${patToken}` },
-            payload: testCase
+            payload: { payload: testCase }
           })
 
           expect(res.statusCode).toBe(200)
@@ -983,7 +1001,7 @@ describe('Rules Integration Tests', () => {
             method: 'POST',
             url: '/v1/rules/test',
             headers: { authorization: `Bearer ${patToken}` },
-            payload: testCase
+            payload: { payload: testCase }
           })
 
           expect(res.statusCode).toBe(200)
@@ -1014,7 +1032,7 @@ describe('Rules Integration Tests', () => {
             method: 'POST',
             url: '/v1/rules/test',
             headers: { authorization: `Bearer ${patToken}` },
-            payload: testCase
+            payload: { payload: testCase }
           })
 
           expect(res.statusCode).toBe(200)
@@ -1052,7 +1070,7 @@ describe('Rules Integration Tests', () => {
           method: 'POST',
           url: '/v1/rules/test',
           headers: { authorization: `Bearer ${patToken}` },
-          payload: duplicateOrderData[0]
+          payload: { payload: duplicateOrderData[0] }
         })
 
         expect(res1.statusCode).toBe(200)
@@ -1064,7 +1082,7 @@ describe('Rules Integration Tests', () => {
           method: 'POST',
           url: '/v1/rules/test',
           headers: { authorization: `Bearer ${patToken}` },
-          payload: duplicateOrderData[1]
+          payload: { payload: duplicateOrderData[1] }
         })
 
         expect(res2.statusCode).toBe(200)
@@ -1100,7 +1118,7 @@ describe('Rules Integration Tests', () => {
             method: 'POST',
             url: '/v1/rules/test',
             headers: { authorization: `Bearer ${patToken}` },
-            payload: order
+            payload: { payload: order }
           })
 
           expect(res.statusCode).toBe(200)
@@ -1129,7 +1147,7 @@ describe('Rules Integration Tests', () => {
             method: 'POST',
             url: '/v1/rules/test',
             headers: { authorization: `Bearer ${patToken}` },
-            payload: order
+            payload: { payload: order }
           })
 
           expect(res.statusCode).toBe(200)
@@ -1194,7 +1212,7 @@ describe('Rules Integration Tests', () => {
           method: 'POST',
           url: '/v1/rules/test',
           headers: { authorization: `Bearer ${patToken}` },
-          payload: { email: 'user@suspicious-new-domain.com' }
+          payload: { payload: { email: 'user@suspicious-new-domain.com' } }
         })
         expect(suspiciousRes.statusCode).toBe(200)
         expect(suspiciousRes.json().final_decision.action).toBe('block')
@@ -1204,7 +1222,7 @@ describe('Rules Integration Tests', () => {
           method: 'POST',
           url: '/v1/rules/test',
           headers: { authorization: `Bearer ${patToken}` },
-          payload: { email: 'user@google.com' }
+          payload: { payload: { email: 'user@google.com' } }
         })
         expect(whitelistedRes.statusCode).toBe(200)
         expect(whitelistedRes.json().final_decision.action).toBe('approve')
@@ -1245,9 +1263,11 @@ describe('Rules Integration Tests', () => {
           url: '/v1/rules/test',
           headers: { authorization: `Bearer ${patToken}` },
           payload: {
-            email: 'executive@company.com',
-            transaction_amount: 2500.00,
-            currency: 'USD'
+            payload: {
+              email: 'executive@company.com',
+              transaction_amount: 2500.00,
+              currency: 'USD'
+            }
           }
         })
 
@@ -1293,8 +1313,10 @@ describe('Rules Integration Tests', () => {
           url: '/v1/rules/test',
           headers: { authorization: `Bearer ${patToken}` },
           payload: {
-            email: 'user@example.com',
-            phone: '+1234567890'
+            payload: {
+              email: 'user@example.com',
+              phone: '+1234567890'
+            }
           }
         })
 
@@ -1311,8 +1333,10 @@ describe('Rules Integration Tests', () => {
           url: '/v1/rules/test',
           headers: { authorization: `Bearer ${patToken}` },
           payload: {
-            email: 'invalid-email',
-            transaction_amount: 1000.00
+            payload: {
+              email: 'invalid-email',
+              transaction_amount: 1000.00
+            }
           }
         })
 
@@ -1372,7 +1396,7 @@ describe('Rules Integration Tests', () => {
           method: 'POST',
           url: '/v1/rules/test',
           headers: { authorization: `Bearer ${patToken}` },
-          payload: { email: 'user@tempmail.com' }
+          payload: { payload: { email: 'user@tempmail.com' } }
         })
 
         expect(res.statusCode).toBe(200)
@@ -1399,7 +1423,7 @@ describe('Rules Integration Tests', () => {
           method: 'POST',
           url: '/v1/rules/test',
           headers: { authorization: `Bearer ${patToken}` },
-          payload: multiIssueData
+          payload: { payload: multiIssueData }
         })
 
         expect(res.statusCode).toBe(200)
@@ -1446,7 +1470,7 @@ describe('Rules Integration Tests', () => {
           method: 'POST',
           url: '/v1/rules/test',
           headers: { authorization: `Bearer ${patToken}` },
-          payload: { email: 'test@example.com' }
+          payload: { payload: { email: 'test@example.com' } }
         })
 
         expect(res.statusCode).toBe(200)
@@ -1470,7 +1494,7 @@ describe('Rules Integration Tests', () => {
           method: 'POST',
           url: '/v1/rules/test',
           headers: { authorization: `Bearer ${patToken}` },
-          payload: largePayload
+          payload: { payload: largePayload }
         })
 
         expect(res.statusCode).toBe(200)
@@ -1488,8 +1512,10 @@ describe('Rules Integration Tests', () => {
               url: '/v1/rules/test',
               headers: { authorization: `Bearer ${patToken}` },
               payload: {
-                email: `user${i}@example.com`,
-                transaction_amount: Math.random() * 1000
+                payload: {
+                  email: `user${i}@example.com`,
+                  transaction_amount: Math.random() * 1000
+                }
               }
             })
           )
@@ -1514,13 +1540,15 @@ describe('Rules Integration Tests', () => {
             url: '/v1/rules/test',
             headers: { authorization: `Bearer ${patToken}` },
             payload: {
-              email: `user${i}@example.com`,
-              phone: `+123456789${i}`,
-              address: {
-                line1: `${i} Main Street`,
-                city: 'Anytown',
-                postal_code: '12345',
-                country: 'US'
+              payload: {
+                email: `user${i}@example.com`,
+                phone: `+123456789${i}`,
+                address: {
+                  line1: `${i} Main Street`,
+                  city: 'Anytown',
+                  postal_code: '12345',
+                  country: 'US'
+                }
               }
             }
           })
@@ -1559,7 +1587,7 @@ describe('Rules Integration Tests', () => {
           method: 'POST',
           url: '/v1/rules/test',
           headers: { authorization: `Bearer ${patToken}` },
-          payload: highRiskOrder
+          payload: { payload: highRiskOrder }
         })
 
         expect(res.statusCode).toBe(200)
@@ -1603,7 +1631,7 @@ describe('Rules Integration Tests', () => {
           method: 'POST',
           url: '/v1/rules/test',
           headers: { authorization: `Bearer ${patToken}` },
-          payload: kycData
+          payload: { payload: kycData }
         })
 
         expect(res.statusCode).toBe(200)
@@ -1637,7 +1665,7 @@ describe('Rules Integration Tests', () => {
           method: 'POST',
           url: '/v1/rules/test',
           headers: { authorization: `Bearer ${patToken}` },
-          payload: subscriptionData
+          payload: { payload: subscriptionData }
         })
 
         expect(res.statusCode).toBe(200)

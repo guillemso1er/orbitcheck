@@ -207,6 +207,52 @@ responses:
                     in_bounds:
                       type: boolean
                       description: Whether the address is within bounds
+            rules_evaluation:
+              type: object
+              properties:
+                triggered_rules:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      rule_id:
+                        type: string
+                      rule_name:
+                        type: string
+                      description:
+                        type: string
+                      action:
+                        type: string
+                        enum:
+                          - approve
+                          - hold
+                          - block
+                      confidence_score:
+                        type: number
+                      reason:
+                        type: string
+                final_decision:
+                  anyOf:
+                    - type: object
+                      properties:
+                        action:
+                          type: string
+                          enum:
+                            - approve
+                            - hold
+                            - block
+                            - review
+                        confidence:
+                          type: number
+                        reasons:
+                          type: array
+                          items:
+                            type: string
+                        risk_score:
+                          type: number
+                        risk_level:
+                          type: string
+                    - type: 'null'
             request_id:
               type: string
   '400':

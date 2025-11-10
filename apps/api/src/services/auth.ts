@@ -450,7 +450,7 @@ export async function loginUser(
         const body = request.body as LoginUserData['body'];
         const { email, password } = body;
 
-        const { rows } = await pool.query('SELECT id, email, password_hash FROM users WHERE email = $1', [email]);
+        const { rows } = await pool.query('SELECT id, email, password_hash, first_name, last_name, created_at, updated_at FROM users WHERE email = $1', [email]);
 
         if (rows.length === 0 || !(await bcrypt.compare(password, rows[0].password_hash))) {
             return await sendError(rep, HTTP_STATUS.UNAUTHORIZED, ERROR_CODES.INVALID_CREDENTIALS, ERROR_MESSAGES[ERROR_CODES.INVALID_CREDENTIALS], request_id);
