@@ -11,6 +11,79 @@ import { RulesHeader } from './RulesHeader';
 import { RulesList } from './RulesList';
 import { TestHarness } from './TestHarness';
 
+// Custom Confirmation Dialog Component
+const ConfirmDialog: React.FC<{
+  show: boolean;
+  title: string;
+  message: string;
+  confirmText?: string;
+  cancelText?: string;
+  variant?: 'danger' | 'warning';
+  onConfirm: () => void;
+  onCancel: () => void;
+}> = ({
+  show,
+  title,
+  message,
+  confirmText = 'Confirm',
+  cancelText = 'Cancel',
+  variant = 'danger',
+  onConfirm,
+  onCancel
+}) => {
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onCancel();
+    };
+    if (show) {
+      document.addEventListener('keydown', handleEscape);
+      return () => document.removeEventListener('keydown', handleEscape);
+    }
+  }, [show, onCancel]);
+
+  if (!show) return null;
+
+  const buttonClass = variant === 'danger'
+    ? 'bg-red-600 hover:bg-red-700 focus:ring-red-500'
+    : 'bg-yellow-600 hover:bg-yellow-700 focus:ring-yellow-500';
+
+  return (
+    <div
+      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+      onClick={onCancel}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="confirm-dialog-title"
+    >
+      <div
+        className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md m-4 border border-gray-200 dark:border-gray-700"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="p-6">
+          <h3 id="confirm-dialog-title" className="text-base font-semibold text-gray-900 dark:text-white mb-2">{title}</h3>
+          <p className="text-gray-600 dark:text-gray-300 mb-6">{message}</p>
+          <div className="flex justify-end gap-3">
+            <button
+              type="button"
+              onClick={onCancel}
+              className="py-2 px-4 bg-white dark:bg-gray-600 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-500 rounded-md hover:bg-gray-50 dark:hover:bg-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+            >
+              {cancelText}
+            </button>
+            <button
+              type="button"
+              onClick={onConfirm}
+              className={`py-2 px-4 text-white rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 ${buttonClass}`}
+            >
+              {confirmText}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 
 const Rules: React.FC = () => {
   const [rules, setRules] = useState<Rule[]>([]);
@@ -65,6 +138,11 @@ const Rules: React.FC = () => {
   const [testError, setTestError] = useState<string | null>(null);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [searchTerm, setSearchTerm] = useState('');
+  const [deleteConfirm, setDeleteConfirm] = useState<{
+    show: boolean;
+    ruleId: string;
+    ruleName: string;
+  } | null>(null);
   const [filterAction, setFilterAction] = useState<'all' | Rule['action']>('all');
   const [showOnlyEnabled, setShowOnlyEnabled] = useState(false);
 
@@ -110,82 +188,56 @@ const Rules: React.FC = () => {
       ...newRuleData,
     };
     setRules([newRule, ...rules]);
+    console.log('New rule added. Save to persist changes.');
   };
 
-  const updateRule = async (index: number, updatedRule: Rule) => {
+  const updateRule = (index: number, updatedRule: Rule) => {
     const newRules = [...rules];
     const originalIndex = rules.findIndex(r => r.id === filteredRules[index].id);
     if (originalIndex !== -1) {
       const ruleToUpdate = { ...updatedRule, updatedAt: new Date().toISOString() };
       newRules[originalIndex] = ruleToUpdate;
 
-      // Update local state immediately for better UX
+      // Update local state immediately for better UX (no immediate backend save)
       setRules(newRules);
-
-      try {
-        // Persist the change to backend
-        const { error } = await registerCustomRules({
-          client: apiClient,
-          body: {
-            rules: newRules.map(rule => ({
-              id: rule.id,
-              name: rule.name,
-              description: rule.description,
-              logic: rule.condition,
-              severity: 'high' as const,
-              enabled: rule.enabled,
-              action: rule.action,
-              priority: rule.priority,
-            }))
-          }
-        });
-        
-        if (error) {
-          if ('error' in error && error.error && 'message' in error.error) {
-            throw new Error(error.error.message || 'Failed to update rule');
-          } else {
-            throw new Error('Failed to update rule');
-          }
-        }
-      } catch (err) {
-        // Revert local state if backend update fails
-        setRules(rules);
-        const errorMessage = err instanceof Error ? err.message : 'Unknown error';
-        setBackendError(`Failed to update rule: ${errorMessage}`);
-        console.error('Failed to update rule:', err);
-      }
     }
   };
 
-  const deleteRule = async (index: number) => {
-    if (window.confirm('Are you sure you want to delete this rule?')) {
-      const ruleId = filteredRules[index].id;
-      const ruleName = filteredRules[index].name;
+  const deleteRule = (index: number) => {
+    const ruleId = filteredRules[index].id;
+    const ruleName = filteredRules[index].name;
+    setDeleteConfirm({ show: true, ruleId, ruleName });
+  };
 
-      // Update local state immediately for better UX
-      setRules(rules.filter(r => r.id !== ruleId));
-
-      try {
-        // Call the delete API endpoint
-        const { error } = await deleteCustomRule({ client: apiClient, path: { id: ruleId } });
-        
-        if (error) {
-          if (typeof error === 'string') {
-            throw new Error(error);
-          } else {
-            throw new Error('Failed to delete rule');
-          }
+  const confirmDelete = async () => {
+    if (!deleteConfirm) return;
+    
+    try {
+      // Call the delete API endpoint
+      const { error } = await deleteCustomRule({ client: apiClient, path: { id: deleteConfirm.ruleId } });
+      
+      if (error) {
+        if (typeof error === 'string') {
+          throw new Error(error);
+        } else {
+          throw new Error('Failed to delete rule');
         }
-        
-        console.log(`Rule "${ruleName}" deleted successfully`);
-      } catch (err) {
-        // Revert local state if backend update fails
-        setRules(rules);
-        const errorMessage = err instanceof Error ? err.message : 'Unknown error';
-        setBackendError(`Failed to delete rule: ${errorMessage}`);
-        console.error('Failed to delete rule:', err);
       }
+      
+      // Update local state after successful backend delete
+      setRules(rules.filter(r => r.id !== deleteConfirm.ruleId));
+      console.log(`Rule "${deleteConfirm.ruleName}" deleted successfully`);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+      setBackendError(`Failed to delete rule: ${errorMessage}`);
+      console.error('Failed to delete rule:', err);
+    } finally {
+      setDeleteConfirm(null);
     }
+  };
+
+  const cancelDelete = () => {
+    setDeleteConfirm(null);
   };
 
   const duplicateRule = (index: number) => {
@@ -197,6 +249,7 @@ const Rules: React.FC = () => {
       createdAt: new Date().toISOString(),
     };
     setRules([newRule, ...rules]);
+    console.log('Rule duplicated. Save to persist changes.');
   };
 
   const handleTestRules = async () => {
@@ -329,6 +382,7 @@ const Rules: React.FC = () => {
         setShowOnlyEnabled={setShowOnlyEnabled}
         onValidationChange={handleValidationChange}
       />
+      
       <TestHarness
         testPayload={testPayload}
         setTestPayload={setTestPayload}
@@ -337,6 +391,18 @@ const Rules: React.FC = () => {
         error={testError}
         ruleTestResults={ruleTestResults}
         testResult={testResult}
+      />
+
+      {/* Delete Confirmation Dialog */}
+      <ConfirmDialog
+        show={deleteConfirm !== null}
+        title="Delete Rule"
+        message={`Are you sure you want to delete the rule "${deleteConfirm?.ruleName}"? This action cannot be undone.`}
+        confirmText="Delete Rule"
+        cancelText="Cancel"
+        variant="danger"
+        onConfirm={confirmDelete}
+        onCancel={cancelDelete}
       />
     </div>
   );

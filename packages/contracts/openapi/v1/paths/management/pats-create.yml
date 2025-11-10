@@ -14,33 +14,32 @@ requestBody:
         type: object
         required:
           - name
-          - scopes
         properties:
           name:
             type: string
             description: Token name
           scopes:
-            type: array
+            type: [array, "null"]
             items:
               type: string
-              enum: [keys:read, keys:write, logs:read, usage:read, webhooks:manage, connectors:manage, pats:manage, projects:manage, rules:manage]
-            description: Access scopes for the token
+              enum: ['keys:read', 'keys:write', 'logs:read', 'usage:read', 'webhooks:manage', 'connectors:manage', 'pats:manage', 'projects:manage', 'rules:manage']
+            description: Access scopes for the token (optional, defaults to basic read access)
           env:
-            type: string
+            type: [string, "null"]
             enum: [test, live]
             default: live
             description: Environment for the token
           expires_at:
-            type: string
+            type: [string, "null"]
             format: date-time
             description: Optional expiration date
           ip_allowlist:
-            type: array
+            type: [array, "null"]
             items:
               type: string
             description: Optional IP allowlist (CIDR notation)
           project_id:
-            type: string
+            type: [string, "null"]
             description: Optional project restriction
 responses:
   '201':

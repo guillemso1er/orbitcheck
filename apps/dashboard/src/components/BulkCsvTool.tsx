@@ -3,6 +3,14 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { UI_STRINGS } from '../constants';
 import { apiClient } from '../utils/api';
 
+interface CsvFormatExample {
+  name: string;
+  description: string;
+  headers: string[];
+  sampleData: string[][];
+  downloadFilename: string;
+}
+
 interface JobStatus {
   id?: string;
   status?: 'pending' | 'running' | 'completed' | 'failed';
@@ -60,6 +68,51 @@ const BulkCsvTool: React.FC = () => {
       };
     }
   }, [jobId, apiClient]);
+
+  // CSV format examples
+  const csvFormats: { [key in 'customers' | 'orders']: CsvFormatExample } = {
+    customers: {
+      name: 'Customers CSV',
+      description: 'Customer data with email and/or phone numbers for validation',
+      headers: ['email', 'phone', 'name', 'address'],
+      sampleData: [
+        ['user1@example.com', '+1234567890', 'John Doe', '123 Main St, New York, NY'],
+        ['user2@example.com', '+0987654321', 'Jane Smith', '456 Oak Ave, Los Angeles, CA'],
+        ['user3@example.com', '', 'Bob Wilson', '789 Pine Rd, Chicago, IL']
+      ],
+      downloadFilename: 'customers-example.csv'
+    },
+    orders: {
+      name: 'Orders CSV',
+      description: 'Order data with customer email and order details',
+      headers: ['order_id', 'customer_email', 'total', 'items', 'status'],
+      sampleData: [
+        ['ORD-001', 'user1@example.com', '99.99', 'Product A, Product B', 'pending'],
+        ['ORD-002', 'user2@example.com', '49.50', 'Product C', 'completed'],
+        ['ORD-003', 'user3@example.com', '150.00', 'Product A, Product D, Product E', 'processing']
+      ],
+      downloadFilename: 'orders-example.csv'
+    }
+  };
+
+  // Download example CSV function
+  const downloadExampleCsv = (type: 'customers' | 'orders') => {
+    const format = csvFormats[type];
+    const csvContent = [
+      format.headers.join(','),
+      ...format.sampleData.map(row => row.join(','))
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = format.downloadFilename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
 
   const parseCSV = (csvText: string): string[][] => {
     const lines = csvText.split('\n').filter(line => line.trim());
@@ -269,6 +322,61 @@ const BulkCsvTool: React.FC = () => {
             <option value="customers">{UI_STRINGS.CSV_TYPE_CUSTOMERS}</option>
             <option value="orders">{UI_STRINGS.CSV_TYPE_ORDERS}</option>
           </select>
+        </div>
+      </div>
+
+      <div className="mb-8">
+        {/* CSV Format Visualization */}
+        <div className="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg p-6 mb-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+              {csvFormats[csvType].name} Format
+            </h3>
+            <button
+              onClick={() => downloadExampleCsv(csvType)}
+              className="bg-blue-600 hover:bg-blue-700 text-white font-medium px-4 py-2 rounded-lg transition-colors flex items-center gap-2"
+            >
+              📥 Download Example
+            </button>
+          </div>
+          <p className="text-gray-600 dark:text-gray-400 mb-4">
+            {csvFormats[csvType].description}
+          </p>
+          
+          <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 overflow-x-auto">
+            <div className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+              Expected format:
+            </div>
+            <table className="min-w-full text-sm">
+              <thead>
+                <tr>
+                  {csvFormats[csvType].headers.map((header, index) => (
+                    <th key={index} className="text-left font-medium text-gray-900 dark:text-white px-3 py-2 border-b border-gray-200 dark:border-gray-600">
+                      {header}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {csvFormats[csvType].sampleData.slice(0, 3).map((row, rowIndex) => (
+                  <tr key={rowIndex} className="text-gray-700 dark:text-gray-300">
+                    {row.map((cell, cellIndex) => (
+                      <td key={cellIndex} className="px-3 py-2 border-b border-gray-100 dark:border-gray-700">
+                        {cell || <span className="text-gray-400 italic">empty</span>}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+                {csvFormats[csvType].sampleData.length > 3 && (
+                  <tr className="text-gray-500 dark:text-gray-400">
+                    <td colSpan={csvFormats[csvType].headers.length} className="px-3 py-2 italic text-center">
+                      ... more rows
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
 

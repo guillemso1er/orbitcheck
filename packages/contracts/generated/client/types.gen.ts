@@ -3054,9 +3054,9 @@ export type CreatePersonalAccessTokenData = {
          */
         name: string;
         /**
-         * Access scopes for the token
+         * Access scopes for the token (optional, defaults to basic read access)
          */
-        scopes: Array<'keys:read' | 'keys:write' | 'logs:read' | 'usage:read' | 'webhooks:manage' | 'connectors:manage' | 'pats:manage' | 'projects:manage' | 'rules:manage'>;
+        scopes?: Array<'keys:read' | 'keys:write' | 'logs:read' | 'usage:read' | 'webhooks:manage' | 'connectors:manage' | 'pats:manage' | 'projects:manage' | 'rules:manage'> | null;
         /**
          * Environment for the token
          */
@@ -3064,15 +3064,15 @@ export type CreatePersonalAccessTokenData = {
         /**
          * Optional expiration date
          */
-        expires_at?: string;
+        expires_at?: string | null;
         /**
          * Optional IP allowlist (CIDR notation)
          */
-        ip_allowlist?: Array<string>;
+        ip_allowlist?: Array<string> | null;
         /**
          * Optional project restriction
          */
-        project_id?: string;
+        project_id?: string | null;
     };
     path?: never;
     query?: never;

@@ -111,7 +111,6 @@ const ConfirmDialog: React.FC<{
     );
   };
 
-// Create PAT Modal
 const CreatePATModal: React.FC<{
   show: boolean;
   onClose: () => void;
@@ -127,23 +126,8 @@ const CreatePATModal: React.FC<{
 }> = ({ show, onClose, onCreate, creating }) => {
   const [formData, setFormData] = useState({
     name: '',
-    scopes: [] as string[],
-    env: 'live' as 'test' | 'live',
-    expires_at: '',
-    ip_allowlist: [] as string[],
-    project_id: '',
   });
   const nameInputRef = useRef<HTMLInputElement>(null);
-
-  const availableScopes = [
-    { id: 'keys:read', label: 'Keys - Read', desc: 'Read API keys' },
-    { id: 'keys:write', label: 'Keys - Write', desc: 'Create and revoke API keys' },
-    { id: 'logs:read', label: 'Logs - Read', desc: 'Read event logs' },
-    { id: 'usage:read', label: 'Usage - Read', desc: 'Read usage statistics' },
-    { id: 'webhooks:manage', label: 'Webhooks - Manage', desc: 'Create and manage webhooks' },
-    { id: 'pats:manage', label: 'PATs - Manage', desc: 'Create and manage personal access tokens' },
-    { id: 'rules:manage', label: 'Rules - Manage', desc: 'Manage validation rules' },
-  ];
 
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
@@ -157,68 +141,29 @@ const CreatePATModal: React.FC<{
   }, [show, onClose, creating]);
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const data = {
-      ...formData,
-      scopes: formData.scopes.length > 0 ? formData.scopes : ['logs:read'], // Default scope
-      expires_at: formData.expires_at || undefined,
-      ip_allowlist: formData.ip_allowlist.filter(ip => ip.trim()),
-      project_id: formData.project_id.trim() || undefined,
-    };
-    await onCreate(data);
-    setFormData({
-      name: '',
-      scopes: [],
-      env: 'live',
-      expires_at: '',
-      ip_allowlist: [],
-      project_id: '',
-    });
-  };
-
-  const handleScopeToggle = (scopeId: string) => {
-    setFormData(prev => ({
-      ...prev,
-      scopes: prev.scopes.includes(scopeId)
-        ? prev.scopes.filter(s => s !== scopeId)
-        : [...prev.scopes, scopeId]
-    }));
-  };
-
-  const addIpAddress = () => {
-    setFormData(prev => ({
-      ...prev,
-      ip_allowlist: [...prev.ip_allowlist, '']
-    }));
-  };
-
-  const updateIpAddress = (index: number, value: string) => {
-    setFormData(prev => ({
-      ...prev,
-      ip_allowlist: prev.ip_allowlist.map((ip, i) => i === index ? value : ip)
-    }));
-  };
-
-  const removeIpAddress = (index: number) => {
-    setFormData(prev => ({
-      ...prev,
-      ip_allowlist: prev.ip_allowlist.filter((_, i) => i !== index)
-    }));
-  };
-
-  const handleClose = () => {
-    if (!creating) {
+      e.preventDefault();
+      const data = {
+        name: formData.name,
+        scopes: ['logs:read'], // Default scope
+        env: 'live' as 'test' | 'live', // Default environment
+        expires_at: undefined, // No expiration by default
+        ip_allowlist: [], // No IP restrictions by default
+        project_id: undefined, // No project restriction by default
+      };
+      await onCreate(data);
       setFormData({
         name: '',
-        scopes: [],
-        env: 'live',
-        expires_at: '',
-        ip_allowlist: [],
-        project_id: '',
       });
-      onClose();
-    }
-  };
+    };
+  
+    const handleClose = () => {
+      if (!creating) {
+        setFormData({
+          name: '',
+        });
+        onClose();
+      }
+    };
 
   if (!show) return null;
 
@@ -263,123 +208,9 @@ const CreatePATModal: React.FC<{
                 disabled={creating}
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 disabled:bg-gray-100 disabled:cursor-not-allowed dark:bg-gray-700 dark:text-white"
               />
-            </div>
-
-            {/* Environment */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Environment *
-              </label>
-              <div className="flex gap-4">
-                {(['live', 'test'] as const).map((env) => (
-                  <label key={env} className="flex items-center">
-                    <input
-                      type="radio"
-                      name="env"
-                      value={env}
-                      checked={formData.env === env}
-                      onChange={(e) => setFormData(prev => ({ ...prev, env: e.target.value as 'live' | 'test' }))}
-                      disabled={creating}
-                      className="mr-2"
-                    />
-                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300 capitalize">{env}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
-
-            {/* Scopes */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Scopes *
-              </label>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {availableScopes.map((scope) => (
-                  <label key={scope.id} className="flex items-start space-x-3 p-3 border border-gray-200 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={formData.scopes.includes(scope.id)}
-                      onChange={() => handleScopeToggle(scope.id)}
-                      disabled={creating}
-                      className="mt-1"
-                    />
-                    <div>
-                      <div className="text-sm font-medium text-gray-900 dark:text-white">{scope.label}</div>
-                      <div className="text-xs text-gray-500 dark:text-gray-400">{scope.desc}</div>
-                    </div>
-                  </label>
-                ))}
-              </div>
-            </div>
-
-            {/* Expiration */}
-            <div>
-              <label htmlFor="expires-at" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Expires At
-              </label>
-              <input
-                id="expires-at"
-                type="datetime-local"
-                value={formData.expires_at}
-                onChange={(e) => setFormData(prev => ({ ...prev, expires_at: e.target.value }))}
-                disabled={creating}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 disabled:bg-gray-100 disabled:cursor-not-allowed dark:bg-gray-700 dark:text-white"
-              />
-              <p className="text-xs text-gray-500 mt-1">Leave empty for no expiration (90 days default)</p>
-            </div>
-
-            {/* IP Allowlist */}
-            <div>
-              <div className="flex justify-between items-center mb-2">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                  IP Allowlist
-                </label>
-                <button
-                  type="button"
-                  onClick={addIpAddress}
-                  disabled={creating}
-                  className="text-xs px-2 py-1 bg-gray-100 dark:bg-gray-600 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-200 dark:hover:bg-gray-500 disabled:opacity-50"
-                >
-                  + Add IP
-                </button>
-              </div>
-              {formData.ip_allowlist.map((ip, index) => (
-                <div key={index} className="flex gap-2 mb-2">
-                  <input
-                    type="text"
-                    placeholder="192.168.1.0/24 or 203.0.113.1"
-                    value={ip}
-                    onChange={(e) => updateIpAddress(index, e.target.value)}
-                    disabled={creating}
-                    className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 disabled:bg-gray-100 disabled:cursor-not-allowed dark:bg-gray-700 dark:text-white"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => removeIpAddress(index)}
-                    disabled={creating}
-                    className="px-3 py-2 text-red-600 hover:text-red-800 disabled:opacity-50"
-                  >
-                    ✕
-                  </button>
-                </div>
-              ))}
-              <p className="text-xs text-gray-500">CIDR notation supported (e.g., 192.168.1.0/24)</p>
-            </div>
-
-            {/* Project ID */}
-            <div>
-              <label htmlFor="project-id" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Project ID (Optional)
-              </label>
-              <input
-                id="project-id"
-                type="text"
-                value={formData.project_id}
-                onChange={(e) => setFormData(prev => ({ ...prev, project_id: e.target.value }))}
-                placeholder="Restrict token to specific project"
-                disabled={creating}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 disabled:bg-gray-100 disabled:cursor-not-allowed dark:bg-gray-700 dark:text-white"
-              />
+              <p className="text-xs text-gray-500 mt-1">
+                All other settings will use default values (Live environment, Read access, No expiration)
+              </p>
             </div>
           </div>
 
@@ -669,7 +500,7 @@ const PersonalAccessTokens: React.FC<PersonalAccessTokensProps> = () => {
         throw new Error((error?.error || {}).message || 'Failed to load personal access tokens');
       }
 
-      setTokens(((data as any).pats || []).filter((token: PersonalAccessToken): token is PersonalAccessToken =>
+      setTokens(((data as any).data || []).filter((token: PersonalAccessToken): token is PersonalAccessToken =>
         token.id !== undefined &&
         token.token_id !== undefined &&
         token.name !== undefined &&
