@@ -3,6 +3,9 @@ tags:
 summary: Test Webhook
 description: Sends a sample payload to the provided webhook URL and returns the response. Useful for testing webhook configurations.
 operationId: testWebhook
+security:
+  - patAuth: []
+  - sessionCookie: []
 requestBody:
   required: true
   content:

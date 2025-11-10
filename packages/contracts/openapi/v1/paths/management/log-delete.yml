@@ -3,6 +3,9 @@ tags:
 summary: Delete log entry
 description: Deletes a specific log entry
 operationId: deleteLog
+security:
+  - patAuth: []
+  - sessionCookie: []
 parameters:
   - name: id
     in: path

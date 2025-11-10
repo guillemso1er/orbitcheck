@@ -14,36 +14,7 @@ servers:
     description: Production server
   - url: https://dev-api.orbitcheck.io/v1
     description: Development server
-securitySchemes:
-    patAuth:
-      type: http
-      scheme: bearer
-      bearerFormat: PAT
-      description: Personal Access Token in Authorization ( Bearer <token> ). Use your PAT for management routes.
 
-    apiKeyAuth:
-      type: apiKey
-      in: header
-      name: X-API-Key
-      description: Static API key sent in a header. Use your API Key (ok_xxx) for runtime routes.
-
-    sessionCookie:
-      type: apiKey
-      in: cookie
-      name: sid
-      description: Session cookie. Used for browser-based authentication.
-
-    httpMessageSigInput:
-      type: apiKey
-      in: header
-      name: Signature-Input
-      description: HTTP Message Signatures metadata (RFC 9421). 
-
-    httpMessageSig:
-      type: apiKey
-      in: header
-      name: Signature
-      description: HTTP Message Signatures value (RFC 9421).
 
 tags:
   - name: Internal
@@ -235,6 +206,36 @@ paths:
     post:
       $ref: './paths/plans/usage-check.yml'
 components:
+  securitySchemes:
+      patAuth:
+        type: http
+        scheme: bearer
+        bearerFormat: PAT
+        description: Personal Access Token in Authorization ( Bearer <token> ). Use your PAT for management routes.
+
+      apiKeyAuth:
+        type: apiKey
+        in: header
+        name: X-API-Key
+        description: Static API key sent in a header. Use your API Key (ok_xxx) for runtime routes.
+
+      sessionCookie:
+        type: apiKey
+        in: cookie
+        name: sid
+        description: Session cookie. Used for browser-based authentication.
+
+      httpMessageSigInput:
+        type: apiKey
+        in: header
+        name: Signature-Input
+        description: HTTP Message Signatures metadata (RFC 9421). 
+
+      httpMessageSig:
+        type: apiKey
+        in: header
+        name: Signature
+        description: HTTP Message Signatures value (RFC 9421).
   schemas:
     Error:
       $ref: './components/schemas/Error.yml'

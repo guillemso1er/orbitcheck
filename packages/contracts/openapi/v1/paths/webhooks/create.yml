@@ -3,6 +3,9 @@ tags:
 summary: Create webhook
 description: Creates a new webhook subscription for the authenticated project
 operationId: createWebhook
+security:
+  - patAuth: []
+  - sessionCookie: []
 requestBody:
   required: true
   content:

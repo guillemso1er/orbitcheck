@@ -3,6 +3,10 @@ tags:
 summary: Verify phone OTP
 description: Verifies OTP sent to phone number
 operationId: verifyPhoneOtp
+security:
+  - apiKeyAuth: []
+  - httpMessageSigInput: []
+    httpMessageSig: []
 requestBody:
   required: true
   content:

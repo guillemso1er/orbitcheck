@@ -3,6 +3,10 @@ tags:
 summary: Validate name
 description: Validates and normalizes a name string
 operationId: validateName
+security:
+  - apiKeyAuth: []
+  - httpMessageSigInput: []
+    httpMessageSig: []
 requestBody:
   required: true
   content:

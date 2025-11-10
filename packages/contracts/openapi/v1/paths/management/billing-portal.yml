@@ -3,6 +3,9 @@ tags:
 summary: Create Stripe Customer Portal session
 description: Creates a Stripe Customer Portal session for managing billing
 operationId: createCustomerPortalSession
+security:
+  - patAuth: []
+  - sessionCookie: []
 responses:
   '200':
     description: Portal session created

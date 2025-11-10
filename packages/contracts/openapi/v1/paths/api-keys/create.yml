@@ -3,6 +3,9 @@ tags:
 summary: Create API key
 description: Generates a new API key for the authenticated project
 operationId: createApiKey
+security:
+  - patAuth: []
+  - sessionCookie: []
 requestBody:
   required: true
   content:

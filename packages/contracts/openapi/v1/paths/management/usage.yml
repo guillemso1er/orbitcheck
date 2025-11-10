@@ -3,6 +3,9 @@ tags:
 summary: Get usage statistics
 description: Retrieves usage statistics for the project
 operationId: getUsage
+security:
+  - patAuth: []
+  - sessionCookie: []
 responses:
   '200':
     description: Usage statistics

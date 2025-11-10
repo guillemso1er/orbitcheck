@@ -3,6 +3,9 @@ tags:
 summary: Revoke API key
 description: Revokes an API key by setting its status to revoked
 operationId: revokeApiKey
+security:
+  - patAuth: []
+  - sessionCookie: []
 parameters:
   - name: id
     in: path

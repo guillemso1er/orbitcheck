@@ -3,7 +3,9 @@ tags:
 summary: Get available plans
 description: Returns all available subscription plans
 operationId: getAvailablePlans
-security: []
+security:
+  - patAuth: []
+  - sessionCookie: []
 responses:
   '200':
     description: List of available plans

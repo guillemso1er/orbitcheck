@@ -3,6 +3,9 @@ tags:
 summary: Create user
 description: Creates a new user in the project
 operationId: createUser
+security:
+  - patAuth: []
+  - sessionCookie: []
 requestBody:
   required: true
   content:

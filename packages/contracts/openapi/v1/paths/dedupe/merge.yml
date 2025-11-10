@@ -3,6 +3,10 @@ tags:
 summary: Merge deduplicated records
 description: Merges multiple customer or address records into a canonical one
 operationId: mergeDeduplicated
+security:
+  - apiKeyAuth: []
+  - httpMessageSigInput: []
+    httpMessageSig: []
 requestBody:
   required: true
   content:

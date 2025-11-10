@@ -3,6 +3,9 @@ tags:
 summary: Get event logs
 description: Retrieves event logs for the project with optional filters
 operationId: getLogs
+security:
+  - patAuth: []
+  - sessionCookie: []
 parameters:
   - name: reason_code
     in: query

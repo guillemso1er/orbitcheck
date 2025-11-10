@@ -3,6 +3,9 @@ tags:
 summary: Test rules against payload
 description: Tests rules against a sample payload and returns triggered rules
 operationId: testRulesAgainstPayload
+security:
+  - patAuth: []
+  - sessionCookie: []
 requestBody:
   required: true
   content:

@@ -3,6 +3,9 @@ tags:
 summary: Create Stripe Checkout session
 description: Creates a Stripe Checkout session with base plan and usage-based line items
 operationId: createCheckoutSession
+security:
+  - patAuth: []
+  - sessionCookie: []
 responses:
   '200':
     description: Checkout session created

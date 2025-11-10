@@ -4,7 +4,8 @@ summary: Get current user plan
 description: Retrieves the current plan and usage information for the authenticated user
 operationId: getUserPlan
 security:
-  - BearerAuth: []
+  - patAuth: []
+  - sessionCookie: []
 responses:
   '200':
     description: User plan information

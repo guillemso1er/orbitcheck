@@ -5,6 +5,9 @@ description: >
   Updates tenant settings including country defaults, formatting, and risk
   thresholds
 operationId: updateSettings
+security:
+  - patAuth: []
+  - sessionCookie: []
 requestBody:
   required: true
   content:

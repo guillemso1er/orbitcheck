@@ -3,6 +3,9 @@ tags:
 summary: Delete custom rule
 description: Deletes a custom validation rule by its ID
 operationId: deleteCustomRule
+security:
+  - patAuth: []
+  - sessionCookie: []
 parameters:
   - name: id
     in: path

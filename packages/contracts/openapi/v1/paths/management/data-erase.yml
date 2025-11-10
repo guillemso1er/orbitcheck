@@ -3,6 +3,9 @@ tags:
 summary: Erase user data
 description: Initiates data erasure for GDPR/CCPA compliance
 operationId: eraseData
+security:
+  - patAuth: []
+  - sessionCookie: []
 requestBody:
   required: true
   content:

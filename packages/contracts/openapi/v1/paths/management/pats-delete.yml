@@ -3,6 +3,9 @@ tags:
 summary: Revoke Personal Access Token
 description: Revokes a personal access token by disabling it
 operationId: revokePersonalAccessToken
+security:
+  - patAuth: []
+  - sessionCookie: []
 parameters:
   - name: token_id
     in: path

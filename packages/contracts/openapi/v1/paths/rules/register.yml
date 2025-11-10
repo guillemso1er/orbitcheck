@@ -3,6 +3,9 @@ tags:
 summary: Register custom rules
 description: Registers new custom validation rules for the project
 operationId: registerCustomRules
+security:
+  - patAuth: []
+  - sessionCookie: []
 requestBody:
   required: true
   content:

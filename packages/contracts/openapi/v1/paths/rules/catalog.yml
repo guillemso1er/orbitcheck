@@ -3,6 +3,9 @@ tags:
 summary: Get reason code catalog
 description: Retrieves a catalog of all possible reason codes and their descriptions
 operationId: getReasonCodeCatalog
+security:
+  - patAuth: []
+  - sessionCookie: []
 responses:
   '200':
     description: Reason code catalog

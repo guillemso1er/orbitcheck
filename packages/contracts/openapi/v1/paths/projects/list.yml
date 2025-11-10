@@ -4,7 +4,8 @@ summary: List user's projects
 description: Retrieves the list of projects for the authenticated user along with plan information
 operationId: getUserProjects
 security:
-  - BearerAuth: []
+  - patAuth: []
+  - sessionCookie: []
 responses:
   '200':
     description: List of projects and plan information

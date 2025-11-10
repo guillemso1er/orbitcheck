@@ -3,6 +3,10 @@ tags:
 summary: Deduplicate customer
 description: Searches for existing customers using deterministic and fuzzy matching
 operationId: dedupeCustomer
+security:
+  - apiKeyAuth: []
+  - httpMessageSigInput: []
+    httpMessageSig: []
 requestBody:
   required: true
   content:

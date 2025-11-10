@@ -3,6 +3,9 @@ tags:
 summary: Get available rules
 description: Retrieves a list of all available validation rules and their configurations
 operationId: getAvailableRules
+security:
+  - patAuth: []
+  - sessionCookie: []
 responses:
   '200':
     description: List of available rules

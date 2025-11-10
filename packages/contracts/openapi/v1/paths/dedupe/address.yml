@@ -3,6 +3,10 @@ tags:
 summary: Deduplicate address
 description: Searches for existing addresses using deterministic and fuzzy matching
 operationId: dedupeAddress
+security:
+  - apiKeyAuth: []
+  - httpMessageSigInput: []
+    httpMessageSig: []
 requestBody:
   required: true
   content:

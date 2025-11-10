@@ -3,6 +3,9 @@ tags:
 summary: List API keys
 description: Retrieves API keys for the authenticated project
 operationId: listApiKeys
+security:
+  - patAuth: []
+  - sessionCookie: []
 responses:
   '200':
     description: List of API keys

@@ -1,42 +1,41 @@
-post:
-  tags:
-    - UI Endpoints
-  summary: User login
-  description: Authenticates a user and returns JWT token
-  operationId: loginUser
-  requestBody:
-    required: true
+tags:
+  - UI Endpoints
+summary: User login
+description: Authenticates a user and returns JWT token
+operationId: loginUser
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        required:
+          - email
+          - password
+        properties:
+          email:
+            type: string
+            format: email
+            description: User email address
+          password:
+            type: string
+            description: User password
+responses:
+  '200':
+    description: Login successful
     content:
       application/json:
         schema:
-          type: object
-          required:
-            - email
-            - password
-          properties:
-            email:
-              type: string
-              format: email
-              description: User email address
-            password:
-              type: string
-              description: User password
-  responses:
-    '200':
-      description: Login successful
-      content:
-        application/json:
-          schema:
-            $ref: '../../components/schemas/LoginResponse.yml'
-    '401':
-      description: Invalid credentials
-      content:
-        application/json:
-          schema:
-            $ref: '../../components/schemas/Error.yml'
-    '422':
-      description: Validation failed
-      content:
-        application/json:
-          schema:
-            $ref: '../../components/schemas/Error.yml'
+          $ref: '../../components/schemas/LoginResponse.yml'
+  '401':
+    description: Invalid credentials
+    content:
+      application/json:
+        schema:
+          $ref: '../../components/schemas/Error.yml'
+  '422':
+    description: Validation failed
+    content:
+      application/json:
+        schema:
+          $ref: '../../components/schemas/Error.yml'

@@ -3,6 +3,9 @@ tags:
 summary: Get error code catalog
 description: Retrieves a catalog of all possible error codes and their descriptions
 operationId: getErrorCodeCatalog
+security:
+  - patAuth: []
+  - sessionCookie: []
 responses:
   '200':
     description: Error code catalog

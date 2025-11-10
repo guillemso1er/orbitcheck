@@ -3,6 +3,10 @@ tags:
 summary: Evaluate order for risk and rules
 description: Evaluates an order for deduplication, validation, and applies business rules
 operationId: evaluateOrder
+security:
+  - apiKeyAuth: []
+  - httpMessageSigInput: []
+    httpMessageSig: []
 requestBody:
   required: true
   content:

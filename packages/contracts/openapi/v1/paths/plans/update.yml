@@ -4,7 +4,8 @@ summary: Update user plan
 description: Updates the user's subscription plan
 operationId: updateUserPlan
 security:
-  - BearerAuth: []
+  - patAuth: []
+  - sessionCookie: []
 requestBody:
   required: true
   content:

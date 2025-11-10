@@ -3,6 +3,9 @@ tags:
 summary: List webhooks
 description: Retrieves all webhooks for the authenticated project
 operationId: listWebhooks
+security:
+  - patAuth: []
+  - sessionCookie: []
 responses:
   '200':
     description: List of webhooks

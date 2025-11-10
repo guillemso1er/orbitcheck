@@ -3,6 +3,10 @@ tags:
 summary: Validate tax ID
 description: Validates a tax identification number
 operationId: validateTaxId
+security:
+  - apiKeyAuth: []
+  - httpMessageSigInput: []
+    httpMessageSig: []
 requestBody:
   required: true
   content:

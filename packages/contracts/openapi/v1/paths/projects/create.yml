@@ -4,7 +4,8 @@ summary: Create new project
 description: Creates a new project for the authenticated user
 operationId: createProject
 security:
-  - BearerAuth: []
+  - patAuth: []
+  - sessionCookie: []
 requestBody:
   required: true
   content:

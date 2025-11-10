@@ -3,6 +3,9 @@ tags:
 summary: List Personal Access Tokens
 description: Retrieves personal access tokens for the authenticated user
 operationId: listPersonalAccessTokens
+security:
+  - patAuth: []
+  - sessionCookie: []
 responses:
   '200':
     description: List of personal access tokens

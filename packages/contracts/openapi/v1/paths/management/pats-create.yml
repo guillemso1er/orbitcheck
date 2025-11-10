@@ -3,6 +3,9 @@ tags:
 summary: Create Personal Access Token
 description: Creates a new personal access token for management API access
 operationId: createPersonalAccessToken
+security:
+  - patAuth: []
+  - sessionCookie: []
 requestBody:
   required: true
   content:

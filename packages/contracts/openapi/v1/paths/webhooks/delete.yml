@@ -3,6 +3,9 @@ tags:
 summary: Delete webhook
 description: Deletes a webhook subscription
 operationId: deleteWebhook
+security:
+  - patAuth: []
+  - sessionCookie: []
 parameters:
   - name: id
     in: path

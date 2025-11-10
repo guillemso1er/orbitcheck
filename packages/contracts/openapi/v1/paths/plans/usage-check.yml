@@ -4,7 +4,8 @@ summary: Check validation limits
 description: Checks if the user has enough validation quota remaining
 operationId: checkValidationLimits
 security:
-  - BearerAuth: []
+  - patAuth: []
+  - sessionCookie: []
 requestBody:
   required: true
   content:
