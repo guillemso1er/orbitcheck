@@ -16,8 +16,8 @@ export async function getAvailableRules(
         const request_id = generateRequestId();
         const project_id = (request as any).project_id;
 
-        // Start with built-in rules (enabled only)
-        const builtInRules = getBuiltInRules().filter((r: any) => r.enabled !== false);
+        // Start with all built-in rules (including disabled ones for reference)
+        const builtInRules = getBuiltInRules();
 
         // Optionally merge project custom rules from DB if pool and project_id are available
         let dbRules: any[] = [];
@@ -49,22 +49,26 @@ export async function getErrorCodeCatalog(
         {
             code: "validation_error",
             description: "Input validation failed",
-            category: "VALIDATION"
+            category: "VALIDATION",
+            severity: "high"
         },
         {
             code: "authentication_error",
             description: "Authentication failed",
-            category: "AUTH"
+            category: "AUTH",
+            severity: "critical"
         },
         {
             code: "rate_limit_exceeded",
             description: "Rate limit exceeded",
-            category: "RATE_LIMIT"
+            category: "RATE_LIMIT",
+            severity: "medium"
         },
         {
             code: "server_error",
             description: "Internal server error",
-            category: "SERVER"
+            category: "SERVER",
+            severity: "high"
         }
     ];
 

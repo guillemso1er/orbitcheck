@@ -1447,6 +1447,10 @@ export type GetErrorCodeCatalogResponses = {
              * Error category
              */
             category?: string;
+            /**
+             * Error severity level
+             */
+            severity?: 'low' | 'medium' | 'high' | 'critical';
         }>;
         request_id?: string;
     };

@@ -441,7 +441,7 @@ export async function handleRegisterCustomRules(
 
     // Check which rules exist by ID or name
     const existingById: any[] = [];
-    const existingByName: any[] = [];
+    const existingRuleNames: string[] = [];
     const newRules: any[] = [];
 
     for (const rule of rules) {
@@ -463,15 +463,23 @@ export async function handleRegisterCustomRules(
                 [project_id, rule.name]
             );
             if (nameResult.rows.length > 0) {
-                existingByName.push({ ...rule, existing: nameResult.rows[0] });
+                existingRuleNames.push(rule.name);
             } else {
                 newRules.push(rule);
             }
         }
     }
 
+    // If any rule names already exist in the database, return 409 conflict error
+    if (existingRuleNames.length > 0) {
+        return reply.status(409).send({
+            error: `Rule names already exist: ${existingRuleNames.join(', ')}`,
+            request_id
+        });
+    }
+
     // Process existing rules (updates) and new rules
-    const rulesToProcess: any[] = [...existingById, ...existingByName];
+    const rulesToProcess: any[] = [...existingById];
     const processedRules: any[] = [];
 
     // Update existing rules
@@ -556,7 +564,7 @@ export async function handleRegisterCustomRules(
     }
 
     const response: RegisterCustomRulesResponse = {
-        message: `Rules processed successfully. ${existingById.length + existingByName.length} updated, ${insertedRules.length} created.`,
+        message: `Rules processed successfully. ${existingById.length} updated, ${insertedRules.length} created.`,
         updated_rules: processedRules.map(r => r.id),
         registered_rules: insertedRules.map(r => r.id),
         request_id

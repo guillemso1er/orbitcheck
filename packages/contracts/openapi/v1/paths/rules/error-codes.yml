@@ -28,6 +28,10 @@ responses:
                   category:
                     type: string
                     description: Error category
+                  severity:
+                    type: string
+                    description: Error severity level
+                    enum: [low, medium, high, critical]
             request_id:
               type: string
   '401':

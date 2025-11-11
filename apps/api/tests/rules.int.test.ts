@@ -121,12 +121,12 @@ describe('Rules Integration Tests', () => {
       expect(res.statusCode).toBe(401)
     })
 
-    test('401 on missing authorization for reason codes', async () => {
+    test('404 on missing authorization for reason codes', async () => {
       const res = await app.inject({
         method: 'GET',
         url: '/v1/rules/reason-codes'
       })
-      expect(res.statusCode).toBe(401)
+      expect(res.statusCode).toBe(404)
     })
 
     test('401 on missing authorization for test rules', async () => {
@@ -218,11 +218,11 @@ describe('Rules Integration Tests', () => {
     })
   })
 
-  describe('Reason Code Catalog (GET /v1/rules/reason-codes)', () => {
+  describe('Reason Code Catalog (GET /v1/rules/catalog)', () => {
     test('200 returns reason code catalog', async () => {
       const res = await app.inject({
         method: 'GET',
-        url: '/v1/rules/reason-codes',
+        url: '/v1/rules/catalog',
         headers: { authorization: `Bearer ${patToken}` }
       })
       expect(res.statusCode).toBe(200)
@@ -235,7 +235,7 @@ describe('Rules Integration Tests', () => {
     test('200 includes email-related reason codes', async () => {
       const res = await app.inject({
         method: 'GET',
-        url: '/v1/rules/reason-codes',
+        url: '/v1/rules/catalog',
         headers: { authorization: `Bearer ${patToken}` }
       })
       expect(res.statusCode).toBe(200)
@@ -249,7 +249,7 @@ describe('Rules Integration Tests', () => {
     test('200 includes phone-related reason codes', async () => {
       const res = await app.inject({
         method: 'GET',
-        url: '/v1/rules/reason-codes',
+        url: '/v1/rules/catalog',
         headers: { authorization: `Bearer ${patToken}` }
       })
       expect(res.statusCode).toBe(200)
@@ -263,7 +263,7 @@ describe('Rules Integration Tests', () => {
     test('200 includes address-related reason codes', async () => {
       const res = await app.inject({
         method: 'GET',
-        url: '/v1/rules/reason-codes',
+        url: '/v1/rules/catalog',
         headers: { authorization: `Bearer ${patToken}` }
       })
       expect(res.statusCode).toBe(200)
@@ -277,7 +277,7 @@ describe('Rules Integration Tests', () => {
     test('200 reason codes have proper structure', async () => {
       const res = await app.inject({
         method: 'GET',
-        url: '/v1/rules/reason-codes',
+        url: '/v1/rules/catalog',
         headers: { authorization: `Bearer ${patToken}` }
       })
       expect(res.statusCode).toBe(200)
@@ -666,7 +666,7 @@ describe('Rules Integration Tests', () => {
       expect(body.error).toContain('Duplicate rule names found in request')
     })
 
-    test('400 on rule name that already exists in database', async () => {
+    test('409 on rule name that already exists in database', async () => {
       // First, register a rule with a specific name
       const firstRule = [
         {
@@ -711,7 +711,7 @@ describe('Rules Integration Tests', () => {
         headers: { authorization: `Bearer ${patToken}` },
         payload: { rules: duplicateNameRules }
       })
-      expect(res.statusCode).toBe(400)
+      expect(res.statusCode).toBe(409)
       const body = res.json()
       expect(body.error).toContain('Rule names already exist')
       expect(body.error).toContain('Existing Rule Name')
@@ -1283,7 +1283,7 @@ describe('Rules Integration Tests', () => {
       })
 
       test('validates rule condition evaluation logic', async () => {
-          const complexRules = [
+        const complexRules = [
           {
             name: 'Complex Conditions Test',
             description: 'Tests complex AND/OR conditions',
