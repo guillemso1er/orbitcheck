@@ -13,8 +13,14 @@ export async function getBuiltInRules(
     try {
         const request_id = generateRequestId();
         
+        // Debug logging to track issues
+        console.log(`[DEBUG] getBuiltInRules called with request_id: ${request_id}`);
+        console.log(`[DEBUG] Request auth:`, request.auth);
+        
         // Return only built-in rules
         const builtInRules = getBuiltInRulesConstants();
+        
+        console.log(`[DEBUG] getBuiltInRules - Returning ${builtInRules.length} built-in rules`);
 
         const response = {
             rules: builtInRules,
@@ -22,6 +28,7 @@ export async function getBuiltInRules(
         };
         return rep.send(response);
     } catch (error) {
+        console.error(`[ERROR] getBuiltInRules failed:`, error);
         return sendServerError(request, rep, error, "/v1/rules/builtin", generateRequestId());
     }
 }

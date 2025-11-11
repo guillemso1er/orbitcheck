@@ -1,4 +1,4 @@
-import { batchDedupe, batchValidate, getJobStatusById } from '@orbitcheck/contracts';
+import { batchDedupe, batchValidate, batchEvaluateOrders, getJobStatusById } from '@orbitcheck/contracts';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { UI_STRINGS } from '../constants';
 import { apiClient } from '../utils/api';
@@ -26,7 +26,7 @@ interface JobStatus {
 }
 
 const BulkCsvTool: React.FC = () => {
-  const [csvType, setCsvType] = useState<'customers' | 'orders'>('customers');
+  const [csvType, setCsvType] = useState<'customers' | 'orders' | 'addresses' | 'taxids'>('customers');
   const [file, setFile] = useState<File | null>(null);
   const [jobId, setJobId] = useState<string | null>(null);
   const [jobStatus, setJobStatus] = useState<JobStatus | null>(null);
@@ -70,7 +70,7 @@ const BulkCsvTool: React.FC = () => {
   }, [jobId, apiClient]);
 
   // CSV format examples
-  const csvFormats: { [key in 'customers' | 'orders']: CsvFormatExample } = {
+  const csvFormats: { [key in 'customers' | 'orders' | 'addresses' | 'taxids']: CsvFormatExample } = {
     customers: {
       name: 'Customers CSV (Validation)',
       description: 'Customer data with email and/or phone numbers for validation. Perfect for validating customer contact information before importing to your CRM or marketing platform.',
@@ -85,22 +85,48 @@ const BulkCsvTool: React.FC = () => {
       downloadFilename: 'customers-validation-example.csv'
     },
     orders: {
-      name: 'Orders CSV (Deduplication)',
-      description: 'Customer data from orders for deduplication. Identifies duplicate customers across multiple orders and consolidates their information.',
-      headers: ['email', 'name', 'phone', 'address', 'order_id', 'total'],
+      name: 'Orders CSV (Batch Evaluation)',
+      description: 'Orders data for batch evaluation using rules and risk assessment. Perfect for analyzing order patterns, fraud detection, and compliance checks.',
+      headers: ['order_id', 'customer_email', 'customer_phone', 'total_amount', 'currency', 'items', 'shipping_address'],
       sampleData: [
-        ['customer1@example.com', 'John Doe', '+1234567890', '123 Main St, New York, NY 10001', 'ORD001', '99.99'],
-        ['customer2@example.com', 'Jane Smith', '+0987654321', '456 Oak Ave, Los Angeles, CA 90210', 'ORD002', '149.50'],
-        ['customer1@example.com', 'J. Doe', '+1234567890', '123 Main Street, New York, NY 10001', 'ORD003', '75.00'],
-        ['customer1@example.com', 'John D.', '+1-234-567-890', '123 Main St', 'ORD004', '199.99'],
-        ['customer3@example.com', 'Bob Johnson', '+1555123456', '789 Pine Rd, Chicago, IL 60601', 'ORD005', '50.00']
+        ['ORD001', 'john.doe@example.com', '+1234567890', '99.99', 'USD', 'laptop,keyboard', '123 Main St, New York, NY 10001'],
+        ['ORD002', 'jane.smith@example.com', '+0987654321', '149.50', 'USD', 'smartphone,case', '456 Oak Ave, Los Angeles, CA 90210'],
+        ['ORD003', 'john.doe@example.com', '+1234567890', '75.00', 'USD', 'mouse,pad', '123 Main St, New York, NY 10001'],
+        ['ORD004', 'alice.jones@example.com', '+1555123456', '299.99', 'USD', 'tablet,stylus', '789 Pine Rd, Chicago, IL 60601'],
+        ['ORD005', 'bob.wilson@example.com', '+1555987654', '50.00', 'USD', 'headphones', '654 Maple Dr, Seattle, WA 98101']
       ],
-      downloadFilename: 'orders-deduplication-example.csv'
+      downloadFilename: 'orders-batch-evaluation-example.csv'
+    },
+    addresses: {
+      name: 'Addresses CSV (Validation)',
+      description: 'Address data for batch validation. Ensures addresses are properly formatted, valid, and deliverable.',
+      headers: ['line1', 'line2', 'city', 'state', 'postal_code', 'country'],
+      sampleData: [
+        ['123 Main Street', 'Apt 4B', 'New York', 'NY', '10001', 'US'],
+        ['456 Oak Avenue', '', 'Los Angeles', 'CA', '90210', 'US'],
+        ['789 Pine Road', 'Suite 200', 'Chicago', 'IL', '60601', 'US'],
+        ['321 Elm Street', 'Unit 5', 'Miami', 'FL', '33101', 'US'],
+        ['654 Maple Drive', '', 'Seattle', 'WA', '98101', 'US']
+      ],
+      downloadFilename: 'addresses-validation-example.csv'
+    },
+    taxids: {
+      name: 'Tax IDs CSV (Validation)',
+      description: 'Tax identification numbers for validation and verification. Supports various international tax ID formats.',
+      headers: ['tax_id', 'tax_id_type', 'name', 'country'],
+      sampleData: [
+        ['12-3456789', 'EIN', 'Acme Corporation', 'US'],
+        ['12345678-9', 'VAT', 'Global Tech Ltd', 'DE'],
+        ['AB123456789', 'GST', 'International Trade Co', 'AU'],
+        ['98765432', 'RFC', 'Mexican Holdings', 'MX'],
+        ['12345678901', 'CPF', 'Brazilian Services', 'BR']
+      ],
+      downloadFilename: 'taxids-validation-example.csv'
     }
   };
 
   // Download example CSV function
-  const downloadExampleCsv = (type: 'customers' | 'orders') => {
+  const downloadExampleCsv = (type: 'customers' | 'orders' | 'addresses' | 'taxids') => {
     const format = csvFormats[type];
     const csvContent = [
       format.headers.join(','),
@@ -203,37 +229,191 @@ const BulkCsvTool: React.FC = () => {
     if (data.length < 2) throw new Error('CSV must have header and at least one data row');
 
     const headers = data[0].map(h => h.toLowerCase().trim());
-    const emailIndex = headers.findIndex(h => h.includes('email') || h.includes('customer_email'));
-    const nameIndex = headers.findIndex(h => h.includes('name'));
+    const orderIdIndex = headers.findIndex(h => h.includes('order_id'));
+    const emailIndex = headers.findIndex(h => h.includes('email'));
     const phoneIndex = headers.findIndex(h => h.includes('phone'));
-    const addressIndex = headers.findIndex(h => h.includes('address'));
+    const totalAmountIndex = headers.findIndex(h => h.includes('total_amount') || h.includes('total'));
+    const currencyIndex = headers.findIndex(h => h.includes('currency'));
+    const itemsIndex = headers.findIndex(h => h.includes('items'));
+    const shippingAddressIndex = headers.findIndex(h => h.includes('shipping_address') || h.includes('address'));
 
-    if (emailIndex === -1) {
-      throw new Error('Orders CSV must contain an email or customer_email column');
+    if (orderIdIndex === -1 || emailIndex === -1) {
+      throw new Error('Orders CSV must contain order_id and customer_email columns');
     }
 
-    // Collect customer data for deduplication
-    const customers: Array<{ email: string; name?: string; phone?: string; address?: string }> = [];
+    // Collect order data for batch evaluation
+    const orders: Array<{
+      order_id: string;
+      customer_email: string;
+      customer_phone?: string;
+      total_amount?: number;
+      currency?: string;
+      items?: string;
+      shipping_address?: string;
+    }> = [];
 
     for (let i = 1; i < data.length; i++) {
       const row = data[i];
-      if (row.length > emailIndex && row[emailIndex]) {
-        customers.push({
-          email: String(row[emailIndex]).trim(),
-          name: nameIndex !== -1 && row[nameIndex] ? String(row[nameIndex]).trim() : undefined,
-          phone: phoneIndex !== -1 && row[phoneIndex] ? String(row[phoneIndex]).trim() : undefined,
-          address: addressIndex !== -1 && row[addressIndex] ? String(row[addressIndex]).trim() : undefined,
-        });
+      if (row.length > orderIdIndex && row[emailIndex]) {
+        const order: {
+          order_id: string;
+          customer_email: string;
+          customer_phone?: string;
+          total_amount?: number;
+          currency?: string;
+          items?: string;
+          shipping_address?: string;
+        } = {
+          order_id: String(row[orderIdIndex]).trim(),
+          customer_email: String(row[emailIndex]).trim(),
+        };
+
+        if (phoneIndex !== -1 && row[phoneIndex]) {
+          order.customer_phone = String(row[phoneIndex]).trim();
+        }
+        if (totalAmountIndex !== -1 && row[totalAmountIndex]) {
+          order.total_amount = parseFloat(String(row[totalAmountIndex]).trim());
+        }
+        if (currencyIndex !== -1 && row[currencyIndex]) {
+          order.currency = String(row[currencyIndex]).trim();
+        }
+        if (itemsIndex !== -1 && row[itemsIndex]) {
+          order.items = String(row[itemsIndex]).trim();
+        }
+        if (shippingAddressIndex !== -1 && row[shippingAddressIndex]) {
+          order.shipping_address = String(row[shippingAddressIndex]).trim();
+        }
+
+        orders.push(order);
       }
     }
 
-    // Process customer deduplication
-    if (customers.length > 0) {
-      const result = await batchDedupe({
+    // Process orders with batchEvaluateOrders
+    if (orders.length > 0) {
+      const result = await batchEvaluateOrders({
         client: apiClient,
         body: {
-          type: 'customers',
-          data: customers
+          orders
+        }
+      });
+      if (result.data) {
+        setJobId(result.data.job_id || 'completed');
+        setJobStatus({ id: result.data.job_id || 'completed', status: 'pending' });
+      }
+    }
+  };
+
+  const processAddressesCSV = async (data: string[][]): Promise<void> => {
+    if (data.length < 2) throw new Error('CSV must have header and at least one data row');
+
+    const headers = data[0].map(h => h.toLowerCase().trim());
+    const line1Index = headers.findIndex(h => h.includes('line1'));
+    const line2Index = headers.findIndex(h => h.includes('line2'));
+    const cityIndex = headers.findIndex(h => h.includes('city'));
+    const stateIndex = headers.findIndex(h => h.includes('state'));
+    const postalCodeIndex = headers.findIndex(h => h.includes('postal_code') || h.includes('postal'));
+    const countryIndex = headers.findIndex(h => h.includes('country'));
+
+    if (line1Index === -1 || cityIndex === -1 || countryIndex === -1) {
+      throw new Error('Addresses CSV must contain line1, city, and country columns');
+    }
+
+    // Collect address data for validation
+    const addresses: Array<{
+      line1?: string;
+      line2?: string;
+      city: string;
+      state?: string;
+      postal_code?: string;
+      country: string;
+    }> = [];
+
+    for (let i = 1; i < data.length; i++) {
+      const row = data[i];
+      if (row.length > line1Index && row[cityIndex] && row[countryIndex]) {
+        const address = {
+          line1: line1Index !== -1 && row[line1Index] ? String(row[line1Index]).trim() : undefined,
+          line2: line2Index !== -1 && row[line2Index] ? String(row[line2Index]).trim() : undefined,
+          city: String(row[cityIndex]).trim(),
+          state: stateIndex !== -1 && row[stateIndex] ? String(row[stateIndex]).trim() : undefined,
+          postal_code: postalCodeIndex !== -1 && row[postalCodeIndex] ? String(row[postalCodeIndex]).trim() : undefined,
+          country: String(row[countryIndex]).trim(),
+        };
+
+        addresses.push(address);
+      }
+    }
+
+    // Process addresses with batchValidate (type: 'address')
+    if (addresses.length > 0) {
+      const result = await batchValidate({
+        client: apiClient,
+        body: {
+          type: 'address',
+          data: addresses
+        }
+      });
+      if (result.data) {
+        setJobId(result.data.job_id || 'completed');
+        setJobStatus({ id: result.data.job_id || 'completed', status: 'pending' });
+      }
+    }
+  };
+
+  const processTaxIdsCSV = async (data: string[][]): Promise<void> => {
+    if (data.length < 2) throw new Error('CSV must have header and at least one data row');
+
+    const headers = data[0].map(h => h.toLowerCase().trim());
+    const taxIdIndex = headers.findIndex(h => h.includes('tax_id') || h.includes('taxid'));
+    const taxIdTypeIndex = headers.findIndex(h => h.includes('tax_id_type') || h.includes('type'));
+    const nameIndex = headers.findIndex(h => h.includes('name'));
+    const countryIndex = headers.findIndex(h => h.includes('country'));
+
+    if (taxIdIndex === -1) {
+      throw new Error('Tax IDs CSV must contain a tax_id column');
+    }
+
+    // Collect tax ID data for validation
+    const taxIds: Array<{
+      tax_id: string;
+      tax_id_type?: string;
+      name?: string;
+      country?: string;
+    }> = [];
+
+    for (let i = 1; i < data.length; i++) {
+      const row = data[i];
+      if (row.length > taxIdIndex && row[taxIdIndex]) {
+        const taxId: {
+          tax_id: string;
+          tax_id_type?: string;
+          name?: string;
+          country?: string;
+        } = {
+          tax_id: String(row[taxIdIndex]).trim(),
+        };
+
+        if (taxIdTypeIndex !== -1 && row[taxIdTypeIndex]) {
+          taxId.tax_id_type = String(row[taxIdTypeIndex]).trim();
+        }
+        if (nameIndex !== -1 && row[nameIndex]) {
+          taxId.name = String(row[nameIndex]).trim();
+        }
+        if (countryIndex !== -1 && row[countryIndex]) {
+          taxId.country = String(row[countryIndex]).trim();
+        }
+
+        taxIds.push(taxId);
+      }
+    }
+
+    // Process tax IDs with batchValidate (type: 'tax-id')
+    if (taxIds.length > 0) {
+      const result = await batchValidate({
+        client: apiClient,
+        body: {
+          type: 'tax-id',
+          data: taxIds
         }
       });
       if (result.data) {
@@ -268,10 +448,21 @@ const BulkCsvTool: React.FC = () => {
       const text = await file.text();
       const data = parseCSV(text);
 
-      if (csvType === 'customers') {
-        await processCustomersCSV(data);
-      } else {
-        await processOrdersCSV(data);
+      switch (csvType) {
+        case 'customers':
+          await processCustomersCSV(data);
+          break;
+        case 'orders':
+          await processOrdersCSV(data);
+          break;
+        case 'addresses':
+          await processAddressesCSV(data);
+          break;
+        case 'taxids':
+          await processTaxIdsCSV(data);
+          break;
+        default:
+          throw new Error('Unknown CSV type');
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Processing failed');
@@ -345,7 +536,7 @@ const BulkCsvTool: React.FC = () => {
         </p>
         
         {/* Feature Highlights */}
-        <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4">
           <div className="bg-blue-50 dark:bg-blue-900 rounded-lg p-4 border border-blue-200 dark:border-blue-700">
             <div className="flex items-center mb-2">
               <span className="text-2xl mr-2">📧</span>
@@ -368,11 +559,31 @@ const BulkCsvTool: React.FC = () => {
           
           <div className="bg-purple-50 dark:bg-purple-900 rounded-lg p-4 border border-purple-200 dark:border-purple-700">
             <div className="flex items-center mb-2">
-              <span className="text-2xl mr-2">🔄</span>
-              <h3 className="font-medium text-purple-900 dark:text-purple-100">Customer Deduplication</h3>
+              <span className="text-2xl mr-2">📍</span>
+              <h3 className="font-medium text-purple-900 dark:text-purple-100">Address Validation</h3>
             </div>
             <p className="text-purple-800 dark:text-purple-200 text-xs">
-              Find and merge duplicate customers across multiple orders and data sources
+              Verify addresses for deliverability and proper formatting
+            </p>
+          </div>
+          
+          <div className="bg-yellow-50 dark:bg-yellow-900 rounded-lg p-4 border border-yellow-200 dark:border-yellow-700">
+            <div className="flex items-center mb-2">
+              <span className="text-2xl mr-2">🆔</span>
+              <h3 className="font-medium text-yellow-900 dark:text-yellow-100">Tax ID Validation</h3>
+            </div>
+            <p className="text-yellow-800 dark:text-yellow-200 text-xs">
+              Validate tax identification numbers and business registrations
+            </p>
+          </div>
+          
+          <div className="bg-indigo-50 dark:bg-indigo-900 rounded-lg p-4 border border-indigo-200 dark:border-indigo-700">
+            <div className="flex items-center mb-2">
+              <span className="text-2xl mr-2">🛒</span>
+              <h3 className="font-medium text-indigo-900 dark:text-indigo-100">Order Evaluation</h3>
+            </div>
+            <p className="text-indigo-800 dark:text-indigo-200 text-xs">
+              Batch evaluate orders for risk, rules compliance, and fraud detection
             </p>
           </div>
           
@@ -419,12 +630,14 @@ const BulkCsvTool: React.FC = () => {
           <select
             id="csv-type"
             value={csvType}
-            onChange={(e) => setCsvType(e.target.value as 'customers' | 'orders')}
+            onChange={(e) => setCsvType(e.target.value as 'customers' | 'orders' | 'addresses' | 'taxids')}
             disabled={loading}
             className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
           >
-            <option value="customers">{UI_STRINGS.CSV_TYPE_CUSTOMERS}</option>
-            <option value="orders">{UI_STRINGS.CSV_TYPE_ORDERS}</option>
+            <option value="customers">Customers (Email/Phone Validation)</option>
+            <option value="orders">Orders (Batch Evaluation)</option>
+            <option value="addresses">Addresses (Validation)</option>
+            <option value="taxids">Tax IDs (Validation)</option>
           </select>
         </div>
       </div>

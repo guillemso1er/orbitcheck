@@ -1,5 +1,5 @@
 // src/Rules.tsx
-import { deleteCustomRule, getAvailableRules, registerCustomRules, testRulesAgainstPayload } from '@orbitcheck/contracts';
+import { deleteCustomRule, getAvailableRules, getBuiltInRules, registerCustomRules, testRulesAgainstPayload } from '@orbitcheck/contracts';
 import React, { useEffect, useState } from 'react';
 import { LOCAL_STORAGE_KEYS } from '../../constants';
 import { useDebounce } from '../../hooks/useDebounce';
@@ -125,25 +125,42 @@ const Rules: React.FC = () => {
   useEffect(() => {
     const loadRules = async () => {
       try {
-        const { data, error } = await getAvailableRules({ client: apiClient });
+        // Load both custom rules from database and built-in rules
+        const [customRulesResponse, builtinRulesResponse] = await Promise.allSettled([
+          getAvailableRules({ client: apiClient }),
+          getBuiltInRules({ client: apiClient })
+        ]);
 
-        if (error) {
-          if ('error' in error && error.error && 'message' in error.error) {
-            throw new Error(error.error.message || 'Failed to load rules');
-          } else {
-            throw new Error('Failed to load rules');
-          }
+        let customRules: any[] = [];
+        let builtinRules: any[] = [];
+
+        // Handle custom rules response
+        if (customRulesResponse.status === 'fulfilled' && !customRulesResponse.value.error) {
+          customRules = ((customRulesResponse.value.data as any)?.rules || []);
+        } else {
+          console.warn('Failed to load custom rules:', customRulesResponse.status === 'rejected' ? customRulesResponse.reason : customRulesResponse.value.error);
         }
 
-        const allRules = ((data as any)?.rules || []);
+        // Handle built-in rules response - with fallback
+        if (builtinRulesResponse.status === 'fulfilled' && !builtinRulesResponse.value.error) {
+          builtinRules = ((builtinRulesResponse.value.data as any)?.rules || []);
+          
+          // If no built-in rules returned but we have the list, create fallback
+          if (builtinRules.length === 0) {
+            console.log('No built-in rules from API, using fallback built-in rules');
+            builtinRules = getFallbackBuiltInRules();
+          }
+        } else {
+          console.warn('Failed to load built-in rules, using fallback:', builtinRulesResponse.status === 'rejected' ? builtinRulesResponse.reason : builtinRulesResponse.value.error);
+          builtinRules = getFallbackBuiltInRules();
+        }
 
-        // Separate builtin and custom rules based on rule ID, not just category
-        // Some built-in rules have category: 'custom' but are still built-in
-        const customRules = allRules
-          .filter((rule: any) => !BUILTIN_RULE_IDS.has(rule.id))
+        // Process custom rules
+        const processedCustomRules = customRules
+          .filter((rule: any) => rule.id) // Ensure rule has an ID
           .map((rule: any) => ({
             id: rule.id!,
-            name: rule.name!,
+            name: rule.name || 'Unnamed Rule',
             description: rule.description || '',
             condition: rule.logic || rule.condition || '',
             action: rule.action || 'hold' as const,
@@ -154,12 +171,12 @@ const Rules: React.FC = () => {
             isBuiltIn: false,
           }));
 
-        // Built-in rules are identified by their ID
-        const builtinRules = allRules
-          .filter((rule: any) => BUILTIN_RULE_IDS.has(rule.id))
+        // Process built-in rules
+        const processedBuiltinRules = builtinRules
+          .filter((rule: any) => rule.id) // Ensure rule has an ID
           .map((rule: any) => ({
             id: rule.id!,
-            name: rule.name!,
+            name: rule.name || 'Unnamed Rule',
             description: rule.description || '',
             condition: rule.condition || rule.logic || '',
             action: rule.action || 'hold' as const,
@@ -171,17 +188,80 @@ const Rules: React.FC = () => {
           }));
 
         // Store both types separately for display
-        setBuiltinRules(builtinRules);
-        setCustomRules(customRules);
+        setBuiltinRules(processedBuiltinRules);
+        setCustomRules(processedCustomRules);
 
         // Keep the main rules state for testing and other operations
-        setRules([...builtinRules, ...customRules]);
+        setRules([...processedBuiltinRules, ...processedCustomRules]);
+
+        console.log(`Loaded ${processedBuiltinRules.length} built-in rules and ${processedCustomRules.length} custom rules`);
       } catch (err) {
         console.error('Failed to load rules:', err);
+        setBackendError('Failed to load rules. Please try refreshing the page.');
+        
+        // Set fallback built-in rules to ensure the UI shows something
+        const fallbackBuiltinRules = getFallbackBuiltInRules();
+        setBuiltinRules(fallbackBuiltinRules);
+        setCustomRules([]);
+        setRules(fallbackBuiltinRules);
       }
     };
     loadRules();
   }, []);
+
+  // Fallback built-in rules in case API fails
+  const getFallbackBuiltInRules = (): Rule[] => {
+    return [
+      {
+        id: 'email_format',
+        name: 'Email Format Validation',
+        description: 'Validates the basic format of email addresses using RFC standards.',
+        condition: '(email && email.valid === false) || (emailString && !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(emailString))',
+        action: 'hold',
+        priority: 10,
+        enabled: true,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        isBuiltIn: true,
+      },
+      {
+        id: 'email_disposable',
+        name: 'Disposable Email Detection',
+        description: 'Detects and flags temporary or disposable email services.',
+        condition: 'email && email.disposable === true',
+        action: 'block',
+        priority: 15,
+        enabled: true,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        isBuiltIn: true,
+      },
+      {
+        id: 'po_box_detection',
+        name: 'PO Box Detection',
+        description: 'Identifies and flags addresses using PO Box or similar mail services.',
+        condition: 'address && address.po_box === true',
+        action: 'block',
+        priority: 12,
+        enabled: true,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        isBuiltIn: true,
+      },
+      {
+        id: 'phone_format',
+        name: 'Phone Number Format Validation',
+        description: 'Parses and validates international phone number formats.',
+        condition: 'phone && !phone.valid',
+        action: 'hold',
+        priority: 10,
+        enabled: true,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        isBuiltIn: true,
+      },
+    ];
+  };
   const [testResult, setTestResult] = useState<TestResult | null>(null);
   const [ruleTestResults, setRuleTestResults] = useState<RuleTestResult[]>([]);
   const [testingRules, setTestingRules] = useState(false);
@@ -224,9 +304,12 @@ const Rules: React.FC = () => {
       priority: 0,
       enabled: false,
       createdAt: new Date().toISOString(),
+      isBuiltIn: false, // Ensure new rules are marked as custom rules
       ...newRuleData,
     };
+    // Update both rules and customRules states since RulesList primarily displays customRules
     setRules([newRule, ...rules]);
+    setCustomRules([newRule, ...customRules]);
     console.log('New rule added. Save to persist changes.');
   };
 
