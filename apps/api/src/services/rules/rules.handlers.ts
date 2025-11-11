@@ -436,7 +436,17 @@ export async function handleRegisterCustomRules(
     const ruleNames = rules.map((rule: any) => rule.name).filter(Boolean);
     const uniqueRuleNames = new Set(ruleNames);
     if (ruleNames.length !== uniqueRuleNames.size) {
-        return reply.status(400).send({ error: 'Duplicate rule names found in request. Each rule must have a unique name.', request_id });
+        const errorMessage = 'Duplicate rule names found in request';
+        // Send response in the format expected by the OpenAPI schema
+        const response = {
+            error: {
+                message: errorMessage,
+                code: 'duplicate_rule_names'
+            },
+            request_id
+        };
+        reply.code(400);
+        return reply.send(response);
     }
 
     // Check which rules exist by ID or name
@@ -589,6 +599,18 @@ export async function handleDeleteCustomRule(
     }
 
     try {
+        // Get built-in rule IDs to check against
+        const builtInRuleIds = getBuiltInRules().map(rule => rule.id);
+        
+        // Check if the rule is a built-in rule (cannot be deleted)
+        if (builtInRuleIds.includes(ruleId)) {
+            return reply.status(400).send({
+                error: 'Built-in rules cannot be deleted',
+                request_id,
+                details: `Rule "${ruleId}" is a built-in rule and cannot be deleted`
+            });
+        }
+
         // Check if the rule exists and belongs to the project
         const ruleQuery = await pool.query(
             'SELECT id, name FROM rules WHERE project_id = $1 AND id = $2',

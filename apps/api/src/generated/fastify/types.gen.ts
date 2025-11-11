@@ -1353,7 +1353,7 @@ export type GetAvailableRulesError = GetAvailableRulesErrors[keyof GetAvailableR
 
 export type GetAvailableRulesResponses = {
     /**
-     * List of available rules
+     * List of custom rules
      */
     200: {
         rules?: Array<{
@@ -1397,6 +1397,84 @@ export type GetAvailableRulesResponses = {
 };
 
 export type GetAvailableRulesResponse = GetAvailableRulesResponses[keyof GetAvailableRulesResponses];
+
+export type GetBuiltInRulesData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/v1/rules/builtin';
+};
+
+export type GetBuiltInRulesErrors = {
+    /**
+     * Unauthorized
+     */
+    401: {
+        error?: {
+            /**
+             * Error code
+             */
+            code?: string;
+            /**
+             * Error message
+             */
+            message?: string;
+        };
+        /**
+         * Request identifier
+         */
+        request_id?: string;
+    };
+};
+
+export type GetBuiltInRulesError = GetBuiltInRulesErrors[keyof GetBuiltInRulesErrors];
+
+export type GetBuiltInRulesResponses = {
+    /**
+     * List of builtin rules
+     */
+    200: {
+        rules?: Array<{
+            /**
+             * Rule identifier
+             */
+            id?: string;
+            /**
+             * Human-readable rule name
+             */
+            name?: string;
+            /**
+             * Rule description
+             */
+            description?: string;
+            /**
+             * Rule category
+             */
+            category?: string;
+            /**
+             * Rule severity level
+             */
+            severity?: 'low' | 'medium' | 'high' | 'critical';
+            /**
+             * Whether the rule is enabled
+             */
+            enabled?: boolean;
+            /**
+             * Rule configuration options
+             */
+            config?: {
+                [key: string]: unknown;
+            };
+            /**
+             * Rule condition expression
+             */
+            condition?: string;
+        }>;
+        request_id?: string;
+    };
+};
+
+export type GetBuiltInRulesResponse = GetBuiltInRulesResponses[keyof GetBuiltInRulesResponses];
 
 export type GetErrorCodeCatalogData = {
     body?: never;

@@ -1,14 +1,14 @@
 tags:
   - Management API
-summary: Get custom rules
-description: Retrieves a list of custom validation rules created by the user
-operationId: getAvailableRules
+summary: Get builtin rules
+description: Retrieves a list of all built-in validation rules and their configurations
+operationId: getBuiltInRules
 security:
   - patAuth: []
   - sessionCookie: []
 responses:
   '200':
-    description: List of custom rules
+    description: List of builtin rules
     content:
       application/json:
         schema:

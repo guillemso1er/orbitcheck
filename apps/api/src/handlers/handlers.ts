@@ -15,7 +15,7 @@ import { evaluateOrderForRiskAndRules } from "../services/orders.js";
 import { createPersonalAccessToken, listPersonalAccessTokens, revokePersonalAccessToken } from "../services/pats.js";
 import { PlansService } from "../services/plans.js";
 import { createProject, deleteProject, getUserProjects } from "../services/projects.js";
-import { deleteCustomRule, getAvailableRules, getErrorCodeCatalog, getReasonCodeCatalog, registerCustomRules, testRulesAgainstPayload } from "../services/rules/rules.js";
+import { deleteCustomRule, getAvailableRules, getBuiltInRules, getErrorCodeCatalog, getReasonCodeCatalog, registerCustomRules, testRulesAgainstPayload } from "../services/rules/rules.js";
 import { getTenantSettings, updateTenantSettings } from "../services/settings.js";
 import { validateAddress, validateEmailAddress, validateName, validatePhoneNumber, validateTaxId, verifyPhoneOtp } from "../services/validation.js";
 import { createWebhook, deleteWebhook, listWebhooks, testWebhook } from "../services/webhook.js";
@@ -39,6 +39,7 @@ export const serviceHandlers = <TServer extends RawServerBase = RawServerBase>(p
 
     // Rules handlers
     getAvailableRules: async (request, reply) => getAvailableRules(request, reply, pool),
+    getBuiltInRules: async (request, reply) => getBuiltInRules(request, reply),
     getErrorCodeCatalog: async (request, reply) => getErrorCodeCatalog(request, reply),
     getReasonCodeCatalog: async (request, reply) => getReasonCodeCatalog(request, reply),
     testRulesAgainstPayload: async (request, reply) => testRulesAgainstPayload(request, reply, pool, redis),

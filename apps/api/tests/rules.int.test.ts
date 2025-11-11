@@ -663,7 +663,7 @@ describe('Rules Integration Tests', () => {
       })
       expect(res.statusCode).toBe(400)
       const body = res.json()
-      expect(body.error).toContain('Duplicate rule names found in request')
+      expect(body.error.message).toContain('Duplicate rule names found in request')
     })
 
     test('409 on rule name that already exists in database', async () => {

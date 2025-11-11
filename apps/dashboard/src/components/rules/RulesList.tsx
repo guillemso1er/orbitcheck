@@ -4,13 +4,13 @@ import { Rule } from '../../types';
 import { RuleEditor } from './RuleEditor';
 
 interface RulesListProps {
-    filteredRules: Rule[];
-    totalRulesCount: number;
-    onUpdate: (index: number, rule: Rule) => void;
-    onDelete: (index: number) => void;
-    onDuplicate: (index: number) => void;
+    builtinRules: Rule[];
+    customRules: Rule[];
+    onUpdate: (rule: Rule) => void;
+    onDelete: (ruleId: string) => void;
+    onDuplicate: (ruleId: string) => void;
     onAdd: (rule?: Partial<Rule>) => void;
-    onValidationChange?: (index: number, hasError: boolean) => void;
+    onValidationChange?: (ruleId: string, hasError: boolean) => void;
 
     searchTerm: string;
     setSearchTerm: (term: string) => void;
@@ -21,10 +21,23 @@ interface RulesListProps {
 }
 
 export const RulesList: React.FC<RulesListProps> = ({
-    filteredRules, totalRulesCount, onUpdate, onDelete, onDuplicate, onAdd,
+    builtinRules, customRules, onUpdate, onDelete, onDuplicate, onAdd,
     searchTerm, setSearchTerm, filterAction, setFilterAction, showOnlyEnabled, setShowOnlyEnabled, onValidationChange
 }) => {
     const [showTemplates, setShowTemplates] = useState(false);
+    const [showBuiltInRules, setShowBuiltInRules] = useState(false);
+    const [showCustomRules, setShowCustomRules] = useState(true);
+
+    // Filter custom rules only (builtin rules are handled separately)
+    const filteredCustomRules = customRules
+        .filter(rule => {
+            const search = searchTerm.toLowerCase();
+            const matchesSearch = searchTerm === '' || rule.name.toLowerCase().includes(search) || rule.condition.toLowerCase().includes(search) || rule.description?.toLowerCase().includes(search);
+            const matchesAction = filterAction === 'all' || rule.action === filterAction;
+            const matchesEnabled = !showOnlyEnabled || rule.enabled;
+            return matchesSearch && matchesAction && matchesEnabled;
+        })
+        .sort((a, b) => b.priority - a.priority);
 
     return (
         <>
@@ -34,7 +47,7 @@ export const RulesList: React.FC<RulesListProps> = ({
                     <div className="md:col-span-2">
                         <label className="sr-only">Search rules</label>
                         <div className="relative">
-                            <input type="text" placeholder="Search rules..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600" />
+                            <input type="text" placeholder="Search custom rules..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600" />
                             <svg className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
                         </div>
                     </div>
@@ -69,26 +82,80 @@ export const RulesList: React.FC<RulesListProps> = ({
                 )}
             </div>
 
-            {/* Rules List */}
+            {/* Built-in Rules Section */}
+            {builtinRules.length > 0 && (
+                <div className="bg-white dark:bg-gray-800 shadow-lg rounded-lg p-6 mb-8">
+                    <div className="flex justify-between items-center mb-6">
+                        <div className="flex items-center space-x-3">
+                            <button
+                                onClick={() => setShowBuiltInRules(!showBuiltInRules)}
+                                className="flex items-center space-x-2 text-lg font-semibold text-gray-800 dark:text-white hover:text-indigo-600"
+                            >
+                                <svg className={`w-5 h-5 transform transition-transform ${showBuiltInRules ? 'rotate-90' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                </svg>
+                                <span>Built-in Rules ({builtinRules.length})</span>
+                                <span className="text-sm font-normal text-gray-500">• Not editable</span>
+                            </button>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                            <span className="text-sm text-gray-500">{builtinRules.filter(r => r.enabled).length} enabled</span>
+                        </div>
+                    </div>
+
+                    {showBuiltInRules && (
+                        <div className="space-y-4">
+                            {builtinRules.length === 0 ? (
+                                <div className="text-center py-8 text-gray-500">
+                                    No built-in rules available
+                                </div>
+                            ) : (
+                                builtinRules.map((rule) => {
+                                    return (
+                                        <RuleEditor key={`builtin-${rule.id}`} rule={rule} onUpdate={onUpdate} onDelete={onDelete} onDuplicate={onDuplicate} onValidationChange={onValidationChange} />
+                                    );
+                                })
+                            )}
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* Custom Rules Section */}
             <div className="bg-white dark:bg-gray-800 shadow-lg rounded-lg p-6 mb-8">
                 <div className="flex justify-between items-center mb-6">
-                    <h3 className="text-lg font-semibold text-gray-800 dark:text-white">Rules ({filteredRules.length} of {totalRulesCount})</h3>
+                    <div className="flex items-center space-x-3">
+                        <button
+                            onClick={() => setShowCustomRules(!showCustomRules)}
+                            className="flex items-center space-x-2 text-lg font-semibold text-gray-800 dark:text-white hover:text-indigo-600"
+                        >
+                            <svg className={`w-5 h-5 transform transition-transform ${showCustomRules ? 'rotate-90' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                            </svg>
+                            <span>Custom Rules ({filteredCustomRules.length} of {customRules.length})</span>
+                        </button>
+                    </div>
                     <button onClick={() => onAdd()} className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
                         <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
                         Add Rule
                     </button>
                 </div>
-                <div className="space-y-4">
-                    {filteredRules.length === 0 ? (
-                        <div className="text-center py-12 text-gray-500">
-                            {searchTerm || filterAction !== 'all' || showOnlyEnabled ? 'No rules match your filters' : 'No rules configured. Click "Add Rule" to get started.'}
-                        </div>
-                    ) : (
-                        filteredRules.map((rule, index) => (
-                            <RuleEditor key={`${rule.id}-${index}`} rule={rule} index={index} onUpdate={onUpdate} onDelete={onDelete} onDuplicate={onDuplicate} onValidationChange={onValidationChange} />
-                        ))
-                    )}
-                </div>
+
+                {showCustomRules && (
+                    <div className="space-y-4">
+                        {filteredCustomRules.length === 0 ? (
+                            <div className="text-center py-12 text-gray-500">
+                                {searchTerm || filterAction !== 'all' || showOnlyEnabled ? 'No custom rules match your filters' : 'No custom rules configured. Click "Add Rule" to get started.'}
+                            </div>
+                        ) : (
+                            filteredCustomRules.map((rule) => {
+                                return (
+                                    <RuleEditor key={`custom-${rule.id}`} rule={rule} onUpdate={onUpdate} onDelete={onDelete} onDuplicate={onDuplicate} onValidationChange={onValidationChange} />
+                                );
+                            })
+                        )}
+                    </div>
+                )}
             </div>
         </>
     );

@@ -1,6 +1,6 @@
-import { batchValidate, getJobStatusById } from '@orbitcheck/contracts';
+import { batchDedupe, batchValidate, createClient, getJobStatusById } from '@orbitcheck/contracts';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { UI_STRINGS } from '../constants';
+import { API_BASE, UI_STRINGS } from '../constants';
 import { apiClient } from '../utils/api';
 
 interface CsvFormatExample {
@@ -28,6 +28,7 @@ interface JobStatus {
 const BulkCsvTool: React.FC = () => {
   const [csvType, setCsvType] = useState<'customers' | 'orders'>('customers');
   const [file, setFile] = useState<File | null>(null);
+  const [apiKey, setApiKey] = useState<string>('');
   const [jobId, setJobId] = useState<string | null>(null);
   const [jobStatus, setJobStatus] = useState<JobStatus | null>(null);
   const [loading, setLoading] = useState(false);
@@ -72,7 +73,7 @@ const BulkCsvTool: React.FC = () => {
   // CSV format examples
   const csvFormats: { [key in 'customers' | 'orders']: CsvFormatExample } = {
     customers: {
-      name: 'Customers CSV',
+      name: 'Customers CSV (Validation)',
       description: 'Customer data with email and/or phone numbers for validation',
       headers: ['email', 'phone', 'name', 'address'],
       sampleData: [
@@ -80,18 +81,18 @@ const BulkCsvTool: React.FC = () => {
         ['user2@example.com', '+0987654321', 'Jane Smith', '456 Oak Ave, Los Angeles, CA'],
         ['user3@example.com', '', 'Bob Wilson', '789 Pine Rd, Chicago, IL']
       ],
-      downloadFilename: 'customers-example.csv'
+      downloadFilename: 'customers-validation-example.csv'
     },
     orders: {
-      name: 'Orders CSV',
-      description: 'Order data with customer email and order details',
-      headers: ['order_id', 'customer_email', 'total', 'items', 'status'],
+      name: 'Orders CSV (Deduplication)',
+      description: 'Customer data from orders for deduplication (finds duplicate customers)',
+      headers: ['email', 'name', 'phone', 'address'],
       sampleData: [
-        ['ORD-001', 'user1@example.com', '99.99', 'Product A, Product B', 'pending'],
-        ['ORD-002', 'user2@example.com', '49.50', 'Product C', 'completed'],
-        ['ORD-003', 'user3@example.com', '150.00', 'Product A, Product D, Product E', 'processing']
+        ['customer1@example.com', 'John Doe', '+1234567890', '123 Main St, New York, NY'],
+        ['customer2@example.com', 'Jane Smith', '+0987654321', '456 Oak Ave, Los Angeles, CA'],
+        ['customer1@example.com', 'J. Doe', '+1234567890', '123 Main Street, New York, NY']
       ],
-      downloadFilename: 'orders-example.csv'
+      downloadFilename: 'orders-deduplication-example.csv'
     }
   };
 
@@ -142,7 +143,7 @@ const BulkCsvTool: React.FC = () => {
     });
   };
 
-  const processCustomersCSV = async (data: string[][]): Promise<void> => {
+  const processCustomersCSV = async (data: string[][], client: ReturnType<typeof createClient>): Promise<void> => {
     if (data.length < 2) throw new Error('CSV must have header and at least one data row');
 
     const headers = data[0].map(h => h.toLowerCase().trim());
@@ -167,62 +168,73 @@ const BulkCsvTool: React.FC = () => {
       }
     }
 
-    // Process validations
+    // Process validations with batchValidate
     if (emails.length > 0) {
-      const result = await batchValidate({ client: apiClient, body: { type: 'email', data: emails.map(email => ({ email })) } });
+      const result = await batchValidate({ 
+        client, 
+        body: { 
+          type: 'email', 
+          data: emails.map(email => ({ email })) 
+        } 
+      });
+      if (result.data) {
+        setJobId(result.data.job_id || 'completed');
+        setJobStatus({ id: result.data.job_id || 'completed', status: 'pending' });
+      }
+    } else if (phones.length > 0) {
+      const result = await batchValidate({ 
+        client, 
+        body: { 
+          type: 'phone', 
+          data: phones.map(phone => ({ phone })) 
+        } 
+      });
       if (result.data) {
         setJobId(result.data.job_id || 'completed');
         setJobStatus({ id: result.data.job_id || 'completed', status: 'pending' });
       }
     }
-
-    if (phones.length > 0) {
-      const result = await batchValidate({ client: apiClient, body: { type: 'phone', data: phones.map(phone => ({ phone })) } });
-      if (result.data) {
-        setJobId(result.data.job_id || 'completed');
-        setJobStatus({ id: result.data.job_id || 'completed', status: 'pending' });
-      }
-    }
-  };
-
-  const processOrdersCSV = async (data: string[][]): Promise<void> => {
+  };  const processOrdersCSV = async (data: string[][]): Promise<void> => {
     if (data.length < 2) throw new Error('CSV must have header and at least one data row');
 
     const headers = data[0].map(h => h.toLowerCase().trim());
-    const orderIdIndex = headers.findIndex(h => h.includes('order_id'));
-    const emailIndex = headers.findIndex(h => h.includes('customer_email'));
-    const totalIndex = headers.findIndex(h => h.includes('total'));
-    const itemsIndex = headers.findIndex(h => h.includes('items'));
+    const emailIndex = headers.findIndex(h => h.includes('email') || h.includes('customer_email'));
+    const nameIndex = headers.findIndex(h => h.includes('name'));
+    const phoneIndex = headers.findIndex(h => h.includes('phone'));
+    const addressIndex = headers.findIndex(h => h.includes('address'));
 
-    if (orderIdIndex === -1 || emailIndex === -1) {
-      throw new Error('Orders CSV must contain order_id and customer_email columns');
+    if (emailIndex === -1) {
+      throw new Error('Orders CSV must contain an email or customer_email column');
     }
 
-    // Collect order data
-    const orders: Array<{ order_id: string; customer_email: string; total?: number; items?: string }> = [];
+    // Collect customer data for deduplication
+    const customers: Array<{ email: string; name?: string; phone?: string; address?: string }> = [];
 
     for (let i = 1; i < data.length; i++) {
       const row = data[i];
-      if (row.length > orderIdIndex && row[orderIdIndex] && row.length > emailIndex && row[emailIndex]) {
-        orders.push({
-          order_id: row[orderIdIndex].trim(),
-          customer_email: row[emailIndex].trim(),
-          total: totalIndex !== -1 && row[totalIndex] ? parseFloat(row[totalIndex].trim()) : undefined,
-          items: itemsIndex !== -1 && row[itemsIndex] ? row[itemsIndex].trim() : undefined
+      if (row.length > emailIndex && row[emailIndex]) {
+        customers.push({
+          email: row[emailIndex].trim(),
+          name: nameIndex !== -1 && row[nameIndex] ? row[nameIndex].trim() : undefined,
+          phone: phoneIndex !== -1 && row[phoneIndex] ? row[phoneIndex].trim() : undefined,
+          address: addressIndex !== -1 && row[addressIndex] ? row[addressIndex].trim() : undefined,
         });
       }
     }
 
-    // Process orders validation (this would typically call an API endpoint for order evaluation)
-    if (orders.length > 0) {
-      // For now, simulate order processing - in production this would validate orders
-      setJobId('orders-completed');
-      setJobStatus({
-        id: 'orders-completed',
-        status: 'completed',
-        progress: 100,
-        result: { message: `Processed ${orders.length} orders successfully` }
+    // Process customer deduplication
+    if (customers.length > 0) {
+      const result = await batchDedupe({
+        client: apiClient,
+        body: {
+          type: 'customers',
+          data: customers
+        }
       });
+      if (result.data) {
+        setJobId(result.data.job_id || 'completed');
+        setJobStatus({ id: result.data.job_id || 'completed', status: 'pending' });
+      }
     }
   };
 
@@ -233,17 +245,41 @@ const BulkCsvTool: React.FC = () => {
     }
 
     setFile(selectedFile);
+    setError(null);
+    setJobId(null);
+    setJobStatus(null);
+  };
+
+  const handleProcessCSV = async () => {
+    if (!file) {
+      setError('Please select a file first');
+      return;
+    }
+
+    if (!apiKey.trim()) {
+      setError(UI_STRINGS.API_KEY_REQUIRED);
+      return;
+    }
+
     setLoading(true);
     setError(null);
 
     try {
-      const text = await selectedFile.text();
+      // Create an authenticated client with the API key
+      const authenticatedClient = createClient({
+        baseUrl: API_BASE,
+        headers: {
+          'X-API-Key': apiKey.trim(),
+        },
+      });
+
+      const text = await file.text();
       const data = parseCSV(text);
 
       if (csvType === 'customers') {
-        await processCustomersCSV(data);
+        await processCustomersCSV(data, authenticatedClient);
       } else {
-        await processOrdersCSV(data);
+        await processOrdersCSV(data, authenticatedClient);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Processing failed');
@@ -342,7 +378,7 @@ const BulkCsvTool: React.FC = () => {
           <p className="text-gray-600 dark:text-gray-400 mb-4">
             {csvFormats[csvType].description}
           </p>
-          
+
           <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 overflow-x-auto">
             <div className="text-sm text-gray-600 dark:text-gray-400 mb-2">
               Expected format:
@@ -409,6 +445,18 @@ const BulkCsvTool: React.FC = () => {
           )}
         </div>
       </div>
+
+      {file && !loading && !jobStatus && (
+        <div className="mb-8 flex justify-center">
+          <button
+            onClick={handleProcessCSV}
+            disabled={loading}
+            className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-medium px-6 py-3 rounded-lg transition-colors flex items-center gap-2"
+          >
+            🚀 {UI_STRINGS.PROCESS_CSV}
+          </button>
+        </div>
+      )}
 
       {jobStatus && (
         <div className="border border-gray-300 dark:border-gray-600 rounded-lg p-6 bg-white dark:bg-gray-800">

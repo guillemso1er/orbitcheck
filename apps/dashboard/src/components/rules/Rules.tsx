@@ -1,15 +1,36 @@
 // src/Rules.tsx
-import React, { useEffect, useMemo, useState } from 'react';
+import { deleteCustomRule, getAvailableRules, registerCustomRules } from '@orbitcheck/contracts';
+import React, { useEffect, useState } from 'react';
 import { API_BASE, API_ENDPOINTS, LOCAL_STORAGE_KEYS } from '../../constants';
 import { useDebounce } from '../../hooks/useDebounce';
 import { useLocalStorage } from '../../hooks/useLocalStorage';
 import { Rule, RuleTestResult, TestResult } from '../../types';
 import { apiClient } from '../../utils/api';
-import { getAvailableRules, registerCustomRules, deleteCustomRule } from '@orbitcheck/contracts';
 import { ConditionEvaluator } from '../../utils/ConditionEvaluator';
 import { RulesHeader } from './RulesHeader';
 import { RulesList } from './RulesList';
 import { TestHarness } from './TestHarness';
+
+// List of built-in rule IDs from the API (rules.constants.ts)
+// These rules cannot be deleted, even if they have category: 'custom'
+const BUILTIN_RULE_IDS = new Set([
+  'email_format',
+  'email_mx',
+  'email_disposable',
+  'po_box_detection',
+  'address_postal_mismatch',
+  'order_dedupe',
+  'high_value_order',
+  'high_value_customer_priority',
+  'critical_block_rule',
+  'custom_domain_block',
+  'phone_format',
+  'phone_otp',
+  'address_validation',
+  'address_geocode',
+  'high_risk_address',
+  'high_value_order_review'
+]);
 
 // Custom Confirmation Dialog Component
 const ConfirmDialog: React.FC<{
@@ -31,62 +52,64 @@ const ConfirmDialog: React.FC<{
   onConfirm,
   onCancel
 }) => {
-  useEffect(() => {
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onCancel();
-    };
-    if (show) {
-      document.addEventListener('keydown', handleEscape);
-      return () => document.removeEventListener('keydown', handleEscape);
-    }
-  }, [show, onCancel]);
+    useEffect(() => {
+      const handleEscape = (e: KeyboardEvent) => {
+        if (e.key === 'Escape') onCancel();
+      };
+      if (show) {
+        document.addEventListener('keydown', handleEscape);
+        return () => document.removeEventListener('keydown', handleEscape);
+      }
+    }, [show, onCancel]);
 
-  if (!show) return null;
+    if (!show) return null;
 
-  const buttonClass = variant === 'danger'
-    ? 'bg-red-600 hover:bg-red-700 focus:ring-red-500'
-    : 'bg-yellow-600 hover:bg-yellow-700 focus:ring-yellow-500';
+    const buttonClass = variant === 'danger'
+      ? 'bg-red-600 hover:bg-red-700 focus:ring-red-500'
+      : 'bg-yellow-600 hover:bg-yellow-700 focus:ring-yellow-500';
 
-  return (
-    <div
-      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
-      onClick={onCancel}
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="confirm-dialog-title"
-    >
+    return (
       <div
-        className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md m-4 border border-gray-200 dark:border-gray-700"
-        onClick={(e) => e.stopPropagation()}
+        className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+        onClick={onCancel}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="confirm-dialog-title"
       >
-        <div className="p-6">
-          <h3 id="confirm-dialog-title" className="text-base font-semibold text-gray-900 dark:text-white mb-2">{title}</h3>
-          <p className="text-gray-600 dark:text-gray-300 mb-6">{message}</p>
-          <div className="flex justify-end gap-3">
-            <button
-              type="button"
-              onClick={onCancel}
-              className="py-2 px-4 bg-white dark:bg-gray-600 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-500 rounded-md hover:bg-gray-50 dark:hover:bg-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-            >
-              {cancelText}
-            </button>
-            <button
-              type="button"
-              onClick={onConfirm}
-              className={`py-2 px-4 text-white rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 ${buttonClass}`}
-            >
-              {confirmText}
-            </button>
+        <div
+          className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md m-4 border border-gray-200 dark:border-gray-700"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="p-6">
+            <h3 id="confirm-dialog-title" className="text-base font-semibold text-gray-900 dark:text-white mb-2">{title}</h3>
+            <p className="text-gray-600 dark:text-gray-300 mb-6">{message}</p>
+            <div className="flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={onCancel}
+                className="py-2 px-4 bg-white dark:bg-gray-600 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-500 rounded-md hover:bg-gray-50 dark:hover:bg-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+              >
+                {cancelText}
+              </button>
+              <button
+                type="button"
+                onClick={onConfirm}
+                className={`py-2 px-4 text-white rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 ${buttonClass}`}
+              >
+                {confirmText}
+              </button>
+            </div>
           </div>
         </div>
       </div>
-    </div>
-  );
-};
+    );
+  };
 
 
 const Rules: React.FC = () => {
   const [rules, setRules] = useState<Rule[]>([]);
+  const [builtinRules, setBuiltinRules] = useState<Rule[]>([]);
+  const [customRules, setCustomRules] = useState<Rule[]>([]);
   const [validationErrors, setValidationErrors] = useState<{ [key: number]: boolean }>({});
   const [backendError, setBackendError] = useState<string | null>(null);
 
@@ -103,7 +126,7 @@ const Rules: React.FC = () => {
     const loadRules = async () => {
       try {
         const { data, error } = await getAvailableRules({ client: apiClient });
-        
+
         if (error) {
           if ('error' in error && error.error && 'message' in error.error) {
             throw new Error(error.error.message || 'Failed to load rules');
@@ -111,9 +134,29 @@ const Rules: React.FC = () => {
             throw new Error('Failed to load rules');
           }
         }
-        
-        const customRules = ((data as any)?.rules || [])
-          .filter((rule: any) => rule.id && rule.name && (rule.category === 'custom' || rule.condition || rule.logic))
+
+        const allRules = ((data as any)?.rules || []);
+
+        // Separate builtin and custom rules based on rule ID, not just category
+        // Some built-in rules have category: 'custom' but are still built-in
+        const customRules = allRules
+          .filter((rule: any) => !BUILTIN_RULE_IDS.has(rule.id))
+          .map((rule: any) => ({
+            id: rule.id!,
+            name: rule.name!,
+            description: rule.description || '',
+            condition: rule.logic || rule.condition || '',
+            action: rule.action || 'hold' as const,
+            priority: rule.priority || 0,
+            enabled: rule.enabled || false,
+            createdAt: rule.createdAt || rule.created_at || new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            isBuiltIn: false,
+          }));
+
+        // Built-in rules are identified by their ID
+        const builtinRules = allRules
+          .filter((rule: any) => BUILTIN_RULE_IDS.has(rule.id))
           .map((rule: any) => ({
             id: rule.id!,
             name: rule.name!,
@@ -122,10 +165,17 @@ const Rules: React.FC = () => {
             action: rule.action || 'hold' as const,
             priority: rule.priority || 0,
             enabled: rule.enabled || false,
-            createdAt: rule.createdAt || new Date().toISOString(),
-            updatedAt: rule.updatedAt || new Date().toISOString(),
+            createdAt: rule.createdAt || rule.created_at || new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            isBuiltIn: true,
           }));
-        setRules(customRules);
+
+        // Store both types separately for display
+        setBuiltinRules(builtinRules);
+        setCustomRules(customRules);
+
+        // Keep the main rules state for testing and other operations
+        setRules([...builtinRules, ...customRules]);
       } catch (err) {
         console.error('Failed to load rules:', err);
       }
@@ -154,22 +204,11 @@ const Rules: React.FC = () => {
   }, null, 2));
   const debouncedTestPayload = useDebounce(testPayload, 500);
 
-  const filteredRules = useMemo(() => {
-    return rules
-      .filter(rule => {
-        const search = searchTerm.toLowerCase();
-        const matchesSearch = searchTerm === '' || rule.name.toLowerCase().includes(search) || rule.condition.toLowerCase().includes(search) || rule.description?.toLowerCase().includes(search);
-        const matchesAction = filterAction === 'all' || rule.action === filterAction;
-        const matchesEnabled = !showOnlyEnabled || rule.enabled;
-        return matchesSearch && matchesAction && matchesEnabled;
-      })
-      .sort((a, b) => b.priority - a.priority);
-  }, [rules, searchTerm, filterAction, showOnlyEnabled]);
-
-  const handleValidationChange = (index: number, hasError: boolean) => {
+  const handleValidationChange = (ruleId: string, hasError: boolean) => {
+    // Use the rule ID for validation tracking
     setValidationErrors(prev => ({
       ...prev,
-      [index]: hasError
+      [ruleId]: hasError
     }));
   };
 
@@ -191,31 +230,54 @@ const Rules: React.FC = () => {
     console.log('New rule added. Save to persist changes.');
   };
 
-  const updateRule = (index: number, updatedRule: Rule) => {
-    const newRules = [...rules];
-    const originalIndex = rules.findIndex(r => r.id === filteredRules[index].id);
-    if (originalIndex !== -1) {
-      const ruleToUpdate = { ...updatedRule, updatedAt: new Date().toISOString() };
-      newRules[originalIndex] = ruleToUpdate;
+  const updateRule = (updatedRule: Rule) => {
+    const ruleWithTimestamp = { ...updatedRule, updatedAt: new Date().toISOString() };
 
-      // Update local state immediately for better UX (no immediate backend save)
-      setRules(newRules);
-    }
+    // Update the main rules array
+    const newRules = rules.map(r => r.id === updatedRule.id ? ruleWithTimestamp : r);
+
+    // Update custom rules array if it's a custom rule
+    const newCustomRules = customRules.map(r => r.id === updatedRule.id ? ruleWithTimestamp : r);
+
+    // Update built-in rules array if it's a built-in rule
+    const newBuiltinRules = builtinRules.map(r => r.id === updatedRule.id ? ruleWithTimestamp : r);
+
+    // Update all state arrays
+    setRules(newRules);
+    setCustomRules(newCustomRules);
+    setBuiltinRules(newBuiltinRules);
   };
 
-  const deleteRule = (index: number) => {
-    const ruleId = filteredRules[index].id;
-    const ruleName = filteredRules[index].name;
+  const deleteRule = (ruleId: string) => {
+    // Find the rule by ID
+    const ruleToDelete = rules.find(r => r.id === ruleId);
+    if (!ruleToDelete) return;
+
+    // Don't allow deletion of built-in rules
+    if (ruleToDelete.isBuiltIn) {
+      alert('Built-in rules cannot be deleted. You can only disable them.');
+      return;
+    }
+
+    const ruleName = ruleToDelete.name;
     setDeleteConfirm({ show: true, ruleId, ruleName });
   };
 
   const confirmDelete = async () => {
     if (!deleteConfirm) return;
-    
+
+    // Double-check that we're only deleting custom rules
+    const ruleToDelete = rules.find(r => r.id === deleteConfirm.ruleId);
+    if (ruleToDelete?.isBuiltIn) {
+      alert('Built-in rules cannot be deleted. You can only disable them.');
+      setDeleteConfirm(null);
+      return;
+    }
+
     try {
       // Call the delete API endpoint
       const { error } = await deleteCustomRule({ client: apiClient, path: { id: deleteConfirm.ruleId } });
-      
+
       if (error) {
         if (typeof error === 'string') {
           throw new Error(error);
@@ -223,9 +285,13 @@ const Rules: React.FC = () => {
           throw new Error('Failed to delete rule');
         }
       }
-      
-      // Update local state after successful backend delete
-      setRules(rules.filter(r => r.id !== deleteConfirm.ruleId));
+
+      // Update all local state arrays after successful backend delete
+      const ruleId = deleteConfirm.ruleId;
+      setRules(rules.filter(r => r.id !== ruleId));
+      setCustomRules(customRules.filter(r => r.id !== ruleId));
+      setBuiltinRules(builtinRules.filter(r => r.id !== ruleId));
+
       console.log(`Rule "${deleteConfirm.ruleName}" deleted successfully`);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error';
@@ -240,15 +306,22 @@ const Rules: React.FC = () => {
     setDeleteConfirm(null);
   };
 
-  const duplicateRule = (index: number) => {
-    const ruleToDuplicate = filteredRules[index];
+  const duplicateRule = (ruleId: string) => {
+    const ruleToDuplicate = rules.find(r => r.id === ruleId);
+    if (!ruleToDuplicate) return;
+
     const newRule: Rule = {
       ...ruleToDuplicate,
       id: generateUUID(),
       name: `${ruleToDuplicate.name} (Copy)`,
       createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      isBuiltIn: false, // Duplicated rules are always custom
     };
+
+    // Add to both rules and customRules arrays
     setRules([newRule, ...rules]);
+    setCustomRules([newRule, ...customRules]);
     console.log('Rule duplicated. Save to persist changes.');
   };
 
@@ -298,26 +371,29 @@ const Rules: React.FC = () => {
 
     setSaveStatus('saving');
     try {
+      // Only save custom rules, not built-in rules
+      const customRulesToSave = customRules.map(rule => ({
+        id: rule.id,
+        name: rule.name,
+        description: rule.description,
+        logic: rule.condition,
+        severity: 'high' as const,
+        enabled: rule.enabled,
+        action: rule.action,
+        priority: rule.priority,
+      }));
+
       const { error } = await registerCustomRules({
         client: apiClient,
         body: {
-          rules: rules.map(rule => ({
-            id: rule.id,
-            name: rule.name,
-            description: rule.description,
-            logic: rule.condition,
-            severity: 'high' as const,
-            enabled: rule.enabled,
-            action: rule.action,
-            priority: rule.priority,
-          }))
+          rules: customRulesToSave
         }
       });
-      
+
       if (error) {
         throw new Error('Failed to save rules');
       }
-      
+
       setSaveStatus('saved');
     } catch (err) {
       setSaveStatus('error');
@@ -368,8 +444,8 @@ const Rules: React.FC = () => {
         hasValidationErrors={hasValidationErrors}
       />
       <RulesList
-        filteredRules={filteredRules}
-        totalRulesCount={rules.length}
+        builtinRules={builtinRules}
+        customRules={customRules}
         onUpdate={updateRule}
         onDelete={deleteRule}
         onDuplicate={duplicateRule}
@@ -382,7 +458,7 @@ const Rules: React.FC = () => {
         setShowOnlyEnabled={setShowOnlyEnabled}
         onValidationChange={handleValidationChange}
       />
-      
+
       <TestHarness
         testPayload={testPayload}
         setTestPayload={setTestPayload}

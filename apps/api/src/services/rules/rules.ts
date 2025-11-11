@@ -1,11 +1,30 @@
-import { MGMT_V1_ROUTES } from "@orbitcheck/contracts";
 import { type FastifyReply, type FastifyRequest } from "fastify";
 import type { Redis as IORedisType } from "ioredis";
 import type { Pool } from "pg";
 import { DeleteCustomRuleData, GetAvailableRulesResponses, GetErrorCodeCatalogResponses, GetReasonCodeCatalogResponses, RegisterCustomRulesData, TestRulesAgainstPayloadData } from "../../generated/fastify/types.gen.js";
 import { generateRequestId, sendServerError } from "../utils.js";
-import { getBuiltInRules, reasonCodes } from "./rules.constants.js";
+import { getBuiltInRules as getBuiltInRulesConstants, reasonCodes } from "./rules.constants.js";
 import { handleDeleteCustomRule, handleRegisterCustomRules, handleTestRules } from "./rules.handlers.js";
+
+export async function getBuiltInRules(
+    request: FastifyRequest,
+    rep: FastifyReply
+): Promise<FastifyReply> {
+    try {
+        const request_id = generateRequestId();
+        
+        // Return only built-in rules
+        const builtInRules = getBuiltInRulesConstants();
+
+        const response = {
+            rules: builtInRules,
+            request_id
+        };
+        return rep.send(response);
+    } catch (error) {
+        return sendServerError(request, rep, error, "/v1/rules/builtin", generateRequestId());
+    }
+}
 
 export async function getAvailableRules(
     request: FastifyRequest,
@@ -16,26 +35,28 @@ export async function getAvailableRules(
         const request_id = generateRequestId();
         const project_id = (request as any).project_id;
 
-        // Start with all built-in rules (including disabled ones for reference)
-        const builtInRules = getBuiltInRules();
-
-        // Optionally merge project custom rules from DB if pool and project_id are available
+        // Only return custom rules from database, not built-in rules
         let dbRules: any[] = [];
         if (pool && project_id) {
             const res = await pool.query(
-                "SELECT id, name, description, logic as condition, severity, 'custom' as category, enabled FROM rules WHERE project_id = $1",
+                "SELECT id, name, description, logic as condition, action, priority, severity, 'custom' as category, enabled, created_at FROM rules WHERE project_id = $1",
                 [project_id]
             );
-            dbRules = res.rows.map((rule: any) => ({ ...rule, condition: rule.condition || (rule as any).logic }));
+            dbRules = res.rows.map((rule: any) => ({
+                ...rule,
+                condition: rule.condition || (rule as any).logic,
+                createdAt: rule.created_at || new Date().toISOString(),
+                updatedAt: new Date().toISOString() // Use current time since updated_at doesn't exist
+            }));
         }
 
         const response: GetAvailableRulesResponses[200] = {
-            rules: [...builtInRules, ...dbRules],
+            rules: dbRules,
             request_id
         };
         return rep.send(response);
     } catch (error) {
-        return sendServerError(request, rep, error, MGMT_V1_ROUTES.RULES.GET_AVAILABLE_RULES, generateRequestId());
+        return sendServerError(request, rep, error, '/v1/rules', generateRequestId());
     }
 }
 
@@ -50,25 +71,25 @@ export async function getErrorCodeCatalog(
             code: "validation_error",
             description: "Input validation failed",
             category: "VALIDATION",
-            severity: "high"
+            severity: "high" as const
         },
         {
             code: "authentication_error",
             description: "Authentication failed",
             category: "AUTH",
-            severity: "critical"
+            severity: "critical" as const
         },
         {
             code: "rate_limit_exceeded",
             description: "Rate limit exceeded",
             category: "RATE_LIMIT",
-            severity: "medium"
+            severity: "medium" as const
         },
         {
             code: "server_error",
             description: "Internal server error",
             category: "SERVER",
-            severity: "high"
+            severity: "high" as const
         }
     ];
 
@@ -88,7 +109,7 @@ export async function getReasonCodeCatalog(
         const response: GetReasonCodeCatalogResponses[200] = { reason_codes: reasonCodes, request_id };
         return rep.send(response);
     } catch (error) {
-        return sendServerError(request, rep, error, MGMT_V1_ROUTES.RULES.GET_REASON_CODE_CATALOG, generateRequestId());
+        return sendServerError(request, rep, error, '/v1/rules/catalog', generateRequestId());
     }
 }
 
@@ -101,7 +122,7 @@ export async function testRulesAgainstPayload(
     try {
         return await handleTestRules(request, rep, pool, redis);
     } catch (error) {
-        return sendServerError(request, rep, error, MGMT_V1_ROUTES.RULES.TEST_RULES_AGAINST_PAYLOAD, generateRequestId());
+        return sendServerError(request, rep, error, '/v1/rules/test', generateRequestId());
 
     }
 }
@@ -112,13 +133,9 @@ export async function registerCustomRules(
     pool: Pool
 ): Promise<FastifyReply> {
     try {
-        try {
-            return await handleRegisterCustomRules(request, rep, pool);
-        } catch (error) {
-            return sendServerError(request, rep, error, MGMT_V1_ROUTES.RULES.REGISTER_CUSTOM_RULES, generateRequestId());
-        }
+        return await handleRegisterCustomRules(request, rep, pool);
     } catch (error) {
-        return sendServerError(request, rep, error, MGMT_V1_ROUTES.RULES.REGISTER_CUSTOM_RULES, generateRequestId());
+        return sendServerError(request, rep, error, '/v1/rules/register', generateRequestId());
     }
 }
 
@@ -130,6 +147,6 @@ export async function deleteCustomRule(
     try {
         return await handleDeleteCustomRule(request, rep, pool);
     } catch (error) {
-        return sendServerError(request, rep, error, `${MGMT_V1_ROUTES.RULES.REGISTER_CUSTOM_RULES}/:id`, generateRequestId());
+        return sendServerError(request, rep, error, `/v1/rules/:id`, generateRequestId());
     }
 }

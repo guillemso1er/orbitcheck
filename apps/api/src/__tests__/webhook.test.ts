@@ -91,7 +91,6 @@ jest.mock('../web', () => ({
     applyRateLimitingAndIdempotency: jest.fn(),
 }));
 
-import { authenticateRequest, applyRateLimitingAndIdempotency } from '../web.js';
 
 // Cast the fetch mock for convenience
 let fetchMock: jest.MockedFunction<typeof fetch>;
@@ -119,13 +118,7 @@ describe('Webhook Management Routes', () => {
         }, 0);
 
         // Add auth hooks for this test
-        const { authenticateRequest, applyRateLimitingAndIdempotency } = await import('../web.js');
-        const { mockPool, mockRedisInstance } = await import('./testSetup.js');
-        app.addHook("preHandler", async (request, rep) => {
-            await authenticateRequest(request, rep, mockPool as any);
-            await applyRateLimitingAndIdempotency(request, rep, mockRedisInstance as any);
-            return;
-        });
+
 
         await app.ready();
     });
@@ -264,12 +257,7 @@ describe('Webhook Test Routes (JWT Auth)', () => {
         app = await createApp();
 
         // Add auth hooks for this test
-        const { mockPool, mockRedisInstance } = await import('./testSetup.js');
-        app.addHook("preHandler", async (request, rep) => {
-            await authenticateRequest(request, rep, mockPool as any);
-            await applyRateLimitingAndIdempotency(request, rep, mockRedisInstance as any);
-            return;
-        });
+
 
         await app.ready();
     });
@@ -297,12 +285,6 @@ describe('Webhook Test Routes (JWT Auth)', () => {
 
         jest.spyOn(hooks, 'logEvent').mockImplementation(jest.fn().mockResolvedValue(undefined));
 
-        // Reset the authenticateRequest mock to succeed by default for each test
-        (authenticateRequest as jest.Mock).mockImplementation(async (request_: any) => {
-            // Default: succeed and set ids
-            request_.user_id = 'test_user';
-            request_.project_id = 'test_project';
-        });
 
         mockPool.query.mockImplementation((queryText: string, values: unknown[]) => {
             const upperQuery = queryText.toUpperCase();
@@ -393,11 +375,7 @@ describe('Webhook Test Routes (JWT Auth)', () => {
     });
 
     it('should handle fetch error', async () => {
-        // Ensure authenticateRequest succeeds for this test
-        (authenticateRequest as jest.Mock).mockImplementationOnce(async (request_: any) => {
-            request_.user_id = 'test_user';
-            request_.project_id = 'test_project';
-        });
+
 
         fetchMock.mockRejectedValue(new Error('Network error'));
 
@@ -414,10 +392,7 @@ describe('Webhook Test Routes (JWT Auth)', () => {
     });
 
     it('should reject without a valid JWT', async () => {
-        // Override the successful mock with a failure for this specific test
-        (authenticateRequest as jest.Mock).mockImplementationOnce(async (_request: any, rep: any) => {
-            rep.status(401).send({ error: { code: 'unauthorized', message: 'Management routes require session or PAT authentication' } });
-        });
+
 
         const res = await request(app.server)
             .post('/v1/webhooks/test')
@@ -441,13 +416,6 @@ describe('Webhook Event Sending', () => {
         app = await createApp();
 
         // Add auth hooks for this test
-        const { authenticateRequest, applyRateLimitingAndIdempotency } = await import('../web.js');
-        const { mockPool, mockRedisInstance } = await import('./testSetup.js');
-        app.addHook("preHandler", async (request, rep) => {
-            await authenticateRequest(request, rep, mockPool as any);
-            await applyRateLimitingAndIdempotency(request, rep, mockRedisInstance as any);
-            return;
-        });
 
         await app.ready();
     });
