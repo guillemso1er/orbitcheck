@@ -183,6 +183,9 @@ paths:
   /v1/batch/dedupe:
     post:
       $ref: './paths/batch/dedupe.yml'
+  /v1/batch/orders:
+    post:
+      $ref: './paths/batch/orders.yml'
   
   # Jobs paths
   /v1/jobs/{id}:

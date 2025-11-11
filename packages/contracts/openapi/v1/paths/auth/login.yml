@@ -1,35 +1,36 @@
 tags:
   - UI Endpoints
-summary: User login
-description: Authenticates a user and returns JWT token
-operationId: loginUser
-security: []
-requestBody:
-  required: true
-  content:
-    application/json:
-      schema:
-        type: object
-        required:
-          - email
-          - password
-        properties:
-          email:
-            type: string
-            format: email
-            description: User email address
-          password:
-            type: string
-            description: User password
+summary: User logout
+description: Logs out the current user by invalidating the server-side session and clearing the cookie
+operationId: logoutUser
+security:
+  - cookieAuth: []   # requires the session cookie
+parameters:
+  - in: header
+    name: X-CSRF-Token
+    required: true
+    description: CSRF token associated with the current session
+    schema:
+      type: string
 responses:
   '200':
-    description: Login successful
+    description: Logout successful; session invalidated and cookie cleared
+    headers:
+      Set-Cookie:
+        description: Clears the session cookie
+        schema:
+          type: string
+        example: sid=; Path=/api; HttpOnly; Secure; SameSite=Lax; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT
     content:
       application/json:
         schema:
-          $ref: '../../components/schemas/LoginResponse.yml'
+          type: object
+          properties:
+            message:
+              type: string
+              description: Success message
   '401':
-    description: Invalid credentials
+    description: Unauthorized
     content:
       application/json:
         schema:

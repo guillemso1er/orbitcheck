@@ -1,6 +1,6 @@
-import { batchDedupe, batchValidate, createClient, getJobStatusById } from '@orbitcheck/contracts';
+import { batchDedupe, batchValidate, getJobStatusById } from '@orbitcheck/contracts';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { API_BASE, UI_STRINGS } from '../constants';
+import { UI_STRINGS } from '../constants';
 import { apiClient } from '../utils/api';
 
 interface CsvFormatExample {
@@ -28,7 +28,6 @@ interface JobStatus {
 const BulkCsvTool: React.FC = () => {
   const [csvType, setCsvType] = useState<'customers' | 'orders'>('customers');
   const [file, setFile] = useState<File | null>(null);
-  const [apiKey, setApiKey] = useState<string>('');
   const [jobId, setJobId] = useState<string | null>(null);
   const [jobStatus, setJobStatus] = useState<JobStatus | null>(null);
   const [loading, setLoading] = useState(false);
@@ -143,7 +142,7 @@ const BulkCsvTool: React.FC = () => {
     });
   };
 
-  const processCustomersCSV = async (data: string[][], client: ReturnType<typeof createClient>): Promise<void> => {
+  const processCustomersCSV = async (data: string[][]): Promise<void> => {
     if (data.length < 2) throw new Error('CSV must have header and at least one data row');
 
     const headers = data[0].map(h => h.toLowerCase().trim());
@@ -170,31 +169,33 @@ const BulkCsvTool: React.FC = () => {
 
     // Process validations with batchValidate
     if (emails.length > 0) {
-      const result = await batchValidate({ 
-        client, 
-        body: { 
-          type: 'email', 
-          data: emails.map(email => ({ email })) 
-        } 
+      const result = await batchValidate({
+        client: apiClient,
+        body: {
+          type: 'email',
+          data: emails.map(email => ({ email }))
+        }
       });
       if (result.data) {
         setJobId(result.data.job_id || 'completed');
         setJobStatus({ id: result.data.job_id || 'completed', status: 'pending' });
       }
     } else if (phones.length > 0) {
-      const result = await batchValidate({ 
-        client, 
-        body: { 
-          type: 'phone', 
-          data: phones.map(phone => ({ phone })) 
-        } 
+      const result = await batchValidate({
+        client: apiClient,
+        body: {
+          type: 'phone',
+          data: phones.map(phone => ({ phone }))
+        }
       });
       if (result.data) {
         setJobId(result.data.job_id || 'completed');
         setJobStatus({ id: result.data.job_id || 'completed', status: 'pending' });
       }
     }
-  };  const processOrdersCSV = async (data: string[][]): Promise<void> => {
+  };
+
+  const processOrdersCSV = async (data: string[][]): Promise<void> => {
     if (data.length < 2) throw new Error('CSV must have header and at least one data row');
 
     const headers = data[0].map(h => h.toLowerCase().trim());
@@ -256,30 +257,17 @@ const BulkCsvTool: React.FC = () => {
       return;
     }
 
-    if (!apiKey.trim()) {
-      setError(UI_STRINGS.API_KEY_REQUIRED);
-      return;
-    }
-
     setLoading(true);
     setError(null);
 
     try {
-      // Create an authenticated client with the API key
-      const authenticatedClient = createClient({
-        baseUrl: API_BASE,
-        headers: {
-          'X-API-Key': apiKey.trim(),
-        },
-      });
-
       const text = await file.text();
       const data = parseCSV(text);
 
       if (csvType === 'customers') {
-        await processCustomersCSV(data, authenticatedClient);
+        await processCustomersCSV(data);
       } else {
-        await processOrdersCSV(data, authenticatedClient);
+        await processOrdersCSV(data);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Processing failed');

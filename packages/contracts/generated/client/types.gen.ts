@@ -4385,6 +4385,103 @@ export type BatchDedupeResponses = {
 
 export type BatchDedupeResponse = BatchDedupeResponses[keyof BatchDedupeResponses];
 
+export type BatchEvaluateOrdersData = {
+    body: {
+        orders: Array<{
+            /**
+             * Unique order identifier
+             */
+            order_id: string;
+            /**
+             * Customer email address
+             */
+            customer_email: string;
+            /**
+             * Customer phone number
+             */
+            customer_phone?: string;
+            /**
+             * Order total amount
+             */
+            total_amount?: number;
+            /**
+             * Currency code (e.g., USD, EUR)
+             */
+            currency?: string;
+            /**
+             * Comma-separated list of items
+             */
+            items?: string;
+            /**
+             * Shipping address
+             */
+            shipping_address?: string;
+        }>;
+    };
+    path?: never;
+    query?: never;
+    url: '/v1/batch/orders';
+};
+
+export type BatchEvaluateOrdersErrors = {
+    /**
+     * Bad request
+     */
+    400: {
+        error?: {
+            code?: 'INVALID_INPUT' | 'INVALID_PLAN';
+            /**
+             * Error message
+             */
+            message?: string;
+        };
+    };
+    /**
+     * Unauthorized
+     */
+    401: {
+        code?: 'UNAUTHORIZED';
+        /**
+         * Error message
+         */
+        message?: string;
+    };
+    /**
+     * Rate limit exceeded
+     */
+    429: {
+        code?: 'LIMIT_EXCEEDED';
+        /**
+         * Error message
+         */
+        message?: string;
+    };
+};
+
+export type BatchEvaluateOrdersError = BatchEvaluateOrdersErrors[keyof BatchEvaluateOrdersErrors];
+
+export type BatchEvaluateOrdersResponses = {
+    /**
+     * Batch order evaluation job started
+     */
+    202: {
+        /**
+         * Unique job identifier
+         */
+        job_id?: string;
+        /**
+         * Job status
+         */
+        status?: 'pending';
+        /**
+         * Request identifier
+         */
+        request_id?: string;
+    };
+};
+
+export type BatchEvaluateOrdersResponse = BatchEvaluateOrdersResponses[keyof BatchEvaluateOrdersResponses];
+
 export type GetJobStatusByIdData = {
     body?: never;
     path: {

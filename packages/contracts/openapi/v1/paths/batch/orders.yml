@@ -1,0 +1,86 @@
+tags:
+  - Runtime API
+summary: Batch evaluate orders
+description: Performs batch evaluation of orders for risk and rules asynchronously
+operationId: batchEvaluateOrders
+security:
+  - apiKeyAuth: []
+  - httpMessageSigInput: []
+    httpMessageSig: []
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        required:
+          - orders
+        properties:
+          orders:
+            type: array
+            maxItems: 1000
+            items:
+              type: object
+              required:
+                - order_id
+                - customer_email
+              properties:
+                order_id:
+                  type: string
+                  description: Unique order identifier
+                customer_email:
+                  type: string
+                  description: Customer email address
+                customer_phone:
+                  type: string
+                  description: Customer phone number
+                total_amount:
+                  type: number
+                  description: Order total amount
+                currency:
+                  type: string
+                  pattern: ^[A-Z]{3}$
+                  description: Currency code (e.g., USD, EUR)
+                items:
+                  type: string
+                  description: Comma-separated list of items
+                shipping_address:
+                  type: string
+                  description: Shipping address
+responses:
+  '202':
+    description: Batch order evaluation job started
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            job_id:
+              type: string
+              description: Unique job identifier
+            status:
+              type: string
+              enum:
+                - pending
+              description: Job status
+            request_id:
+              type: string
+              description: Request identifier
+  '400':
+    description: Bad request
+    content:
+      application/json:
+        schema:
+          $ref: ../../components/schemas/ValidationError.yml
+  '401':
+    description: Unauthorized
+    content:
+      application/json:
+        schema:
+          $ref: ../../components/schemas/UnauthorizedError.yml
+  '429':
+    description: Rate limit exceeded
+    content:
+      application/json:
+        schema:
+          $ref: ../../components/schemas/LimitExceededError.yml
