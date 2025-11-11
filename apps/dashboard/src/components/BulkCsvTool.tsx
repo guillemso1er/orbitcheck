@@ -1,4 +1,4 @@
-import { batchDedupe, batchValidate, batchEvaluateOrders, getJobStatusById } from '@orbitcheck/contracts';
+import { batchValidate, batchEvaluateOrders, getJobStatusById } from '@orbitcheck/contracts';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { UI_STRINGS } from '../constants';
 import { apiClient } from '../utils/api';

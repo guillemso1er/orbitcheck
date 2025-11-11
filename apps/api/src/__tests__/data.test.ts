@@ -25,10 +25,9 @@ describe('Data Routes', () => {
     app = await createApp();
 
     // Add auth hooks like the passing tests
-    const { authenticateRequest, applyRateLimitingAndIdempotency } = await import('../web.js');
-    const { mockPool, mockRedisInstance } = await import('./testSetup.js');
+    const { applyRateLimitingAndIdempotency } = await import('../web.js');
+    const { mockRedisInstance } = await import('./testSetup.js');
     app.addHook("preHandler", async (request, rep) => {
-      await authenticateRequest(request, rep, mockPool as any);
       await applyRateLimitingAndIdempotency(request, rep, mockRedisInstance as any);
       return;
     });

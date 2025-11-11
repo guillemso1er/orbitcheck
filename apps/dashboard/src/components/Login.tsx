@@ -2,7 +2,7 @@ import { createClient, loginUser, registerUser } from '@orbitcheck/contracts';
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
-import { API_BASE, ERROR_MESSAGES, LOCAL_STORAGE_KEYS, VALIDATION_MESSAGES } from '../constants';
+import { API_BASE, ERROR_MESSAGES, VALIDATION_MESSAGES } from '../constants';
 
 interface User {
   id: string;

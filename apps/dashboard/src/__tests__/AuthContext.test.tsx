@@ -18,7 +18,7 @@ Object.defineProperty(window, 'localStorage', {
 
 // Test component to use the auth context
 const TestComponent: React.FC = () => {
-  const { user, token, isAuthenticated, isLoading, login, logout } = useAuth();
+  const { user, isAuthenticated, isLoading, login, logout } = useAuth();
 
   if (isLoading) {
     return <div>Loading...</div>;
@@ -27,9 +27,8 @@ const TestComponent: React.FC = () => {
   return (
     <div>
       <div data-testid="user">{user ? user.email : 'No user'}</div>
-      <div data-testid="token">{token || 'No token'}</div>
       <div data-testid="is-authenticated">{isAuthenticated.toString()}</div>
-      <button data-testid="login-btn" onClick={() => login('test-token', { id: '1', email: 'test@example.com' })}>
+      <button data-testid="login-btn" onClick={() => login({ id: '1', email: 'test@example.com' })}>
         Login
       </button>
       <button data-testid="logout-btn" onClick={logout}>
@@ -45,7 +44,7 @@ describe('AuthContext', () => {
     mockLocalStorage.clear();
   });
 
-  it('should initialize with no user and token', () => {
+  it('should initialize with no user', () => {
     render(
       <AuthProvider>
         <TestComponent />
@@ -53,13 +52,11 @@ describe('AuthContext', () => {
     );
 
     expect(screen.getByTestId('user')).toHaveTextContent('No user');
-    expect(screen.getByTestId('token')).toHaveTextContent('No token');
     expect(screen.getByTestId('is-authenticated')).toHaveTextContent('false');
   });
 
-  it('should load user and token from localStorage on mount', async () => {
+  it('should load user from localStorage on mount', async () => {
     mockLocalStorage.getItem.mockImplementation((key: string) => {
-      if (key === 'token') return 'stored-token';
       if (key === 'user') return JSON.stringify({ id: '1', email: 'stored@example.com' });
       return null;
     });
@@ -72,7 +69,6 @@ describe('AuthContext', () => {
 
     await waitFor(() => {
       expect(screen.getByTestId('user')).toHaveTextContent('stored@example.com');
-      expect(screen.getByTestId('token')).toHaveTextContent('stored-token');
       expect(screen.getByTestId('is-authenticated')).toHaveTextContent('true');
     });
   });
@@ -89,17 +85,14 @@ describe('AuthContext', () => {
     });
 
     expect(screen.getByTestId('user')).toHaveTextContent('test@example.com');
-    expect(screen.getByTestId('token')).toHaveTextContent('test-token');
     expect(screen.getByTestId('is-authenticated')).toHaveTextContent('true');
     
-    expect(mockLocalStorage.setItem).toHaveBeenCalledWith('token', 'test-token');
     expect(mockLocalStorage.setItem).toHaveBeenCalledWith('user', JSON.stringify({ id: '1', email: 'test@example.com' }));
   });
 
   it('should logout user and remove from localStorage', async () => {
     // First login
     mockLocalStorage.getItem.mockImplementation((key: string) => {
-      if (key === 'token') return 'stored-token';
       if (key === 'user') return JSON.stringify({ id: '1', email: 'stored@example.com' });
       return null;
     });
@@ -118,11 +111,9 @@ describe('AuthContext', () => {
     });
 
     expect(screen.getByTestId('user')).toHaveTextContent('No user');
-    expect(screen.getByTestId('token')).toHaveTextContent('No token');
     expect(screen.getByTestId('is-authenticated')).toHaveTextContent('false');
 
     expect(mockLocalStorage.removeItem).toHaveBeenCalledWith('user');
-    expect(mockLocalStorage.removeItem).toHaveBeenCalledWith('token');
   });
 
   it('should transition to a loaded state upon initialization', async () => {
