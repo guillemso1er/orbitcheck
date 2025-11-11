@@ -12,7 +12,7 @@ export async function listApiKeys(
     request: FastifyRequest,
     rep: FastifyReply,
     pool: Pool
-): Promise<FastifyReply> {
+): Promise<FastifyReply<{ Body: ListApiKeysResponses }>> {
     try {
         const project_id = (request as any).project_id!;
         const request_id = generateRequestId();
@@ -31,7 +31,7 @@ export async function createApiKey(
     request: FastifyRequest<{ Body: CreateApiKeyData['body'] }>,
     rep: FastifyReply,
     pool: Pool
-): Promise<FastifyReply> {
+): Promise<FastifyReply<{ Body: CreateApiKeyResponses }>> {
     try {
         const project_id = (request as any).project_id!;
         request.log.info('Creating API key for project_id: ' + project_id);
@@ -110,7 +110,7 @@ export async function revokeApiKey(
     request: FastifyRequest<{ Params: RevokeApiKeyData['path'] }>,
     rep: FastifyReply,
     pool: Pool
-): Promise<FastifyReply> {
+): Promise<FastifyReply<{ Body: RevokeApiKeyResponses }>> {
     try {
         const project_id = (request as any).project_id!;
         const { id } = request.params as RevokeApiKeyData['path'];

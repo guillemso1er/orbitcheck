@@ -4,7 +4,7 @@ import type { FastifyReply, FastifyRequest } from "fastify";
 import type { Redis as IORedisType } from 'ioredis';
 import type { Pool } from "pg";
 import { HTTP_STATUS } from "../errors.js";
-import type { BatchDedupeData, BatchDedupeResponses, BatchValidateData, BatchValidateResponses } from "../generated/fastify/types.gen.js";
+import type { BatchDedupeData, BatchDedupeResponses, BatchEvaluateOrdersData, BatchEvaluateOrdersResponses, BatchValidateData, BatchValidateResponses } from "../generated/fastify/types.gen.js";
 import { logEvent } from "../hooks.js";
 import { generateRequestId, sendServerError } from "./utils.js";
 
@@ -13,7 +13,7 @@ export async function batchValidateData(
     rep: FastifyReply,
     pool: Pool,
     redis: IORedisType
-): Promise<FastifyReply> {
+): Promise<FastifyReply<{ Body: BatchValidateResponses }>> {
     try {
         const request_id = generateRequestId();
         const body = request.body as BatchValidateData['body'];
@@ -68,7 +68,7 @@ export async function batchDeduplicateData(
     rep: FastifyReply,
     pool: Pool,
     redis: IORedisType
-): Promise<FastifyReply> {
+): Promise<FastifyReply<{ Body: BatchDedupeResponses }>> {
     try {
         const request_id = generateRequestId();
         const body = request.body as BatchDedupeData['body'];
@@ -116,4 +116,20 @@ export async function batchDeduplicateData(
     } catch (error) {
         return sendServerError(request, rep, error, API_V1_ROUTES.BATCH.BATCH_DEDUPLICATE_DATA, generateRequestId());
     }
+}
+
+// Placeholder function for batchEvaluateOrders
+export async function batchEvaluateOrders(
+    _request: FastifyRequest<{ Body: BatchEvaluateOrdersData['body'] }>,
+    rep: FastifyReply,
+    _pool: Pool,
+    _redis: IORedisType
+): Promise<FastifyReply<{ Body: BatchEvaluateOrdersResponses }>> {
+    // TODO: Implement batch evaluate orders functionality
+    return rep.status(501).send({
+        error: {
+            code: 'NOT_IMPLEMENTED',
+            message: 'Batch evaluate orders endpoint is not yet implemented'
+        }
+    });
 }

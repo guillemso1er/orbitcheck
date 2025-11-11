@@ -1,7 +1,7 @@
 import { type FastifyReply, type FastifyRequest } from "fastify";
 import type { Redis as IORedisType } from "ioredis";
 import type { Pool } from "pg";
-import { DeleteCustomRuleData, GetAvailableRulesResponses, GetErrorCodeCatalogResponses, GetReasonCodeCatalogResponses, RegisterCustomRulesData, TestRulesAgainstPayloadData } from "../../generated/fastify/types.gen.js";
+import { DeleteCustomRuleData, DeleteCustomRuleResponses, GetAvailableRulesResponses, GetBuiltInRulesResponses, GetErrorCodeCatalogResponses, GetReasonCodeCatalogResponses, RegisterCustomRulesData, RegisterCustomRulesResponses, TestRulesAgainstPayloadData, TestRulesAgainstPayloadResponses } from "../../generated/fastify/types.gen.js";
 import { generateRequestId, sendServerError } from "../utils.js";
 import { getBuiltInRules as getBuiltInRulesConstants, reasonCodes } from "./rules.constants.js";
 import { handleDeleteCustomRule, handleRegisterCustomRules, handleTestRules } from "./rules.handlers.js";
@@ -9,7 +9,7 @@ import { handleDeleteCustomRule, handleRegisterCustomRules, handleTestRules } fr
 export async function getBuiltInRules(
     request: FastifyRequest,
     rep: FastifyReply
-): Promise<FastifyReply> {
+): Promise<FastifyReply<{ Body: GetBuiltInRulesResponses }>> {
     try {
         const request_id = generateRequestId();
         
@@ -30,7 +30,7 @@ export async function getAvailableRules(
     request: FastifyRequest,
     rep: FastifyReply,
     pool?: Pool
-): Promise<FastifyReply> {
+): Promise<FastifyReply<{ Body: GetAvailableRulesResponses }>> {
     try {
         const request_id = generateRequestId();
         const project_id = (request as any).project_id;
@@ -63,7 +63,7 @@ export async function getAvailableRules(
 export async function getErrorCodeCatalog(
     _request: FastifyRequest,
     rep: FastifyReply
-): Promise<FastifyReply> {
+): Promise<FastifyReply<{ Body: GetErrorCodeCatalogResponses }>> {
     const request_id = generateRequestId();
 
     const errorCodeCatalog = [
@@ -103,7 +103,7 @@ export async function getErrorCodeCatalog(
 export async function getReasonCodeCatalog(
     request: FastifyRequest,
     rep: FastifyReply
-): Promise<FastifyReply> {
+): Promise<FastifyReply<{ Body: GetReasonCodeCatalogResponses }>> {
     try {
         const request_id = generateRequestId();
         const response: GetReasonCodeCatalogResponses[200] = { reason_codes: reasonCodes, request_id };
@@ -118,7 +118,7 @@ export async function testRulesAgainstPayload(
     rep: FastifyReply,
     pool: Pool,
     redis: IORedisType
-): Promise<FastifyReply> {
+): Promise<FastifyReply<{ Body: TestRulesAgainstPayloadResponses }>> {
     try {
         return await handleTestRules(request, rep, pool, redis);
     } catch (error) {
@@ -131,7 +131,7 @@ export async function registerCustomRules(
     request: FastifyRequest<{ Body: RegisterCustomRulesData['body'] }>,
     rep: FastifyReply,
     pool: Pool
-): Promise<FastifyReply> {
+): Promise<FastifyReply<{ Body: RegisterCustomRulesResponses }>> {
     try {
         return await handleRegisterCustomRules(request, rep, pool);
     } catch (error) {
@@ -143,7 +143,7 @@ export async function deleteCustomRule(
     request: FastifyRequest<{ Params: DeleteCustomRuleData['path'] }>,
     rep: FastifyReply,
     pool: Pool
-): Promise<FastifyReply> {
+): Promise<FastifyReply<{ Body: DeleteCustomRuleResponses }>> {
     try {
         return await handleDeleteCustomRule(request, rep, pool);
     } catch (error) {

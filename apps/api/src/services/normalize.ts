@@ -6,7 +6,7 @@ import { generateRequestId, sendServerError } from "./utils.js";
 export async function normalizeAddressCheap(
     request: FastifyRequest<{ Body: NormalizeAddressData['body'] }>,
     rep: FastifyReply
-): Promise<FastifyReply> {
+): Promise<FastifyReply<{ Body: NormalizeAddressResponses }>> {
     try {
         const request_id = generateRequestId();
         const body = request.body as NormalizeAddressData['body'];

@@ -19,7 +19,7 @@ export async function validateEmailAddress(
     rep: FastifyReply,
     pool: Pool,
     redis: IORedisType
-): Promise<FastifyReply> {
+): Promise<FastifyReply<{ Body: ValidateEmailResponses }>> {
     try {
         const request_id = generateRequestId();
         const body = request.body as ValidateEmailData['body'];
@@ -71,7 +71,7 @@ export async function validatePhoneNumber(
     rep: FastifyReply,
     pool: Pool,
     redis: IORedisType
-): Promise<FastifyReply> {
+): Promise<FastifyReply<{ Body: ValidatePhoneResponses }>> {
     try {
         const request_id = generateRequestId();
         const body = request.body as ValidatePhoneData['body'];
@@ -112,7 +112,7 @@ export async function validateAddress(
     rep: FastifyReply,
     pool: Pool,
     redis: IORedisType
-): Promise<FastifyReply> {
+): Promise<FastifyReply<{ Body: ValidateAddressResponses }>> {
     try {
         const request_id = generateRequestId();
         const body = request.body as ValidateAddressData['body'];
@@ -150,7 +150,7 @@ export async function validateTaxId(
     rep: FastifyReply,
     pool: Pool,
     redis: IORedisType
-): Promise<FastifyReply> {
+): Promise<FastifyReply<{ Body: ValidateTaxIdResponses }>> {
     try {
         const request_id = generateRequestId();
         const body = request.body as ValidateTaxIdData['body'];
@@ -170,7 +170,7 @@ export async function validateTaxId(
 export async function validateName(
     request: FastifyRequest<{ Body: ValidateNameData['body'] }>,
     rep: FastifyReply
-): Promise<FastifyReply> {
+): Promise<FastifyReply<{ Body: ValidateNameResponses }>> {
     try {
         const request_id = generateRequestId();
         const body = request.body as ValidateNameData['body'];
@@ -199,7 +199,7 @@ export async function verifyPhoneOtp(
     request: FastifyRequest<{ Body: VerifyPhoneOtpData['body'] }>,
     rep: FastifyReply,
     pool: Pool
-): Promise<FastifyReply> {
+): Promise<FastifyReply<{ Body: VerifyPhoneOtpResponses }>> {
     try {
         const request_id = generateRequestId();
         const body = request.body as VerifyPhoneOtpData['body'];

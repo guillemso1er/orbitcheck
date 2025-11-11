@@ -5,7 +5,7 @@ import { Pool } from "pg";
 import { RouteHandlers } from "../generated/fastify/fastify.gen.js";
 import { createApiKey, listApiKeys, revokeApiKey } from "../services/api-keys.js";
 import { loginUser, logoutUser, registerUser } from "../services/auth.js";
-import { batchDeduplicateData, batchValidateData } from "../services/batch.js";
+import { batchDeduplicateData, batchEvaluateOrders, batchValidateData } from "../services/batch.js";
 import { createStripeCheckoutSession, createStripeCustomerPortalSession } from "../services/billing.js";
 import { deleteLogEntry, eraseUserData, getEventLogs, getUsageStatistics } from "../services/data.js";
 import { dedupeAddress, dedupeCustomer, mergeDeduplicatedRecords } from "../services/dedupe.js";
@@ -95,6 +95,7 @@ export const serviceHandlers = <TServer extends RawServerBase = RawServerBase>(p
     // Batch handlers
     batchValidate: async (request, reply) => batchValidateData(request, reply, pool, redis),
     batchDedupe: async (request, reply) => batchDeduplicateData(request, reply, pool, redis),
+    batchEvaluateOrders: async (request, reply) => batchEvaluateOrders(request, reply, pool, redis),
 
     // Job handlers
     getJobStatusById: async (request, reply) => getJobStatus(request, reply, pool),

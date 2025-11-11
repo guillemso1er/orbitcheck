@@ -8,7 +8,7 @@ export async function getTenantSettings(
     request: FastifyRequest,
     rep: FastifyReply,
     pool: Pool
-): Promise<FastifyReply> {
+): Promise<FastifyReply<{ Body: GetSettingsResponses }>> {
     const request_id = generateRequestId();
     const project_id = (request as any).project_id;
 
@@ -46,7 +46,7 @@ export async function updateTenantSettings(
     request: FastifyRequest<{ Body: UpdateSettingsData['body'] }>,
     rep: FastifyReply,
     pool: Pool
-): Promise<FastifyReply> {
+): Promise<FastifyReply<{ Body: UpdateSettingsResponses }>> {
     const request_id = generateRequestId();
     const project_id = (request as any).project_id;
     const { country_defaults = {}, formatting = {}, risk_thresholds = {} } = request.body;

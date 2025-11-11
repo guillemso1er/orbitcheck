@@ -5,7 +5,7 @@ import type { Pool } from "pg";
 import Stripe from 'stripe';
 import { CONTENT_TYPES, CRYPTO_KEY_BYTES, MESSAGES, STRIPE_API_VERSION, STRIPE_DEFAULT_SECRET_KEY, USER_AGENT_WEBHOOK_TESTER, WEBHOOK_TEST_LOW_RISK_TAG, WEBHOOK_TEST_ORDER_ID, WEBHOOK_TEST_RISK_SCORE } from "../config.js";
 import { ERROR_CODES, ERROR_MESSAGES, HTTP_STATUS } from "../errors.js";
-import type { CreateWebhookData, CreateWebhookResponses, DeleteWebhookData, ListWebhooksResponses, TestWebhookData } from "../generated/fastify/types.gen.js";
+import type { CreateWebhookData, CreateWebhookResponses, DeleteWebhookData, DeleteWebhookResponses, ListWebhooksResponses, TestWebhookData, TestWebhookResponses } from "../generated/fastify/types.gen.js";
 import { logEvent } from "../hooks.js";
 import { EVENT_TYPES, ORDER_ACTIONS, PAYLOAD_TYPES, REASON_CODES } from "../validation.js";
 import { generateRequestId, sendError, sendServerError } from "./utils.js";
@@ -25,7 +25,7 @@ export async function listWebhooks(
     request: FastifyRequest,
     rep: FastifyReply,
     pool: Pool
-): Promise<FastifyReply> {
+): Promise<FastifyReply<{ Body: ListWebhooksResponses }>> {
     const project_id = (request as any).project_id!;
     const request_id = generateRequestId();
 
@@ -46,7 +46,7 @@ export async function createWebhook(
     request: FastifyRequest<{ Body: CreateWebhookData['body'] }>,
     rep: FastifyReply,
     pool: Pool
-): Promise<FastifyReply> {
+): Promise<FastifyReply<{ Body: CreateWebhookResponses }>> {
     const project_id = request.project_id!;
     const body = request.body as CreateWebhookData['body'];
     const { url, events } = body;
@@ -118,7 +118,7 @@ export async function deleteWebhook(
     request: FastifyRequest<{ Params: DeleteWebhookData['path'] }>,
     rep: FastifyReply,
     pool: Pool
-): Promise<FastifyReply> {
+): Promise<FastifyReply<{ Body: DeleteWebhookResponses }>> {
     const project_id = request.project_id!;
     const { id } = request.params as any;
     const request_id = generateRequestId();
@@ -152,7 +152,7 @@ export async function testWebhook(
     request: FastifyRequest<{ Body: TestWebhookData['body'] }>,
     rep: FastifyReply,
     pool: Pool
-): Promise<FastifyReply> {
+): Promise<FastifyReply<{ Body: TestWebhookResponses }>> {
     const project_id = request.project_id!;
     const body = request.body as any;
     const { url, payload_type = PAYLOAD_TYPES.VALIDATION, custom_payload } = body;

@@ -11,6 +11,7 @@ import {
     PAT_SCOPES
 } from "../config.js";
 import { ERROR_CODES, ERROR_MESSAGES, HTTP_STATUS } from "../errors.js";
+import type { CreatePersonalAccessTokenData, CreatePersonalAccessTokenResponses, ListPersonalAccessTokensResponses, RevokePersonalAccessTokenData, RevokePersonalAccessTokenResponses } from "../generated/fastify/types.gen.js";
 import { generateRequestId, sendError, sendServerError } from "./utils.js";
 
 // Token prefix for OrbitCheck PATs
@@ -90,8 +91,11 @@ export async function createPat({
 
 
 
-// Handler: List PATs
-export async function listPersonalAccessTokens(request: FastifyRequest, rep: FastifyReply, pool: Pool) {
+export async function listPersonalAccessTokens(
+    request: FastifyRequest,
+    rep: FastifyReply,
+    pool: Pool
+): Promise<FastifyReply<{ Body: ListPersonalAccessTokensResponses }>> {
     try {
         const userId = (request as any).user_id;
         const request_id = generateRequestId();
@@ -104,18 +108,21 @@ export async function listPersonalAccessTokens(request: FastifyRequest, rep: Fas
         );
         // Align response shape with tests expecting `pats` array
         // Keep legacy `data` for backward compatibility while tests use `pats`.
-        const response = { pats: rows, data: rows, request_id } as any;
+        const response: ListPersonalAccessTokensResponses[200] = { pats: rows, data: rows, request_id } as any;
         return rep.send(response);
     } catch (error) {
         return sendServerError(request, rep, error, '/v1/pats', generateRequestId());
     }
 }
 
-// Handler: Create PAT
-export async function createPersonalAccessToken(request: FastifyRequest, rep: FastifyReply, pool: Pool) {
+export async function createPersonalAccessToken(
+    request: FastifyRequest<{ Body: CreatePersonalAccessTokenData['body'] }>,
+    rep: FastifyReply,
+    pool: Pool
+): Promise<FastifyReply<{ Body: CreatePersonalAccessTokenResponses }>> {
     try {
         let userId = (request as any).user_id;
-        const body = request.body as any;
+        const body = request.body as CreatePersonalAccessTokenData['body'];
         const {
             name,
             scopes,
@@ -142,7 +149,7 @@ export async function createPersonalAccessToken(request: FastifyRequest, rep: Fa
             }
             finalScopes = scopes;
         }
-        let expiresAt = null;
+        let expiresAt: Date | null = null;
         if (expires_at !== null && expires_at !== undefined) {
             expiresAt = new Date(expires_at);
             if (expiresAt < new Date()) {
@@ -160,7 +167,7 @@ export async function createPersonalAccessToken(request: FastifyRequest, rep: Fa
             scopes: finalScopes,
             env: env as 'live' | 'test',
             expiresAt,
-            ipAllowlist: ip_allowlist,
+            ipAllowlist: ip_allowlist || undefined,
             projectId: project_id
         });
         const { rows } = await pool.query(
@@ -170,13 +177,13 @@ export async function createPersonalAccessToken(request: FastifyRequest, rep: Fa
        RETURNING id, created_at`,
             [userId, tokenId, hashedSecret, name, finalScopes, env, expiresAt, ip_allowlist || [], project_id]
         );
-        const response = {
+        const response: CreatePersonalAccessTokenResponses[201] = {
             token,
             token_id: tokenId,
             name,
             scopes: finalScopes,
             env,
-            expires_at: expiresAt,
+            expires_at: expiresAt?.toISOString() || null,
             created_at: rows[0].created_at,
             request_id
         };
@@ -186,9 +193,12 @@ export async function createPersonalAccessToken(request: FastifyRequest, rep: Fa
     }
 }
 
-// Handler: Revoke PAT
-export async function revokePersonalAccessToken(request: FastifyRequest, rep: FastifyReply, pool: Pool) {
-    const { token_id } = request.params as { token_id: string };
+export async function revokePersonalAccessToken(
+    request: FastifyRequest<{ Params: RevokePersonalAccessTokenData['path'] }>,
+    rep: FastifyReply,
+    pool: Pool
+): Promise<FastifyReply<{ Body: RevokePersonalAccessTokenResponses }>> {
+    const { token_id } = request.params as RevokePersonalAccessTokenData['path'];
     const request_id = generateRequestId();
 
     try {

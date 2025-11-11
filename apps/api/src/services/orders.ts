@@ -6,7 +6,7 @@ import type { Pool } from "pg";
 import { DEDUPE_ACTIONS, HIGH_VALUE_THRESHOLD, ORDER_ACTIONS, ORDER_TAGS, PAYMENT_METHODS, REASON_CODES, RISK_ADDRESS_DEDUPE, RISK_BLOCK_THRESHOLD, RISK_COD, RISK_COD_HIGH, RISK_CUSTOMER_DEDUPE, RISK_GEO_OUT, RISK_GEOCODE_FAIL, RISK_HIGH_VALUE, RISK_HOLD_THRESHOLD, RISK_INVALID_ADDR, RISK_INVALID_EMAIL_PHONE, RISK_PO_BOX, RISK_POSTAL_MISMATCH, SIMILARITY_EXACT } from "../validation.js";
 import { dedupeAddress, dedupeCustomer } from "../dedupe.js";
 import { HTTP_STATUS } from "../errors.js";
-import type { EvaluateOrderData } from "../generated/fastify/types.gen.js";
+import type { EvaluateOrderData, EvaluateOrderResponses } from "../generated/fastify/types.gen.js";
 import { logEvent } from "../hooks.js";
 import { validateAddress } from "../validators/address.js";
 import { validateEmail } from "../validators/email.js";
@@ -44,7 +44,7 @@ export async function evaluateOrderForRiskAndRules<TServer extends RawServerBase
     rep: FastifyReply,
     pool: Pool,
     redis: Redis
-): Promise<FastifyReply> {
+): Promise<FastifyReply<{ Body: EvaluateOrderResponses }>> {
     const request_id = generateRequestId();
     try {
         const body = request.body as any;

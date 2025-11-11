@@ -10,7 +10,7 @@ export async function getJobStatus(
     request: FastifyRequest<{ Params: GetJobStatusByIdData['path'] }>,
     rep: FastifyReply,
     pool: Pool
-): Promise<FastifyReply> {
+): Promise<FastifyReply<{ Body: GetJobStatusByIdResponses }>> {
     try {
         const request_id = generateRequestId();
         const { id } = request.params as GetJobStatusByIdData['path'];

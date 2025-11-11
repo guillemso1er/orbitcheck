@@ -11,7 +11,7 @@ export async function getEventLogs(
     request: FastifyRequest<{ Querystring?: GetLogsData['query'] }>,
     rep: FastifyReply,
     pool: Pool
-): Promise<FastifyReply> {
+): Promise<FastifyReply<{ Body: GetLogsResponses }>> {
     try {
         const request_id = generateRequestId();
         const project_id = (request as any).project_id;
@@ -83,7 +83,7 @@ export async function getUsageStatistics(
     request: FastifyRequest,
     rep: FastifyReply,
     pool: Pool
-): Promise<FastifyReply> {
+): Promise<FastifyReply<{ Body: GetUsageResponses }>> {
     try {
         const request_id = generateRequestId();
         const project_id = (request as any).project_id;
@@ -130,7 +130,7 @@ export async function eraseUserData(
     request: FastifyRequest<{ Body: EraseDataData['body'] }>,
     rep: FastifyReply,
     pool: Pool
-): Promise<FastifyReply> {
+): Promise<FastifyReply<{ Body: EraseDataResponses }>> {
     try {
         const request_id = generateRequestId();
         const project_id = (request as any).project_id;
@@ -221,7 +221,7 @@ export async function deleteLogEntry(
     request: FastifyRequest<{ Params: DeleteLogData['path'] }>,
     rep: FastifyReply,
     pool: Pool
-): Promise<FastifyReply> {
+): Promise<FastifyReply<{ Body: DeleteLogResponses }>> {
     try {
         const request_id = generateRequestId();
         const project_id = (request as any).project_id;

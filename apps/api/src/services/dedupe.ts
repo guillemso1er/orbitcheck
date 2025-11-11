@@ -11,7 +11,7 @@ export async function dedupeCustomer(
     request: FastifyRequest<{ Body: DedupeCustomerData['body'] }>,
     rep: FastifyReply,
     pool: Pool
-): Promise<FastifyReply<{ Body: DedupeCustomerResponses[] }>> {
+): Promise<FastifyReply<{ Body: DedupeCustomerResponses }>> {
     try {
         const request_id = generateRequestId();
         const body = request.body as DedupeCustomerData['body'];
@@ -36,7 +36,7 @@ export async function dedupeAddress(
     request: FastifyRequest<{ Body: DedupeAddressData['body'] }>,
     rep: FastifyReply,
     pool: Pool
-): Promise<FastifyReply> {
+): Promise<FastifyReply<{ Body: DedupeAddressResponses }>> {
     try {
         const request_id = generateRequestId();
         const body = request.body as DedupeAddressData['body'];
@@ -61,7 +61,7 @@ export async function mergeDeduplicatedRecords(
     request: FastifyRequest<{ Body: MergeDeduplicatedData['body'] }>,
     rep: FastifyReply,
     pool: Pool
-): Promise<FastifyReply> {
+): Promise<FastifyReply<{ Body: MergeDeduplicatedResponses }>> {
     try {
         const request_id = generateRequestId();
         const body = request.body as MergeDeduplicatedData['body'];

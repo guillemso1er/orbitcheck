@@ -91,4 +91,4 @@ infra/compose/tmp/infisical-credentials.json
 scripts/.orbitcheck-reader.ua.env
 apps/setup/.orbitcheck-reader.ua.env
 infra/ansible/vars/secrets.txt
-.turbo/daemon/bea28d13d6953590-turbo.log.2025-11-09
+.turbo/daemon/*

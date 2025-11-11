@@ -10,7 +10,7 @@ export async function getUserProjects(
     request: FastifyRequest,
     rep: FastifyReply,
     pool: Pool
-): Promise<FastifyReply> {
+): Promise<FastifyReply<{ Body: GetUserProjectsResponses }>> {
     try {
         const userId = (request as any).user_id;
         const request_id = generateRequestId();
@@ -52,7 +52,7 @@ export async function createProject(
     request: FastifyRequest<{ Body: CreateProjectData['body'] }>,
     rep: FastifyReply,
     pool: Pool
-): Promise<FastifyReply> {
+): Promise<FastifyReply<{ Body: CreateProjectResponses }>> {
     try {
         const userId = (request as any).user_id;
         const request_id = generateRequestId();
@@ -93,7 +93,7 @@ export async function deleteProject(
     request: FastifyRequest<{ Params: DeleteProjectData['path'] }>,
     rep: FastifyReply,
     pool: Pool
-): Promise<FastifyReply> {
+): Promise<FastifyReply<{ Body: DeleteProjectResponses }>> {
     try {
         const userId = (request as any).user_id;
         const { id } = request.params as DeleteProjectData['path'];

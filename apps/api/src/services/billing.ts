@@ -21,7 +21,7 @@ export async function createStripeCheckoutSession(
     request: FastifyRequest,
     rep: FastifyReply,
     pool: Pool
-): Promise<FastifyReply> {
+): Promise<FastifyReply<{ Body: CreateCheckoutSessionResponses }>> {
     const user_id = (request as any).user_id!;
     const request_id = generateRequestId();
 
@@ -105,7 +105,7 @@ export async function createStripeCustomerPortalSession(
     request: FastifyRequest,
     rep: FastifyReply,
     pool: Pool
-): Promise<FastifyReply> {
+): Promise<FastifyReply<{ Body: CreateCustomerPortalSessionResponses }>> {
     const user_id = (request as any).user_id!;
     const request_id = generateRequestId();
 

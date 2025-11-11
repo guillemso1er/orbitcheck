@@ -1230,6 +1230,11 @@ export const getJobStatusById = <ThrowOnError extends boolean = false>(options: 
             {
                 name: 'Signature',
                 type: 'apiKey'
+            },
+            {
+                in: 'cookie',
+                name: 'sid',
+                type: 'apiKey'
             }
         ],
         url: '/v1/jobs/{id}',

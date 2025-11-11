@@ -5,7 +5,7 @@ import * as crypto from "node:crypto";
 import type { Pool } from "pg";
 import { BCRYPT_ROUNDS, PG_UNIQUE_VIOLATION, PROJECT_NAMES } from "../config.js";
 import { ERROR_CODES, ERROR_MESSAGES, HTTP_STATUS } from "../errors.js";
-import type { LoginUserData, LoginUserResponses, RegisterUserData, RegisterUserResponses } from "../generated/fastify/types.gen.js";
+import type { LoginUserData, LoginUserResponses, LogoutUserResponses, RegisterUserData, RegisterUserResponses } from "../generated/fastify/types.gen.js";
 import { createPlansService } from "./plans.js";
 import { getDefaultProjectId, sendError, sendServerError } from "./utils.js";
 
@@ -21,7 +21,7 @@ export async function registerUser(
     request: FastifyRequest<{ Body: RegisterUserData['body'] }>,
     rep: FastifyReply,
     pool: Pool
-): Promise<FastifyReply> {
+): Promise<FastifyReply<{ Body: RegisterUserResponses }>> {
     try {
         const request_id = generateRequestId();
         const body = request.body as RegisterUserData['body'];
@@ -82,7 +82,7 @@ export async function loginUser(
     request: FastifyRequest<{ Body: LoginUserData['body'] }>,
     rep: FastifyReply,
     pool: Pool
-): Promise<FastifyReply> {
+): Promise<FastifyReply<{ Body: LoginUserResponses }>> {
     try {
         const request_id = generateRequestId()
         const { email, password } = request.body as LoginUserData['body']
@@ -135,7 +135,7 @@ export async function loginUser(
 export async function logoutUser(
     request: FastifyRequest,
     rep: FastifyReply
-): Promise<FastifyReply> {
+): Promise<FastifyReply<{ Body: LogoutUserResponses }>> {
     try {
         // CSRF is enforced by the csrfHeader guard; here we just destroy session
         try {
