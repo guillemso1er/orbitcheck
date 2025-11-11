@@ -1053,7 +1053,8 @@ describe('Rules Integration Tests', () => {
             address: { line1: '123 Main St', city: 'Anytown', postal_code: '12345', country: 'US' },
             name: 'John Doe',
             transaction_amount: 99.99,
-            currency: 'USD'
+            currency: 'USD',
+            session_id: 'test-session-123'
           },
           {
             email: 'customer@example.com', // Same email
@@ -1061,7 +1062,8 @@ describe('Rules Integration Tests', () => {
             address: { line1: '123 Main St', city: 'Anytown', postal_code: '12345', country: 'US' }, // Same address
             name: 'John Doe',              // Same name
             transaction_amount: 99.99,     // Same amount
-            currency: 'USD'
+            currency: 'USD',
+            session_id: 'test-session-123' // Same session ID
           }
         ]
 
