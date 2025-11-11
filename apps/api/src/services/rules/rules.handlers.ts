@@ -48,16 +48,24 @@ export async function handleTestRules(
     };
 
     const results: any = {};
+    let requestBody: any;
     let body: ValidationPayload;
 
     try {
         if (typeof request.body === 'string' || !request.body) {
             return reply.status(400).send({ error: 'Invalid payload: must be a JSON object', request_id });
         }
-        body = request.body as ValidationPayload;
-        if (typeof body !== 'object' || Array.isArray(body)) {
+        requestBody = request.body;
+        if (typeof requestBody !== 'object' || Array.isArray(requestBody)) {
             return reply.status(400).send({ error: 'Invalid payload: must be a JSON object', request_id });
         }
+        
+        // Extract the nested payload object
+        body = requestBody.payload;
+        if (!body || typeof body !== 'object' || Array.isArray(body)) {
+            return reply.status(400).send({ error: 'Invalid payload: payload must be a JSON object', request_id });
+        }
+        
         if (body.email && typeof body.email !== 'string') return reply.status(400).send({ error: 'Invalid payload: email must be a string', request_id });
         if (body.phone && typeof body.phone !== 'string') return reply.status(400).send({ error: 'Invalid payload: phone must be a string', request_id });
         if (body.name && typeof body.name !== 'string') return reply.status(400).send({ error: 'Invalid payload: name must be a string', request_id });
@@ -71,7 +79,7 @@ export async function handleTestRules(
     }
 
     console.log(`[DEBUG] handleTestRules - Validating payload for ${request_id}`);
-    console.log(`[DEBUG] handleTestRules - Payload: ${JSON.stringify(body)}`);
+    console.log(`[DEBUG] handleTestRules - Payload: ${JSON.stringify(requestBody)}`);
 
     const { results: orchestratorResults, metrics: orchestratorMetrics, debug_info: orchestratorDebugInfo } =
         await validatePayload(body, redis, pool, {
