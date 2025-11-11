@@ -1,7 +1,7 @@
 // src/Rules.tsx
-import { deleteCustomRule, getAvailableRules, registerCustomRules } from '@orbitcheck/contracts';
+import { deleteCustomRule, getAvailableRules, registerCustomRules, testRulesAgainstPayload } from '@orbitcheck/contracts';
 import React, { useEffect, useState } from 'react';
-import { API_BASE, API_ENDPOINTS, LOCAL_STORAGE_KEYS } from '../../constants';
+import { LOCAL_STORAGE_KEYS } from '../../constants';
 import { useDebounce } from '../../hooks/useDebounce';
 import { useLocalStorage } from '../../hooks/useLocalStorage';
 import { Rule, RuleTestResult, TestResult } from '../../types';
@@ -330,13 +330,19 @@ const Rules: React.FC = () => {
     setTestError(null);
     try {
       const payload = JSON.parse(debouncedTestPayload);
-      const response = await fetch(`${API_BASE}${API_ENDPOINTS.TEST_RULES_AGAINST_PAYLOAD}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+      const { data, error } = await testRulesAgainstPayload({
+        client: apiClient,
+        body: {
+          payload,
+          rule_ids: rules.map(r => r.id),
+        }
       });
-      if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      const result: TestResult = await response.json();
+
+      if (error) {
+        throw new Error('Failed to test rules against payload');
+      }
+
+      const result: TestResult = data as TestResult;
       setTestResult(result);
       const ruleResults: RuleTestResult[] = rules.filter(rule => rule.enabled).map(rule => {
         const startTime = performance.now();

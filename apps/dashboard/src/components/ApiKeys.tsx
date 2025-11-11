@@ -412,7 +412,7 @@ const ApiKeys: React.FC<ApiKeysProps> = () => {
       const transformedKeys = (data.data || []).map((apiKey) => ({
         id: apiKey.id ?? '',
         prefix: apiKey.prefix ?? '',
-        name: undefined, // API doesn't provide name
+        name: apiKey.name || undefined, // Use the name from API
         status: (apiKey.status === 'active' || apiKey.status === 'revoked') ? apiKey.status : 'active',
         created_at: apiKey.created_at ?? undefined,
         last_used_at: apiKey.last_used_at ?? null,

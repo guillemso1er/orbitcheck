@@ -118,18 +118,65 @@ export async function batchDeduplicateData(
     }
 }
 
-// Placeholder function for batchEvaluateOrders
 export async function batchEvaluateOrders(
-    _request: FastifyRequest<{ Body: BatchEvaluateOrdersData['body'] }>,
+    request: FastifyRequest<{ Body: BatchEvaluateOrdersData['body'] }>,
     rep: FastifyReply,
-    _pool: Pool,
-    _redis: IORedisType
+    pool: Pool,
+    redis: IORedisType
 ): Promise<FastifyReply<{ Body: BatchEvaluateOrdersResponses }>> {
-    // TODO: Implement batch evaluate orders functionality
-    return rep.status(501).send({
-        error: {
-            code: 'NOT_IMPLEMENTED',
-            message: 'Batch evaluate orders endpoint is not yet implemented'
+    try {
+        const request_id = generateRequestId();
+        const body = request.body as BatchEvaluateOrdersData['body'];
+        const { orders } = body;
+        const project_id = (request as any).project_id;
+
+        // Validate input
+        if (!orders || !Array.isArray(orders) || orders.length === 0 || orders.length > 10000) {
+            return rep.status(HTTP_STATUS.BAD_REQUEST).send({
+                error: { code: 'INVALID_INPUT', message: 'Invalid input data' }
+            });
         }
-    });
+
+        // Validate required fields for each order
+        for (const order of orders) {
+            if (!order.order_id || !order.customer_email) {
+                return rep.status(HTTP_STATUS.BAD_REQUEST).send({
+                    error: { code: 'INVALID_INPUT', message: 'Each order must have order_id and customer_email' }
+                });
+            }
+        }
+
+        // Create job record
+        const { rows: [jobRecord] } = await pool.query(
+            `INSERT INTO jobs (project_id, job_type, input_data, status, total_items, processed_items)
+             VALUES ($1, $2, $3, $4, $5, $6)
+             RETURNING id`,
+            [project_id, 'batch_evaluate_orders', JSON.stringify({ orders }), 'pending', orders.length, 0]
+        );
+
+        // Add job to queue
+        const evaluationQueue = new Queue('batch_evaluate_orders', { connection: redis });
+        await evaluationQueue.add('evaluate', {
+            orders,
+            project_id,
+            job_id: jobRecord.id
+        }, {
+            jobId: jobRecord.id
+        });
+
+        const response: BatchEvaluateOrdersResponses[202] = {
+            job_id: jobRecord.id,
+            status: 'pending',
+            request_id
+        };
+
+        await logEvent(project_id, 'batch', API_V1_ROUTES.BATCH.BATCH_EVALUATE_ORDERS, [], HTTP_STATUS.ACCEPTED, {
+            job_type: 'batch_evaluate_orders',
+            item_count: orders.length
+        }, pool);
+
+        return rep.status(HTTP_STATUS.ACCEPTED).send(response);
+    } catch (error) {
+        return sendServerError(request, rep, error, API_V1_ROUTES.BATCH.BATCH_EVALUATE_ORDERS, generateRequestId());
+    }
 }

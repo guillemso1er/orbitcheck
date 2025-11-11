@@ -311,11 +311,11 @@ const BulkCsvTool: React.FC = () => {
     if (!jobStatus?.result && !jobStatus?.result_url) return;
 
     if (jobStatus.result) {
-      const blob = new Blob([JSON.stringify(jobStatus.result, null, 2)], { type: 'text/csv' });
+      const blob = new Blob([JSON.stringify(jobStatus.result, null, 2)], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `${csvType}_processed.csv`;
+      a.download = `${csvType}_results.json`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -323,6 +323,16 @@ const BulkCsvTool: React.FC = () => {
     } else if (jobStatus.result_url) {
       // If result_url is provided, open it in a new tab/window
       window.open(jobStatus.result_url, '_blank');
+    }
+  };
+
+  const handleRestart = () => {
+    setFile(null);
+    setJobId(null);
+    setJobStatus(null);
+    setError(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
     }
   };
 
@@ -624,6 +634,9 @@ const BulkCsvTool: React.FC = () => {
                   <button onClick={downloadResults} className="bg-blue-600 hover:bg-blue-700 text-white font-medium px-4 py-2 rounded-lg transition-colors text-sm">
                     📥 Download Detailed Results (JSON)
                   </button>
+                  <button onClick={handleRestart} className="bg-gray-600 hover:bg-gray-700 text-white font-medium px-4 py-2 rounded-lg transition-colors text-sm">
+                    🔄 Process Another File
+                  </button>
                 </div>
               </div>
             )}
@@ -639,6 +652,11 @@ const BulkCsvTool: React.FC = () => {
                     Error: {jobStatus.error}
                   </div>
                 )}
+                <div className="mt-4">
+                  <button onClick={handleRestart} className="bg-gray-600 hover:bg-gray-700 text-white font-medium px-4 py-2 rounded-lg transition-colors text-sm">
+                    🔄 Try Again
+                  </button>
+                </div>
               </div>
             )}
 
