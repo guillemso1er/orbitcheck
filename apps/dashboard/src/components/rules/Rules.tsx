@@ -10,27 +10,8 @@ import { ConditionEvaluator } from '../../utils/ConditionEvaluator';
 import { RulesHeader } from './RulesHeader';
 import { RulesList } from './RulesList';
 import { TestHarness } from './TestHarness';
+import { RulesHelp } from './RulesHelp';
 
-// List of built-in rule IDs from the API (rules.constants.ts)
-// These rules cannot be deleted, even if they have category: 'custom'
-const BUILTIN_RULE_IDS = new Set([
-  'email_format',
-  'email_mx',
-  'email_disposable',
-  'po_box_detection',
-  'address_postal_mismatch',
-  'order_dedupe',
-  'high_value_order',
-  'high_value_customer_priority',
-  'critical_block_rule',
-  'custom_domain_block',
-  'phone_format',
-  'phone_otp',
-  'address_validation',
-  'address_geocode',
-  'high_risk_address',
-  'high_value_order_review'
-]);
 
 // Custom Confirmation Dialog Component
 const ConfirmDialog: React.FC<{
@@ -275,6 +256,7 @@ const Rules: React.FC = () => {
   } | null>(null);
   const [filterAction, setFilterAction] = useState<'all' | Rule['action']>('all');
   const [showOnlyEnabled, setShowOnlyEnabled] = useState(false);
+  const [showHelp, setShowHelp] = useState(false);
 
   const [testPayload, setTestPayload] = useLocalStorage(LOCAL_STORAGE_KEYS.TEST_PAYLOAD, JSON.stringify({
     email: "test@example.com",
@@ -531,6 +513,30 @@ const Rules: React.FC = () => {
         backendError={backendError}
         hasValidationErrors={hasValidationErrors}
       />
+      {/* Help Toggle Button */}
+      <div className="mb-4 flex justify-end">
+        <button
+          onClick={() => setShowHelp(!showHelp)}
+          className={`inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm transition-colors ${
+            showHelp
+              ? 'text-white bg-indigo-600 hover:bg-indigo-700 focus:ring-indigo-500'
+              : 'text-indigo-600 bg-indigo-100 hover:bg-indigo-200 focus:ring-indigo-500'
+          } focus:outline-none focus:ring-2 focus:ring-offset-2`}
+        >
+          <svg className={`w-4 h-4 mr-2 transition-transform ${showHelp ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          {showHelp ? 'Hide Help' : 'Show Help & Documentation'}
+        </button>
+      </div>
+
+      {/* Help Section - Collapsible */}
+      {showHelp && (
+        <div className="mb-6">
+          <RulesHelp />
+        </div>
+      )}
+
       <RulesList
         builtinRules={builtinRules}
         customRules={customRules}
@@ -556,6 +562,23 @@ const Rules: React.FC = () => {
         ruleTestResults={ruleTestResults}
         testResult={testResult}
       />
+
+      {/* Help Section - Bottom (only show if not already shown above) */}
+      {!showHelp && (
+        <div className="mt-6">
+          <div className="text-center">
+            <button
+              onClick={() => setShowHelp(true)}
+              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:ring-indigo-500 focus:outline-none focus:ring-2 focus:ring-offset-2"
+            >
+              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              Need Help? View Documentation
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Delete Confirmation Dialog */}
       <ConfirmDialog
