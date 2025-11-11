@@ -5,7 +5,7 @@ description: Creates a new webhook subscription for the authenticated project
 operationId: createWebhook
 security:
   - patAuth: []
-  - sessionCookie: []
+  - cookieAuth: []
 requestBody:
   required: true
   content:

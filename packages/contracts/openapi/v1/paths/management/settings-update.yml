@@ -7,7 +7,7 @@ description: >
 operationId: updateSettings
 security:
   - patAuth: []
-  - sessionCookie: []
+  - cookieAuth: []
 requestBody:
   required: true
   content:

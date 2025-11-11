@@ -5,7 +5,7 @@ description: Deletes a custom validation rule by its ID
 operationId: deleteCustomRule
 security:
   - patAuth: []
-  - sessionCookie: []
+  - cookieAuth: []
 parameters:
   - name: id
     in: path

@@ -228,7 +228,7 @@ components:
         name: X-API-Key
         description: Static API key sent in a header. Use your API Key (ok_xxx) for runtime routes.
 
-      sessionCookie:
+      cookieAuth:
         type: apiKey
         in: cookie
         name: sid

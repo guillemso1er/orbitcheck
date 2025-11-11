@@ -23,7 +23,7 @@ declare module 'fastify' {
 type SchemeName =
   | 'patAuth'
   | 'apiKeyAuth'
-  | 'sessionCookie'
+  | 'cookieAuth'
   | 'cookieAuth'        // new alias to match OpenAPI scheme
   | 'httpMessageSigAuth'
   | 'csrfHeader'        // new CSRF scheme
@@ -161,8 +161,7 @@ export default fp<Options>(async function openapiSecurity(app, opts) {
   const defaultGuards: Record<SchemeName, FastifyAuthFunction> = {
     patAuth: asGuard(verifyPatNoReply),
     apiKeyAuth: asGuard(verifyApiKeyNoReply),
-    sessionCookie: asGuard(verifySessionNoReply),
-    cookieAuth: asGuard(verifySessionNoReply),      // alias for OpenAPI cookieAuth
+    cookieAuth: asGuard(verifySessionNoReply),
     httpMessageSigAuth: asGuard(verifyHttpMessageSignatureNoReply),
     csrfHeader: asGuard(verifyCsrfNoReply),
   }
@@ -172,7 +171,6 @@ export default fp<Options>(async function openapiSecurity(app, opts) {
   const guardMap: Record<string, FastifyAuthFunction> = {
     patAuth: guards.patAuth,
     apiKeyAuth: guards.apiKeyAuth,
-    sessionCookie: guards.sessionCookie,
     cookieAuth: guards.cookieAuth,
     httpMessageSigInput: guards.httpMessageSigAuth,
     httpMessageSig: guards.httpMessageSigAuth,

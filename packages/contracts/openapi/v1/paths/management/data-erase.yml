@@ -5,7 +5,7 @@ description: Initiates data erasure for GDPR/CCPA compliance
 operationId: eraseData
 security:
   - patAuth: []
-  - sessionCookie: []
+  - cookieAuth: []
 requestBody:
   required: true
   content:

@@ -7,7 +7,7 @@ description: >
 operationId: getSettings
 security:
   - patAuth: []
-  - sessionCookie: []
+  - cookieAuth: []
 responses:
   '200':
     description: Tenant settings

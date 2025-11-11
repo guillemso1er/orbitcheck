@@ -1,7 +1,7 @@
 import { DASHBOARD_ROUTES } from "@orbitcheck/contracts";
 import bcrypt from 'bcryptjs';
 import type { FastifyReply, FastifyRequest, RawServerBase, RouteGenericInterface } from "fastify";
-import crypto, { randomBytes } from "node:crypto";
+import * as crypto from "node:crypto";
 import type { Pool } from "pg";
 import { BCRYPT_ROUNDS, PG_UNIQUE_VIOLATION, PROJECT_NAMES } from "../config.js";
 import { ERROR_CODES, ERROR_MESSAGES, HTTP_STATUS } from "../errors.js";
@@ -10,6 +10,7 @@ import { createPlansService } from "./plans.js";
 import { getDefaultProjectId, sendError, sendServerError } from "./utils.js";
 
 import argon2 from 'argon2';
+import { randomBytes } from "node:crypto";
 import { parsePat } from "./pats.js";
 
 
@@ -97,16 +98,6 @@ export async function loginUser(
 
         const user = rows[0]
 
-        // Rotate session ID on login if supported (fastify-session)
-        try {
-            if (typeof (request as any).session?.regenerate === 'function') {
-                await new Promise<void>((resolve, reject) =>
-                    (request as any).session.regenerate((err: any) => err ? reject(err) : resolve())
-                )
-            }
-        } catch { }
-
-        // Set session claims
         if ((request as any).session?.set) {
             (request as any).session.set('user_id', user.id)
         } else {
@@ -120,6 +111,7 @@ export async function loginUser(
         } else {
             (request as any).session.csrf_token = csrf
         }
+
 
         const response: LoginUserResponses[200] = {
             user: {

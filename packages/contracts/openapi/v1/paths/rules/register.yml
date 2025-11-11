@@ -5,7 +5,7 @@ description: Registers new custom validation rules for the project
 operationId: registerCustomRules
 security:
   - patAuth: []
-  - sessionCookie: []
+  - cookieAuth: []
 requestBody:
   required: true
   content:

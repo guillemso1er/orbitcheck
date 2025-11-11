@@ -5,7 +5,7 @@ description: Creates a new project for the authenticated user
 operationId: createProject
 security:
   - patAuth: []
-  - sessionCookie: []
+  - cookieAuth: []
 requestBody:
   required: true
   content:

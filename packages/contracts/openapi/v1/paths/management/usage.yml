@@ -5,7 +5,7 @@ description: Retrieves usage statistics for the project
 operationId: getUsage
 security:
   - patAuth: []
-  - sessionCookie: []
+  - cookieAuth: []
 responses:
   '200':
     description: Usage statistics

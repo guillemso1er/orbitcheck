@@ -5,7 +5,7 @@ description: Retrieves the list of projects for the authenticated user along wit
 operationId: getUserProjects
 security:
   - patAuth: []
-  - sessionCookie: []
+  - cookieAuth: []
 responses:
   '200':
     description: List of projects and plan information

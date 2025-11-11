@@ -5,7 +5,7 @@ description: Tests rules against a sample payload and returns triggered rules
 operationId: testRulesAgainstPayload
 security:
   - patAuth: []
-  - sessionCookie: []
+  - cookieAuth: []
 requestBody:
   required: true
   content:

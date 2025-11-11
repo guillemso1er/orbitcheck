@@ -5,7 +5,7 @@ description: Sends a sample payload to the provided webhook URL and returns the 
 operationId: testWebhook
 security:
   - patAuth: []
-  - sessionCookie: []
+  - cookieAuth: []
 requestBody:
   required: true
   content:

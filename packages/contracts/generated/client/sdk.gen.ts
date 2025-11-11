@@ -423,6 +423,11 @@ export const validateEmail = <ThrowOnError extends boolean = false>(options: Opt
             {
                 name: 'Signature',
                 type: 'apiKey'
+            },
+            {
+                in: 'cookie',
+                name: 'sid',
+                type: 'apiKey'
             }
         ],
         url: '/v1/validate/email',
@@ -452,6 +457,11 @@ export const validatePhone = <ThrowOnError extends boolean = false>(options: Opt
             },
             {
                 name: 'Signature',
+                type: 'apiKey'
+            },
+            {
+                in: 'cookie',
+                name: 'sid',
                 type: 'apiKey'
             }
         ],
@@ -483,6 +493,11 @@ export const validateAddress = <ThrowOnError extends boolean = false>(options: O
             {
                 name: 'Signature',
                 type: 'apiKey'
+            },
+            {
+                in: 'cookie',
+                name: 'sid',
+                type: 'apiKey'
             }
         ],
         url: '/v1/validate/address',
@@ -512,6 +527,11 @@ export const validateTaxId = <ThrowOnError extends boolean = false>(options: Opt
             },
             {
                 name: 'Signature',
+                type: 'apiKey'
+            },
+            {
+                in: 'cookie',
+                name: 'sid',
                 type: 'apiKey'
             }
         ],
@@ -543,6 +563,11 @@ export const validateName = <ThrowOnError extends boolean = false>(options: Opti
             {
                 name: 'Signature',
                 type: 'apiKey'
+            },
+            {
+                in: 'cookie',
+                name: 'sid',
+                type: 'apiKey'
             }
         ],
         url: '/v1/validate/name',
@@ -573,6 +598,11 @@ export const evaluateOrder = <ThrowOnError extends boolean = false>(options: Opt
             {
                 name: 'Signature',
                 type: 'apiKey'
+            },
+            {
+                in: 'cookie',
+                name: 'sid',
+                type: 'apiKey'
             }
         ],
         url: '/v1/orders/evaluate',
@@ -602,6 +632,11 @@ export const verifyPhoneOtp = <ThrowOnError extends boolean = false>(options: Op
             },
             {
                 name: 'Signature',
+                type: 'apiKey'
+            },
+            {
+                in: 'cookie',
+                name: 'sid',
                 type: 'apiKey'
             }
         ],
@@ -950,6 +985,11 @@ export const normalizeAddress = <ThrowOnError extends boolean = false>(options: 
             {
                 name: 'Signature',
                 type: 'apiKey'
+            },
+            {
+                in: 'cookie',
+                name: 'sid',
+                type: 'apiKey'
             }
         ],
         url: '/v1/normalize/address',
@@ -979,6 +1019,11 @@ export const dedupeCustomer = <ThrowOnError extends boolean = false>(options: Op
             },
             {
                 name: 'Signature',
+                type: 'apiKey'
+            },
+            {
+                in: 'cookie',
+                name: 'sid',
                 type: 'apiKey'
             }
         ],
@@ -1010,6 +1055,11 @@ export const dedupeAddress = <ThrowOnError extends boolean = false>(options: Opt
             {
                 name: 'Signature',
                 type: 'apiKey'
+            },
+            {
+                in: 'cookie',
+                name: 'sid',
+                type: 'apiKey'
             }
         ],
         url: '/v1/dedupe/address',
@@ -1039,6 +1089,11 @@ export const mergeDeduplicated = <ThrowOnError extends boolean = false>(options:
             },
             {
                 name: 'Signature',
+                type: 'apiKey'
+            },
+            {
+                in: 'cookie',
+                name: 'sid',
                 type: 'apiKey'
             }
         ],
@@ -1070,6 +1125,11 @@ export const batchValidate = <ThrowOnError extends boolean = false>(options: Opt
             {
                 name: 'Signature',
                 type: 'apiKey'
+            },
+            {
+                in: 'cookie',
+                name: 'sid',
+                type: 'apiKey'
             }
         ],
         url: '/v1/batch/validate',
@@ -1100,6 +1160,11 @@ export const batchDedupe = <ThrowOnError extends boolean = false>(options: Optio
             {
                 name: 'Signature',
                 type: 'apiKey'
+            },
+            {
+                in: 'cookie',
+                name: 'sid',
+                type: 'apiKey'
             }
         ],
         url: '/v1/batch/dedupe',
@@ -1129,6 +1194,11 @@ export const batchEvaluateOrders = <ThrowOnError extends boolean = false>(option
             },
             {
                 name: 'Signature',
+                type: 'apiKey'
+            },
+            {
+                in: 'cookie',
+                name: 'sid',
                 type: 'apiKey'
             }
         ],

@@ -5,7 +5,7 @@ description: Retrieves personal access tokens for the authenticated user
 operationId: listPersonalAccessTokens
 security:
   - patAuth: []
-  - sessionCookie: []
+  - cookieAuth: []
 responses:
   '200':
     description: List of personal access tokens
