@@ -192,7 +192,7 @@ export async function verifyAPIKey(request: FastifyRequest, pool: Pool): Promise
         return false;
     }
 
-    const prefix = key.slice(0, 8); // e.g., 'ok_live_'
+    const prefix = key.slice(0, 6); // e.g., 'ok_live'
     const keyHash = crypto.createHash('sha256').update(key).digest('hex');
 
     const { rows } = await pool.query(

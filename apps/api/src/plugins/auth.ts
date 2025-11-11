@@ -9,8 +9,6 @@ import type { Pool } from 'pg'
 import { verifyAPIKey, verifyHttpMessageSignature, verifyPAT, verifySession } from '../services/auth.js'
 import { getDefaultProjectId } from '../services/utils.js'
 
-const __filename = fileURLToPath(import.meta.url)
-const __dirname = path.dirname(__filename)
 
 // Unify the identity object attached by any auth method
 declare module 'fastify' {
@@ -146,7 +144,7 @@ export default fp<Options>(async function openapiSecurity(app, opts) {
 
     const orGroups = effective.map((obj) => {
       const andHandlers = [...new Set(Object.keys(obj)
-        .map((name) => guardMap[name])
+        .map((name) => guardMap[name] || guardMap[name.toLowerCase()])
         .filter(Boolean) as FastifyAuthFunction[])]
 
       if (andHandlers.length === 0) return null
