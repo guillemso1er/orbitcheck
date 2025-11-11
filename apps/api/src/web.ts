@@ -1,9 +1,9 @@
-import { API_V1_ROUTES, DASHBOARD_ROUTES, MGMT_V1_ROUTES } from "@orbitcheck/contracts";
 import type { FastifyInstance, FastifyReply, FastifyRequest, RawServerBase, RouteGenericInterface } from "fastify";
 import openapiGlue from "fastify-openapi-glue";
 import { type Redis as IORedisType } from 'ioredis';
 import type { Pool } from "pg";
 
+import { API_V1_ROUTES, MGMT_V1_ROUTES } from "@orbitcheck/contracts";
 import { ROUTES } from "./config.js";
 import { HTTP_STATUS } from "./errors.js";
 import { serviceHandlers } from "./handlers/handlers.js";
@@ -11,9 +11,6 @@ import { idempotency, rateLimit } from "./hooks.js";
 import openapiSecurity from "./plugins/auth.js";
 import { createPlansService } from './services/plans.js';
 
-const AUTH_REGISTER = DASHBOARD_ROUTES.REGISTER_NEW_USER;
-const AUTH_LOGIN = DASHBOARD_ROUTES.USER_LOGIN;
-const AUTH_LOGOUT = DASHBOARD_ROUTES.USER_LOGOUT;
 
 
 
@@ -35,10 +32,11 @@ export async function applyValidationLimits<TServer extends RawServerBase = RawS
     if (!isValidationRoute) return;
 
     // Only for users, not API keys
-    const userId = (request as any).user_id;
+    // Try multiple sources to get user_id, with fallback to auth object
+    const userId = (request as any).user_id || request.auth?.userId;
     if (!userId) return;
 
-    try {
+    try {       
         const plansService = createPlansService(pool);
         await plansService.checkValidationLimit(userId, 1);
         await plansService.incrementValidationUsage(userId, 1);
@@ -68,9 +66,9 @@ export async function applyRateLimitingAndIdempotency<TServer extends RawServerB
     if (url.startsWith(ROUTES.HEALTH) ||
         url.startsWith(ROUTES.DOCUMENTATION) ||
         url.startsWith(ROUTES.METRICS) ||
-        url.startsWith(AUTH_REGISTER) ||
-        url.startsWith(AUTH_LOGIN) ||
-        url.startsWith(AUTH_LOGOUT)) {
+        url.startsWith(ROUTES.AUTH_REGISTER) ||
+        url.startsWith(ROUTES.AUTH_LOGIN) ||
+        url.startsWith(ROUTES.AUTH_LOGOUT)) {
         return;
     }
 
@@ -123,6 +121,9 @@ export async function applyRateLimitingAndIdempotency<TServer extends RawServerB
  * @param redis - Shared Redis client for caching, rate limiting, and idempotency in routes.
  */
 export function registerRoutes<TServer extends RawServerBase = RawServerBase>(app: FastifyInstance<TServer>, pool: Pool, redis: IORedisType): void {
+
+    // Register OpenAPI routes with integrated security
+    app.register(openapiSecurity, { pool });
     // Global preHandler hook chain: validation limits + rate limiting/idempotency middleware
     app.addHook("preHandler", async (request, rep) => {
         await applyValidationLimits(request, rep, pool);
@@ -130,8 +131,7 @@ export function registerRoutes<TServer extends RawServerBase = RawServerBase>(ap
         return;
     });
 
-    // Register OpenAPI routes with integrated security
-    app.register(openapiSecurity, { pool });
+
 
     app.register(openapiGlue, {
         serviceHandlers: serviceHandlers(pool, redis, app),

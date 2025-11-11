@@ -231,8 +231,9 @@ export async function verifyHttpMessageSignature(request: FastifyRequest, pool: 
     const sigInputHeader = request.headers['signature-input'] as string | undefined;
     const sigHeader = request.headers['signature'] as string | undefined;
 
+    // If signature headers are completely missing, return false instead of logging
+    // This allows the auth plugin to try other authentication methods
     if (!sigInputHeader || !sigHeader) {
-        request.log.info('Missing Signature-Input or Signature header');
         return false;
     }
 

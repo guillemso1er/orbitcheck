@@ -37,66 +37,63 @@ interface Options {
 
 export default fp<Options>(async function openapiSecurity(app, opts) {
   app.register(fastifyAuth)
-
   const { pool } = opts
 
-  // Load OpenAPI spec to get security requirements
-  // __dirname will be something like /home/user/orbicheck/apps/api/src/plugins
-  // We need to go up to workspace root: ../../../.. then into packages/contracts/dist
+  const __filename = fileURLToPath(import.meta.url)
+  const __dirname = path.dirname(__filename)
+
   const specPath = path.resolve(__dirname, '../../../../packages/contracts/dist/openapi.v1.json')
   const spec = JSON.parse(fs.readFileSync(specPath, 'utf-8'))
 
-  // Build a map of route -> security requirements
+  // Convert OpenAPI "{id}" style to Fastify ":id" style
+  const toFastifyPath = (p: string) => p.replace(/{([^}/]+)}/g, ':$1')
+
+  // Build a map of route -> security requirements using Fastify-style paths
   const routeSecurityMap = new Map<string, Array<Record<string, string[]>>>()
   for (const [routePath, methods] of Object.entries(spec.paths || {})) {
+    const fPath = toFastifyPath(routePath)
     for (const [method, operation] of Object.entries(methods as any)) {
       if (operation && typeof operation === 'object' && 'security' in operation && Array.isArray(operation.security)) {
-        const key = `${method.toUpperCase()} ${routePath}`
+        const key = `${String(method).toUpperCase()} ${fPath}`
         routeSecurityMap.set(key, operation.security as Array<Record<string, string[]>>)
       }
     }
   }
 
-  // Helper to wrap async checks into auth guards
   const asGuard = (fn: (req: FastifyRequest, reply: FastifyReply) => Promise<void>): FastifyAuthFunction =>
-    async (req, reply) => { await fn(req, reply) } // throw to fail
+    async (req, reply) => { await fn(req, reply) }
 
   // --- Verification Functions (No Reply Logic) ---
 
   async function verifySessionNoReply(req: FastifyRequest) {
     try {
       await verifySession(req, pool) // Throws on failure
+      // Make sure user_id is actually present on req for downstream code
+      if (!(req as any).user_id && (req as any).session?.get) {
+        const uid = (req as any).session.get('user_id')
+        if (uid) (req as any).user_id = uid
+      }
       req.auth = { ...(req.auth ?? {}), method: 'session', userId: (req as any).user_id }
     } catch (error: any) {
-      // Convert the thrown object to a proper Error with statusCode
-      const err = new Error(error.error?.message || 'Session authentication required')
-        ; (err as any).statusCode = error.status || 401
-        ; (err as any).code = error.error?.code || 'UNAUTHORIZED'
+      const err = new Error(error?.error?.message || 'Session authentication required')
+        ; (err as any).statusCode = error?.status || 401
+        ; (err as any).code = error?.error?.code || 'UNAUTHORIZED'
       throw err
     }
   }
 
   async function verifyPatNoReply(req: FastifyRequest) {
-    const pat = await verifyPAT(req, pool) // Returns PAT object or null
+    const pat = await verifyPAT(req, pool)
     if (!pat) {
       const err = new Error('Invalid or missing PAT')
         ; (err as any).statusCode = 401
         ; (err as any).code = 'UNAUTHORIZED'
       throw err
     }
-    // Set user_id on request object FIRST to ensure it persists to handlers
     ; (req as any).user_id = pat.user_id
-    ; (req as any).pat_scopes = pat.scopes
+      ; (req as any).pat_scopes = pat.scopes
+    req.auth = { ...(req.auth ?? {}), method: 'pat', userId: pat.user_id, patScopes: pat.scopes }
 
-    // Set auth object with userId
-    req.auth = {
-      ...(req.auth ?? {}),
-      method: 'pat',
-      userId: pat.user_id,
-      patScopes: pat.scopes,
-    }
-
-    // Optional: Backfill projectId for backward compatibility
     try {
       req.auth.projectId ??= await getDefaultProjectId(pool, pat.user_id)
         ; (req as any).project_id = req.auth.projectId
@@ -129,18 +126,15 @@ export default fp<Options>(async function openapiSecurity(app, opts) {
     patAuth: asGuard(verifyPatNoReply),
     apiKeyAuth: asGuard(verifyApiKeyNoReply),
     sessionCookie: asGuard(verifySessionNoReply),
-    // Map the new signature scheme to its verification guard
     httpMessageSigAuth: asGuard(verifyHttpMessageSignatureNoReply),
   }
 
   const guards = { ...defaultGuards, ...opts.guards }
 
-  // Maps OpenAPI scheme names to our internal guard functions
   const guardMap: Record<string, FastifyAuthFunction> = {
     patAuth: guards.patAuth,
     apiKeyAuth: guards.apiKeyAuth,
     sessionCookie: guards.sessionCookie,
-    // Both RFC 9421 headers are handled by the same guard
     httpMessageSigInput: guards.httpMessageSigAuth,
     httpMessageSig: guards.httpMessageSigAuth,
   }
@@ -148,36 +142,42 @@ export default fp<Options>(async function openapiSecurity(app, opts) {
   function composeSecurity(sec?: Array<Record<string, string[]>>) {
     const effective = sec ?? opts.defaultSecurity
     if (!effective) return null
-    if (Array.isArray(effective) && effective.length === 0) return 'public'
+    if (Array.isArray(effective) && effective.length === 0) return 'public' as any
 
     const orGroups = effective.map((obj) => {
-      // Use a Set to ensure a guard is only added once per 'AND' group
       const andHandlers = [...new Set(Object.keys(obj)
         .map((name) => guardMap[name])
         .filter(Boolean) as FastifyAuthFunction[])]
 
       if (andHandlers.length === 0) return null
-      // Combine with AND if multiple handlers are in one group
-      return andHandlers.length === 1 ? andHandlers[0] : app.auth(andHandlers, { relation: 'and' })
+      // For single handler, return it directly
+      if (andHandlers.length === 1) return andHandlers[0]
+      // For multiple handlers in same security object, use AND relation
+      return app.auth(andHandlers, { relation: 'and' })
     }).filter(Boolean) as FastifyAuthFunction[]
 
     if (orGroups.length === 0) return null
-    // Combine with OR if multiple groups exist
+    // For multiple security alternatives, use OR relation
     return orGroups.length === 1 ? orGroups[0] : app.auth(orGroups, { relation: 'or' })
   }
 
   app.addHook('onRoute', (route) => {
-    const routeKey = `${route.method} ${route.url}`
-    const security = routeSecurityMap.get(routeKey)
+    // route.method can be string | string[]
+    const methods = Array.isArray(route.method) ? route.method : [route.method]
+    for (const m of methods) {
+      const key = `${String(m).toUpperCase()} ${route.url}`
+      const security = routeSecurityMap.get(key)
+      const composed = composeSecurity(security)
+      if (!composed || composed === 'public') {
+        continue
+      }
 
-    const composed = composeSecurity(security)
-    if (!composed || composed === 'public') {
-      return
+      // Attach to preValidation so it runs before any global preHandler hooks
+      const existing = Array.isArray(route.preValidation)
+        ? route.preValidation
+        : route.preValidation ? [route.preValidation] : []
+
+      route.preValidation = [composed, ...existing]
     }
-
-    const existing = Array.isArray(route.preHandler)
-      ? route.preHandler
-      : route.preHandler ? [route.preHandler] : []
-    route.preHandler = [composed, ...existing]
   })
 })

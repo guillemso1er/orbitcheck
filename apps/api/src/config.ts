@@ -196,5 +196,8 @@ export const ROUTES = {
   DOCUMENTATION: '/documentation',
   REFERENCE: '/reference',
   METRICS: '/metrics',
+  AUTH_REGISTER: '/v1/auth/register',
+  AUTH_LOGIN: '/v1/auth/login',
+  AUTH_LOGOUT: '/v1/auth/logout',
 
 } as const;
