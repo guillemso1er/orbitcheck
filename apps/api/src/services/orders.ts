@@ -203,7 +203,7 @@ export async function evaluateOrderForRiskAndRules<TServer extends RawServerBase
         }
 
         let email_valid = { valid: true, reason_codes: [] as string[], disposable: false };
-        let phone_valid = { valid: true, reason_codes: [] as string[], country: null as string | null };
+        let phone_valid = { valid: true, reason_codes: [] as string[], country: undefined as string | undefined };
         if (customer.email) {
             const emailValue = await validateEmail(customer.email, redis);
             email_valid = { valid: emailValue.valid, reason_codes: emailValue.reason_codes, disposable: emailValue.disposable };

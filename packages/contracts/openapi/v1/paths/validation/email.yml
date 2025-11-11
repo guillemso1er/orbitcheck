@@ -30,9 +30,15 @@ responses:
             valid:
               type: boolean
               description: Whether the email is valid
+            normalized:
+              type: string
+              description: Normalized email address
             disposable:
               type: boolean
               description: Whether the email is disposable
+            mx_found:
+              type: boolean
+              description: Whether MX records were found
             reason_codes:
               type: array
               items:
@@ -40,6 +46,9 @@ responses:
               description: List of reason codes
             request_id:
               type: string
+            ttl_seconds:
+              type: integer
+              description: Time to live in seconds
   '400':
     description: Bad request
     content:

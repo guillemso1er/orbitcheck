@@ -257,7 +257,7 @@ describe('Validation Integration Tests', () => {
         method: 'POST',
         url: '/v1/validate/phone',
         headers: { 'x-api-key': apiKey },
-        payload: { phone: '+1234567890' }
+        payload: { phone: '+12025550123' }
       })
       expect(res.statusCode).toBe(200)
       const body = res.json()
@@ -300,7 +300,7 @@ describe('Validation Integration Tests', () => {
         url: '/v1/validate/phone',
         headers: { 'x-api-key': apiKey },
         payload: {
-          phone: '+1234567890',
+          phone: '+12025550123',
           request_otp: true
         }
       })
@@ -437,7 +437,7 @@ describe('Validation Integration Tests', () => {
         url: '/v1/validate/tax-id',
         headers: { 'x-api-key': apiKey },
         payload: {
-          tax_id: '123-45-6789',
+          value: '123-45-6789',
           country: 'US',
           type: 'ssn'
         }
@@ -457,7 +457,7 @@ describe('Validation Integration Tests', () => {
         url: '/v1/validate/tax-id',
         headers: { 'x-api-key': apiKey },
         payload: {
-          tax_id: '12-3456789',
+          value: '12-3456789',
           country: 'US',
           type: 'ein'
         }
@@ -474,7 +474,7 @@ describe('Validation Integration Tests', () => {
         url: '/v1/validate/tax-id',
         headers: { 'x-api-key': apiKey },
         payload: {
-          tax_id: 'invalid-tax-id',
+          value: 'invalid-tax-id',
           country: 'US',
           type: 'ssn'
         }
@@ -490,7 +490,7 @@ describe('Validation Integration Tests', () => {
         method: 'POST',
         url: '/v1/validate/tax-id',
         headers: { 'x-api-key': apiKey },
-        payload: { tax_id: '123-45-6789' }
+        payload: { value: '123-45-6789' }
         // Missing country and type
       })
       expect(res.statusCode).toBe(400)
@@ -684,7 +684,7 @@ describe('Validation Integration Tests', () => {
         method: 'POST',
         url: '/v1/validate/phone',
         headers: { 'x-api-key': apiKey },
-        payload: { phone: '+1234567890' }
+        payload: { phone: '+12025550123' }
       })
       expect(res.statusCode).toBe(200)
       const body = res.json()

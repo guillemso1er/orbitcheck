@@ -2103,14 +2103,26 @@ export type ValidateEmailResponses = {
          */
         valid?: boolean;
         /**
+         * Normalized email address
+         */
+        normalized?: string;
+        /**
          * Whether the email is disposable
          */
         disposable?: boolean;
+        /**
+         * Whether MX records were found
+         */
+        mx_found?: boolean;
         /**
          * List of reason codes
          */
         reason_codes?: Array<string>;
         request_id?: string;
+        /**
+         * Time to live in seconds
+         */
+        ttl_seconds?: number;
     };
 };
 
@@ -2183,10 +2195,26 @@ export type ValidatePhoneResponses = {
          */
         valid?: boolean;
         /**
+         * E.164 formatted phone number
+         */
+        e164?: string;
+        /**
+         * ISO 3166-1 alpha-2 country code
+         */
+        country?: string;
+        /**
          * List of reason codes
          */
         reason_codes?: Array<string>;
         request_id?: string;
+        /**
+         * Time to live in seconds
+         */
+        ttl_seconds?: number;
+        /**
+         * Twilio verification SID when OTP is requested
+         */
+        verification_sid?: string;
     };
 };
 
@@ -2273,6 +2301,17 @@ export type ValidateAddressResponses = {
          */
         valid?: boolean;
         /**
+         * Normalized address object
+         */
+        normalized?: {
+            line1?: string;
+            line2?: string;
+            city?: string;
+            state?: string;
+            postal_code?: string;
+            country?: string;
+        };
+        /**
          * List of reason codes
          */
         reason_codes?: Array<string>;
@@ -2289,6 +2328,10 @@ export type ValidateAddressResponses = {
          */
         in_bounds?: boolean;
         request_id?: string;
+        /**
+         * Time to live in seconds
+         */
+        ttl_seconds?: number;
     };
 };
 
@@ -2352,10 +2395,18 @@ export type ValidateTaxIdResponses = {
          */
         normalized?: string;
         /**
+         * Type of tax ID
+         */
+        type?: string;
+        /**
          * List of validation reason codes
          */
         reason_codes?: Array<string>;
         request_id?: string;
+        /**
+         * Time to live in seconds
+         */
+        ttl_seconds?: number;
     };
 };
 
@@ -3205,21 +3256,7 @@ export type RevokePersonalAccessTokenResponses = {
     /**
      * Personal access token revoked successfully
      */
-    200: {
-        /**
-         * Token ID
-         */
-        id?: string;
-        /**
-         * Token identifier
-         */
-        token_id?: string;
-        /**
-         * Whether token is disabled
-         */
-        disabled?: boolean;
-        request_id?: string;
-    };
+    204: void;
 };
 
 export type RevokePersonalAccessTokenResponse = RevokePersonalAccessTokenResponses[keyof RevokePersonalAccessTokenResponses];

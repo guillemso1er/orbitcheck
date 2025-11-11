@@ -53,6 +53,22 @@ responses:
             valid:
               type: boolean
               description: Whether the address is valid
+            normalized:
+              type: object
+              description: Normalized address object
+              properties:
+                line1:
+                  type: string
+                line2:
+                  type: string
+                city:
+                  type: string
+                state:
+                  type: string
+                postal_code:
+                  type: string
+                country:
+                  type: string
             reason_codes:
               type: array
               items:
@@ -69,6 +85,9 @@ responses:
               description: Whether the address is within bounds
             request_id:
               type: string
+            ttl_seconds:
+              type: integer
+              description: Time to live in seconds
   '400':
     description: Bad request
     content:

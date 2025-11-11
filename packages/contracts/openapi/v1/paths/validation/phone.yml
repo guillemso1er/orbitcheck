@@ -37,6 +37,12 @@ responses:
             valid:
               type: boolean
               description: Whether the phone is valid
+            e164:
+              type: string
+              description: E.164 formatted phone number
+            country:
+              type: string
+              description: ISO 3166-1 alpha-2 country code
             reason_codes:
               type: array
               items:
@@ -44,6 +50,12 @@ responses:
               description: List of reason codes
             request_id:
               type: string
+            ttl_seconds:
+              type: integer
+              description: Time to live in seconds
+            verification_sid:
+              type: string
+              description: Twilio verification SID when OTP is requested
   '400':
     description: Bad request
     content:

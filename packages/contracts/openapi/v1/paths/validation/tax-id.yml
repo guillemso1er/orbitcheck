@@ -40,6 +40,9 @@ responses:
             normalized:
               type: string
               description: Normalized tax ID
+            type:
+              type: string
+              description: Type of tax ID
             reason_codes:
               type: array
               items:
@@ -47,6 +50,9 @@ responses:
               description: List of validation reason codes
             request_id:
               type: string
+            ttl_seconds:
+              type: integer
+              description: Time to live in seconds
   '400':
     description: Validation error
     content:

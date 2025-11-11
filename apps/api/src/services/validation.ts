@@ -77,7 +77,7 @@ export async function validatePhoneNumber(
         const body = request.body as ValidatePhoneData['body'];
         const { phone, country, request_otp = false } = body;
         const validation = await validatePhone(phone, country, redis);
-        let verification_sid: string | null = null;
+        let verification_sid: string | undefined = undefined;
 
         if (validation.valid && request_otp && validation.e164 && environment.TWILIO_ACCOUNT_SID && environment.TWILIO_AUTH_TOKEN && environment.TWILIO_VERIFY_SERVICE_SID) {
             const client = twilio(environment.TWILIO_ACCOUNT_SID, environment.TWILIO_AUTH_TOKEN);
@@ -92,7 +92,7 @@ export async function validatePhoneNumber(
             } catch (error) {
                 request.log.error(error, "Failed to send OTP via Verify");
                 validation.reason_codes.push("phone.otp_send_failed");
-                verification_sid = null;
+                verification_sid = undefined;
             }
         }
         const response = { ...validation, verification_sid };
@@ -117,6 +117,22 @@ export async function validateAddress(
         const request_id = generateRequestId();
         const body = request.body as ValidateAddressData['body'];
         const { address } = body;
+        
+        // Validate required fields at the service level
+        if (!address ||
+            !address.line1?.trim() ||
+            !address.city?.trim() ||
+            !address.postal_code?.trim() ||
+            !address.country?.trim()) {
+            return rep.status(400).send({
+                error: {
+                    code: 'validation_error',
+                    message: 'Missing required address fields: line1, city, postal_code, country'
+                },
+                request_id
+            });
+        }
+        
         const out = await validateAddressLogic(address, pool, redis);
         if (rep.saveIdem) {
             await rep.saveIdem(out);
