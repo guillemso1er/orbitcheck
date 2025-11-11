@@ -498,7 +498,9 @@ const PersonalAccessTokens: React.FC<PersonalAccessTokensProps> = () => {
         throw new Error((error?.error || {}).message || 'Failed to load personal access tokens');
       }
 
-      setTokens(((data as any).data || []).filter((token: PersonalAccessToken): token is PersonalAccessToken =>
+      // API returns { pats: [...], data: [...], request_id }, we can use either pats or data
+      const tokens = (data as any).pats || (data as any).data || [];
+      setTokens(tokens.filter((token: PersonalAccessToken): token is PersonalAccessToken =>
         token.id !== undefined &&
         token.token_id !== undefined &&
         token.name !== undefined &&
