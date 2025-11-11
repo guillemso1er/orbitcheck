@@ -520,10 +520,6 @@ export type LoginRequest = {
 };
 
 export type LoginResponse = {
-    /**
-     * PAT token for authentication
-     */
-    pat_token: string;
     user: {
         /**
          * User ID
@@ -554,6 +550,10 @@ export type LoginResponse = {
      * Request identifier
      */
     request_id?: string;
+    /**
+     * CSRF token for subsequent requests
+     */
+    csrf_token?: string;
 };
 
 export type User = {
@@ -581,6 +581,25 @@ export type User = {
      * Last update timestamp
      */
     updated_at?: string;
+};
+
+export type Pagination = {
+    /**
+     * Current page number
+     */
+    page: number;
+    /**
+     * Number of items per page
+     */
+    limit: number;
+    /**
+     * Total number of items
+     */
+    total: number;
+    /**
+     * Total number of pages
+     */
+    total_pages: number;
 };
 
 export type LoginUserData = {
@@ -644,43 +663,37 @@ export type LoginUserError = LoginUserErrors[keyof LoginUserErrors];
 
 export type LoginUserResponses = {
     /**
-     * Login successful
+     * Login successful; session established and cookie set
      */
     200: {
-        /**
-         * PAT token for authentication
-         */
-        pat_token: string;
         user: {
             /**
              * User ID
              */
-            id: string;
+            id?: string;
             /**
-             * User email address
+             * User email
              */
-            email: string;
+            email?: string;
             /**
              * User first name
              */
-            first_name: string;
+            first_name?: string;
             /**
              * User last name
              */
-            last_name: string;
-            /**
-             * Creation timestamp
-             */
+            last_name?: string;
             created_at?: string;
-            /**
-             * Last update timestamp
-             */
             updated_at?: string;
         };
         /**
          * Request identifier
          */
-        request_id?: string;
+        request_id: string;
+        /**
+         * CSRF token for subsequent requests
+         */
+        csrf_token: string;
     };
 };
 

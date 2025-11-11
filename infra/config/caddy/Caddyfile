@@ -33,39 +33,36 @@
 api.orbitcheck.io {
     import common_security_headers
 
-    # These matchers inspect the final response header AFTER it comes back
-    # from the internal caching tier (served at :18080 below).
-    @cache_hit expression {http.response.header.Cache-Status}.matches("(?i).\\bhit\\b.")
-    @cache_miss expression {http.response.header.Cache-Status}.matches("(?i).\\b(miss|stored)\\b.")
-    @cache_bypass expression {http.response.header.Cache-Status}.matches("(?i).\\bbypass\\b.")
+    # Allow credentialed CORS only from the dashboard
+    @cors_origin header Origin https://dashboard.orbitcheck.io
+    header @cors_origin Access-Control-Allow-Origin "{http.request.header.Origin}"
+    header @cors_origin Access-Control-Allow-Credentials "true"
+    header @cors_origin Vary "Origin"
+
+    # Preflight handler
+    @preflight {
+        method OPTIONS
+        header Origin *
+        header Access-Control-Request-Method *
+    }
+    respond @preflight 204 {
+        headers +Access-Control-Allow-Origin "{http.request.header.Origin}"
+        headers +Access-Control-Allow-Credentials "true"
+        headers +Access-Control-Allow-Methods "GET, POST, PUT, PATCH, DELETE, OPTIONS"
+        # Important: Do NOT allow Authorization or X-API-Key from the browser
+        headers +Access-Control-Allow-Headers "Content-Type, X-CSRF-Token"
+        headers +Access-Control-Max-Age "3600"
+        headers +Vary "Origin, Access-Control-Request-Method, Access-Control-Request-Headers"
+    }
 
     reverse_proxy 127.0.0.1:18080 {
-        header_up X-Auth-Cache-Key {http.request.header.Authorization}
-        header_up -Authorization
+        header_up X-Forwarded-Proto {scheme}
         header_up Host {host}
         header_up X-Real-IP {remote_host}
         header_up +X-Forwarded-For {remote_host}
-
-        # Protect X-Forwarded-* from spoofing; only trust private ranges
+        # Do NOT strip Authorization; programmatic clients need it
+        # header_up -Authorization   <-- remove this line if you had it
         trusted_proxies private_ranges
-    }
-
-    # After reverse_proxy completes, set a normalized cache header for clients
-    header @cache_hit    X-Cache-Status "HIT"
-    header @cache_miss   X-Cache-Status "MISS"
-    header @cache_bypass X-Cache-Status "BYPASS"
-
-    # Basic synthetic health endpoint
-    @health path /.well-known/healthz
-    respond @health 200
-
-    log {
-        output file /var/log/caddy/api.orbitcheck.io.access.log {
-            roll_size 100MiB
-            roll_keep 10
-            roll_keep_for 720h
-        }
-        format json
     }
 
     handle_errors {
@@ -78,53 +75,51 @@ api.orbitcheck.io {
     bind 127.0.0.1
 
     route {
-        request_body {
-            max_size 10MB
-        }
+        request_body { max_size 10MB }
 
-        # Set a request header (use request_header for request-side)
-        request_header X-Body {http.request.body}
+        @mutating method POST PUT PATCH DELETE
+        @auth_paths path /auth/* /login /logout /session/*
 
-        cache {
-          allowed_http_verbs GET POST HEAD
-          ttl 2h
-          stale 24h
-          headers X-Auth-Cache-Key X-Body
-        }
+        # Treat any of these as authenticated/private
+        @auth_headers expression {http.request.header.Authorization} != "" || \
+                                 {http.request.header.Cookie} != "" || \
+                                 {http.request.header.X-API-Key} != "" || \
+                                 {http.request.header.X-Api-Key} != "" || \
+                                 {http.request.header.Signature} != ""
 
-        @has_cache_key header_regexp X-Auth-Cache-Key .+
-        handle @has_cache_key {
-          reverse_proxy 127.0.0.1:8080 {
-            header_up Authorization {http.request.header.X-Auth-Cache-Key}
-            header_up -X-Auth-Cache-Key
-            header_up -X-Body
+        # Never cache mutating, auth paths, or authenticated requests
+        handle @mutating { reverse_proxy 127.0.0.1:8080 { transport http { versions h2c 1.1 } } }
+        handle @auth_paths { reverse_proxy 127.0.0.1:8080 { transport http { versions h2c 1.1 } } }
+        handle @auth_headers { reverse_proxy 127.0.0.1:8080 { transport http { versions h2c 1.1 } } }
 
-            # Active health checks
-            health_uri /health
-            health_interval 10s
-            health_timeout 2s
-            health_status 2xx
-            health_passes 1
-            health_fails 3
-
-            # Passive health checks
-            fail_duration 30s
-            max_fails 2
-
-            transport http {
-              versions h2c 1.1
+        # Cache only anonymous GETs
+        @anon_get {
+            method GET
+            not {
+                expression {http.request.header.Authorization} != "" || \
+                           {http.request.header.Cookie} != "" || \
+                           {http.request.header.X-API-Key} != "" || \
+                           {http.request.header.X-Api-Key} != "" || \
+                           {http.request.header.Signature} != ""
+                path /auth/* /login /logout /session/*
             }
-          }
+        }
+        handle @anon_get {
+            cache {
+                allowed_http_verbs GET
+                ttl 2h
+                stale 24h
+            }
+            reverse_proxy 127.0.0.1:8080 {
+                transport http { versions h2c 1.1 }
+            }
         }
 
+        # Fallback (no cache)
         handle {
-          reverse_proxy 127.0.0.1:8080 {
-            header_up -X-Body
-
-            transport http {
-              versions h2c 1.1
+            reverse_proxy 127.0.0.1:8080 {
+                transport http { versions h2c 1.1 }
             }
-          }
         }
     }
 }

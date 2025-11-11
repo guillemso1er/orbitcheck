@@ -5,12 +5,9 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import type { Pool } from 'pg'
-// Assuming these are your existing service functions
 import { verifyAPIKey, verifyHttpMessageSignature, verifyPAT, verifySession } from '../services/auth.js'
 import { getDefaultProjectId } from '../services/utils.js'
 
-
-// Unify the identity object attached by any auth method
 declare module 'fastify' {
   interface FastifyRequest {
     auth?: {
@@ -23,14 +20,19 @@ declare module 'fastify' {
   }
 }
 
-// Updated scheme names to match the new security architecture
-type SchemeName = 'patAuth' | 'apiKeyAuth' | 'sessionCookie' | 'httpMessageSigAuth'
+type SchemeName =
+  | 'patAuth'
+  | 'apiKeyAuth'
+  | 'sessionCookie'
+  | 'cookieAuth'        // new alias to match OpenAPI scheme
+  | 'httpMessageSigAuth'
+  | 'csrfHeader'        // new CSRF scheme
 
 interface Options {
   pool: Pool
   defaultSecurity?: Array<Record<string, string[]>>
-  // Override any guard if needed
   guards?: Partial<Record<SchemeName, FastifyAuthFunction>>
+  allowedOrigins?: string[] // for Origin/Referer validation on mutating requests
 }
 
 export default fp<Options>(async function openapiSecurity(app, opts) {
@@ -39,14 +41,11 @@ export default fp<Options>(async function openapiSecurity(app, opts) {
 
   const __filename = fileURLToPath(import.meta.url)
   const __dirname = path.dirname(__filename)
-
   const specPath = path.resolve(__dirname, '../../../../packages/contracts/dist/openapi.v1.json')
   const spec = JSON.parse(fs.readFileSync(specPath, 'utf-8'))
 
-  // Convert OpenAPI "{id}" style to Fastify ":id" style
   const toFastifyPath = (p: string) => p.replace(/{([^}/]+)}/g, ':$1')
 
-  // Build a map of route -> security requirements using Fastify-style paths
   const routeSecurityMap = new Map<string, Array<Record<string, string[]>>>()
   for (const [routePath, methods] of Object.entries(spec.paths || {})) {
     const fPath = toFastifyPath(routePath)
@@ -61,17 +60,13 @@ export default fp<Options>(async function openapiSecurity(app, opts) {
   const asGuard = (fn: (req: FastifyRequest, reply: FastifyReply) => Promise<void>): FastifyAuthFunction =>
     async (req, reply) => { await fn(req, reply) }
 
-  // --- Verification Functions (No Reply Logic) ---
-
   async function verifySessionNoReply(req: FastifyRequest) {
     try {
-      await verifySession(req, pool) // Throws on failure
-      // Make sure user_id is actually present on req for downstream code
-      if (!(req as any).user_id && (req as any).session?.get) {
-        const uid = (req as any).session.get('user_id')
-        if (uid) (req as any).user_id = uid
-      }
-      req.auth = { ...(req.auth ?? {}), method: 'session', userId: (req as any).user_id }
+      await verifySession(req, pool)
+      const uid = (req as any).user_id ??
+        (req as any).session?.user_id ??
+        (req as any).session?.get?.('user_id')
+      req.auth = { ...(req.auth ?? {}), method: 'session', userId: uid }
     } catch (error: any) {
       const err = new Error(error?.error?.message || 'Session authentication required')
         ; (err as any).statusCode = error?.status || 401
@@ -91,7 +86,6 @@ export default fp<Options>(async function openapiSecurity(app, opts) {
     ; (req as any).user_id = pat.user_id
       ; (req as any).pat_scopes = pat.scopes
     req.auth = { ...(req.auth ?? {}), method: 'pat', userId: pat.user_id, patScopes: pat.scopes }
-
     try {
       req.auth.projectId ??= await getDefaultProjectId(pool, pat.user_id)
         ; (req as any).project_id = req.auth.projectId
@@ -120,11 +114,57 @@ export default fp<Options>(async function openapiSecurity(app, opts) {
     req.auth = { ...(req.auth ?? {}), method: 'httpMessageSignature', projectId: (req as any).project_id }
   }
 
+  // CSRF guard: header + Origin/Referer check
+  const allowedOrigins = new Set(
+    (opts.allowedOrigins && opts.allowedOrigins.length ? opts.allowedOrigins : [process.env.DASHBOARD_ORIGIN || 'https://dashboard.orbitcheck.io']).map(s => s.toLowerCase())
+  )
+
+  function originMatches(req: FastifyRequest): boolean {
+    const origin = (req.headers.origin || '').toLowerCase()
+    if (origin && allowedOrigins.has(origin)) return true
+    const ref = (req.headers.referer || '').toLowerCase()
+    if (ref) {
+      try {
+        const refOrigin = new URL(ref).origin.toLowerCase()
+        if (allowedOrigins.has(refOrigin)) return true
+      } catch { }
+    }
+    // Also allow same-origin calls (rare if API is only api.*)
+    const host = (req.headers.host || '').toLowerCase()
+    if (origin && new URL(origin).host === host) return true
+    return false
+  }
+
+  async function verifyCsrfNoReply(req: FastifyRequest) {
+    const method = String(req.method).toUpperCase()
+    // Only enforce for state-changing methods; GET/HEAD/OPTIONS pass
+    if (method === 'GET' || method === 'HEAD' || method === 'OPTIONS') return
+    if (!originMatches(req)) {
+      const err = new Error('Invalid request origin')
+        ; (err as any).statusCode = 403
+        ; (err as any).code = 'FORBIDDEN'
+      throw err
+    }
+    const headerToken = (req.headers['x-csrf-token'] as string | undefined) || (req.headers['x-xsrf-token'] as string | undefined)
+    const sessionToken =
+      (req as any).session?.csrf_token ??
+      (req as any).session?.get?.('csrf_token')
+
+    if (!headerToken || !sessionToken || headerToken !== sessionToken) {
+      const err = new Error('Invalid CSRF token')
+        ; (err as any).statusCode = 403
+        ; (err as any).code = 'FORBIDDEN'
+      throw err
+    }
+  }
+
   const defaultGuards: Record<SchemeName, FastifyAuthFunction> = {
     patAuth: asGuard(verifyPatNoReply),
     apiKeyAuth: asGuard(verifyApiKeyNoReply),
     sessionCookie: asGuard(verifySessionNoReply),
+    cookieAuth: asGuard(verifySessionNoReply),      // alias for OpenAPI cookieAuth
     httpMessageSigAuth: asGuard(verifyHttpMessageSignatureNoReply),
+    csrfHeader: asGuard(verifyCsrfNoReply),
   }
 
   const guards = { ...defaultGuards, ...opts.guards }
@@ -133,8 +173,10 @@ export default fp<Options>(async function openapiSecurity(app, opts) {
     patAuth: guards.patAuth,
     apiKeyAuth: guards.apiKeyAuth,
     sessionCookie: guards.sessionCookie,
+    cookieAuth: guards.cookieAuth,
     httpMessageSigInput: guards.httpMessageSigAuth,
     httpMessageSig: guards.httpMessageSigAuth,
+    csrfHeader: guards.csrfHeader,
   }
 
   function composeSecurity(sec?: Array<Record<string, string[]>>) {
@@ -148,29 +190,22 @@ export default fp<Options>(async function openapiSecurity(app, opts) {
         .filter(Boolean) as FastifyAuthFunction[])]
 
       if (andHandlers.length === 0) return null
-      // For single handler, return it directly
       if (andHandlers.length === 1) return andHandlers[0]
-      // For multiple handlers in same security object, use AND relation
       return app.auth(andHandlers, { relation: 'and' })
     }).filter(Boolean) as FastifyAuthFunction[]
 
     if (orGroups.length === 0) return null
-    // For multiple security alternatives, use OR relation
     return orGroups.length === 1 ? orGroups[0] : app.auth(orGroups, { relation: 'or' })
   }
 
   app.addHook('onRoute', (route) => {
-    // route.method can be string | string[]
     const methods = Array.isArray(route.method) ? route.method : [route.method]
     for (const m of methods) {
       const key = `${String(m).toUpperCase()} ${route.url}`
       const security = routeSecurityMap.get(key)
       const composed = composeSecurity(security)
-      if (!composed || composed === 'public') {
-        continue
-      }
+      if (!composed || composed === 'public') continue
 
-      // Attach to preValidation so it runs before any global preHandler hooks
       const existing = Array.isArray(route.preValidation)
         ? route.preValidation
         : route.preValidation ? [route.preValidation] : []

@@ -1,16 +1,16 @@
 import { DASHBOARD_ROUTES } from "@orbitcheck/contracts";
 import bcrypt from 'bcryptjs';
 import type { FastifyReply, FastifyRequest, RawServerBase, RouteGenericInterface } from "fastify";
-import crypto from "node:crypto";
+import crypto, { randomBytes } from "node:crypto";
 import type { Pool } from "pg";
-import { BCRYPT_ROUNDS, DEFAULT_PAT_NAME, LOGOUT_MESSAGE, PAT_SCOPES_ALL, PG_UNIQUE_VIOLATION, PROJECT_NAMES } from "../config.js";
+import { BCRYPT_ROUNDS, PG_UNIQUE_VIOLATION, PROJECT_NAMES } from "../config.js";
 import { ERROR_CODES, ERROR_MESSAGES, HTTP_STATUS } from "../errors.js";
-import type { LoginUserData, LoginUserResponses, LogoutUserResponses, RegisterUserData, RegisterUserResponses } from "../generated/fastify/types.gen.js";
+import type { LoginUserData, LoginUserResponses, RegisterUserData, RegisterUserResponses } from "../generated/fastify/types.gen.js";
 import { createPlansService } from "./plans.js";
 import { getDefaultProjectId, sendError, sendServerError } from "./utils.js";
 
 import argon2 from 'argon2';
-import { createPat, parsePat } from "./pats.js";
+import { parsePat } from "./pats.js";
 
 
 // PAT pepper constant (same as in pats.ts)
@@ -83,61 +83,93 @@ export async function loginUser(
     pool: Pool
 ): Promise<FastifyReply> {
     try {
-        const request_id = generateRequestId();
-        const body = request.body as LoginUserData['body'];
-        const { email, password } = body;
+        const request_id = generateRequestId()
+        const { email, password } = request.body as LoginUserData['body']
 
-        const { rows } = await pool.query('SELECT id, email, password_hash, first_name, last_name, created_at, updated_at FROM users WHERE email = $1', [email]);
+        const { rows } = await pool.query(
+            'SELECT id, email, password_hash, first_name, last_name, created_at, updated_at FROM users WHERE email = $1',
+            [email]
+        )
 
         if (rows.length === 0 || !(await bcrypt.compare(password, rows[0].password_hash))) {
-            return await sendError(rep, HTTP_STATUS.UNAUTHORIZED, ERROR_CODES.INVALID_CREDENTIALS, ERROR_MESSAGES[ERROR_CODES.INVALID_CREDENTIALS], request_id);
+            return await sendError(rep, HTTP_STATUS.UNAUTHORIZED, ERROR_CODES.INVALID_CREDENTIALS, ERROR_MESSAGES[ERROR_CODES.INVALID_CREDENTIALS], request_id)
         }
 
-        const user = rows[0];
+        const user = rows[0]
 
-        // Generate PAT for dashboard access
-        const { token: patToken, tokenId, hashedSecret } = await createPat({
-            userId: user.id,
-            name: DEFAULT_PAT_NAME,
-            scopes: [...PAT_SCOPES_ALL],
-            env: 'live',
-            expiresAt: null,
-            ipAllowlist: undefined,
-            projectId: undefined
-        });
+        // Rotate session ID on login if supported (fastify-session)
+        try {
+            if (typeof (request as any).session?.regenerate === 'function') {
+                await new Promise<void>((resolve, reject) =>
+                    (request as any).session.regenerate((err: any) => err ? reject(err) : resolve())
+                )
+            }
+        } catch { }
 
-        await pool.query(
-            "INSERT INTO personal_access_tokens (user_id, token_id, token_hash, name, scopes, env, expires_at) VALUES ($1, $2, $3, $4, $5, $6, $7)",
-            [user.id, tokenId, hashedSecret, DEFAULT_PAT_NAME, [...PAT_SCOPES_ALL], 'live', null]
-        );
+        // Set session claims
+        if ((request as any).session?.set) {
+            (request as any).session.set('user_id', user.id)
+        } else {
+            (request as any).session.user_id = user.id
+        }
 
-        // Set session cookie for dashboard access
-        request.session.user_id = user.id;
+        // Generate CSRF token bound to session
+        const csrf = randomBytes(32).toString('base64url')
+        if ((request as any).session?.set) {
+            (request as any).session.set('csrf_token', csrf)
+        } else {
+            (request as any).session.csrf_token = csrf
+        }
 
         const response: LoginUserResponses[200] = {
-            user: { id: user.id, email: user.email, first_name: user.first_name, last_name: user.last_name, created_at: user.created_at, updated_at: user.updated_at },
-            pat_token: patToken,
+            user: {
+                id: user.id,
+                email: user.email,
+                first_name: user.first_name,
+                last_name: user.last_name,
+                created_at: user.created_at,
+                updated_at: user.updated_at
+            },
+            csrf_token: csrf,
             request_id
-        };
-        return rep.send(response);
+        }
+        return rep.send(response)
     } catch (error) {
-        return sendServerError(request, rep, error, DASHBOARD_ROUTES.USER_LOGIN, generateRequestId());
+        return sendServerError(request, rep, error, DASHBOARD_ROUTES.USER_LOGIN, generateRequestId())
     }
 }
+
 
 export async function logoutUser(
     request: FastifyRequest,
     rep: FastifyReply
 ): Promise<FastifyReply> {
     try {
-        if (request.session) {
-            request.session.user_id = undefined;
-        }
+        // CSRF is enforced by the csrfHeader guard; here we just destroy session
+        try {
+            if (typeof (request as any).destroySession === 'function') {
+                await new Promise<void>((resolve, reject) =>
+                    (request as any).destroySession((err: any) => err ? reject(err) : resolve())
+                )
+            } else if ((request as any).session) {
+                // Fallback clear
+                (request as any).session.user_id = undefined
+                    ; (request as any).session.set?.('user_id', undefined)
+                    ; (request as any).session.set?.('csrf_token', undefined)
+            }
+        } catch { }
 
-        const response: LogoutUserResponses[200] = { message: LOGOUT_MESSAGE };
-        return rep.send(response);
+        // Clear cookie explicitly (provided by @fastify/cookie)
+        rep.clearCookie('sid', {
+            path: '/',
+            sameSite: 'none',
+            secure: process.env.NODE_ENV === 'production',
+            httpOnly: true,
+        })
+
+        return rep.send({ message: 'Logged out' })
     } catch (error) {
-        return sendServerError(request, rep, error, DASHBOARD_ROUTES.USER_LOGOUT, generateRequestId());
+        return sendServerError(request, rep, error, DASHBOARD_ROUTES.USER_LOGOUT, generateRequestId())
     }
 }
 
@@ -154,27 +186,39 @@ function generateRequestId(): string {
  * @param rep - Fastify reply object
  * @param pool - PostgreSQL connection pool
  * @returns {Promise<void>} Resolves on success, sends 401 on failure
- */
-export async function verifySession<TServer extends RawServerBase = RawServerBase>(request: FastifyRequest<RouteGenericInterface, TServer>, pool: Pool): Promise<void> {
-    if (!request.session || !request.session.user_id) {
-        throw { status: HTTP_STATUS.UNAUTHORIZED, error: { code: ERROR_CODES.UNAUTHORIZED, message: ERROR_MESSAGES[ERROR_CODES.UNAUTHORIZED] } };
+ */// services/auth.ts — your verifySession helper
+export async function verifySession<TServer extends RawServerBase = RawServerBase>(
+    request: FastifyRequest<RouteGenericInterface, TServer>,
+    pool: Pool
+): Promise<void> {
+    const sidUser =
+        (request as any).session?.user_id ??
+        (request as any).session?.get?.('user_id')
+
+    if (!sidUser) {
+        throw { status: HTTP_STATUS.UNAUTHORIZED, error: { code: ERROR_CODES.UNAUTHORIZED, message: ERROR_MESSAGES[ERROR_CODES.UNAUTHORIZED] } }
     }
 
-    const user_id = request.session.user_id;
-    const { rows } = await pool.query('SELECT id FROM users WHERE id = $1', [user_id]);
+    const { rows } = await pool.query('SELECT id FROM users WHERE id = $1', [sidUser])
     if (rows.length === 0) {
-        // Invalid session - clear it
-        request.session.user_id = undefined;
-        throw { status: HTTP_STATUS.UNAUTHORIZED, error: { code: ERROR_CODES.INVALID_TOKEN, message: ERROR_MESSAGES[ERROR_CODES.INVALID_TOKEN] } };
+        // invalid session — destroy if possible
+        try {
+            if (typeof (request as any).destroySession === 'function') {
+                await new Promise((res, rej) => (request as any).destroySession((err: any) => err ? rej(err) : res(null)))
+            } else if ((request as any).session) {
+                (request as any).session.user_id = undefined;
+                (request as any).session.set?.('user_id', undefined);
+            }
+        } catch { }
+        throw { status: HTTP_STATUS.UNAUTHORIZED, error: { code: ERROR_CODES.INVALID_TOKEN, message: ERROR_MESSAGES[ERROR_CODES.INVALID_TOKEN] } }
     }
 
-    // Get default project for user
     try {
-        const projectId = await getDefaultProjectId(pool, user_id);
-        request.user_id = user_id;
-        request.project_id = projectId;
-    } catch (error) {
-        throw { status: HTTP_STATUS.FORBIDDEN, error: { code: ERROR_CODES.NO_PROJECT, message: ERROR_MESSAGES[ERROR_CODES.NO_PROJECT] } };
+        const projectId = await getDefaultProjectId(pool, rows[0].id)
+            ; (request as any).user_id = rows[0].id
+            ; (request as any).project_id = projectId
+    } catch {
+        throw { status: HTTP_STATUS.FORBIDDEN, error: { code: ERROR_CODES.NO_PROJECT, message: ERROR_MESSAGES[ERROR_CODES.NO_PROJECT] } }
     }
 }
 

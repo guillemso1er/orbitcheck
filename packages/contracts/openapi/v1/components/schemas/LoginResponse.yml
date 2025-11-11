@@ -1,13 +1,12 @@
 type: object
 properties:
-  pat_token:
-    type: string
-    description: PAT token for authentication
   user:
     $ref: './User.yml'
   request_id:
     type: string
     description: Request identifier
+  csrf_token:
+    type: string
+    description: CSRF token for subsequent requests
 required:
-  - pat_token
   - user

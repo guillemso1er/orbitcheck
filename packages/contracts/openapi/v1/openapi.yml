@@ -296,3 +296,7 @@ components:
       $ref: './components/schemas/LoginRequest.yml'
     LoginResponse:
       $ref: './components/schemas/LoginResponse.yml'
+    User:
+      $ref: './components/schemas/User.yml'
+    Pagination:
+      $ref: './components/schemas/Pagination.yml'

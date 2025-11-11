@@ -520,10 +520,6 @@ export type LoginRequest = {
 };
 
 export type LoginResponse = {
-    /**
-     * PAT token for authentication
-     */
-    pat_token: string;
     user: {
         /**
          * User ID
@@ -554,6 +550,10 @@ export type LoginResponse = {
      * Request identifier
      */
     request_id?: string;
+    /**
+     * CSRF token for subsequent requests
+     */
+    csrf_token?: string;
 };
 
 export type User = {
@@ -581,6 +581,25 @@ export type User = {
      * Last update timestamp
      */
     updated_at?: string;
+};
+
+export type Pagination = {
+    /**
+     * Current page number
+     */
+    page: number;
+    /**
+     * Number of items per page
+     */
+    limit: number;
+    /**
+     * Total number of items
+     */
+    total: number;
+    /**
+     * Total number of pages
+     */
+    total_pages: number;
 };
 
 export type LoginUserData = {
@@ -644,43 +663,37 @@ export type LoginUserError = LoginUserErrors[keyof LoginUserErrors];
 
 export type LoginUserResponses = {
     /**
-     * Login successful
+     * Login successful; session established and cookie set
      */
     200: {
-        /**
-         * PAT token for authentication
-         */
-        pat_token: string;
         user: {
             /**
              * User ID
              */
-            id: string;
+            id?: string;
             /**
-             * User email address
+             * User email
              */
-            email: string;
+            email?: string;
             /**
              * User first name
              */
-            first_name: string;
+            first_name?: string;
             /**
              * User last name
              */
-            last_name: string;
-            /**
-             * Creation timestamp
-             */
+            last_name?: string;
             created_at?: string;
-            /**
-             * Last update timestamp
-             */
             updated_at?: string;
         };
         /**
          * Request identifier
          */
-        request_id?: string;
+        request_id: string;
+        /**
+         * CSRF token for subsequent requests
+         */
+        csrf_token: string;
     };
 };
 
@@ -4384,6 +4397,103 @@ export type BatchDedupeResponses = {
 };
 
 export type BatchDedupeResponse = BatchDedupeResponses[keyof BatchDedupeResponses];
+
+export type BatchEvaluateOrdersData = {
+    body: {
+        orders: Array<{
+            /**
+             * Unique order identifier
+             */
+            order_id: string;
+            /**
+             * Customer email address
+             */
+            customer_email: string;
+            /**
+             * Customer phone number
+             */
+            customer_phone?: string;
+            /**
+             * Order total amount
+             */
+            total_amount?: number;
+            /**
+             * Currency code (e.g., USD, EUR)
+             */
+            currency?: string;
+            /**
+             * Comma-separated list of items
+             */
+            items?: string;
+            /**
+             * Shipping address
+             */
+            shipping_address?: string;
+        }>;
+    };
+    path?: never;
+    query?: never;
+    url: '/v1/batch/orders';
+};
+
+export type BatchEvaluateOrdersErrors = {
+    /**
+     * Bad request
+     */
+    400: {
+        error?: {
+            code?: 'INVALID_INPUT' | 'INVALID_PLAN';
+            /**
+             * Error message
+             */
+            message?: string;
+        };
+    };
+    /**
+     * Unauthorized
+     */
+    401: {
+        code?: 'UNAUTHORIZED';
+        /**
+         * Error message
+         */
+        message?: string;
+    };
+    /**
+     * Rate limit exceeded
+     */
+    429: {
+        code?: 'LIMIT_EXCEEDED';
+        /**
+         * Error message
+         */
+        message?: string;
+    };
+};
+
+export type BatchEvaluateOrdersError = BatchEvaluateOrdersErrors[keyof BatchEvaluateOrdersErrors];
+
+export type BatchEvaluateOrdersResponses = {
+    /**
+     * Batch order evaluation job started
+     */
+    202: {
+        /**
+         * Unique job identifier
+         */
+        job_id?: string;
+        /**
+         * Job status
+         */
+        status?: 'pending';
+        /**
+         * Request identifier
+         */
+        request_id?: string;
+    };
+};
+
+export type BatchEvaluateOrdersResponse = BatchEvaluateOrdersResponses[keyof BatchEvaluateOrdersResponses];
 
 export type GetJobStatusByIdData = {
     body?: never;

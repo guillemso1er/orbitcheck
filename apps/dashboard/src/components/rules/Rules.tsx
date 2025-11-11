@@ -330,10 +330,9 @@ const Rules: React.FC = () => {
     setTestError(null);
     try {
       const payload = JSON.parse(debouncedTestPayload);
-      const token = localStorage.getItem(LOCAL_STORAGE_KEYS.AUTH_TOKEN);
       const response = await fetch(`${API_BASE}${API_ENDPOINTS.TEST_RULES_AGAINST_PAYLOAD}`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
       if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);

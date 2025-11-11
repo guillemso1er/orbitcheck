@@ -1,0 +1,4 @@
+type: apiKey
+in: cookie
+name: sid
+description: Session cookie for authentication

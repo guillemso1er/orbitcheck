@@ -111,15 +111,8 @@ const Login: React.FC = () => {
           id: data.user.id || '',
           email: data.user.email || ''
         };
-        // Store the auth token for API requests
-        // For registration, use pat_token; for login, check for token
-        const token = (data as any).pat_token || (data as any).token;
-        if (token) {
-          localStorage.setItem(LOCAL_STORAGE_KEYS.AUTH_TOKEN, token);
-        } else {
-          throw new Error('No authentication token received');
-        }
-        login(token, user);
+        // Session-based auth: cookie is set by API, just store user data
+        login(user);
         navigate('/api-keys');
       } else {
         throw new Error(ERROR_MESSAGES.INVALID_SERVER_RESPONSE);

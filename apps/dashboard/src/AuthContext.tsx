@@ -8,8 +8,7 @@ interface User {
 
 interface AuthContextType {
   user: User | null;
-  token: string | null;
-  login: (token: string, user: User) => void;
+  login: (user: User) => void;
   logout: () => void;
   isAuthenticated: boolean;
   isLoading: boolean;
@@ -32,38 +31,28 @@ interface AuthProviderProps {
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const storedToken = localStorage.getItem(LOCAL_STORAGE_KEYS.AUTH_TOKEN);
     const storedUser = localStorage.getItem(LOCAL_STORAGE_KEYS.USER);
-    if (storedToken) {
-      setToken(storedToken);
-    }
     if (storedUser) {
       setUser(JSON.parse(storedUser));
     }
     setIsLoading(false);
   }, []);
 
-  const login = (newToken: string, newUser: User) => {
-    setToken(newToken);
+  const login = (newUser: User) => {
     setUser(newUser);
-    localStorage.setItem(LOCAL_STORAGE_KEYS.AUTH_TOKEN, newToken);
     localStorage.setItem(LOCAL_STORAGE_KEYS.USER, JSON.stringify(newUser));
   };
 
   const logout = () => {
-    setToken(null);
     setUser(null);
-    localStorage.removeItem(LOCAL_STORAGE_KEYS.AUTH_TOKEN);
     localStorage.removeItem(LOCAL_STORAGE_KEYS.USER);
   };
 
   const value: AuthContextType = {
     user,
-    token,
     login,
     logout,
     isAuthenticated: !!user,
