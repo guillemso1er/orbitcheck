@@ -1,7 +1,7 @@
 import { ApiKey, createApiKey, listApiKeys, revokeApiKey } from '@orbitcheck/contracts';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { apiClient } from 'src/utils/api';
 import { UI_STRINGS } from '../constants';
+import { apiClient } from '../utils/api';
 
 
 interface ApiKeysProps {

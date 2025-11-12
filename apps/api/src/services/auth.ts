@@ -10,7 +10,7 @@ import { getDefaultProjectId, sendError, sendServerError } from "./utils.js";
 
 import argon2 from 'argon2';
 import { randomBytes } from "node:crypto";
-import { routes } from 'src/routes/routes.js';
+import { routes } from '../routes/routes.js';
 import { parsePat } from "./pats.js";
 
 

@@ -3,9 +3,9 @@ import fastifySwaggerUi from '@fastify/swagger-ui'
 import ScalarApiReference from '@scalar/fastify-api-reference'
 import type { FastifyInstance, RawServerBase } from 'fastify'
 
-import { managementRoutes, routes } from 'src/routes/routes.js'
 import { API_VERSION, ROUTES } from '../config.js'
 import { environment } from '../environment.js'
+import { managementRoutes, routes } from '../routes/routes.js'
 
 function shouldHideRoute(url: string): boolean {
     return (
