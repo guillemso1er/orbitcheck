@@ -1,7 +1,7 @@
 import { createClient } from "@orbitcheck/contracts";
 import { API_BASE } from '../constants';
 
-export const apiClient = createClient({ baseUrl: API_BASE });
+export const apiClient = createClient({ baseUrl: API_BASE, credentials: 'include' });
 
 // Add CSRF token to requests that need it
 apiClient.interceptors.request.use((request) => {

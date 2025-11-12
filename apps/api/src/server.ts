@@ -101,7 +101,7 @@ export async function build(pool: Pool, redis: IORedisType): Promise<FastifyInst
             // In production behind TLS-terminating proxy, cookies must be secure
             // trustProxy: true ensures Fastify knows the original protocol from X-Forwarded-Proto
             secure: process.env.NODE_ENV === 'production',
-            sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+            sameSite: process.env.NODE_ENV === 'lax',
             maxAge: SESSION_MAX_AGE_MS,
             // Domain without leading dot (modern standard) allows sharing between subdomains
             // orbitcheck.io allows sharing between api.orbitcheck.io and dashboard.orbitcheck.io
@@ -118,8 +118,6 @@ export async function build(pool: Pool, redis: IORedisType): Promise<FastifyInst
     if (!isTestEnvironment) {
         await app.register(metrics, { endpoint: '/metrics' });
     }
-
-
 
     // Setup security headers
     await setupSecurityHeaders(app);
