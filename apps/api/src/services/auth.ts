@@ -98,6 +98,19 @@ export async function loginUser(
 
         const user = rows[0]
 
+        // Debug: Log request protocol and headers in production
+        if (process.env.NODE_ENV === 'production') {
+            request.log.info({
+                protocol: (request as any).protocol,
+                hostname: request.hostname,
+                headers: {
+                    'x-forwarded-proto': request.headers['x-forwarded-proto'],
+                    'x-forwarded-host': request.headers['x-forwarded-host'],
+                    host: request.headers.host,
+                }
+            }, 'Login request details');
+        }
+
         // Set session max age based on rememberMe flag
         // Default: 7 days (604800000ms), Remember me: 30 days (2592000000ms)
         const sessionMaxAge = rememberMe ? 2592000000 : 604800000;
@@ -161,8 +174,11 @@ export async function logoutUser(
         rep.clearCookie('orbitcheck_session', {
             path: '/',
             sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
-            secure: 'auto', // Auto-detect based on X-Forwarded-Proto header
+            secure: process.env.NODE_ENV === 'production',
             httpOnly: true,
+            domain: process.env.NODE_ENV === 'production'
+                ? '.orbitcheck.io'
+                : undefined
         })
 
         return rep.send({ message: 'Logged out' })

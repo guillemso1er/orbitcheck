@@ -98,9 +98,13 @@ export async function build(pool: Pool, redis: IORedisType): Promise<FastifyInst
         cookie: {
             path: '/',
             httpOnly: true,
-            secure: 'auto', // Auto-detect based on X-Forwarded-Proto header
+            // In production behind TLS-terminating proxy, cookies must be secure
+            // trustProxy: true ensures Fastify knows the original protocol from X-Forwarded-Proto
+            secure: process.env.NODE_ENV === 'production',
             sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
             maxAge: SESSION_MAX_AGE_MS,
+            // Domain must match or be parent of the request host
+            // .orbitcheck.io allows sharing between api.orbitcheck.io and dashboard.orbitcheck.io
             domain: process.env.NODE_ENV === 'production'
                 ? '.orbitcheck.io'
                 : undefined
