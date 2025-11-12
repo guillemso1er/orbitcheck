@@ -196,7 +196,7 @@ export async function logoutUser(
             secure: process.env.NODE_ENV === 'production',
             httpOnly: true,
             domain: process.env.NODE_ENV === 'production'
-                ? '.orbitcheck.io'
+                ? 'orbitcheck.io'
                 : undefined
         })
 

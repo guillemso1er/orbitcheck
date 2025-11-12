@@ -103,10 +103,10 @@ export async function build(pool: Pool, redis: IORedisType): Promise<FastifyInst
             secure: process.env.NODE_ENV === 'production',
             sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
             maxAge: SESSION_MAX_AGE_MS,
-            // Domain must match or be parent of the request host
-            // .orbitcheck.io allows sharing between api.orbitcheck.io and dashboard.orbitcheck.io
+            // Domain without leading dot (modern standard) allows sharing between subdomains
+            // orbitcheck.io allows sharing between api.orbitcheck.io and dashboard.orbitcheck.io
             domain: process.env.NODE_ENV === 'production'
-                ? '.orbitcheck.io'
+                ? 'orbitcheck.io'
                 : undefined
         }
     });
