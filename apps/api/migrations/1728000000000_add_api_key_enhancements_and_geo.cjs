@@ -19,7 +19,8 @@ const up = (pgm) => {
         min_lat double precision NOT NULL,
         max_lat double precision NOT NULL,
         min_lng double precision NOT NULL,
-        max_lng double precision NOT NULL
+        max_lng double precision NOT NULL,
+        wraps_dateline boolean NOT NULL
     );
   `);
 
