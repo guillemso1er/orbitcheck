@@ -6,7 +6,7 @@ import { getPool, getRedis, seedTestData, startTestEnv, stopTestEnv } from "./se
 let app: Awaited<ReturnType<typeof build>>
 let pool: ReturnType<typeof getPool>
 let redis: Redis
-let patToken: string
+let cookieJar: Record<string, string>
 let projectId: string
 
 // Test order data generators
@@ -95,13 +95,18 @@ beforeAll(async () => {
                 password: 'password123'
             }
         })
-        patToken = loginRes.json().pat_token
+
+        // Extract session cookies from login response
+        cookieJar = {}
+        for (const c of loginRes.cookies ?? []) {
+            cookieJar[c.name] = c.value
+        }
 
         // Get project ID
         const projectRes = await app.inject({
             method: 'GET',
             url: '/v1/projects',
-            headers: { authorization: `Bearer ${patToken}` }
+            cookies: cookieJar
         })
         projectId = projectRes.json()[0]?.id || 'test-project-id'
 
@@ -145,7 +150,7 @@ describe('Orders Integration Tests', () => {
             const res = await app.inject({
                 method: 'POST',
                 url: '/v1/orders/evaluate',
-                headers: { authorization: `Bearer ${patToken}` },
+                cookies: cookieJar,
                 payload: orderData
             })
 
@@ -187,7 +192,7 @@ describe('Orders Integration Tests', () => {
             const res = await app.inject({
                 method: 'POST',
                 url: '/v1/orders/evaluate',
-                headers: { authorization: `Bearer ${patToken}` },
+                cookies: cookieJar,
                 payload: invalidOrder
             })
 
@@ -202,7 +207,7 @@ describe('Orders Integration Tests', () => {
             const res = await app.inject({
                 method: 'POST',
                 url: '/v1/orders/evaluate',
-                headers: { authorization: `Bearer ${patToken}` },
+                cookies: cookieJar,
                 payload: orderData
             })
 
@@ -218,7 +223,7 @@ describe('Orders Integration Tests', () => {
                 const res = await app.inject({
                     method: 'POST',
                     url: '/v1/orders/evaluate',
-                    headers: { authorization: `Bearer ${patToken}` },
+                    cookies: cookieJar,
                     payload: orderData
                 })
 
@@ -239,7 +244,7 @@ describe('Orders Integration Tests', () => {
             const res1 = await app.inject({
                 method: 'POST',
                 url: '/v1/orders/evaluate',
-                headers: { authorization: `Bearer ${patToken}` },
+                cookies: cookieJar,
                 payload: orderData
             })
 
@@ -250,7 +255,7 @@ describe('Orders Integration Tests', () => {
             const res2 = await app.inject({
                 method: 'POST',
                 url: '/v1/orders/evaluate',
-                headers: { authorization: `Bearer ${patToken}` },
+                cookies: cookieJar,
                 payload: orderData // Same order data including same order_id
             })
 
@@ -276,7 +281,7 @@ describe('Orders Integration Tests', () => {
             const res = await app.inject({
                 method: 'POST',
                 url: '/v1/orders/evaluate',
-                headers: { authorization: `Bearer ${patToken}` },
+                cookies: cookieJar,
                 payload: orderData
             })
 
@@ -295,7 +300,7 @@ describe('Orders Integration Tests', () => {
             const res = await app.inject({
                 method: 'POST',
                 url: '/v1/orders/evaluate',
-                headers: { authorization: `Bearer ${patToken}` },
+                cookies: cookieJar,
                 payload: orderData
             })
 
@@ -314,7 +319,7 @@ describe('Orders Integration Tests', () => {
             const res = await app.inject({
                 method: 'POST',
                 url: '/v1/orders/evaluate',
-                headers: { authorization: `Bearer ${patToken}` },
+                cookies: cookieJar,
                 payload: orderData
             })
 
@@ -331,7 +336,7 @@ describe('Orders Integration Tests', () => {
             const res = await app.inject({
                 method: 'POST',
                 url: '/v1/orders/evaluate',
-                headers: { authorization: `Bearer ${patToken}` },
+                cookies: cookieJar,
                 payload: orderData
             })
 
@@ -365,7 +370,7 @@ describe('Orders Integration Tests', () => {
                 const res = await app.inject({
                     method: 'POST',
                     url: '/v1/orders/evaluate',
-                    headers: { authorization: `Bearer ${patToken}` },
+                    cookies: cookieJar,
                     payload: orderData
                 })
 
@@ -387,7 +392,7 @@ describe('Orders Integration Tests', () => {
             const res = await app.inject({
                 method: 'POST',
                 url: '/v1/orders/evaluate',
-                headers: { authorization: `Bearer ${patToken}` },
+                cookies: cookieJar,
                 payload: orderData
             })
 
@@ -412,7 +417,7 @@ describe('Orders Integration Tests', () => {
                 const res = await app.inject({
                     method: 'POST',
                     url: '/v1/orders/evaluate',
-                    headers: { authorization: `Bearer ${patToken}` },
+                    cookies: cookieJar,
                     payload: orderData
                 })
 
@@ -435,7 +440,7 @@ describe('Orders Integration Tests', () => {
             const res = await app.inject({
                 method: 'POST',
                 url: '/v1/orders/evaluate',
-                headers: { authorization: `Bearer ${patToken}` },
+                cookies: cookieJar,
                 payload: orderData
             })
 
@@ -463,7 +468,7 @@ describe('Orders Integration Tests', () => {
             const res = await app.inject({
                 method: 'POST',
                 url: '/v1/orders/evaluate',
-                headers: { authorization: `Bearer ${patToken}` },
+                cookies: cookieJar,
                 payload: orderData
             })
 
@@ -491,7 +496,7 @@ describe('Orders Integration Tests', () => {
             const res = await app.inject({
                 method: 'POST',
                 url: '/v1/orders/evaluate',
-                headers: { authorization: `Bearer ${patToken}` },
+                cookies: cookieJar,
                 payload: orderData
             })
 
@@ -517,7 +522,7 @@ describe('Orders Integration Tests', () => {
             const res1 = await app.inject({
                 method: 'POST',
                 url: '/v1/orders/evaluate',
-                headers: { authorization: `Bearer ${patToken}` },
+                cookies: cookieJar,
                 payload: order1
             })
 
@@ -537,7 +542,7 @@ describe('Orders Integration Tests', () => {
             const res2 = await app.inject({
                 method: 'POST',
                 url: '/v1/orders/evaluate',
-                headers: { authorization: `Bearer ${patToken}` },
+                cookies: cookieJar,
                 payload: order2
             })
 
@@ -566,7 +571,7 @@ describe('Orders Integration Tests', () => {
             const res1 = await app.inject({
                 method: 'POST',
                 url: '/v1/orders/evaluate',
-                headers: { authorization: `Bearer ${patToken}` },
+                cookies: cookieJar,
                 payload: order1
             })
 
@@ -585,7 +590,7 @@ describe('Orders Integration Tests', () => {
             const res2 = await app.inject({
                 method: 'POST',
                 url: '/v1/orders/evaluate',
-                headers: { authorization: `Bearer ${patToken}` },
+                cookies: cookieJar,
                 payload: order2
             })
 
@@ -606,7 +611,7 @@ describe('Orders Integration Tests', () => {
             const res = await app.inject({
                 method: 'POST',
                 url: '/v1/orders/evaluate',
-                headers: { authorization: `Bearer ${patToken}` },
+                cookies: cookieJar,
                 payload: orderData
             })
 
@@ -634,7 +639,7 @@ describe('Orders Integration Tests', () => {
             const res = await app.inject({
                 method: 'POST',
                 url: '/v1/orders/evaluate',
-                headers: { authorization: `Bearer ${patToken}` },
+                cookies: cookieJar,
                 payload: orderData
             })
 
@@ -667,7 +672,7 @@ describe('Orders Integration Tests', () => {
             const res = await app.inject({
                 method: 'POST',
                 url: '/v1/orders/evaluate',
-                headers: { authorization: `Bearer ${patToken}` },
+                cookies: cookieJar,
                 payload: orderData
             })
 
@@ -696,7 +701,7 @@ describe('Orders Integration Tests', () => {
             const res = await app.inject({
                 method: 'POST',
                 url: '/v1/orders/evaluate',
-                headers: { authorization: `Bearer ${patToken}` },
+                cookies: cookieJar,
                 payload: orderData
             })
 
@@ -731,7 +736,7 @@ describe('Orders Integration Tests', () => {
             const res = await app.inject({
                 method: 'POST',
                 url: '/v1/orders/evaluate',
-                headers: { authorization: `Bearer ${patToken}` },
+                cookies: cookieJar,
                 payload: orderData
             })
 
@@ -760,7 +765,7 @@ describe('Orders Integration Tests', () => {
             const res = await app.inject({
                 method: 'POST',
                 url: '/v1/orders/evaluate',
-                headers: { authorization: `Bearer ${patToken}` },
+                cookies: cookieJar,
                 payload: orderData
             })
 
@@ -779,7 +784,7 @@ describe('Orders Integration Tests', () => {
                 app.inject({
                     method: 'POST',
                     url: '/v1/orders/evaluate',
-                    headers: { authorization: `Bearer ${patToken}` },
+                    cookies: cookieJar,
                     payload: orderData
                 })
             )
@@ -808,7 +813,7 @@ describe('Orders Integration Tests', () => {
             const res = await app.inject({
                 method: 'POST',
                 url: '/v1/orders/evaluate',
-                headers: { authorization: `Bearer ${patToken}` },
+                cookies: cookieJar,
                 payload: createValidOrder()
             })
 
@@ -829,7 +834,7 @@ describe('Orders Integration Tests', () => {
                 app.inject({
                     method: 'POST',
                     url: '/v1/orders/evaluate',
-                    headers: { authorization: `Bearer ${patToken}` },
+                    cookies: cookieJar,
                     payload: order
                 })
             )

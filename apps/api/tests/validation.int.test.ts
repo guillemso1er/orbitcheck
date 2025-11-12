@@ -7,6 +7,7 @@ let app: Awaited<ReturnType<typeof build>>
 let pool: ReturnType<typeof getPool>
 let redis: Redis
 let apiKey: string
+let cookieJar: Record<string, string>
 
 beforeAll(async () => {
   try {
@@ -44,17 +45,23 @@ beforeAll(async () => {
       }
     })
 
+    // Extract session cookies from login response
+    cookieJar = {}
+    for (const c of loginRes.cookies ?? []) {
+      cookieJar[c.name] = c.value
+    }
+
     const projectRes = await app.inject({
       method: 'POST',
       url: '/projects',
       payload: { name: 'Test Project' },
-      headers: { authorization: `Bearer ${loginRes.json().pat_token}` }
+      cookies: cookieJar
     })
 
     const keyRes = await app.inject({
       method: 'POST',
       url: '/v1/api-keys',
-      headers: { authorization: `Bearer ${loginRes.json().pat_token}` },
+      cookies: cookieJar,
       payload: { name: 'Test API Key' }
     })
     apiKey = keyRes.json().full_key
@@ -115,13 +122,13 @@ beforeEach(async () => {
     method: 'POST',
     url: '/projects',
     payload: { name: 'Test Project' },
-    headers: { authorization: `Bearer ${loginRes.json().pat_token}` }
+    cookies: cookieJar
   })
 
   const keyRes = await app.inject({
     method: 'POST',
     url: '/v1/api-keys',
-    headers: { authorization: `Bearer ${loginRes.json().pat_token}` },
+    cookies: cookieJar,
     payload: { name: 'Test API Key' }
   })
   apiKey = keyRes.json().full_key

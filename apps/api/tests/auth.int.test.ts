@@ -246,7 +246,6 @@ describe('Authentication Integration Tests', () => {
       expect(body).toHaveProperty('user')
       expect(body.user).toHaveProperty('id')
       expect(body.user).toHaveProperty('email', 'test@example.com')
-      expect(body).toHaveProperty('pat_token')
       expect(body).toHaveProperty('request_id')
       expect(typeof body.pat_token).toBe('string')
     })
@@ -263,10 +262,10 @@ describe('Authentication Integration Tests', () => {
   })
 
   describe('PAT Authentication', () => {
-    let patToken: string
+    let cookieJar: Record<string, string>
 
     beforeEach(async () => {
-      // Register and login to get PAT token
+      // Register and login to get session cookie
       await app.inject({
         method: 'POST',
         url: '/auth/register',
@@ -285,7 +284,12 @@ describe('Authentication Integration Tests', () => {
           password: 'password123'
         }
       })
-      patToken = loginRes.json().pat_token
+
+      // Extract session cookies from login response
+      cookieJar = {}
+      for (const c of loginRes.cookies ?? []) {
+        cookieJar[c.name] = c.value
+      }
     })
 
     test('401 on invalid PAT', async () => {

@@ -8,6 +8,7 @@ let pool: ReturnType<typeof getPool>
 let redis: Redis
 let apiKey: string
 let projectId: string
+let cookieJar: Record<string, string>
 
 beforeAll(async () => {
   try {
@@ -36,7 +37,7 @@ beforeAll(async () => {
       }
     })
     
-    const loginRes = await app.inject({
+const loginRes = await app.inject({
       method: 'POST',
       url: '/auth/login',
       payload: {
@@ -44,12 +45,18 @@ beforeAll(async () => {
         password: 'password123'
       }
     })
+
+    // Extract session cookies from login response
+    cookieJar = {}
+    for (const c of loginRes.cookies ?? []) {
+      cookieJar[c.name] = c.value
+    }
     
     const projectRes = await app.inject({
       method: 'POST',
       url: '/projects',
       payload: { name: 'Test Project' },
-      headers: { authorization: `Bearer ${loginRes.json().pat_token}` }
+      cookies: cookieJar
     })
     
     // Try to get project ID from API response, fallback to database
@@ -80,7 +87,7 @@ beforeAll(async () => {
       method: 'POST',
       url: '/v1/api-keys',
       payload: {}, // Empty body as per API spec
-      headers: { authorization: `Bearer ${loginRes.json().pat_token}` }
+      cookies: cookieJar
     })
     
     if (keyRes.statusCode !== 201) {
@@ -145,7 +152,7 @@ beforeEach(async () => {
     method: 'POST',
     url: '/projects',
     payload: { name: 'Test Project' },
-    headers: { authorization: `Bearer ${loginRes.json().pat_token}` }
+    cookies: cookieJar
   })
   
   // Try to get project ID from API response, fallback to database
@@ -182,7 +189,7 @@ beforeEach(async () => {
     method: 'POST',
     url: '/v1/api-keys',
     payload: {}, // Empty body as per API spec
-    headers: { authorization: `Bearer ${loginRes.json().pat_token}` }
+    cookies: cookieJar
   })
   
   if (keyRes.statusCode !== 201) {

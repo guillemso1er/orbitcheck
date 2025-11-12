@@ -6,6 +6,7 @@ import { getPool, getRedis, resetDb, startTestEnv, stopTestEnv } from './setup'
 let app: Awaited<ReturnType<typeof build>>
 let pool: ReturnType<typeof getPool>
 let redis: Redis
+let cookieJar: Record<string, string>
 
 beforeAll(async () => {
   try {
@@ -55,6 +56,33 @@ afterAll(async () => {
 
 beforeEach(async () => {
   await resetDb()
+
+  // register a user
+  await app.inject({
+    method: 'POST',
+    url: '/auth/register',
+    payload: {
+      email: 'test@example.com',
+      password: 'password123',
+      confirm_password: 'password123'
+    }
+  })
+  
+  // Login and get fresh session cookie for each test
+  const loginRes = await app.inject({
+    method: 'POST',
+    url: '/auth/login',
+    payload: {
+      email: 'test@example.com',
+      password: 'password123'
+    }
+  })
+
+  // Extract session cookies from login response
+  cookieJar = {}
+  for (const c of loginRes.cookies ?? []) {
+    cookieJar[c.name] = c.value
+  }
 })
 
 describe('Projects Integration Tests', () => {
@@ -124,7 +152,7 @@ describe('Projects Integration Tests', () => {
       const res = await app.inject({
         method: 'GET',
         url: '/projects',
-        headers: { authorization: `Bearer ${loginRes.json().pat_token}` }
+        cookies: cookieJar
       })
       expect(res.statusCode).toBe(200)
       const body = res.json()
@@ -161,7 +189,7 @@ describe('Projects Integration Tests', () => {
         method: 'POST',
         url: '/projects',
         payload: { name: 'Project 1' },
-        headers: { authorization: `Bearer ${loginRes.json().pat_token}` }
+        cookies: cookieJar
       })
       expect(project1Res.statusCode).toBe(201)
 
@@ -169,7 +197,7 @@ describe('Projects Integration Tests', () => {
         method: 'POST',
         url: '/projects',
         payload: { name: 'Project 2' },
-        headers: { authorization: `Bearer ${loginRes.json().pat_token}` }
+        cookies: cookieJar
       })
       expect(project2Res.statusCode).toBe(201)
 
@@ -177,7 +205,7 @@ describe('Projects Integration Tests', () => {
       const listRes = await app.inject({
         method: 'GET',
         url: '/projects',
-        headers: { authorization: `Bearer ${loginRes.json().pat_token}` }
+        cookies: cookieJar
       })
       expect(listRes.statusCode).toBe(200)
       const body = listRes.json()
@@ -215,7 +243,7 @@ describe('Projects Integration Tests', () => {
         method: 'POST',
         url: '/projects',
         payload: { name: 'First Project' },
-        headers: { authorization: `Bearer ${loginRes.json().pat_token}` }
+        cookies: cookieJar
       })
       
       await new Promise(resolve => setTimeout(resolve, 10))
@@ -224,14 +252,14 @@ describe('Projects Integration Tests', () => {
         method: 'POST',
         url: '/projects',
         payload: { name: 'Second Project' },
-        headers: { authorization: `Bearer ${loginRes.json().pat_token}` }
+        cookies: cookieJar
       })
 
       // Get projects list
       const listRes = await app.inject({
         method: 'GET',
         url: '/projects',
-        headers: { authorization: `Bearer ${loginRes.json().pat_token}` }
+        cookies: cookieJar
       })
       expect(listRes.statusCode).toBe(200)
       const body = listRes.json()
@@ -267,7 +295,7 @@ describe('Projects Integration Tests', () => {
         method: 'POST',
         url: '/projects',
         payload: { name: 'My Test Project' },
-        headers: { authorization: `Bearer ${loginRes.json().pat_token}` }
+        cookies: cookieJar
       })
       expect(res.statusCode).toBe(201)
       const body = res.json()
@@ -302,7 +330,7 @@ describe('Projects Integration Tests', () => {
         method: 'POST',
         url: '/projects',
         payload: {},
-        headers: { authorization: `Bearer ${loginRes.json().pat_token}` }
+        cookies: cookieJar
       })
       expect(res.statusCode).toBe(400)
       const body = res.json()
@@ -335,7 +363,7 @@ describe('Projects Integration Tests', () => {
         method: 'POST',
         url: '/projects',
         payload: { name: '' },
-        headers: { authorization: `Bearer ${loginRes.json().pat_token}` }
+        cookies: cookieJar
       })
       expect(res.statusCode).toBe(400)
       const body = res.json()
@@ -368,7 +396,7 @@ describe('Projects Integration Tests', () => {
         method: 'POST',
         url: '/projects',
         payload: { name: '   ' },
-        headers: { authorization: `Bearer ${loginRes.json().pat_token}` }
+        cookies: cookieJar
       })
       expect(res.statusCode).toBe(400)
       const body = res.json()
@@ -401,7 +429,7 @@ describe('Projects Integration Tests', () => {
         method: 'POST',
         url: '/projects',
         payload: { name: '  Trimmed Project  ' },
-        headers: { authorization: `Bearer ${loginRes.json().pat_token}` }
+        cookies: cookieJar
       })
       expect(res.statusCode).toBe(201)
       const body = res.json()
@@ -434,7 +462,7 @@ describe('Projects Integration Tests', () => {
         method: 'POST',
         url: '/projects',
         payload: { name: 'Project 1' },
-        headers: { authorization: `Bearer ${loginRes.json().pat_token}` }
+        cookies: cookieJar
       })
       expect(project1Res.statusCode).toBe(201)
 
@@ -442,7 +470,7 @@ describe('Projects Integration Tests', () => {
         method: 'POST',
         url: '/projects',
         payload: { name: 'Project 2' },
-        headers: { authorization: `Bearer ${loginRes.json().pat_token}` }
+        cookies: cookieJar
       })
       expect(project2Res.statusCode).toBe(201)
 
@@ -451,7 +479,7 @@ describe('Projects Integration Tests', () => {
         method: 'POST',
         url: '/projects',
         payload: { name: 'Project 3' },
-        headers: { authorization: `Bearer ${loginRes.json().pat_token}` }
+        cookies: cookieJar
       })
       
       if (project3Res.statusCode === 402) {
@@ -489,7 +517,7 @@ describe('Projects Integration Tests', () => {
         method: 'POST',
         url: '/projects',
         payload: { name: 'My Project' },
-        headers: { authorization: `Bearer ${loginRes.json().pat_token}` }
+        cookies: cookieJar
       })
       expect(project1Res.statusCode).toBe(201)
 
@@ -497,7 +525,7 @@ describe('Projects Integration Tests', () => {
         method: 'POST',
         url: '/projects',
         payload: { name: 'My Project' },
-        headers: { authorization: `Bearer ${loginRes.json().pat_token}` }
+        cookies: cookieJar
       })
       expect(project2Res.statusCode).toBe(201)
 
@@ -533,7 +561,7 @@ describe('Projects Integration Tests', () => {
         method: 'POST',
         url: '/projects',
         payload: { name: 'Project to Delete' },
-        headers: { authorization: `Bearer ${loginRes.json().pat_token}` }
+        cookies: cookieJar
       })
       const projectId = projectRes.json().id
 
@@ -541,7 +569,7 @@ describe('Projects Integration Tests', () => {
       const deleteRes = await app.inject({
         method: 'DELETE',
         url: `/projects/${projectId}`,
-        headers: { authorization: `Bearer ${loginRes.json().pat_token}` }
+        cookies: cookieJar
       })
       expect(deleteRes.statusCode).toBe(200)
       const body = deleteRes.json()
@@ -551,7 +579,7 @@ describe('Projects Integration Tests', () => {
       const listRes = await app.inject({
         method: 'GET',
         url: '/projects',
-        headers: { authorization: `Bearer ${loginRes.json().pat_token}` }
+        cookies: cookieJar
       })
       expect(listRes.statusCode).toBe(200)
       const projects = listRes.json().projects
@@ -583,7 +611,7 @@ describe('Projects Integration Tests', () => {
       const deleteRes = await app.inject({
         method: 'DELETE',
         url: '/projects/non-existent-id',
-        headers: { authorization: `Bearer ${loginRes.json().pat_token}` }
+        cookies: cookieJar
       })
       expect(deleteRes.statusCode).toBe(404)
       const body = deleteRes.json()
@@ -630,12 +658,23 @@ describe('Projects Integration Tests', () => {
         }
       })
 
+      // Extract session cookies from login responses
+      const cookieJar1: Record<string, string> = {}
+      for (const c of login1Res.cookies ?? []) {
+        cookieJar1[c.name] = c.value
+      }
+
+      const cookieJar2: Record<string, string> = {}
+      for (const c of login2Res.cookies ?? []) {
+        cookieJar2[c.name] = c.value
+      }
+
       // User1 creates a project
       const projectRes = await app.inject({
         method: 'POST',
         url: '/projects',
         payload: { name: 'User1 Project' },
-        headers: { authorization: `Bearer ${login1Res.json().pat_token}` }
+        cookies: cookieJar1
       })
       const projectId = projectRes.json().id
 
@@ -643,7 +682,7 @@ describe('Projects Integration Tests', () => {
       const deleteRes = await app.inject({
         method: 'DELETE',
         url: `/projects/${projectId}`,
-        headers: { authorization: `Bearer ${login2Res.json().pat_token}` }
+        cookies: cookieJar2
       })
       expect(deleteRes.statusCode).toBe(404)
     })
@@ -674,7 +713,7 @@ describe('Projects Integration Tests', () => {
         method: 'POST',
         url: '/projects',
         payload: { name: 'Project 1' },
-        headers: { authorization: `Bearer ${loginRes.json().pat_token}` }
+        cookies: cookieJar
       })
       const project1Id = project1Res.json().id
 
@@ -682,14 +721,14 @@ describe('Projects Integration Tests', () => {
         method: 'POST',
         url: '/projects',
         payload: { name: 'Project 2' },
-        headers: { authorization: `Bearer ${loginRes.json().pat_token}` }
+        cookies: cookieJar
       })
 
       // Check initial count
       const listRes1 = await app.inject({
         method: 'GET',
         url: '/projects',
-        headers: { authorization: `Bearer ${loginRes.json().pat_token}` }
+        cookies: cookieJar
       })
       expect(listRes1.json().plan.currentProjects).toBe(2)
 
@@ -697,7 +736,7 @@ describe('Projects Integration Tests', () => {
       const deleteRes = await app.inject({
         method: 'DELETE',
         url: `/projects/${project1Id}`,
-        headers: { authorization: `Bearer ${loginRes.json().pat_token}` }
+        cookies: cookieJar
       })
       expect(deleteRes.statusCode).toBe(200)
 
@@ -705,7 +744,7 @@ describe('Projects Integration Tests', () => {
       const listRes2 = await app.inject({
         method: 'GET',
         url: '/projects',
-        headers: { authorization: `Bearer ${loginRes.json().pat_token}` }
+        cookies: cookieJar
       })
       expect(listRes2.json().plan.currentProjects).toBe(1)
     })
@@ -752,12 +791,23 @@ describe('Projects Integration Tests', () => {
         }
       })
 
+      // Extract session cookies from login responses
+      const cookieJar1: Record<string, string> = {}
+      for (const c of login1Res.cookies ?? []) {
+        cookieJar1[c.name] = c.value
+      }
+
+      const cookieJar2: Record<string, string> = {}
+      for (const c of login2Res.cookies ?? []) {
+        cookieJar2[c.name] = c.value
+      }
+
       // User1 creates a project
       await app.inject({
         method: 'POST',
         url: '/projects',
         payload: { name: 'User1 Project' },
-        headers: { authorization: `Bearer ${login1Res.json().pat_token}` }
+        cookies: cookieJar1
       })
 
       // User2 creates a project
@@ -765,14 +815,14 @@ describe('Projects Integration Tests', () => {
         method: 'POST',
         url: '/projects',
         payload: { name: 'User2 Project' },
-        headers: { authorization: `Bearer ${login2Res.json().pat_token}` }
+        cookies: cookieJar2
       })
 
       // User1 should only see their project
       const user1ProjectsRes = await app.inject({
         method: 'GET',
         url: '/projects',
-        headers: { authorization: `Bearer ${login1Res.json().pat_token}` }
+        cookies: cookieJar1
       })
       expect(user1ProjectsRes.json().projects).toHaveLength(1)
       expect(user1ProjectsRes.json().projects[0].name).toBe('User1 Project')
@@ -781,7 +831,7 @@ describe('Projects Integration Tests', () => {
       const user2ProjectsRes = await app.inject({
         method: 'GET',
         url: '/projects',
-        headers: { authorization: `Bearer ${login2Res.json().pat_token}` }
+        cookies: cookieJar2
       })
       expect(user2ProjectsRes.json().projects).toHaveLength(1)
       expect(user2ProjectsRes.json().projects[0].name).toBe('User2 Project')
@@ -816,7 +866,7 @@ describe('Projects Integration Tests', () => {
         method: 'POST',
         url: '/projects',
         payload: { name: 'Test Project' },
-        headers: { authorization: `Bearer ${loginRes.json().pat_token}` }
+        cookies: cookieJar
       })
       expect(projectRes.statusCode).toBe(201)
     })
