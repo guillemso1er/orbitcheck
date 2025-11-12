@@ -1,16 +1,19 @@
 {
   "extends": "./tsconfig.json",
   "compilerOptions": {
-    "module": "ESNext",
-    "moduleResolution": "NodeNext", // keep modern resolution/exports support
-    "verbatimModuleSyntax": true, // TS 5+ recommended with ESM
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "target": "ES2022",
     "types": [
       "jest",
       "node"
     ],
-    "target": "ES2022",
-    "allowJs": true,
     "esModuleInterop": true,
-    "allowSyntheticDefaultImports": true
-  }
+    "allowSyntheticDefaultImports": true,
+    "resolveJsonModule": true,
+    "verbatimModuleSyntax": true
+  },
+  "include": [
+    "src/**/*.ts"
+  ]
 }

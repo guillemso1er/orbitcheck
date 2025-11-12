@@ -14,9 +14,8 @@ describe('Jobs Endpoints', () => {
         app = await createApp();  // Await the async function
 
         // Add proper authentication hooks
-        const { authenticateRequest, applyRateLimitingAndIdempotency } = await import('../web.js');
+        const { applyRateLimitingAndIdempotency } = await import('../web.js');
         app.addHook('preHandler', async (request, rep) => {
-            await authenticateRequest(request, rep, mockPool as any);
             await applyRateLimitingAndIdempotency(request, rep, mockRedisInstance as any);
         });
 

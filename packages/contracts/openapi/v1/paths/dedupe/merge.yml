@@ -1,0 +1,73 @@
+tags:
+  - Runtime API
+summary: Merge deduplicated records
+description: Merges multiple customer or address records into a canonical one
+operationId: mergeDeduplicated
+security:
+  - apiKeyAuth: []
+  - httpMessageSigInput: []
+    httpMessageSig: []
+  - cookieAuth: []
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        required:
+          - type
+          - ids
+          - canonical_id
+        properties:
+          type:
+            type: string
+            enum:
+              - customer
+              - address
+            description: Type of records to merge
+          ids:
+            type: array
+            items:
+              type: string
+            description: IDs to merge
+          canonical_id:
+            type: string
+            description: ID of canonical record to keep
+responses:
+  '200':
+    description: Merge result
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            success:
+              type: boolean
+              description: Whether merge was successful
+            merged_count:
+              type: integer
+              description: Number of records merged
+            canonical_id:
+              type: string
+              description: ID of canonical record
+            request_id:
+              type: string
+  '400':
+    description: Validation error
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            error:
+              type: object
+              properties:
+                code:
+                  type: string
+                  description: Error code
+                message:
+                  type: string
+                  description: Error message
+            request_id:
+              type: string
+              description: Request identifier

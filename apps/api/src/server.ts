@@ -7,6 +7,7 @@ import * as dotenv from 'dotenv';
 import type { FastifyInstance } from "fastify";
 import Fastify from "fastify";
 import { type Redis as IORedisType, Redis } from 'ioredis';
+import type { ScheduledTask } from 'node-cron';
 import cron from 'node-cron';
 import { once } from 'node:events';
 import { Pool } from "pg";
@@ -20,9 +21,7 @@ import { inputSanitizationHook } from "./middleware/inputSanitization.js";
 import { setupCors } from "./plugins/cors.js";
 import { setupDocumentation } from "./plugins/documentation.js";
 import { setupErrorHandler } from "./plugins/errorHandler.js";
-import { openapiValidation } from "./plugins/openapi.js";
 import { setupSecurityHeaders } from "./plugins/securityHeaders.js";
-import { registerAuthenticatedDocsRoutes } from "./routes/authenticatedDocs.js";
 import { registerHealthRoutes } from "./routes/health.js";
 import startupGuard from './startup-guard.js';
 import { registerRoutes } from "./web.js";
@@ -33,7 +32,7 @@ if (process.env.NODE_ENV !== 'production' && process.env.NODE_ENV !== 'test') {
 
 // Store active workers and cron tasks for cleanup
 let activeWorkers: Worker[] = [];
-let activeCronTasks: cron.ScheduledTask[] = [];
+let activeCronTasks: ScheduledTask[] = [];
 
 export async function build(pool: Pool, redis: IORedisType): Promise<FastifyInstance> {
     const isTestEnvironment = process.env.NODE_ENV === 'test';
@@ -84,9 +83,6 @@ export async function build(pool: Pool, redis: IORedisType): Promise<FastifyInst
     // Setup error handler
     await setupErrorHandler(app);
 
-    // Register authenticated documentation routes
-    await registerAuthenticatedDocsRoutes(app, pool);
-
     // Setup CORS
     await setupCors(app);
 
@@ -118,8 +114,7 @@ export async function build(pool: Pool, redis: IORedisType): Promise<FastifyInst
         await app.register(metrics, { endpoint: '/metrics' });
     }
 
-    // Register OpenAPI validation
-    await openapiValidation(app);
+
 
     // Setup security headers
     await setupSecurityHeaders(app);

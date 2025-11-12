@@ -1,0 +1,70 @@
+tags:
+  - Runtime API
+summary: Validate email
+description: Validates an email address
+operationId: validateEmail
+security:
+  - apiKeyAuth: []
+  - httpMessageSigInput: []
+    httpMessageSig: []
+  - cookieAuth: []
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        required:
+          - email
+        properties:
+          email:
+            type: string
+            description: Email address to validate
+responses:
+  '200':
+    description: Email validation result
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            valid:
+              type: boolean
+              description: Whether the email is valid
+            normalized:
+              type: string
+              description: Normalized email address
+            disposable:
+              type: boolean
+              description: Whether the email is disposable
+            mx_found:
+              type: boolean
+              description: Whether MX records were found
+            reason_codes:
+              type: array
+              items:
+                type: string
+              description: List of reason codes
+            request_id:
+              type: string
+            ttl_seconds:
+              type: integer
+              description: Time to live in seconds
+  '400':
+    description: Bad request
+    content:
+      application/json:
+        schema:
+          $ref: ../../components/schemas/ValidationError.yml
+  '401':
+    description: Unauthorized
+    content:
+      application/json:
+        schema:
+          $ref: ../../components/schemas/UnauthorizedError.yml
+  '429':
+    description: Rate limit exceeded
+    content:
+      application/json:
+        schema:
+          $ref: ../../components/schemas/LimitExceededError.yml

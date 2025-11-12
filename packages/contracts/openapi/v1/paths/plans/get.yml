@@ -1,0 +1,21 @@
+tags:
+  - UI Endpoints
+summary: Get current user plan
+description: Retrieves the current plan and usage information for the authenticated user
+operationId: getUserPlan
+security:
+  - patAuth: []
+  - cookieAuth: []
+responses:
+  '200':
+    description: User plan information
+    content:
+      application/json:
+        schema:
+          $ref: '../../components/schemas/UserPlanResponse.yml'
+  '401':
+    description: Unauthorized
+    content:
+      application/json:
+        schema:
+          $ref: '../../components/schemas/UnauthorizedError.yml'

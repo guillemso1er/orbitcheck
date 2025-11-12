@@ -1,27 +1,13 @@
-import { API_V1_ROUTES, MGMT_V1_ROUTES } from "@orbitcheck/contracts";
 import { ConditionTemplate } from "./types";
 
 // API_BASE is defined conditionally to avoid import.meta.env issues during testing
 const getApiBase = () => {
   // Vite automatically replaces import.meta.env at build time
+  // For session-based auth, use same origin /api path
   return import.meta.env?.VITE_API_BASE ?? '/_api';
 };
 
 export const API_BASE = getApiBase();
-
-export const API_ENDPOINTS = {
-  API_KEYS: MGMT_V1_ROUTES.API_KEYS.LIST_API_KEYS,
-  USAGE: MGMT_V1_ROUTES.DATA.GET_USAGE_STATISTICS,
-  LOGS: MGMT_V1_ROUTES.DATA.GET_EVENT_LOGS,
-  WEBHOOKS_TEST: MGMT_V1_ROUTES.WEBHOOKS.TEST_WEBHOOK,
-  BATCH_VALIDATE: API_V1_ROUTES.BATCH.BATCH_VALIDATE_DATA,
-  BATCH_DEDUPE: API_V1_ROUTES.BATCH.BATCH_DEDUPLICATE_DATA,
-  GET_JOB_STATUS: API_V1_ROUTES.JOBS.GET_JOB_STATUS,
-  ORDER_EVALUATE: API_V1_ROUTES.ORDERS.EVALUATE_ORDER_FOR_RISK_AND_RULES,
-  GET_AVAILABLE_RULES: MGMT_V1_ROUTES.RULES.GET_AVAILABLE_RULES,
-  TEST_RULES_AGAINST_PAYLOAD: MGMT_V1_ROUTES.RULES.TEST_RULES_AGAINST_PAYLOAD,
-  REGISTER_CUSTOM_RULES: MGMT_V1_ROUTES.RULES.REGISTER_CUSTOM_RULES,
-} as const;
 
 
 export const HTTP_STATUS = {
@@ -76,11 +62,16 @@ export const UI_STRINGS = {
   LOG_EXPLORER: 'Log Explorer',
   BULK_CSV_TOOL: 'Bulk CSV Tool',
   UPLOAD_CSV_FILE: 'Upload CSV File',
+  PROCESS_CSV: 'Process CSV',
   PROCESSING_CSV: 'Processing CSV...',
   DOWNLOAD_RESULTS: 'Download Results',
   CSV_TYPE_CUSTOMERS: 'Customers CSV',
   CSV_TYPE_ORDERS: 'Orders CSV',
   SELECT_CSV_TYPE: 'Select CSV Type',
+  API_KEY_LABEL: 'API Key',
+  API_KEY_PLACEHOLDER: 'Enter your API key (required for batch processing)',
+  API_KEY_REQUIRED: 'API key is required for batch processing',
+  API_KEY_HELP: 'Create an API key in the API Keys page to use batch endpoints',
   DRAG_DROP_OR_CLICK: 'Drag and drop a CSV file here, or click to select',
   PROCESSING: 'Processing...',
   JOB_STATUS_PENDING: 'Job queued for processing',
@@ -179,7 +170,6 @@ export const ERROR_MESSAGES = {
 } as const;
 
 export const LOCAL_STORAGE_KEYS = {
-  AUTH_TOKEN: 'auth_token',
   USER: 'user',
   THEME: 'theme',
   TEST_PAYLOAD: 'test_payload',

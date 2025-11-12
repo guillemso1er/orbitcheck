@@ -1,6 +1,7 @@
-import { createApiClient } from '@orbitcheck/contracts';
+import { testWebhook } from '@orbitcheck/contracts';
 import React, { useState } from 'react';
-import { API_BASE, UI_STRINGS } from '../constants';
+import { UI_STRINGS } from '../constants';
+import { apiClient } from '../utils/api';
 
 interface WebhookTestResult {
   sent_to: string;
@@ -190,11 +191,25 @@ const WebhookTester: React.FC = () => {
     setError(null);
     setLoading(true);
     try {
-      const apiClient = createApiClient({
-        baseURL: API_BASE
+      const { data, error } = await testWebhook({
+        client: apiClient,
+        body: {
+          url: url,
+          payload_type: payloadType,
+          custom_payload: payloadType === 'custom' && customPayload ? JSON.parse(customPayload) : undefined
+        }
       });
 
-      const data = await apiClient.testWebhook(url, payloadType, payloadType === 'custom' && customPayload ? JSON.parse(customPayload) : undefined);
+      if (error) {
+        if ('error' in error && error.error && 'message' in error.error) {
+          throw new Error(error.error.message || 'Failed to test webhook');
+        } else if ('message' in error) {
+          throw new Error(error.message || 'Failed to test webhook');
+        } else {
+          throw new Error('Failed to test webhook');
+        }
+      }
+
       setResult(data as WebhookTestResult);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error');

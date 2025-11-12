@@ -82,8 +82,8 @@ apps/dashboard/test-results
 apps/dashboard/test-results/.last-run.json
 apps/api/test-results/.last-run.json
 apps/api/.eslint.tt
-packages/contract/node_modules
-packages/contract/dist
+packages/contracts/node_modules
+packages/contracts/dist
 .pnpm-store
 .pnpm-store/
 infra/compose/tmp
@@ -91,3 +91,4 @@ infra/compose/tmp/infisical-credentials.json
 scripts/.orbitcheck-reader.ua.env
 apps/setup/.orbitcheck-reader.ua.env
 infra/ansible/vars/secrets.txt
+.turbo/daemon/*

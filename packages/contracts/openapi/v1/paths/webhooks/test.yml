@@ -1,0 +1,69 @@
+tags:
+  - Management API
+summary: Test Webhook
+description: Sends a sample payload to the provided webhook URL and returns the response. Useful for testing webhook configurations.
+operationId: testWebhook
+security:
+  - patAuth: []
+  - cookieAuth: []
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        required:
+          - url
+          - payload_type
+        properties:
+          url:
+            type: string
+            description: The webhook URL to send the payload to
+            format: uri
+          payload_type:
+            type: string
+            enum: [validation, order, custom]
+            description: Type of sample payload to send
+            default: validation
+          custom_payload:
+            type: object
+            description: Custom payload if payload_type is "custom"
+            additionalProperties: true
+responses:
+  '200':
+    description: Webhook test result
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            sent_to:
+              type: string
+            payload:
+              type: object
+              additionalProperties: true
+            response:
+              type: object
+              properties:
+                status:
+                  type: integer
+                status_text:
+                  type: string
+                headers:
+                  type: object
+                body:
+                  type: string
+            request_id:
+              type: string
+  '400':
+    description: Bad request
+    content:
+      application/json:
+        schema:
+          $ref: ../../components/schemas/ValidationError.yml
+  '429':
+    description: Rate limit exceeded
+    content:
+      application/json:
+        schema:
+          $ref: ../../components/schemas/LimitExceededError.yml

@@ -6,20 +6,23 @@ import { getPool, getRedis, resetDb, startTestEnv, stopTestEnv } from './setup'
 let app: Awaited<ReturnType<typeof build>>
 let pool: ReturnType<typeof getPool>
 let redis: Redis
+let cookieJar: Record<string, string>
+let cookieJar1: Record<string, string>
+let cookieJar2: Record<string, string>
 
 beforeAll(async () => {
   try {
     // Start environment first
     await startTestEnv()
-    
+
     // Get connections
     pool = getPool()
     redis = getRedis()
-    
+
     // Build app
     app = await build(pool, redis)
     await app.ready()
-    
+
     // Give the app a moment to fully initialize
     await new Promise(resolve => setTimeout(resolve, 100))
   } catch (error) {
@@ -37,7 +40,7 @@ afterAll(async () => {
   } catch (error) {
     // Ignore closing errors in tests
   }
-  
+
   try {
     if (redis) {
       redis.disconnect()
@@ -45,7 +48,7 @@ afterAll(async () => {
   } catch (error) {
     // Ignore
   }
-  
+
   try {
     await stopTestEnv()
   } catch (error) {
@@ -55,6 +58,31 @@ afterAll(async () => {
 
 beforeEach(async () => {
   await resetDb()
+  // register a user
+  await app.inject({
+    method: 'POST',
+    url: '/auth/register',
+    payload: {
+      email: 'test@example.com',
+      password: 'password123',
+      confirm_password: 'password123'
+    }
+  })
+  // Login and get fresh session cookie for each test
+  const loginRes = await app.inject({
+    method: 'POST',
+    url: '/auth/login',
+    payload: {
+      email: 'test@example.com',
+      password: 'password123'
+    }
+  })
+
+  // Extract session cookies from login response
+  cookieJar = {}
+  for (const c of loginRes.cookies ?? []) {
+    cookieJar[c.name] = c.value
+  }
 })
 
 describe('API Keys Integration Tests', () => {
@@ -117,7 +145,7 @@ describe('API Keys Integration Tests', () => {
         method: 'POST',
         url: '/v1/api-keys',
         payload: {},
-        headers: { authorization: `Bearer ${loginRes.json().pat_token}` }
+        cookies: cookieJar
       })
       expect(keyRes.statusCode).toBe(201)
       const apiKey = keyRes.json().full_key
@@ -126,7 +154,7 @@ describe('API Keys Integration Tests', () => {
       const listRes = await app.inject({
         method: 'GET',
         url: '/v1/api-keys',
-        headers: { authorization: `Bearer ${loginRes.json().pat_token}` }
+        cookies: cookieJar
       })
       expect(listRes.statusCode).toBe(200)
       const body = listRes.json()
@@ -166,7 +194,7 @@ describe('API Keys Integration Tests', () => {
         method: 'POST',
         url: '/v1/api-keys',
         payload: {},
-        headers: { authorization: `Bearer ${loginRes.json().pat_token}` }
+        cookies: cookieJar
       })
       const firstKey = firstKeyRes.json().full_key
 
@@ -175,7 +203,7 @@ describe('API Keys Integration Tests', () => {
         method: 'POST',
         url: '/v1/api-keys',
         payload: { name: 'production-key' },
-        headers: { authorization: `Bearer ${loginRes.json().pat_token}` }
+        cookies: cookieJar
       })
       expect(secondKeyRes.statusCode).toBe(201)
       const secondKey = secondKeyRes.json().full_key
@@ -184,7 +212,7 @@ describe('API Keys Integration Tests', () => {
       const listRes = await app.inject({
         method: 'GET',
         url: '/v1/api-keys',
-        headers: { authorization: `Bearer ${loginRes.json().pat_token}` }
+        cookies: cookieJar
       })
       expect(listRes.statusCode).toBe(200)
       const body = listRes.json()
@@ -220,7 +248,7 @@ describe('API Keys Integration Tests', () => {
         method: 'POST',
         url: '/v1/api-keys',
         payload: {}, // Add empty body to prevent validation error
-        headers: { authorization: `Bearer ${loginRes.json().pat_token}` }
+        cookies: cookieJar
       })
       expect(keyRes.statusCode).toBe(201)
       const body = keyRes.json()
@@ -260,7 +288,7 @@ describe('API Keys Integration Tests', () => {
         method: 'POST',
         url: '/v1/api-keys',
         payload: { name: 'production-api-key' },
-        headers: { authorization: `Bearer ${loginRes.json().pat_token}` }
+        cookies: cookieJar
       })
       expect(keyRes.statusCode).toBe(201)
       const body = keyRes.json()
@@ -277,7 +305,7 @@ describe('API Keys Integration Tests', () => {
     })
 
     test('400 on creating key without project access', async () => {
-      // Register two different users
+      // Register and login user1
       const user1Res = await app.inject({
         method: 'POST',
         url: '/auth/register',
@@ -287,16 +315,7 @@ describe('API Keys Integration Tests', () => {
           confirm_password: 'password123'
         }
       })
-
-      const user2Res = await app.inject({
-        method: 'POST',
-        url: '/auth/register',
-        payload: {
-          email: 'user2@example.com',
-          password: 'password123',
-          confirm_password: 'password123'
-        }
-      })
+      expect(user1Res.statusCode).toBe(201)
 
       const login1Res = await app.inject({
         method: 'POST',
@@ -306,6 +325,25 @@ describe('API Keys Integration Tests', () => {
           password: 'password123'
         }
       })
+      expect(login1Res.statusCode).toBe(200)
+
+      // Extract user1 session cookies
+      cookieJar1 = {}
+      for (const c of login1Res.cookies ?? []) {
+        cookieJar1[c.name] = c.value
+      }
+
+      // Register and login user2
+      const user2Res = await app.inject({
+        method: 'POST',
+        url: '/auth/register',
+        payload: {
+          email: 'user2@example.com',
+          password: 'password123',
+          confirm_password: 'password123'
+        }
+      })
+      expect(user2Res.statusCode).toBe(201)
 
       const login2Res = await app.inject({
         method: 'POST',
@@ -315,20 +353,28 @@ describe('API Keys Integration Tests', () => {
           password: 'password123'
         }
       })
+      expect(login2Res.statusCode).toBe(200)
+
+      // Extract user2 session cookies
+      cookieJar2 = {}
+      for (const c of login2Res.cookies ?? []) {
+        cookieJar2[c.name] = c.value
+      }
 
       // User1 creates a project
       const projectRes = await app.inject({
         method: 'POST',
         url: '/projects',
         payload: { name: 'User1 Project' },
-        headers: { authorization: `Bearer ${login1Res.json().pat_token}` }
+        cookies: cookieJar1
       })
+      expect(projectRes.statusCode).toBe(201)
 
       // User2 tries to create API key for User1's project
       const keyRes = await app.inject({
         method: 'POST',
         url: '/v1/api-keys',
-        headers: { authorization: `Bearer ${login2Res.json().pat_token}` }
+        cookies: cookieJar2
       })
       expect(keyRes.statusCode).toBe(400) // Invalid project access
     })
@@ -361,7 +407,7 @@ describe('API Keys Integration Tests', () => {
         method: 'POST',
         url: '/v1/api-keys',
         payload: {},
-        headers: { authorization: `Bearer ${loginRes.json().pat_token}` }
+        cookies: cookieJar
       })
       const keyId = keyRes.json().id
 
@@ -369,7 +415,7 @@ describe('API Keys Integration Tests', () => {
       const revokeRes = await app.inject({
         method: 'DELETE',
         url: `/v1/api-keys/${keyId}`,
-        headers: { authorization: `Bearer ${loginRes.json().pat_token}` }
+        cookies: cookieJar
       })
       expect(revokeRes.statusCode).toBe(200)
 
@@ -377,7 +423,7 @@ describe('API Keys Integration Tests', () => {
       const listRes = await app.inject({
         method: 'GET',
         url: '/v1/api-keys',
-        headers: { authorization: `Bearer ${loginRes.json().pat_token}` }
+        cookies: cookieJar
       })
       expect(listRes.statusCode).toBe(200)
       const listBody = listRes.json()
@@ -409,7 +455,7 @@ describe('API Keys Integration Tests', () => {
       const revokeRes = await app.inject({
         method: 'DELETE',
         url: '/v1/api-keys/non-existent-id',
-        headers: { authorization: `Bearer ${loginRes.json().pat_token}` }
+        cookies: cookieJar
       })
       expect(revokeRes.statusCode).toBe(500)
     })
@@ -439,13 +485,13 @@ describe('API Keys Integration Tests', () => {
         method: 'POST',
         url: '/projects',
         payload: { name: 'Test Project' },
-        headers: { authorization: `Bearer ${loginRes.json().pat_token}` }
+        cookies: cookieJar
       })
 
       const keyRes = await app.inject({
         method: 'POST',
         url: '/v1/api-keys',
-        headers: { authorization: `Bearer ${loginRes.json().pat_token}` }
+        cookies: cookieJar
       })
       const keyId = keyRes.json().id
 
@@ -486,7 +532,7 @@ describe('API Keys Integration Tests', () => {
         method: 'POST',
         url: '/v1/api-keys',
         payload: {},
-        headers: { authorization: `Bearer ${loginRes.json().pat_token}` }
+        cookies: cookieJar
       })
       const apiKey = keyRes.json().full_key
 
@@ -497,12 +543,12 @@ describe('API Keys Integration Tests', () => {
         headers: { authorization: `API-Key ${apiKey}` },
         payload: { email: 'test@example.com' }
       })
-      
+
       // Check if last_used_at was updated
       const listRes = await app.inject({
         method: 'GET',
         url: '/v1/api-keys',
-        headers: { authorization: `Bearer ${loginRes.json().pat_token}` }
+        cookies: cookieJar
       })
       expect(listRes.statusCode).toBe(200)
       const body = listRes.json()

@@ -26,17 +26,14 @@ export class ErrorHandler {
     /**
      * Creates a safe error response object
      */
-    static createSafeErrorResponse(error: any, includeCode = false): { error: string; message: string; code?: string } {
-        const baseResponse = {
-            error: 'internal_error',
-            message: this.sanitizeErrorMessage(error)
-        };
+    static createSafeErrorResponse(error: any, includeCode = false): { error: { code: string; message: string } } {
+        const message = this.sanitizeErrorMessage(error);
 
         if (includeCode && typeof error.code === 'string' && error.code.length < 50) {
-            return { ...baseResponse, code: error.code };
+            return { error: { code: error.code, message } };
         }
 
-        return baseResponse;
+        return { error: { code: 'invalid_input', message } };
     }
 
     /**
@@ -103,29 +100,25 @@ export class ErrorHandler {
         // Check for specific database error codes
         if (error?.code === '23505') { // unique_violation
             return reply.status(409).send({
-                error: 'conflict',
-                message: 'Resource already exists'
+                error: { code: 'conflict', message: 'Resource already exists' }
             });
         }
 
         if (error?.code === '23503') { // foreign_key_violation
             return reply.status(400).send({
-                error: 'invalid_reference',
-                message: 'Invalid reference to related resource'
+                error: { code: 'invalid_reference', message: 'Invalid reference to related resource' }
             });
         }
 
         if (error?.code === '23502') { // not_null_violation
             return reply.status(400).send({
-                error: 'missing_required_field',
-                message: 'Required field is missing'
+                error: { code: 'missing_required_field', message: 'Required field is missing' }
             });
         }
 
         // Generic database error
         return reply.status(500).send({
-            error: 'database_error',
-            message: 'A database error occurred'
+            error: { code: 'database_error', message: 'A database error occurred' }
         });
     }
 
@@ -142,8 +135,7 @@ export class ErrorHandler {
 
         // Don't expose external service details to clients
         return reply.status(502).send({
-            error: 'external_service_error',
-            message: 'An external service is currently unavailable'
+            error: { code: 'external_service_error', message: 'An external service is currently unavailable' }
         });
     }
 }

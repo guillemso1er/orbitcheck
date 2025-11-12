@@ -44,11 +44,11 @@ export const RulesHeader: React.FC<RulesHeaderProps> = ({ onExport, onImport, on
                     )}
                 </div>
                 <div className="flex space-x-2">
-                    <button onClick={onExport} className="px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 rounded-md transition-colors">
-                        Export
+                    <button onClick={onExport} className="px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 rounded-md transition-colors" title="Export custom rules only">
+                        Export Custom
                     </button>
-                    <label className="px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 rounded-md transition-colors cursor-pointer">
-                        Import
+                    <label className="px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 rounded-md transition-colors cursor-pointer" title="Import custom rules">
+                        Import Custom
                         <input type="file" accept=".json" onChange={onImport} className="hidden" />
                     </label>
                     <button
@@ -60,6 +60,7 @@ export const RulesHeader: React.FC<RulesHeaderProps> = ({ onExport, onImport, on
                             hasValidationErrors ? 'bg-gray-400' : 'bg-indigo-600 hover:bg-indigo-700'
                         }`}
                         disabled={saveStatus === 'saving' || hasValidationErrors}
+                        title="Save custom rules to backend"
                     >
                         {saveStatus === 'saving' ? 'Saving...' :
                             saveStatus === 'saved' ? '✓ Saved' :

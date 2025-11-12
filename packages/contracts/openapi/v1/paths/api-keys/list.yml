@@ -1,0 +1,28 @@
+tags:
+  - Management API
+summary: List API keys
+description: Retrieves API keys for the authenticated project
+operationId: listApiKeys
+security:
+  - patAuth: []
+  - cookieAuth: []
+responses:
+  '200':
+    description: List of API keys
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            data:
+              type: array
+              items:
+                $ref: '../../components/schemas/ApiKey.yml'
+            request_id:
+              type: string
+  '401':
+    description: Unauthorized
+    content:
+      application/json:
+        schema:
+          $ref: '../../components/schemas/Error.yml'

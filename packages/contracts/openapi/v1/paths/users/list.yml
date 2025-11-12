@@ -1,0 +1,28 @@
+tags:
+  - Users
+summary: List users
+description: Retrieves a list of users in the project
+operationId: listUsers
+security:
+  - patAuth: []
+  - cookieAuth: []
+responses:
+  '200':
+    description: List of users
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            data:
+              type: array
+              items:
+                $ref: '../../components/schemas/User.yml'
+            request_id:
+              type: string
+  '401':
+    description: Unauthorized
+    content:
+      application/json:
+        schema:
+          $ref: '../../components/schemas/Error.yml'

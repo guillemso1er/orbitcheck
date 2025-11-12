@@ -1,0 +1,77 @@
+tags:
+  - Runtime API
+summary: Validate phone
+description: Validates a phone number
+operationId: validatePhone
+security:
+  - apiKeyAuth: []
+  - httpMessageSigInput: []
+    httpMessageSig: []
+  - cookieAuth: []
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        required:
+          - phone
+        properties:
+          phone:
+            type: string
+            description: Phone number to validate
+          country:
+            type: string
+            description: ISO 3166-1 alpha-2 country code
+          request_otp:
+            type: boolean
+            description: Whether to request an OTP for phone verification
+          
+responses:
+  '200':
+    description: Phone validation result
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            valid:
+              type: boolean
+              description: Whether the phone is valid
+            e164:
+              type: string
+              description: E.164 formatted phone number
+            country:
+              type: string
+              description: ISO 3166-1 alpha-2 country code
+            reason_codes:
+              type: array
+              items:
+                type: string
+              description: List of reason codes
+            request_id:
+              type: string
+            ttl_seconds:
+              type: integer
+              description: Time to live in seconds
+            verification_sid:
+              type: string
+              description: Twilio verification SID when OTP is requested
+  '400':
+    description: Bad request
+    content:
+      application/json:
+        schema:
+          $ref: ../../components/schemas/ValidationError.yml
+  '401':
+    description: Unauthorized
+    content:
+      application/json:
+        schema:
+          $ref: ../../components/schemas/UnauthorizedError.yml
+  '429':
+    description: Rate limit exceeded
+    content:
+      application/json:
+        schema:
+          $ref: ../../components/schemas/LimitExceededError.yml

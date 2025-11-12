@@ -1,0 +1,85 @@
+tags:
+  - Management API
+summary: Create Personal Access Token
+description: Creates a new personal access token for management API access
+operationId: createPersonalAccessToken
+security:
+  - patAuth: []
+  - cookieAuth: []
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        required:
+          - name
+        properties:
+          name:
+            type: string
+            description: Token name
+          scopes:
+            type: [array, "null"]
+            items:
+              type: string
+              enum: ['keys:read', 'keys:write', 'logs:read', 'usage:read', 'webhooks:manage', 'connectors:manage', 'pats:manage', 'projects:manage', 'rules:manage']
+            description: Access scopes for the token (optional, defaults to basic read access)
+          env:
+            type: [string, "null"]
+            enum: [test, live]
+            default: live
+            description: Environment for the token
+          expires_at:
+            type: [string, "null"]
+            format: date-time
+            description: Optional expiration date
+          ip_allowlist:
+            type: [array, "null"]
+            items:
+              type: string
+            description: Optional IP allowlist (CIDR notation)
+          project_id:
+            type: [string, "null"]
+            description: Optional project restriction
+responses:
+  '201':
+    description: Personal access token created successfully
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            token:
+              type: string
+              description: The full PAT (shown only once)
+            token_id:
+              type: string
+              description: Token identifier
+            name:
+              type: string
+            scopes:
+              type: array
+              items:
+                type: string
+            env:
+              type: string
+            expires_at:
+              type: [string, "null"]
+              format: date-time
+            created_at:
+              type: string
+              format: date-time
+            request_id:
+              type: string
+  '400':
+    description: Invalid input
+    content:
+      application/json:
+        schema:
+          $ref: '../../components/schemas/Error.yml'
+  '401':
+    description: Unauthorized
+    content:
+      application/json:
+        schema:
+          $ref: '../../components/schemas/Error.yml'

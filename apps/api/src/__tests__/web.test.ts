@@ -7,7 +7,7 @@ describe('Web Module', () => {
   let verifySession: any;
   let verifyPAT: any;
   let auth: any;
-  let authenticateRouteRequest: any;
+  let verifyHttpMessageSignature: any;
   let rateLimit: any;
   let idempotency: any;
 
@@ -15,11 +15,11 @@ describe('Web Module', () => {
     await setupBeforeAll();
 
     // Import functions
-    const authModule = await import('../routes/auth.js');
+    const authModule = await import('../services/auth.js');
     verifySession = authModule.verifySession;
     verifyPAT = authModule.verifyPAT;
+    verifyHttpMessageSignature = authModule.verifyHttpMessageSignature;
     auth = authModule.verifyAPIKey;
-    authenticateRouteRequest = authModule.authenticateRouteRequest;
 
     const hooksModule = await import('../hooks.js');
     rateLimit = hooksModule.rateLimit;
@@ -166,11 +166,6 @@ describe('Web Module', () => {
         body: { test: 'data' },
         log: { info: jest.fn() }
       } as any;
-      const mockReply = {
-        status: jest.fn().mockReturnThis(),
-        send: jest.fn(),
-      } as unknown as FastifyReply;
-
       // Mock HMAC verification - make signature invalid
       const crypto = await import('node:crypto');
       (crypto.createDecipheriv as jest.Mock).mockImplementation(() => ({
@@ -192,9 +187,10 @@ describe('Web Module', () => {
         })
         .mockResolvedValueOnce({ rows: [{ value: 1 }] });
 
-      await authenticateRouteRequest(mockRequest, mockReply, mockPool as any, 'runtime');
+      // Test HTTP Message Signature authentication directly
+      const result = await verifyHttpMessageSignature(mockRequest, mockPool as any);
 
-      expect(mockReply.status).toHaveBeenCalledWith(401);
+      expect(result).toBe(false);
     });
   });
 

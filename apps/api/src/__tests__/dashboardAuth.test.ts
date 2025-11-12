@@ -18,10 +18,9 @@ describe('Dashboard Authentication - /api-keys endpoint', () => {
         app = await createApp();
 
         // Add auth hooks for this test
-        const { authenticateRequest, applyRateLimitingAndIdempotency } = await import('../web.js');
-        const { mockPool, mockRedisInstance } = await import('./testSetup.js');
+        const { applyRateLimitingAndIdempotency } = await import('../web.js');
+        const { mockRedisInstance } = await import('./testSetup.js');
         app.addHook("preHandler", async (request, rep) => {
-            await authenticateRequest(request, rep, mockPool as any);
             await applyRateLimitingAndIdempotency(request, rep, mockRedisInstance as any);
             return;
         });

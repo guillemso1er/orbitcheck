@@ -5,15 +5,21 @@
             "ES2022",
             "DOM"
         ],
-        "module": "nodenext",
         "target": "es2022",
-        "moduleResolution": "NodeNext",
+        "module": "ESNext",
+        "moduleResolution": "bundler",
         "outDir": "dist",
         "rootDir": "src",
         "types": [
             "node",
             "jest"
-        ]
+        ],
+        "baseUrl": ".",
+        "paths": {
+            "@orbitcheck/contracts": [
+                "../../packages/contracts/dist"
+            ]
+        }
     },
     "include": [
         "src/**/*"

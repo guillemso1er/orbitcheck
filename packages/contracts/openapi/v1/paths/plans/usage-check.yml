@@ -1,0 +1,62 @@
+tags:
+  - UI Endpoints
+summary: Check validation limits
+description: Checks if the user has enough validation quota remaining
+operationId: checkValidationLimits
+security:
+  - patAuth: []
+  - cookieAuth: []
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        required:
+          - count
+        properties:
+          count:
+            type: integer
+            minimum: 1
+            description: Number of validations to check
+responses:
+  '200':
+    description: Usage check result
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            canProceed:
+              type: boolean
+              description: Whether the user can proceed with the requested validations
+            remainingValidations:
+              type: integer
+              description: Remaining validations in current period
+            overageAllowed:
+              type: boolean
+              description: Whether overage is allowed on current plan
+            monthlyValidationsUsed:
+              type: integer
+              description: Validations used this month
+            planValidationsLimit:
+              type: integer
+              description: Plan validation limit
+  '401':
+    description: Unauthorized
+    content:
+      application/json:
+        schema:
+          $ref: '../../components/schemas/UnauthorizedError.yml'
+  '402':
+    description: Payment required (limit exceeded)
+    content:
+      application/json:
+        schema:
+          $ref: '../../components/schemas/LimitExceededError.yml'
+  '500':
+    description: Internal server error
+    content:
+      application/json:
+        schema:
+          $ref: '../../components/schemas/ServerError.yml'

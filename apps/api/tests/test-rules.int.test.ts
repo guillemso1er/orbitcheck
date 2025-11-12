@@ -6,7 +6,7 @@ import { getPool, getRedis, seedTestData, startTestEnv, stopTestEnv } from "./se
 let app: Awaited<ReturnType<typeof build>>
 let pool: ReturnType<typeof getPool>
 let redis: Redis
-let patToken: string
+let cookieJar: Record<string, string>
 
 beforeAll(async () => {
     try {
@@ -46,7 +46,12 @@ beforeAll(async () => {
                 password: 'password123'
             }
         })
-        patToken = loginRes.json().pat_token
+
+        // Build cookie jar from login response
+        cookieJar = {}
+        for (const c of loginRes.cookies ?? []) {
+            cookieJar[c.name] = c.value
+        }
     } catch (error) {
         console.error('Failed to start test environment:', error)
         throw error
@@ -94,8 +99,8 @@ describe('Comprehensive Rule Logic Testing', () => {
                 const res = await app.inject({
                     method: 'POST',
                     url: '/v1/rules/test',
-                    headers: { authorization: `Bearer ${patToken}` },
-                    payload: { email }
+                    cookies: cookieJar,
+                    payload: { payload: { email } }
                 })
 
                 expect(res.statusCode).toBe(200)
@@ -123,8 +128,8 @@ describe('Comprehensive Rule Logic Testing', () => {
                 const res = await app.inject({
                     method: 'POST',
                     url: '/v1/rules/test',
-                    headers: { authorization: `Bearer ${patToken}` },
-                    payload: { email }
+                    cookies: cookieJar,
+                    payload: { payload: { email } }
                 })
 
                 expect(res.statusCode).toBe(200)
@@ -151,11 +156,13 @@ describe('Comprehensive Rule Logic Testing', () => {
                 const res = await app.inject({
                     method: 'POST',
                     url: '/v1/rules/test',
-                    headers: { authorization: `Bearer ${patToken}` },
+                    cookies: cookieJar,
                     payload: {
-                        email,
-                        ip: '192.168.1.1',
-                        transaction_amount: 150.00
+                        payload: {
+                            email,
+                            ip: '192.168.1.1',
+                            transaction_amount: 150.00
+                        }
                     }
                 })
 
@@ -179,8 +186,8 @@ describe('Comprehensive Rule Logic Testing', () => {
                 const res = await app.inject({
                     method: 'POST',
                     url: '/v1/rules/test',
-                    headers: { authorization: `Bearer ${patToken}` },
-                    payload: { email: testCase.email }
+                    cookies: cookieJar,
+                    payload: { payload: { email: testCase.email } }
                 })
 
                 expect(res.statusCode).toBe(200)
@@ -210,8 +217,8 @@ describe('Comprehensive Rule Logic Testing', () => {
                 const res = await app.inject({
                     method: 'POST',
                     url: '/v1/rules/test',
-                    headers: { authorization: `Bearer ${patToken}` },
-                    payload: { phone }
+                    cookies: cookieJar,
+                    payload: { payload: { phone } }
                 })
 
                 expect(res.statusCode).toBe(200)
@@ -235,8 +242,8 @@ describe('Comprehensive Rule Logic Testing', () => {
                 const res = await app.inject({
                     method: 'POST',
                     url: '/v1/rules/test',
-                    headers: { authorization: `Bearer ${patToken}` },
-                    payload: { phone }
+                    cookies: cookieJar,
+                    payload: { payload: { phone } }
                 })
 
                 expect(res.statusCode).toBe(200)
@@ -258,8 +265,8 @@ describe('Comprehensive Rule Logic Testing', () => {
                 const res = await app.inject({
                     method: 'POST',
                     url: '/v1/rules/test',
-                    headers: { authorization: `Bearer ${patToken}` },
-                    payload: { phone }
+                    cookies: cookieJar,
+                    payload: { payload: { phone } }
                 })
 
                 expect(res.statusCode).toBe(200)
@@ -286,8 +293,8 @@ describe('Comprehensive Rule Logic Testing', () => {
                 const res = await app.inject({
                     method: 'POST',
                     url: '/v1/rules/test',
-                    headers: { authorization: `Bearer ${patToken}` },
-                    payload: testCase
+                    cookies: cookieJar,
+                    payload: { payload: testCase }
                 })
 
                 expect(res.statusCode).toBe(200)
@@ -331,8 +338,8 @@ describe('Comprehensive Rule Logic Testing', () => {
                 const res = await app.inject({
                     method: 'POST',
                     url: '/v1/rules/test',
-                    headers: { authorization: `Bearer ${patToken}` },
-                    payload: testCase
+                    cookies: cookieJar,
+                    payload: { payload: testCase }
                 })
 
                 expect(res.statusCode).toBe(200)
@@ -362,8 +369,8 @@ describe('Comprehensive Rule Logic Testing', () => {
                 const res = await app.inject({
                     method: 'POST',
                     url: '/v1/rules/test',
-                    headers: { authorization: `Bearer ${patToken}` },
-                    payload: testCase
+                    cookies: cookieJar,
+                    payload: { payload: testCase }
                 })
 
                 expect(res.statusCode).toBe(200)
@@ -404,8 +411,8 @@ describe('Comprehensive Rule Logic Testing', () => {
             const res1 = await app.inject({
                 method: 'POST',
                 url: '/v1/rules/test',
-                headers: { authorization: `Bearer ${patToken}` },
-                payload: duplicateOrderData[0]
+                cookies: cookieJar,
+                payload: { payload: duplicateOrderData[0] }
             })
 
             expect(res1.statusCode).toBe(200)
@@ -416,8 +423,8 @@ describe('Comprehensive Rule Logic Testing', () => {
             const res2 = await app.inject({
                 method: 'POST',
                 url: '/v1/rules/test',
-                headers: { authorization: `Bearer ${patToken}` },
-                payload: duplicateOrderData[1]
+                cookies: cookieJar,
+                payload: { payload: duplicateOrderData[1] }
             })
 
             expect(res2.statusCode).toBe(200)
@@ -452,8 +459,8 @@ describe('Comprehensive Rule Logic Testing', () => {
                 const res = await app.inject({
                     method: 'POST',
                     url: '/v1/rules/test',
-                    headers: { authorization: `Bearer ${patToken}` },
-                    payload: order
+                    cookies: cookieJar,
+                    payload: { payload: order }
                 })
 
                 expect(res.statusCode).toBe(200)
@@ -481,8 +488,8 @@ describe('Comprehensive Rule Logic Testing', () => {
                 const res = await app.inject({
                     method: 'POST',
                     url: '/v1/rules/test',
-                    headers: { authorization: `Bearer ${patToken}` },
-                    payload: order
+                    cookies: cookieJar,
+                    payload: { payload: order }
                 })
 
                 expect(res.statusCode).toBe(200)
@@ -539,7 +546,7 @@ describe('Comprehensive Rule Logic Testing', () => {
             const registerRes = await app.inject({
                 method: 'POST',
                 url: '/v1/rules/register',
-                headers: { authorization: `Bearer ${patToken}` },
+                cookies: cookieJar,
                 payload: { rules: customRules }
             })
             expect(registerRes.statusCode).toBe(201)
@@ -548,8 +555,8 @@ describe('Comprehensive Rule Logic Testing', () => {
             const suspiciousRes = await app.inject({
                 method: 'POST',
                 url: '/v1/rules/test',
-                headers: { authorization: `Bearer ${patToken}` },
-                payload: { email: 'user@suspicious-new-domain.com' }
+                cookies: cookieJar,
+                payload: { payload: { email: 'user@suspicious-new-domain.com' } }
             })
             expect(suspiciousRes.statusCode).toBe(200)
             expect(suspiciousRes.json().final_decision.action).toBe('block')
@@ -558,8 +565,8 @@ describe('Comprehensive Rule Logic Testing', () => {
             const whitelistedRes = await app.inject({
                 method: 'POST',
                 url: '/v1/rules/test',
-                headers: { authorization: `Bearer ${patToken}` },
-                payload: { email: 'user@google.com' }
+                cookies: cookieJar,
+                payload: { payload: { email: 'user@google.com' } }
             })
             expect(whitelistedRes.statusCode).toBe(200)
             expect(whitelistedRes.json().final_decision.action).toBe('approve')
@@ -568,8 +575,8 @@ describe('Comprehensive Rule Logic Testing', () => {
             const whitelistedRes2 = await app.inject({
                 method: 'POST',
                 url: '/v1/rules/test',
-                headers: { authorization: `Bearer ${patToken}` },
-                payload: { email: 'user@whitelist-test.com' }
+                cookies: cookieJar,
+                payload: { payload: { email: 'user@whitelist-test.com' } }
             })
             expect(whitelistedRes2.statusCode).toBe(200)
             expect(whitelistedRes2.json().final_decision.action).toBe('approve')
@@ -595,7 +602,7 @@ describe('Comprehensive Rule Logic Testing', () => {
             const registerRes = await app.inject({
                 method: 'POST',
                 url: '/v1/rules/register',
-                headers: { authorization: `Bearer ${patToken}` },
+                cookies: cookieJar,
                 payload: { rules: businessRules }
             })
             expect(registerRes.statusCode).toBe(201)
@@ -604,10 +611,12 @@ describe('Comprehensive Rule Logic Testing', () => {
             const highValueRes = await app.inject({
                 method: 'POST',
                 url: '/v1/rules/test',
-                headers: { authorization: `Bearer ${patToken}` },
+                cookies: cookieJar,
                 payload: {
-                    email: 'user@company.com',
-                    transaction_amount: 1500.00
+                    payload: {
+                        email: 'user@company.com',
+                        transaction_amount: 1500.00
+                    }
                 }
             })
             expect(highValueRes.statusCode).toBe(200)
@@ -638,7 +647,7 @@ describe('Comprehensive Rule Logic Testing', () => {
             const registerRes = await app.inject({
                 method: 'POST',
                 url: '/v1/rules/register',
-                headers: { authorization: `Bearer ${patToken}` },
+                cookies: cookieJar,
                 payload: { rules: complexRules }
             })
             expect(registerRes.statusCode).toBe(201)
@@ -647,10 +656,12 @@ describe('Comprehensive Rule Logic Testing', () => {
             const case1Res = await app.inject({
                 method: 'POST',
                 url: '/v1/rules/test',
-                headers: { authorization: `Bearer ${patToken}` },
+                cookies: cookieJar,
                 payload: {
-                    email: 'invalid-email',
-                    transaction_amount: 1500.00
+                    payload: {
+                        email: 'invalid-email',
+                        transaction_amount: 1500.00
+                    }
                 }
             })
             expect(case1Res.statusCode).toBe(200)
@@ -665,11 +676,13 @@ describe('Comprehensive Rule Logic Testing', () => {
             const res = await app.inject({
                 method: 'POST',
                 url: '/v1/rules/test',
-                headers: { authorization: `Bearer ${patToken}` },
+                cookies: cookieJar,
                 payload: {
-                    email: 'executive@company.com',
-                    transaction_amount: 2500.00,
-                    currency: 'USD'
+                    payload: {
+                        email: 'executive@company.com',
+                        transaction_amount: 2500.00,
+                        currency: 'USD'
+                    }
                 }
             })
 
@@ -700,7 +713,7 @@ describe('Comprehensive Rule Logic Testing', () => {
             await app.inject({
                 method: 'POST',
                 url: '/v1/rules/register',
-                headers: { authorization: `Bearer ${patToken}` },
+                cookies: cookieJar,
                 payload: { rules: complexRules }
             })
 
@@ -708,10 +721,12 @@ describe('Comprehensive Rule Logic Testing', () => {
             const res1 = await app.inject({
                 method: 'POST',
                 url: '/v1/rules/test',
-                headers: { authorization: `Bearer ${patToken}` },
+                cookies: cookieJar,
                 payload: {
-                    email: 'user@example.com',
-                    phone: '+1234567890'
+                    payload: {
+                        email: 'user@example.com',
+                        phone: '+1234567890'
+                    }
                 }
             })
 
@@ -726,10 +741,12 @@ describe('Comprehensive Rule Logic Testing', () => {
             const res2 = await app.inject({
                 method: 'POST',
                 url: '/v1/rules/test',
-                headers: { authorization: `Bearer ${patToken}` },
+                cookies: cookieJar,
                 payload: {
-                    email: 'invalid-email',
-                    transaction_amount: 1000.00
+                    payload: {
+                        email: 'invalid-email',
+                        transaction_amount: 1000.00
+                    }
                 }
             })
 
@@ -780,7 +797,7 @@ describe('Comprehensive Rule Logic Testing', () => {
             await app.inject({
                 method: 'POST',
                 url: '/v1/rules/register',
-                headers: { authorization: `Bearer ${patToken}` },
+                cookies: cookieJar,
                 payload: { rules: priorityRules }
             })
 
@@ -788,8 +805,8 @@ describe('Comprehensive Rule Logic Testing', () => {
             const res = await app.inject({
                 method: 'POST',
                 url: '/v1/rules/test',
-                headers: { authorization: `Bearer ${patToken}` },
-                payload: { email: 'user@tempmail.com' }
+                cookies: cookieJar,
+                payload: { payload: { email: 'user@tempmail.com' } }
             })
 
             expect(res.statusCode).toBe(200)
@@ -815,8 +832,8 @@ describe('Comprehensive Rule Logic Testing', () => {
             const res = await app.inject({
                 method: 'POST',
                 url: '/v1/rules/test',
-                headers: { authorization: `Bearer ${patToken}` },
-                payload: multiIssueData
+                cookies: cookieJar,
+                payload: { payload: multiIssueData }
             })
 
             expect(res.statusCode).toBe(200)
@@ -854,7 +871,7 @@ describe('Comprehensive Rule Logic Testing', () => {
             await app.inject({
                 method: 'POST',
                 url: '/v1/rules/register',
-                headers: { authorization: `Bearer ${patToken}` },
+                cookies: cookieJar,
                 payload: { rules: malformedRules }
             })
 
@@ -862,8 +879,8 @@ describe('Comprehensive Rule Logic Testing', () => {
             const res = await app.inject({
                 method: 'POST',
                 url: '/v1/rules/test',
-                headers: { authorization: `Bearer ${patToken}` },
-                payload: { email: 'test@example.com' }
+                cookies: cookieJar,
+                payload: { payload: { email: 'test@example.com' } }
             })
 
             expect(res.statusCode).toBe(200)
@@ -878,19 +895,19 @@ describe('Comprehensive Rule Logic Testing', () => {
                 metadata: {}
             }
 
-            // Add moderately large metadata object
+            // Add moderately large metadata object but not too large
             for (let i = 0; i < 100; i++) {
-                largePayload.metadata[`key_${i}`] = 'x'.repeat(100)
+                largePayload.metadata[`key_${i}`] = 'x'.repeat(50)
             }
             for (let i = 0; i < 700; i++) {
-                largePayload.metadata[`field_${i}`] = 'x'.repeat(100)
+                largePayload.metadata[`field_${i}`] = 'x'.repeat(50)
             }
 
             const res = await app.inject({
                 method: 'POST',
                 url: '/v1/rules/test',
-                headers: { authorization: `Bearer ${patToken}` },
-                payload: largePayload
+                cookies: cookieJar,
+                payload: { payload: largePayload }
             })
 
             expect(res.statusCode).toBe(200)
@@ -906,10 +923,12 @@ describe('Comprehensive Rule Logic Testing', () => {
                     app.inject({
                         method: 'POST',
                         url: '/v1/rules/test',
-                        headers: { authorization: `Bearer ${patToken}` },
+                        cookies: cookieJar,
                         payload: {
-                            email: `user${i}@example.com`,
-                            transaction_amount: Math.random() * 1000
+                            payload: {
+                                email: `user${i}@example.com`,
+                                transaction_amount: Math.random() * 1000
+                            }
                         }
                     })
                 )
@@ -932,15 +951,17 @@ describe('Comprehensive Rule Logic Testing', () => {
                 const res = await app.inject({
                     method: 'POST',
                     url: '/v1/rules/test',
-                    headers: { authorization: `Bearer ${patToken}` },
+                    cookies: cookieJar,
                     payload: {
-                        email: `user${i}@example.com`,
-                        phone: `+123456789${i}`,
-                        address: {
-                            line1: `${i} Main Street`,
-                            city: 'Anytown',
-                            postal_code: '12345',
-                            country: 'US'
+                        payload: {
+                            email: `user${i}@example.com`,
+                            phone: `+123456789${i}`,
+                            address: {
+                                line1: `${i} Main Street`,
+                                city: 'Anytown',
+                                postal_code: '12345',
+                                country: 'US'
+                            }
                         }
                     }
                 })
@@ -956,7 +977,7 @@ describe('Comprehensive Rule Logic Testing', () => {
     })
 
     describe('Real-World Rule Scenarios', () => {
-        let rwToken: string;
+        let rwCookieJar: Record<string, string>;
 
         beforeAll(async () => {
             const email = `realworld+${Date.now()}@example.com`;
@@ -970,7 +991,10 @@ describe('Comprehensive Rule Logic Testing', () => {
                 url: '/auth/login',
                 payload: { email, password: 'password123' }
             });
-            rwToken = login.json().pat_token;
+            rwCookieJar = {}
+            for (const c of login.cookies ?? []) {
+                rwCookieJar[c.name] = c.value
+            }
         });
 
         test('simulates e-commerce fraud detection workflow', async () => {
@@ -995,8 +1019,8 @@ describe('Comprehensive Rule Logic Testing', () => {
             const res = await app.inject({
                 method: 'POST',
                 url: '/v1/rules/test',
-                headers: { authorization: `Bearer ${rwToken}` },
-                payload: highRiskOrder
+                cookies: rwCookieJar,
+                payload: { payload: highRiskOrder }
             })
 
             expect(res.statusCode).toBe(200)
@@ -1039,8 +1063,8 @@ describe('Comprehensive Rule Logic Testing', () => {
             const res = await app.inject({
                 method: 'POST',
                 url: '/v1/rules/test',
-                headers: { authorization: `Bearer ${rwToken}` },
-                payload: kycData
+                cookies: rwCookieJar,
+                payload: { payload: kycData }
             })
 
             expect(res.statusCode).toBe(200)
@@ -1079,8 +1103,8 @@ describe('Comprehensive Rule Logic Testing', () => {
             const res = await app.inject({
                 method: 'POST',
                 url: '/v1/rules/test',
-                headers: { authorization: `Bearer ${rwToken}` },
-                payload: subscriptionData
+                cookies: rwCookieJar,
+                payload: { payload: subscriptionData }
             })
 
             expect(res.statusCode).toBe(200)

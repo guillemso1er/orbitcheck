@@ -1,0 +1,51 @@
+tags:
+  - UI Endpoints
+summary: Get available plans
+description: Returns all available subscription plans
+operationId: getAvailablePlans
+security:
+  - patAuth: []
+  - cookieAuth: []
+responses:
+  '200':
+    description: List of available plans
+    content:
+      application/json:
+        schema:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                description: Plan ID
+              name:
+                type: string
+                description: Plan name
+              slug:
+                type: string
+                description: Plan slug
+              price:
+                type: number
+                description: Plan price
+              validationsLimit:
+                type: integer
+                description: Monthly validation limit
+              projectsLimit:
+                type: integer
+                description: Project limit
+              features:
+                type: object
+                description: Plan features
+  '400':
+    description: Bad request
+    content:
+      application/json:
+        schema:
+          $ref: ../../components/schemas/ValidationError.yml
+  '429':
+    description: Rate limit exceeded
+    content:
+      application/json:
+        schema:
+          $ref: ../../components/schemas/LimitExceededError.yml

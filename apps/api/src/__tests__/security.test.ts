@@ -52,9 +52,8 @@ describe('Security and Authentication', () => {
     app = await createApp(); // Correctly await the async function
 
     // Add the proper authentication hook that matches the real authentication flow
-    const { authenticateRequest, applyRateLimitingAndIdempotency } = await import('../web.js');
+    const { applyRateLimitingAndIdempotency } = await import('../web.js');
     app.addHook('preHandler', async (request: FastifyRequest, rep: FastifyReply) => {
-      await authenticateRequest(request, rep, mockPool as any);
       await applyRateLimitingAndIdempotency(request, rep, mockRedisInstance as any);
     });
 

@@ -22,7 +22,7 @@ export async function validatePhone(
 ): Promise<{
     valid: boolean;
     e164: string;
-    country: string | null;
+    country: string | undefined;
     reason_codes: string[];
     request_id: string;
     ttl_seconds: number;
@@ -31,7 +31,7 @@ export async function validatePhone(
     const hash = crypto.createHash('sha1').update(input).digest('hex');
     const cacheKey = `validator:phone:${hash}`;
 
-    let result: { valid: boolean; e164: string; country: string | null; reason_codes: string[]; request_id: string; ttl_seconds: number };
+    let result: { valid: boolean; e164: string; country: string | undefined; reason_codes: string[]; request_id: string; ttl_seconds: number };
 
     if (redis) {
         const cached = await redis.get(cacheKey);
@@ -45,7 +45,7 @@ export async function validatePhone(
         return {
             valid: false,
             e164: "",
-            country: country ? country.toUpperCase() : '',
+            country: country ? country.toUpperCase() : undefined,
             reason_codes: ['phone.invalid_format'],
             request_id: crypto.randomUUID(),
             ttl_seconds: 30 * 24 * 3600,
@@ -72,7 +72,7 @@ export async function validatePhone(
     result = {
         valid,
         e164,
-        country: cc || '',
+        country: cc || undefined,
         reason_codes,
         request_id: crypto.randomUUID(),
         ttl_seconds: 30 * 24 * 3600,

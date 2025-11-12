@@ -1,8 +1,8 @@
-import { createApiClient } from '@orbitcheck/contracts';
+import { createClient, loginUser, registerUser } from '@orbitcheck/contracts';
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
-import { API_BASE, ERROR_MESSAGES, LOCAL_STORAGE_KEYS, VALIDATION_MESSAGES } from '../constants';
+import { API_BASE, ERROR_MESSAGES, VALIDATION_MESSAGES } from '../constants';
 
 interface User {
   id: string;
@@ -79,39 +79,40 @@ const Login: React.FC = () => {
     setError(null);
 
     try {
-      const apiClient = createApiClient({
-        baseURL: API_BASE
+      const apiClient = createClient({
+        baseUrl: API_BASE
       });
 
       let data;
       if (isRegister) {
-        data = await apiClient.registerUser({
-          email: form.email.trim().toLowerCase(),
-          password: form.password,
-          confirm_password: form.confirm_password,
+        const response = await registerUser({
+          client: apiClient,
+          body: {
+            email: form.email.trim().toLowerCase(),
+            password: form.password,
+            confirm_password: form.confirm_password,
+          },
         });
+        data = response.data;
       } else {
-        data = await apiClient.loginUser({
-          email: form.email.trim().toLowerCase(),
-          password: form.password,
+        const response = await loginUser({
+          client: apiClient,
+          body: {
+            email: form.email.trim().toLowerCase(),
+            password: form.password,
+          },
         });
+        data = response.data;
       }
 
-      if (data.user) {
+      if (data && data.user) {
         // Ensure the user object matches the expected interface
         const user: User = {
           id: data.user.id || '',
           email: data.user.email || ''
         };
-        // Store the auth token for API requests
-        // For registration, use pat_token; for login, no token returned, rely on session
-        const token = (data as any).pat_token || data.token;
-        if (token) {
-          localStorage.setItem(LOCAL_STORAGE_KEYS.AUTH_TOKEN, token);
-        } else {
-          throw new Error('No authentication token received');
-        }
-        login(token, user);
+        // Session-based auth: cookie is set by API, just store user data
+        login(user);
         navigate('/api-keys');
       } else {
         throw new Error(ERROR_MESSAGES.INVALID_SERVER_RESPONSE);

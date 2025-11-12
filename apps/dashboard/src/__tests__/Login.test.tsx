@@ -75,7 +75,6 @@ describe('Login Component', () => {
     // Default mock implementation
     mockUseAuth.mockReturnValue({
       user: null,
-      token: null,
       login: jest.fn(),
       logout: jest.fn(),
       isAuthenticated: false,
@@ -169,7 +168,6 @@ describe('Login Component', () => {
     const mockLogin = jest.fn();
     mockUseAuth.mockReturnValue({
       user: null,
-      token: null,
       login: mockLogin,
       logout: jest.fn(),
       isAuthenticated: false,
@@ -198,7 +196,7 @@ describe('Login Component', () => {
     fireEvent.click(screen.getByRole('button', { name: /sign in/i }));
 
     await waitFor(() => {
-      expect(mockLogin).toHaveBeenCalledWith('test-token', {
+      expect(mockLogin).toHaveBeenCalledWith({
         id: 'user-id',
         email: 'test@example.com',
       });
@@ -210,7 +208,6 @@ describe('Login Component', () => {
     const mockLogin = jest.fn();
     mockUseAuth.mockReturnValue({
       user: null,
-      token: null,
       login: mockLogin,
       logout: jest.fn(),
       isAuthenticated: false,
@@ -247,7 +244,6 @@ describe('Login Component', () => {
     const mockLogin = jest.fn();
     mockUseAuth.mockReturnValue({
       user: null,
-      token: null,
       login: mockLogin,
       logout: jest.fn(),
       isAuthenticated: false,

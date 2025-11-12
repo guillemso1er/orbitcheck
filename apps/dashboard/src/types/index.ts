@@ -10,6 +10,7 @@ export interface Rule {
   createdAt?: string;
   updatedAt?: string;
   tags?: string[];
+  isBuiltIn?: boolean;
 }
 
 export interface TestResult {

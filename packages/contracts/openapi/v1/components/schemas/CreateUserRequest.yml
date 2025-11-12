@@ -1,0 +1,21 @@
+type: object
+required:
+  - email
+  - first_name
+  - last_name
+properties:
+  email:
+    type: string
+    format: email
+    description: User email address
+  first_name:
+    type: string
+    description: User first name
+  last_name:
+    type: string
+    description: User last name
+  password:
+    type: string
+    description: User password (optional for admin creation)
+
+    

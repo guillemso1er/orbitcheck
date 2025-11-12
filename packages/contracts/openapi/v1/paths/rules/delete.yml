@@ -1,0 +1,53 @@
+tags:
+  - Management API
+summary: Delete custom rule
+description: Deletes a custom validation rule by its ID
+operationId: deleteCustomRule
+security:
+  - patAuth: []
+  - cookieAuth: []
+parameters:
+  - name: id
+    in: path
+    required: true
+    description: ID of the custom rule to delete
+    schema:
+      type: string
+responses:
+  '200':
+    description: Custom rule deleted successfully
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            message:
+              type: string
+              description: Success message
+            deleted_rule_id:
+              type: string
+              description: ID of the deleted rule
+            request_id:
+              type: string
+  '401':
+    description: Unauthorized
+    content:
+      application/json:
+        schema:
+          $ref: '../../components/schemas/Error.yml'
+  '404':
+    description: Custom rule not found
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            error:
+              type: string
+              description: Error message
+            request_id:
+              type: string
+              description: Request identifier
+            details:
+              type: string
+              description: Additional error details

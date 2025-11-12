@@ -1,4 +1,4 @@
-import { createApiClient } from "@orbitcheck/contracts";
-import { API_BASE } from "src/constants";
+import { createClient } from "@orbitcheck/contracts";
+import { API_BASE } from '../constants';
 
-export const apiClient = createApiClient({ baseURL: API_BASE });
+export const apiClient = createClient({ baseUrl: API_BASE });

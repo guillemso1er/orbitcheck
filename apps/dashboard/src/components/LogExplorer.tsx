@@ -1,6 +1,7 @@
-import { createApiClient } from '@orbitcheck/contracts';
+import { getLogs } from '@orbitcheck/contracts';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { API_BASE, UI_STRINGS } from '../constants';
+import { UI_STRINGS } from '../constants';
+import { apiClient } from '../utils/api';
 import { FiltersSection, type FiltersState } from './FiltersSection';
 import { LogsTable, type LogEntry } from './LogsTable';
 import { PaginationControls } from './PaginationControls';
@@ -42,8 +43,6 @@ const LogExplorer: React.FC = () => {
       setError(null);
 
       try {
-        const apiClient = createApiClient({ baseURL: API_BASE });
-
         const f = overrideFilters ?? appliedFilters;
         const params: Record<string, unknown> = { limit, offset };
         if (f.reason_code) params.reason_code = f.reason_code;
@@ -57,14 +56,23 @@ const LogExplorer: React.FC = () => {
           setTimeout(() => reject(new Error('Request timeout')), 10000)
         );
 
-        const response = await Promise.race([apiClient.getLogs(params), timeoutPromise]);
+        const { data, error } = await Promise.race([
+          getLogs({ client: apiClient, query: params }),
+          timeoutPromise
+        ]);
 
         // Only check if this is still the latest request
         if (requestId !== lastRequestIdRef.current) {
           return;
         }
 
-        const data = response.data || response;
+        if (error) {
+          if ('error' in error && error.error && 'message' in error.error) {
+            throw new Error(error.error.message || 'Failed to fetch logs');
+          } else {
+            throw new Error('Failed to fetch logs');
+          }
+        }
 
         const logsArray = (data as any).data || (Array.isArray(data) ? data : []);
         setLogs(logsArray.map((log: any) => ({
@@ -96,7 +104,7 @@ const LogExplorer: React.FC = () => {
         }
       }
     },
-    [limit, appliedFilters]
+    [limit, appliedFilters, apiClient]
   );
 
   // Initial load only

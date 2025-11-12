@@ -1,0 +1,403 @@
+tags:
+  - Management API
+summary: Test rules against payload
+description: Tests rules against a sample payload and returns triggered rules
+operationId: testRulesAgainstPayload
+security:
+  - patAuth: []
+  - cookieAuth: []
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        required:
+          - payload
+        properties:
+          payload:
+            type: object
+            description: Sample payload to test rules against
+            additionalProperties: true
+          rule_ids:
+            type: array
+            items:
+              type: string
+            description: Optional list of specific rule IDs to test
+responses:
+  '200':
+    description: Rule test results
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            results:
+              type: object
+              description: Validation results for each field
+              properties:
+                email:
+                  type: object
+                  properties:
+                    valid:
+                      type: boolean
+                    confidence:
+                      type: number
+                    reason_codes:
+                      type: array
+                      items:
+                        type: string
+                    risk_score:
+                      type: number
+                    processing_time_ms:
+                      type: number
+                    provider:
+                      type: string
+                    normalized:
+                      type: string
+                    disposable:
+                      type: boolean
+                    domain_reputation:
+                      type: number
+                    mx_records:
+                      type: boolean
+                    smtp_check:
+                      type: boolean
+                    catch_all:
+                      type: boolean
+                    role_account:
+                      type: boolean
+                    free_provider:
+                      type: boolean
+                    domain:
+                      type: string
+                    metadata:
+                      type: object
+                      additionalProperties: true
+                phone:
+                  type: object
+                  properties:
+                    valid:
+                      type: boolean
+                    confidence:
+                      type: number
+                    reason_codes:
+                      type: array
+                      items:
+                        type: string
+                    risk_score:
+                      type: number
+                    processing_time_ms:
+                      type: number
+                    provider:
+                      type: string
+                    e164:
+                      type: string
+                    country:
+                      type: string
+                    carrier:
+                      type: string
+                    line_type:
+                      type: string
+                    reachable:
+                      type: boolean
+                    ported:
+                      type: boolean
+                    roaming:
+                      type: boolean
+                    metadata:
+                      type: object
+                      additionalProperties: true
+                address:
+                  type: object
+                  properties:
+                    valid:
+                      type: boolean
+                    confidence:
+                      type: number
+                    reason_codes:
+                      type: array
+                      items:
+                        type: string
+                    risk_score:
+                      type: number
+                    processing_time_ms:
+                      type: number
+                    provider:
+                      type: string
+                    normalized:
+                      type: object
+                      additionalProperties: true
+                    po_box:
+                      type: boolean
+                    residential:
+                      type: boolean
+                    deliverable:
+                      type: boolean
+                    dpv_confirmed:
+                      type: boolean
+                    geocode:
+                      type: object
+                      properties:
+                        lat:
+                          type: number
+                        lng:
+                          type: number
+                    postal_code_mismatch:
+                      type: boolean
+                    city:
+                      type: string
+                    postal_code:
+                      type: string
+                    metadata:
+                      type: object
+                      additionalProperties: true
+                name:
+                  type: object
+                  properties:
+                    valid:
+                      type: boolean
+                    confidence:
+                      type: number
+                    reason_codes:
+                      type: array
+                      items:
+                        type: string
+                    risk_score:
+                      type: number
+                    processing_time_ms:
+                      type: number
+                    provider:
+                      type: string
+                    normalized:
+                      type: string
+                    parts:
+                      type: object
+                      properties:
+                        first:
+                          type: string
+                        middle:
+                          type: string
+                        last:
+                          type: string
+                    gender:
+                      type: string
+                    salutation:
+                      type: string
+                    metadata:
+                      type: object
+                      additionalProperties: true
+                ip:
+                  type: object
+                  properties:
+                    valid:
+                      type: boolean
+                    confidence:
+                      type: number
+                    reason_codes:
+                      type: array
+                      items:
+                        type: string
+                    risk_score:
+                      type: number
+                    processing_time_ms:
+                      type: number
+                    provider:
+                      type: string
+                    country:
+                      type: string
+                    region:
+                      type: string
+                    city:
+                      type: string
+                    is_vpn:
+                      type: boolean
+                    is_proxy:
+                      type: boolean
+                    is_tor:
+                      type: boolean
+                    is_datacenter:
+                      type: boolean
+                    asn:
+                      type: string
+                    org:
+                      type: string
+                    metadata:
+                      type: object
+                      additionalProperties: true
+                device:
+                  type: object
+                  properties:
+                    valid:
+                      type: boolean
+                    confidence:
+                      type: number
+                    reason_codes:
+                      type: array
+                      items:
+                        type: string
+                    risk_score:
+                      type: number
+                    processing_time_ms:
+                      type: number
+                    provider:
+                      type: string
+                    type:
+                      type: string
+                    os:
+                      type: string
+                    browser:
+                      type: string
+                    is_bot:
+                      type: boolean
+                    fingerprint:
+                      type: string
+                    metadata:
+                      type: object
+                      additionalProperties: true
+            rule_evaluations:
+              type: array
+              items:
+                type: object
+                properties:
+                  rule_id:
+                    type: string
+                    description: ID of the rule
+                  rule_name:
+                    type: string
+                    description: Name of the rule
+                  description:
+                    type: string
+                    description: Rule description
+                  condition:
+                    type: string
+                    description: Rule condition/logic
+                  triggered:
+                    type: boolean
+                    description: Whether the rule was triggered
+                  action:
+                    type: string
+                    enum: [approve, hold, block]
+                    description: Action to take if triggered
+                  priority:
+                    type: number
+                    description: Rule priority
+                  evaluation_time_ms:
+                    type: number
+                    description: Time taken to evaluate the rule
+                  confidence_score:
+                    type: number
+                    description: Confidence score of the evaluation
+                  reason:
+                    type: string
+                    description: Reason for the evaluation result
+                  error:
+                    type: string
+                    description: Error message if evaluation failed
+                  metadata:
+                    type: object
+                    additionalProperties: true
+            final_decision:
+              type: object
+              properties:
+                action:
+                  type: string
+                  enum: [approve, hold, block, review]
+                  description: Final action to take
+                confidence:
+                  type: number
+                  description: Confidence in the decision
+                reasons:
+                  type: array
+                  items:
+                    type: string
+                  description: Reasons for the decision
+                risk_score:
+                  type: number
+                  description: Overall risk score
+                risk_level:
+                  type: string
+                  enum: [low, medium, high, critical]
+                  description: Risk level
+                recommended_actions:
+                  type: array
+                  items:
+                    type: string
+                  description: Recommended actions to take
+            performance_metrics:
+              type: object
+              properties:
+                total_duration_ms:
+                  type: number
+                  description: Total request duration
+                validation_duration_ms:
+                  type: number
+                  description: Validation duration
+                rule_evaluation_duration_ms:
+                  type: number
+                  description: Rule evaluation duration
+                parallel_validations:
+                  type: boolean
+                  description: Whether validations were run in parallel
+                cache_hits:
+                  type: number
+                  description: Number of cache hits
+                cache_misses:
+                  type: number
+                  description: Number of cache misses
+            request_id:
+              type: string
+              description: Request identifier
+            timestamp:
+              type: string
+              format: date-time
+              description: Response timestamp
+            project_id:
+              type: string
+              description: Project identifier
+            environment:
+              type: string
+              enum: [test, production]
+              description: Environment
+            debug_info:
+              type: object
+              description: Debug information (only when X-Debug header is set)
+              properties:
+                rules_evaluated:
+                  type: number
+                  description: Number of rules evaluated
+                rules_triggered:
+                  type: number
+                  description: Number of rules triggered
+                validation_providers_used:
+                  type: array
+                  items:
+                    type: string
+                  description: Validation providers used
+                errors:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      field:
+                        type: string
+                      error:
+                        type: string
+                  description: Errors encountered
+                warnings:
+                  type: array
+                  items:
+                    type: string
+                  description: Warnings encountered
+  '400':
+    description: Bad request
+    content:
+      application/json:
+        schema:
+          $ref: ../../components/schemas/ValidationError.yml
+  '429':
+    description: Rate limit exceeded
+    content:
+      application/json:
+        schema:
+          $ref: ../../components/schemas/LimitExceededError.yml

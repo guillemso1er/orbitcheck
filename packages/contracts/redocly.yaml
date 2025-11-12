@@ -1,0 +1,8 @@
+apis:
+  v1:
+    root: ./openapi/v1/openapi.yml
+extends:
+  - recommended
+rules:
+  no-unused-components: error
+  operation-operationId: error

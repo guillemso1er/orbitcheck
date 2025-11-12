@@ -1,0 +1,53 @@
+tags:
+  - UI Endpoints
+summary: Create new project
+description: Creates a new project for the authenticated user
+operationId: createProject
+security:
+  - patAuth: []
+  - cookieAuth: []
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        required:
+          - name
+        properties:
+          name:
+            type: string
+            description: Project name
+responses:
+  '201':
+    description: Project created successfully
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            id:
+              type: string
+              description: Project ID
+            name:
+              type: string
+              description: Project name
+            created_at:
+              type: string
+              format: date-time
+              description: Project creation timestamp
+            request_id:
+              type: string
+              description: Request identifier
+  '400':
+    description: Invalid input
+    content:
+      application/json:
+        schema:
+          $ref: '../../components/schemas/ValidationError.yml'
+  '401':
+    description: Unauthorized
+    content:
+      application/json:
+        schema:
+          $ref: '../../components/schemas/UnauthorizedError.yml'

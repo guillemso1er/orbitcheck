@@ -1,0 +1,39 @@
+tags:
+  - Management API
+summary: Create Stripe Customer Portal session
+description: Creates a Stripe Customer Portal session for managing billing
+operationId: createCustomerPortalSession
+security:
+  - patAuth: []
+  - cookieAuth: []
+responses:
+  '200':
+    description: Portal session created
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            portal_url:
+              type: string
+              format: uri
+            request_id:
+              type: string
+  '401':
+    description: Unauthorized
+    content:
+      application/json:
+        schema:
+          $ref: '../../components/schemas/Error.yml'
+  '404':
+    description: No billing account found
+    content:
+      application/json:
+        schema:
+          $ref: '../../components/schemas/Error.yml'
+  '429':
+    description: Rate limit exceeded
+    content:
+      application/json:
+        schema:
+          $ref: '../../components/schemas/Error.yml'

@@ -27,7 +27,8 @@ export const batchValidationProcessor = async (job: Job<BatchValidationInput & {
   const itemProcessor = async (item: any, _project_id: string, pool: Pool, redis?: Redis): Promise<any> => {
     switch (type) {
       case 'email':
-        return await validateEmail(item, redis!);
+        // Extract email string from item object
+        return await validateEmail(String(item.email || ''), redis!);
       case 'phone':
         return await validatePhone(item.phone, item.country, redis!);
       case 'address':

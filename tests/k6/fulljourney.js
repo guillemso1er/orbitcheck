@@ -77,15 +77,15 @@ export default function () {
     console.log('Starting k6 comprehensive journey test with new auth...');
 
     // Step 1: Register a new user
-    const {  email: userEmail } = testRegister(check);
+    const { email: userEmail } = testRegister(check);
 
     // Step 2: Login
     const { res: resLogin, patToken } = testLogin(userEmail, check);
-    const sessionCookie = resLogin.cookies['orbitcheck_session'] || [];
+    const cookieAuth = resLogin.cookies['orbitcheck_session'] || [];
 
     console.log('Obtained PAT token:', patToken);
 
-    const {apiKey } = testCreateApiKey(patToken, check);
+    const { apiKey } = testCreateApiKey(patToken, check);
 
     // --- Define Headers ---
     const HEADERS = { 'Content-Type': 'application/json' };

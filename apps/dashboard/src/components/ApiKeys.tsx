@@ -1,15 +1,8 @@
-import { createApiClient } from '@orbitcheck/contracts';
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { API_BASE, UI_STRINGS } from '../constants';
+import { ApiKey, createApiKey, listApiKeys, revokeApiKey } from '@orbitcheck/contracts';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { apiClient } from 'src/utils/api';
+import { UI_STRINGS } from '../constants';
 
-interface ApiKey {
-  id: string;
-  prefix: string;
-  name?: string;
-  status: 'active' | 'revoked';
-  created_at: string | null;
-  last_used_at: string | null;
-}
 
 interface ApiKeysProps {
   token?: string;
@@ -311,7 +304,7 @@ const ApiKeysTable: React.FC<{
       </thead>
       <tbody className="divide-y divide-gray-200 dark:divide-gray-600">
         {keys.map((key) => {
-          const isLoading = loadingStates[key.id] || false;
+          const isLoading = loadingStates[key.id || ''] || false;
           return (
             <tr key={key.id} className="bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
               <td className="px-6 py-4 font-medium text-gray-900 whitespace-nowrap">
@@ -331,7 +324,7 @@ const ApiKeysTable: React.FC<{
                   role="status"
                   aria-label={`Status: ${key.status}`}
                 >
-                  {key.status.toUpperCase()}
+                  {key.status?.toUpperCase()}
                 </span>
               </td>
               <td className="px-6 py-4">
@@ -368,7 +361,7 @@ const ApiKeysTable: React.FC<{
                       {isLoading ? 'ROTATING...' : UI_STRINGS.ROTATE?.toUpperCase() || 'ROTATE'}
                     </button>
                     <button
-                      onClick={() => onRevoke(key.id)}
+                      onClick={() => onRevoke(key.id || '')}
                       className="py-1 px-2 text-xs font-medium text-red-800 bg-red-100 rounded-md hover:bg-red-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                       title="Revoke Key"
                       disabled={isLoading}
@@ -404,21 +397,25 @@ const ApiKeys: React.FC<ApiKeysProps> = () => {
   } | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
-  // Memoize API client
-  const apiClient = useMemo(() => createApiClient({ baseURL: API_BASE }), []);
+
 
   const fetchKeys = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
-      const data = await apiClient.listApiKeys();
-      const transformedKeys: ApiKey[] = (data.data || []).map((apiKey) => ({
-        id: apiKey.id!,
-        prefix: apiKey.prefix || '',
-        name: undefined, // API doesn't provide name
+      const { data, error } = await listApiKeys({ client: apiClient });
+
+      if (error) {
+        throw new Error((error?.error || {}).message || 'Failed to load API keys');
+      }
+
+      const transformedKeys = (data.data || []).map((apiKey) => ({
+        id: apiKey.id ?? '',
+        prefix: apiKey.prefix ?? '',
+        name: apiKey.name || undefined, // Use the name from API
         status: (apiKey.status === 'active' || apiKey.status === 'revoked') ? apiKey.status : 'active',
-        created_at: apiKey.created_at || null,
-        last_used_at: apiKey.last_used_at || null,
+        created_at: apiKey.created_at ?? undefined,
+        last_used_at: apiKey.last_used_at ?? null,
       })).filter((key) => key.id); // Filter out keys without id
       setKeys(transformedKeys);
     } catch (err) {
@@ -434,12 +431,12 @@ const ApiKeys: React.FC<ApiKeysProps> = () => {
     fetchKeys();
   }, [fetchKeys]);
 
-  const handleCreate = async (name: string) => {
+  const handleCreate = useCallback(async (name: string) => {
     try {
       setCreating(true);
       setError(null);
-      const data = await apiClient.createApiKey(name || undefined);
-      setNewKey({ prefix: data.prefix || '', full_key: data.full_key || '' });
+      const data = await createApiKey({ client: apiClient, body: { name } });
+      setNewKey({ prefix: data.data?.prefix ?? '', full_key: data.data?.full_key ?? '' });
       setShowCreate(false);
       await fetchKeys();
     } catch (err) {
@@ -451,7 +448,7 @@ const ApiKeys: React.FC<ApiKeysProps> = () => {
     } finally {
       setCreating(false);
     }
-  };
+  }, [apiClient, fetchKeys]);
 
   const handleRevoke = (id: string) => {
     setConfirmDialog({
@@ -464,7 +461,7 @@ const ApiKeys: React.FC<ApiKeysProps> = () => {
         setLoadingStates(prev => ({ ...prev, [id]: true }));
         try {
           setError(null);
-          await apiClient.revokeApiKey(id);
+          await revokeApiKey({ client: apiClient, path: { id: id } });
           setSuccessMessage('API key revoked successfully');
           await fetchKeys();
         } catch (err) {
@@ -490,12 +487,12 @@ const ApiKeys: React.FC<ApiKeysProps> = () => {
       variant: 'warning',
       onConfirm: async () => {
         setConfirmDialog(null);
-        setLoadingStates(prev => ({ ...prev, [key.id]: true }));
+        setLoadingStates(prev => ({ ...prev, [key.id || '']: true }));
         try {
           setError(null);
-          const newData = await apiClient.createApiKey(key.name || undefined);
-          setNewKey({ prefix: newData.prefix || '', full_key: newData.full_key || '' });
-          await apiClient.revokeApiKey(key.id);
+          const newData = await createApiKey({ client: apiClient, body: { name: key.name || undefined } });
+          setNewKey({ prefix: newData.data?.prefix ?? '', full_key: newData.data?.full_key ?? '' });
+          await revokeApiKey({ client: apiClient, path: { id: key.id || '' } });
           setSuccessMessage('API key rotated successfully');
           await fetchKeys();
         } catch (err) {
@@ -505,7 +502,7 @@ const ApiKeys: React.FC<ApiKeysProps> = () => {
         } finally {
           setLoadingStates(prev => {
             const newState = { ...prev };
-            delete newState[key.id];
+            delete newState[key.id || ''];
             return newState;
           });
         }

@@ -1,0 +1,94 @@
+tags:
+  - Runtime API
+summary: Deduplicate customer
+description: Searches for existing customers using deterministic and fuzzy matching
+operationId: dedupeCustomer
+security:
+  - apiKeyAuth: []
+  - httpMessageSigInput: []
+    httpMessageSig: []
+  - cookieAuth: []
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        required:
+          - email
+          - first_name
+          - last_name
+        properties:
+          email:
+            type: string
+            description: Customer email
+          phone:
+            type: string
+            description: Customer phone
+          first_name:
+            type: string
+            description: Customer first name
+          last_name:
+            type: string
+            description: Customer last name
+responses:
+  '200':
+    description: Deduplication results
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            matches:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    description: Customer ID
+                  similarity_score:
+                    type: number
+                    description: Similarity score (0-1)
+                  match_type:
+                    type: string
+                    enum:
+                      - exact_email
+                      - exact_phone
+                      - fuzzy_name
+                    description: Type of match
+                  data:
+                    type: object
+                    properties:
+                      email:
+                        type: string
+                      phone:
+                        type: string
+                      first_name:
+                        type: string
+                      last_name:
+                        type: string
+            suggested_action:
+              type: string
+              enum:
+                - create_new
+                - merge_with
+                - review
+              description: Suggested action
+            canonical_id:
+              type: [string, "null"]
+              description: Suggested canonical ID
+            request_id:
+              type: string
+  '400':
+    description: Bad request
+    content:
+      application/json:
+        schema:
+          $ref: ../../components/schemas/ValidationError.yml
+  '429':
+    description: Rate limit exceeded
+    content:
+      application/json:
+        schema:
+          $ref: ../../components/schemas/LimitExceededError.yml
