@@ -10,6 +10,7 @@ import { idempotency, rateLimit } from "./hooks.js";
 import openapiSecurity from "./plugins/auth.js";
 import { createPlansService } from './services/plans.js';
 import { managementRoutes, runtimeRoutes } from "./routes/routes.js";
+import openapiSpec from "@orbitcheck/contracts/openapi.v1.json";
 
 
 
@@ -132,7 +133,7 @@ export function registerRoutes<TServer extends RawServerBase = RawServerBase>(ap
 
     app.register(openapiGlue, {
         serviceHandlers: serviceHandlers(pool, redis, app),
-        specification: '../../packages/contracts/dist/openapi.v1.json',
+        specification: openapiSpec,
     });
 
 }
