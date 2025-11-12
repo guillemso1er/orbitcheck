@@ -27,6 +27,27 @@ jobs:
     release:
         runs-on: ubuntu-latest
         steps:
+            - name: Wait for ci-cd to be idle on main
+              env:
+                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+              run: |
+                  set -euo pipefail
+                  echo "Checking for in-progress CI runs..."
+                  while true; do
+                      inprog=$(gh run list \
+                      --workflow ".github/workflows/ci-cd.yml" \
+                      --branch main \
+                      --status in_progress \
+                      -L 100 \
+                      --json databaseId -q 'length')
+                      if [ "$inprog" -eq 0 ]; then
+                      echo "CI is idle."
+                      break
+                      fi
+                      echo "Waiting for $inprog CI run(s) to finish..."
+                      sleep 20
+                  done
+
             - name: Checkout (fetch tags)
               uses: actions/checkout@v4
               with:
