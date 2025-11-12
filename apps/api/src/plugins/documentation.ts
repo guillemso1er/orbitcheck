@@ -13,14 +13,19 @@ function shouldHideRoute(url: string): boolean {
         url.startsWith(ROUTES.REFERENCE) ||
         url.startsWith(ROUTES.DOCUMENTATION) ||
         url.startsWith(ROUTES.METRICS) ||
-        managementRoutes().some(group =>
-            typeof group === 'object' && group !== null &&
-            Object.values(group).some(route => typeof route === 'string' && url.startsWith(route))) ||
+        managementRoutes().some(route => {
+            if (typeof route === 'string' && route.includes(':')) {
+                const routePattern = route.replace(/:[^/]+/g, '[^/]+');
+                const regex = new RegExp(`^${routePattern}`);
+                return regex.test(url);
+            }
+            return typeof route === 'string' && url.startsWith(route);
+        }) ||
         url.startsWith(ROUTES.STATUS) ||
         url.startsWith(ROUTES.HEALTH) ||
         url.startsWith(ROUTES.READY) ||
         url.startsWith(ROUTES.AUTH) ||
-        Object.values(routes.v1.data.eraseData).some(route => url.startsWith(route)))
+        url.startsWith(routes.v1.data.eraseData))
 
         && environment.NODE_ENV === 'production'
 }

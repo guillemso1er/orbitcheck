@@ -74,18 +74,14 @@ export async function applyRateLimitingAndIdempotency<TServer extends RawServerB
     }
 
     // Skip middleware for management routes
-    const isMgmtRoute = managementRoutes().some(group =>
-        typeof group === 'object' && group !== null &&
-        Object.values(group).some(route => {
-            // Handle parameterized routes like '/v1/api-keys/:id'
-            if (typeof route === 'string' && route.includes(':')) {
-                const routePattern = route.replace(/:[^/]+/g, '[^/]+');
-                const regex = new RegExp(`^${routePattern}`);
-                return regex.test(url);
-            }
-            return typeof route === 'string' && url.startsWith(route);
-        })
-    );
+    const isMgmtRoute = managementRoutes().some(route => {
+        if (typeof route === 'string' && route.includes(':')) {
+            const routePattern = route.replace(/:[^/]+/g, '[^/]+');
+            const regex = new RegExp(`^${routePattern}`);
+            return regex.test(url);
+        }
+        return typeof route === 'string' && url.startsWith(route);
+    });
 
     if (isMgmtRoute) {
         return;
