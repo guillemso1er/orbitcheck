@@ -149,6 +149,8 @@ export default fp<Options>(async function openapiSecurity(app, opts) {
     // This handles cases where the origin validation is too strict but CSRF tokens are properly validated
     const hasValidCsrfTokens = headerToken && sessionToken && headerToken === sessionToken
 
+    console.log("CSRF check - method:", method, "headerToken:", headerToken, "sessionToken:", sessionToken, "hasValidCsrfTokens:", hasValidCsrfTokens)
+
     if (!hasValidCsrfTokens && !originMatches(req)) {
       const err = new Error('Invalid request origin')
         ; (err as any).statusCode = 403
