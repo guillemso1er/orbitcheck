@@ -27,31 +27,7 @@ beforeAll(async () => {
     // Seed test data for disposable domains
     await seedTestData()
 
-    // Set up session cookies for rules tests
-    const userRes = await app.inject({
-      method: 'POST',
-      url: '/auth/register',
-      payload: {
-        email: 'test@example.com',
-        password: 'password123',
-        confirm_password: 'password123'
-      }
-    })
 
-    const loginRes = await app.inject({
-      method: 'POST',
-      url: '/auth/login',
-      payload: {
-        email: 'test@example.com',
-        password: 'password123'
-      }
-    })
-
-    // Extract session cookies from login response
-    cookieJar = {}
-    for (const c of loginRes.cookies ?? []) {
-      cookieJar[c.name] = c.value
-    }
   } catch (error) {
     console.error('Failed to start test environment:', error)
     throw error
@@ -86,7 +62,16 @@ afterAll(async () => {
 beforeEach(async () => {
   try {
     await resetDb()
-    
+    // Set up session cookies for rules tests
+    const userRes = await app.inject({
+      method: 'POST',
+      url: '/auth/register',
+      payload: {
+        email: 'test@example.com',
+        password: 'password123',
+        confirm_password: 'password123'
+      }
+    })
     // Login and get fresh session cookie for each test
     const loginRes = await app.inject({
       method: 'POST',
@@ -279,7 +264,7 @@ describe('Rules Integration Tests', () => {
 
       expect(res.statusCode).toBe(200)
       const catalog = res.json()
-      
+
       catalog.forEach((rule: any) => {
         expect(rule).toHaveProperty('id')
         expect(rule).toHaveProperty('name')
@@ -297,7 +282,7 @@ describe('Rules Integration Tests', () => {
 
       expect(res.statusCode).toBe(200)
       const catalog = res.json()
-      
+
       catalog.forEach((rule: any) => {
         expect(rule.category).toBe('email')
       })
@@ -312,7 +297,7 @@ describe('Rules Integration Tests', () => {
 
       expect(res.statusCode).toBe(200)
       const catalog = res.json()
-      
+
       // Verify it's sorted alphabetically
       const names = catalog.map((rule: any) => rule.name)
       const sortedNames = [...names].sort()
@@ -328,7 +313,7 @@ describe('Rules Integration Tests', () => {
 
       expect(res.statusCode).toBe(200)
       const catalog = res.json()
-      
+
       expect(catalog).toHaveProperty('data')
       expect(catalog).toHaveProperty('pagination')
       expect(Array.isArray(catalog.data)).toBe(true)
@@ -344,11 +329,11 @@ describe('Rules Integration Tests', () => {
 
       expect(res.statusCode).toBe(200)
       const catalog = res.json()
-      
+
       // Filter results should contain 'email' in name or description
       catalog.data.forEach((rule: any) => {
         expect(
-          rule.name.toLowerCase().includes('email') || 
+          rule.name.toLowerCase().includes('email') ||
           rule.description.toLowerCase().includes('email')
         ).toBe(true)
       })
@@ -378,7 +363,7 @@ describe('Rules Integration Tests', () => {
 
       expect(res.statusCode).toBe(200)
       const errorCodes = res.json()
-      
+
       errorCodes.forEach((code: any) => {
         expect(code).toHaveProperty('code')
         expect(code).toHaveProperty('description')
@@ -454,7 +439,7 @@ describe('Rules Integration Tests', () => {
       expect(res.statusCode).toBe(200)
       const result = res.json()
       expect(Array.isArray(result.rule_evaluations)).toBe(true)
-      
+
       result.rule_evaluations.forEach((evaluation: any) => {
         expect(evaluation).toHaveProperty('rule_id')
         expect(evaluation).toHaveProperty('triggered')
@@ -525,7 +510,7 @@ describe('Rules Integration Tests', () => {
 
       expect(res.statusCode).toBe(200)
       const result = res.json()
-      
+
       // Should complete within reasonable time
       expect(endTime - startTime).toBeLessThan(5000)
     })
@@ -828,7 +813,7 @@ describe('Rules Integration Tests', () => {
 
       test('handles extremely large payload', async () => {
         const largePayload: any = { email: 'test@example.com' }
-        
+
         // Create a very large nested object
         for (let i = 0; i < 1000; i++) {
           largePayload[`field${i}`] = 'x'.repeat(100)
@@ -931,7 +916,7 @@ describe('Rules Integration Tests', () => {
 
         for (let i = 0; i < iterations; i++) {
           const startTime = Date.now()
-          
+
           const res = await app.inject({
             method: 'POST',
             url: '/v1/rules/test',
