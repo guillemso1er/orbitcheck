@@ -2,15 +2,12 @@ import { createHash } from "node:crypto";
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 
-import dotenv from 'dotenv';
-dotenv.config();
 
 import AdmZip from 'adm-zip';
 import { Pool } from "pg";
 
 import { BATCH_SIZE_GEONAMES, GEO_NAMES_BASE_URL, SEED_API_KEY_PREFIX, SEED_PROJECT_NAME } from "./config.js";
 
-console.warn('DATABASE_URL:', process.env.DATABASE_URL);
 const pool = new Pool({ connectionString: process.env.APP_DATABASE_URL || process.env.DATABASE_URL });
 
 async function randomBytesAsync(size: number): Promise<Buffer> {
