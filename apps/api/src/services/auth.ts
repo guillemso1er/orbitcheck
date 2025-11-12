@@ -152,9 +152,9 @@ export async function logoutUser(
         } catch { }
 
         // Clear cookie explicitly (provided by @fastify/cookie)
-        rep.clearCookie('sid', {
+        rep.clearCookie('orbitcheck_session', {
             path: '/',
-            sameSite: 'none',
+            sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
             secure: process.env.NODE_ENV === 'production',
             httpOnly: true,
         })

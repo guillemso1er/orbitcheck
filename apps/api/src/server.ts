@@ -99,7 +99,7 @@ export async function build(pool: Pool, redis: IORedisType): Promise<FastifyInst
             path: '/',
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
-            sameSite: 'lax',
+            sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
             maxAge: SESSION_MAX_AGE_MS,
             domain: process.env.NODE_ENV === 'production'
                 ? '.orbitcheck.io'

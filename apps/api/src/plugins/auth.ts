@@ -182,6 +182,11 @@ export default fp<Options>(async function openapiSecurity(app, opts) {
         .map((name) => guardMap[name] || guardMap[name.toLowerCase()])
         .filter(Boolean) as FastifyAuthFunction[])]
 
+      // Enforce CSRF protection for cookie authentication on state-changing methods
+      if (andHandlers.some(handler => handler === guards.cookieAuth)) {
+        andHandlers.push(guards.csrfHeader)
+      }
+
       if (andHandlers.length === 0) return null
       if (andHandlers.length === 1) return andHandlers[0]
       return app.auth(andHandlers, { relation: 'and' })

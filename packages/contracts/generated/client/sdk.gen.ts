@@ -57,6 +57,13 @@ export const registerUser = <ThrowOnError extends boolean = false>(options: Opti
  */
 export const logoutUser = <ThrowOnError extends boolean = false>(options?: Options<LogoutUserData, ThrowOnError>) => {
     return (options?.client ?? client).post<LogoutUserResponses, LogoutUserErrors, ThrowOnError>({
+        security: [
+            {
+                in: 'cookie',
+                name: 'sid',
+                type: 'apiKey'
+            }
+        ],
         url: '/auth/logout',
         ...options
     });
