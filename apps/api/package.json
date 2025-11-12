@@ -28,6 +28,7 @@
         "migrate:create": "node-pg-migrate create -m ./migrations",
         "db:init": "tsx ./src/jobs/refreshDisposable.ts",
         "generate:endpoints": "tsx src/generate-endpoints.ts",
+        "generate:bboxes": "ts-node ../../scripts/generate-country-bboxes.ts",
         "test": " NODE_ENV=test jest",
         "test:watch": "jest --watch",
         "test:int": "export DOCKER_HOST=\"unix://$(podman info --format '{{.Host.RemoteSocket.Path}}')\" && vitest ./tests/*.int.test.ts --run",

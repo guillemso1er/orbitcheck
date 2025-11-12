@@ -167,11 +167,11 @@ export async function validateAddress(
             ttl_seconds: CACHE_TTL_SECONDS,
             deliverable: false
         };
-        
+
         if (redis) {
             await redis.set(cacheKey, JSON.stringify(result), 'EX', CACHE_TTL_SECONDS);
         }
-        
+
         return result;
     }
 
@@ -245,10 +245,22 @@ export async function validateAddress(
 
         // Geo-validation: check if lat/lng in country bounding box
         if (geo) {
-            const { rows: bboxRows } = await pool.query(
-                "SELECT 1 FROM countries_bounding_boxes WHERE country_code = $1 AND $2 >= min_lat AND $2 <= max_lat AND $3 >= min_lng AND $3 <= max_lng LIMIT 1",
-                [norm.country.toUpperCase(), geo.lat, geo.lng]
-            );
+            const inBoundsSql = `
+                    SELECT 1
+                    FROM countries_bounding_boxes
+                    WHERE country_code = $1
+                    AND $2 BETWEEN min_lat AND max_lat
+                    AND (
+                            (wraps_dateline = false AND $3 BETWEEN min_lng AND max_lng)
+                        OR (wraps_dateline = true  AND ($3 >= min_lng OR $3 <= max_lng))
+                        )
+                    LIMIT 1;`;
+
+            const { rows: bboxRows } = await pool.query(inBoundsSql, [
+                norm.country.toUpperCase(),
+                geo.lat,
+                geo.lng
+            ]);
             in_bounds = bboxRows.length > 0;
             if (!in_bounds) {
                 reason_codes.push(REASON_CODES.ADDRESS_GEO_OUT_OF_BOUNDS);
