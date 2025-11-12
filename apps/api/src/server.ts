@@ -23,6 +23,7 @@ import { setupDocumentation } from "./plugins/documentation.js";
 import { setupErrorHandler } from "./plugins/errorHandler.js";
 import { setupSecurityHeaders } from "./plugins/securityHeaders.js";
 import { registerHealthRoutes } from "./routes/health.js";
+import { main as seedDatabase } from "./seed.js";
 import startupGuard from './startup-guard.js';
 import { registerRoutes } from "./web.js";
 
@@ -200,6 +201,24 @@ export async function start(): Promise<void> {
             client.release();
         } catch (error) {
             throw new Error(MESSAGES.POSTGRESQL_CONNECTION_FAILED(String(error)));
+        }
+
+        // Run database seeding in development/local environments
+        if (process.env.NODE_ENV !== 'production' && process.env.NODE_ENV !== 'test') {
+            try {
+                if (!isTestEnvironment) {
+                    console.log('Running database seed...');
+                }
+                await seedDatabase(false);
+                if (!isTestEnvironment) {
+                    console.log('Database seed completed.');
+                }
+            } catch (error) {
+                if (!isTestEnvironment) {
+                    console.error('Database seeding failed:', error);
+                }
+                // Don't fail startup on seed error, just log it
+            }
         }
 
         // Skip Redis verification in test environment (handled by test setup)

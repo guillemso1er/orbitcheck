@@ -1,5 +1,5 @@
 import fastifyAuth, { FastifyAuthFunction } from '@fastify/auth'
-import openapiSpec from '@orbitcheck/contracts/openapi.v1.json'
+import openapiSpec from '@orbitcheck/contracts/openapi.v1.json' with { type: 'json' }
 import type { FastifyReply, FastifyRequest } from 'fastify'
 import fp from 'fastify-plugin'
 import type { Pool } from 'pg'
