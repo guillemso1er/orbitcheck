@@ -3,6 +3,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
 import { API_BASE, ERROR_MESSAGES } from '../constants';
+import ThemeToggle from './ThemeToggle';
 
 // Icons (you can replace with actual icon libraries like lucide-react or heroicons)
 const EyeIcon = () => (
@@ -308,6 +309,11 @@ const Login: React.FC = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-indigo-950 p-4">
+      {/* Theme Toggle in top-right corner */}
+      <div className="fixed top-4 right-4 z-10">
+        <ThemeToggle />
+      </div>
+
       <div className="w-full max-w-md">
         {/* Logo/Brand Section */}
         <div className="text-center mb-8">

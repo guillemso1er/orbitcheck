@@ -349,11 +349,8 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   return isAuthenticated ? <>{children}</> : <Navigate to="/login" replace />;
 }
 
-/**
- * Main App component
- */
 function App() {
-  const { logout } = useAuth();
+  const { logout, isAuthenticated } = useAuth();
   const navigate = useNavigate();
 
   const [sidebarOpen, setSidebarOpen] = useState(() =>
@@ -399,19 +396,24 @@ function App() {
 
   return (
     <div className="flex min-h-screen relative">
-      <MenuToggle isOpen={sidebarOpen} onClick={toggleSidebar} />
+      {/* Only show sidebar and menu toggle when authenticated */}
+      {isAuthenticated && (
+        <>
+          <MenuToggle isOpen={sidebarOpen} onClick={toggleSidebar} />
 
-      <Sidebar
-        isOpen={sidebarOpen}
-        isMobile={isMobile}
-        onClose={closeSidebar}
-        onLogout={handleLogout}
-      />
+          <Sidebar
+            isOpen={sidebarOpen}
+            isMobile={isMobile}
+            onClose={closeSidebar}
+            onLogout={handleLogout}
+          />
+        </>
+      )}
 
       {/* Main Content */}
       <main
         className={mainClasses}
-        style={{ marginLeft: sidebarOpen && !isMobile ? `${SIDEBAR_WIDTH}px` : 0 }}
+        style={{ marginLeft: isAuthenticated && sidebarOpen && !isMobile ? `${SIDEBAR_WIDTH}px` : 0 }}
       >
         <div className="container mx-auto p-6">
           <Routes>
