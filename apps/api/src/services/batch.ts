@@ -2,10 +2,10 @@ import { Queue } from 'bullmq';
 import type { FastifyReply, FastifyRequest } from "fastify";
 import type { Redis as IORedisType } from 'ioredis';
 import type { Pool } from "pg";
-import { routes } from "src/routes/routes.js";
 import { HTTP_STATUS } from "../errors.js";
 import type { BatchDedupeData, BatchDedupeResponses, BatchEvaluateOrdersData, BatchEvaluateOrdersResponses, BatchValidateData, BatchValidateResponses } from "../generated/fastify/types.gen.js";
 import { logEvent } from "../hooks.js";
+import { routes } from "../routes/routes.js";
 import { generateRequestId, sendServerError } from "./utils.js";
 
 export async function batchValidateData(

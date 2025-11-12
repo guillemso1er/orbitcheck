@@ -45,14 +45,14 @@ api.orbitcheck.io {
         header Origin *
         header Access-Control-Request-Method *
     }
-    respond @preflight 204 {
-        headers +Access-Control-Allow-Origin "{http.request.header.Origin}"
-        headers +Access-Control-Allow-Credentials "true"
-        headers +Access-Control-Allow-Methods "GET, POST, PUT, PATCH, DELETE, OPTIONS"
-        # Important: Do NOT allow Authorization or X-API-Key from the browser
-        headers +Access-Control-Allow-Headers "Content-Type, X-CSRF-Token"
-        headers +Access-Control-Max-Age "3600"
-        headers +Vary "Origin, Access-Control-Request-Method, Access-Control-Request-Headers"
+    handle @preflight {
+        header Access-Control-Allow-Origin "{http.request.header.Origin}"
+        header Access-Control-Allow-Credentials "true"
+        header Access-Control-Allow-Methods "GET, POST, PUT, PATCH, DELETE, OPTIONS"
+        header Access-Control-Allow-Headers "Content-Type, X-CSRF-Token"
+        header Access-Control-Max-Age "3600"
+        header Vary "Origin, Access-Control-Request-Method, Access-Control-Request-Headers"
+        respond 204
     }
 
     reverse_proxy 127.0.0.1:18080 {

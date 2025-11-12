@@ -1,8 +1,8 @@
 import type { FastifyReply, FastifyRequest } from "fastify";
 import type { Pool } from "pg";
-import { routes } from "src/routes/routes.js";
 import { HTTP_STATUS } from "../errors.js";
 import type { CreateProjectData, CreateProjectResponses, DeleteProjectData, DeleteProjectResponses, GetUserProjectsResponses } from "../generated/fastify/types.gen.js";
+import { routes } from "../routes/routes.js";
 import { createPlansService } from "./plans.js";
 import { generateRequestId, sendServerError } from "./utils.js";
 
