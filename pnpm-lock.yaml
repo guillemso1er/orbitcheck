@@ -90,6 +90,9 @@ importers:
       '@types/nodemailer':
         specifier: ^7.0.3
         version: 7.0.3
+      adm-zip:
+        specifier: ^0.5.16
+        version: 0.5.16
       ajv:
         specifier: ^8.17.1
         version: 8.17.1
