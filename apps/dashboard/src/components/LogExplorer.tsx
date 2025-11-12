@@ -1,7 +1,7 @@
 import { getLogs } from '@orbitcheck/contracts';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { UI_STRINGS } from '../constants';
-import { apiClient } from '../utils/api';
+import { useApiClient } from '../utils/api';
 import { FiltersSection, type FiltersState } from './FiltersSection';
 import { LogsTable, type LogEntry } from './LogsTable';
 import { PaginationControls } from './PaginationControls';
@@ -16,7 +16,7 @@ const EMPTY_FILTERS: FiltersState = {
 };
 
 const LogExplorer: React.FC = () => {
-
+  const apiClient = useApiClient();
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [totalCount, setTotalCount] = useState(0);
   const [loading, setLoading] = useState(true);

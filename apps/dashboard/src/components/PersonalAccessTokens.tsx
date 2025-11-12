@@ -1,6 +1,6 @@
 import { createPersonalAccessToken, listPersonalAccessTokens, revokePersonalAccessToken } from '@orbitcheck/contracts';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { apiClient } from '../utils/api';
+import { useApiClient } from '../utils/api';
 
 interface PersonalAccessToken {
   id: string;
@@ -390,8 +390,8 @@ const PATsTable: React.FC<{
               </td>
               <td className="px-6 py-4">
                 <span className={`inline-block px-2 py-1 text-xs font-semibold rounded-full ${token.env === 'live'
-                    ? 'bg-green-100 text-green-800'
-                    : 'bg-yellow-100 text-yellow-800'
+                  ? 'bg-green-100 text-green-800'
+                  : 'bg-yellow-100 text-yellow-800'
                   }`}>
                   {token.env.toUpperCase()}
                 </span>
@@ -427,10 +427,10 @@ const PATsTable: React.FC<{
               <td className="px-6 py-4">
                 <span
                   className={`inline-block px-2 py-1 text-xs font-semibold rounded-full ${token.disabled
+                    ? 'bg-red-100 text-red-800'
+                    : isExpired
                       ? 'bg-red-100 text-red-800'
-                      : isExpired
-                        ? 'bg-red-100 text-red-800'
-                        : 'bg-green-100 text-green-800'
+                      : 'bg-green-100 text-green-800'
                     }`}
                   role="status"
                   aria-label={`Status: ${token.disabled ? 'disabled' : isExpired ? 'expired' : 'active'}`}
@@ -472,6 +472,7 @@ const PATsTable: React.FC<{
 
 // Main Component
 const PersonalAccessTokens: React.FC<PersonalAccessTokensProps> = () => {
+  const apiClient = useApiClient();
   const [tokens, setTokens] = useState<PersonalAccessToken[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

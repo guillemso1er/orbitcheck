@@ -1,7 +1,7 @@
 import { testWebhook } from '@orbitcheck/contracts';
 import React, { useState } from 'react';
 import { UI_STRINGS } from '../constants';
-import { apiClient } from '../utils/api';
+import { useApiClient } from '../utils/api';
 
 interface WebhookTestResult {
   sent_to: string;
@@ -174,6 +174,7 @@ const ResultTabs: React.FC<{
 );
 
 const WebhookTester: React.FC = () => {
+  const apiClient = useApiClient();
   const [url, setUrl] = useState('');
   const [payloadType, setPayloadType] = useState<'validation' | 'order' | 'custom'>('validation');
   const [customPayload, setCustomPayload] = useState('');

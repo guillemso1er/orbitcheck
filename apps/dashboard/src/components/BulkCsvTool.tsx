@@ -1,7 +1,7 @@
-import { batchValidate, batchEvaluateOrders, getJobStatusById } from '@orbitcheck/contracts';
+import { batchEvaluateOrders, batchValidate, getJobStatusById } from '@orbitcheck/contracts';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { UI_STRINGS } from '../constants';
-import { apiClient } from '../utils/api';
+import { useApiClient } from '../utils/api';
 
 interface CsvFormatExample {
   name: string;
@@ -26,6 +26,7 @@ interface JobStatus {
 }
 
 const BulkCsvTool: React.FC = () => {
+  const apiClient = useApiClient();
   const [csvType, setCsvType] = useState<'customers' | 'orders' | 'addresses' | 'taxids'>('customers');
   const [file, setFile] = useState<File | null>(null);
   const [jobId, setJobId] = useState<string | null>(null);
@@ -534,7 +535,7 @@ const BulkCsvTool: React.FC = () => {
         <p className="mt-2 text-gray-600 dark:text-gray-400 text-sm">
           Upload CSV files to process customer validations or order evaluations in bulk. Select the appropriate CSV type and format your data correctly.
         </p>
-        
+
         {/* Feature Highlights */}
         <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4">
           <div className="bg-blue-50 dark:bg-blue-900 rounded-lg p-4 border border-blue-200 dark:border-blue-700">
@@ -546,7 +547,7 @@ const BulkCsvTool: React.FC = () => {
               Validate email syntax, deliverability, and identify disposable domains
             </p>
           </div>
-          
+
           <div className="bg-green-50 dark:bg-green-900 rounded-lg p-4 border border-green-200 dark:border-green-700">
             <div className="flex items-center mb-2">
               <span className="text-2xl mr-2">📱</span>
@@ -556,7 +557,7 @@ const BulkCsvTool: React.FC = () => {
               Check phone number format, carrier info, and international standards
             </p>
           </div>
-          
+
           <div className="bg-purple-50 dark:bg-purple-900 rounded-lg p-4 border border-purple-200 dark:border-purple-700">
             <div className="flex items-center mb-2">
               <span className="text-2xl mr-2">📍</span>
@@ -566,7 +567,7 @@ const BulkCsvTool: React.FC = () => {
               Verify addresses for deliverability and proper formatting
             </p>
           </div>
-          
+
           <div className="bg-yellow-50 dark:bg-yellow-900 rounded-lg p-4 border border-yellow-200 dark:border-yellow-700">
             <div className="flex items-center mb-2">
               <span className="text-2xl mr-2">🆔</span>
@@ -576,7 +577,7 @@ const BulkCsvTool: React.FC = () => {
               Validate tax identification numbers and business registrations
             </p>
           </div>
-          
+
           <div className="bg-indigo-50 dark:bg-indigo-900 rounded-lg p-4 border border-indigo-200 dark:border-indigo-700">
             <div className="flex items-center mb-2">
               <span className="text-2xl mr-2">🛒</span>
@@ -586,7 +587,7 @@ const BulkCsvTool: React.FC = () => {
               Batch evaluate orders for risk, rules compliance, and fraud detection
             </p>
           </div>
-          
+
           <div className="bg-orange-50 dark:bg-orange-900 rounded-lg p-4 border border-orange-200 dark:border-orange-700">
             <div className="flex items-center mb-2">
               <span className="text-2xl mr-2">⚡</span>
@@ -597,7 +598,7 @@ const BulkCsvTool: React.FC = () => {
             </p>
           </div>
         </div>
-        
+
         {/* Use Cases */}
         <div className="mt-6 bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
           <h3 className="font-medium text-gray-900 dark:text-white mb-3">Common Use Cases:</h3>
@@ -748,12 +749,11 @@ const BulkCsvTool: React.FC = () => {
                 <h4 className="font-medium text-gray-900 dark:text-white mb-2">Job Details</h4>
                 <p className="text-gray-700 dark:text-gray-300 text-sm"><strong>ID:</strong> {jobStatus.id}</p>
                 <p className="text-gray-700 dark:text-gray-300 text-sm"><strong>Status:</strong>
-                  <span className={`ml-2 px-2 py-1 rounded-full text-xs font-medium ${
-                    jobStatus.status === 'completed' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' :
-                    jobStatus.status === 'failed' ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' :
-                    jobStatus.status === 'running' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' :
-                    'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
-                  }`}>
+                  <span className={`ml-2 px-2 py-1 rounded-full text-xs font-medium ${jobStatus.status === 'completed' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' :
+                      jobStatus.status === 'failed' ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' :
+                        jobStatus.status === 'running' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' :
+                          'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
+                    }`}>
                     {jobStatus.status}
                   </span>
                 </p>
@@ -761,7 +761,7 @@ const BulkCsvTool: React.FC = () => {
                   <p className="text-gray-700 dark:text-gray-300 text-sm"><strong>Created:</strong> {new Date(jobStatus.created_at).toLocaleString()}</p>
                 )}
               </div>
-              
+
               <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
                 <h4 className="font-medium text-gray-900 dark:text-white mb-2">Process Info</h4>
                 <p className="text-gray-700 dark:text-gray-300 text-sm">

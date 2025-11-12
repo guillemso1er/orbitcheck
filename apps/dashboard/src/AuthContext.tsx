@@ -1,5 +1,6 @@
-import React, { createContext, ReactNode, useContext, useEffect, useState } from 'react';
+import React, { createContext, ReactNode, useContext } from 'react';
 import { LOCAL_STORAGE_KEYS } from './constants';
+import { useLocalStorage } from './hooks/useLocalStorage';
 
 interface User {
   id: string;
@@ -31,37 +32,28 @@ interface AuthProviderProps {
 }
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [csrfToken, setCsrfToken] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [localUser, setLocalUser] = useLocalStorage<User | null>(LOCAL_STORAGE_KEYS.USER, null);
+  const [sessionUser, setSessionUser] = useLocalStorage<User | null>(LOCAL_STORAGE_KEYS.USER, null, sessionStorage);
+  const [localCsrfToken, setLocalCsrfToken] = useLocalStorage<string | null>(LOCAL_STORAGE_KEYS.CSRF_TOKEN, null);
+  const [sessionCsrfToken, setSessionCsrfToken] = useLocalStorage<string | null>(LOCAL_STORAGE_KEYS.CSRF_TOKEN, null, sessionStorage);
 
-  useEffect(() => {
-    const storedUser = localStorage.getItem(LOCAL_STORAGE_KEYS.USER) || sessionStorage.getItem(LOCAL_STORAGE_KEYS.USER);
-    const storedCsrfToken = localStorage.getItem(LOCAL_STORAGE_KEYS.CSRF_TOKEN) || sessionStorage.getItem(LOCAL_STORAGE_KEYS.CSRF_TOKEN);
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-    }
-    if (storedCsrfToken) {
-      setCsrfToken(storedCsrfToken);
-    }
-    setIsLoading(false);
-  }, []);
+  const user = localUser || sessionUser;
+  const csrfToken = localCsrfToken || sessionCsrfToken;
 
   const login = (newUser: User, newCsrfToken: string, rememberMe: boolean = true) => {
-    setUser(newUser);
-    setCsrfToken(newCsrfToken);
-    const storage = rememberMe ? localStorage : sessionStorage;
-    storage.setItem(LOCAL_STORAGE_KEYS.USER, JSON.stringify(newUser));
-    storage.setItem(LOCAL_STORAGE_KEYS.CSRF_TOKEN, newCsrfToken);
+    setLocalCsrfToken(newCsrfToken);
+    if (rememberMe) {
+      setLocalUser(newUser);
+    } else {
+      setSessionUser(newUser);
+    }
   };
 
   const logout = () => {
-    setUser(null);
-    setCsrfToken(null);
-    localStorage.removeItem(LOCAL_STORAGE_KEYS.USER);
-    localStorage.removeItem(LOCAL_STORAGE_KEYS.CSRF_TOKEN);
-    sessionStorage.removeItem(LOCAL_STORAGE_KEYS.USER);
-    sessionStorage.removeItem(LOCAL_STORAGE_KEYS.CSRF_TOKEN);
+    setLocalUser(null);
+    setSessionUser(null);
+    setLocalCsrfToken(null);
+    setSessionCsrfToken(null);
   };
 
   const value: AuthContextType = {
@@ -70,7 +62,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     login,
     logout,
     isAuthenticated: !!user,
-    isLoading,
+    isLoading: false,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

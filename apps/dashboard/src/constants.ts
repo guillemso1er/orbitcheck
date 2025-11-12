@@ -176,6 +176,10 @@ export const LOCAL_STORAGE_KEYS = {
   CSRF_TOKEN: 'csrf_token',
 } as const;
 
+export const HTTP_HEADERS = {
+  CSRF_TOKEN: 'x-csrf-token',
+} as const;
+
 
 export const CONDITION_TEMPLATES: ConditionTemplate[] = [
   { label: 'Invalid US Address', value: 'address.valid == false AND address.country == "US"', description: 'Checks for invalid US addresses' },

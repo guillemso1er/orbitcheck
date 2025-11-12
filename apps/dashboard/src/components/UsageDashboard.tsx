@@ -15,7 +15,7 @@ import {
 import React from 'react';
 import { Bar, Line, Pie } from 'react-chartjs-2';
 import { UI_STRINGS } from '../constants';
-import { apiClient } from '../utils/api';
+import { useApiClient } from '../utils/api';
 
 ChartJS.register(
   CategoryScale,
@@ -172,6 +172,7 @@ const CacheHitRatioChart: React.FC<{ data: UsageData }> = ({ data }) => {
 };
 
 const UsageDashboard: React.FC = () => {
+  const apiClient = useApiClient();
   const [data, setData] = React.useState<UsageData | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);

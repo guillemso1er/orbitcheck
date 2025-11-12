@@ -1,7 +1,7 @@
 import { ApiKey, createApiKey, listApiKeys, revokeApiKey } from '@orbitcheck/contracts';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { UI_STRINGS } from '../constants';
-import { apiClient } from '../utils/api';
+import { useApiClient } from '../utils/api';
 
 
 interface ApiKeysProps {
@@ -381,6 +381,7 @@ const ApiKeysTable: React.FC<{
 
 // Main Component
 const ApiKeys: React.FC<ApiKeysProps> = () => {
+  const apiClient = useApiClient();
   const [keys, setKeys] = useState<ApiKey[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

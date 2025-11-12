@@ -1,10 +1,10 @@
 // src/hooks/useLocalStorage.ts
 import { useState } from 'react';
 
-export const useLocalStorage = <T,>(key: string, initialValue: T): [T, (value: T) => void] => {
+export const useLocalStorage = <T,>(key: string, initialValue: T, storage: Storage = window.localStorage): [T, (value: T) => void] => {
     const [storedValue, setStoredValue] = useState<T>(() => {
         try {
-            const item = window.localStorage.getItem(key);
+            const item = storage.getItem(key);
             return item ? JSON.parse(item) : initialValue;
         } catch {
             return initialValue;
@@ -14,9 +14,9 @@ export const useLocalStorage = <T,>(key: string, initialValue: T): [T, (value: T
     const setValue = (value: T) => {
         try {
             setStoredValue(value);
-            window.localStorage.setItem(key, JSON.stringify(value));
+            storage.setItem(key, JSON.stringify(value));
         } catch (error) {
-            console.error(`Error saving to localStorage:`, error);
+            console.error(`Error saving to storage:`, error);
         }
     };
 

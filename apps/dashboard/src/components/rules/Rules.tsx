@@ -5,12 +5,12 @@ import { LOCAL_STORAGE_KEYS } from '../../constants';
 import { useDebounce } from '../../hooks/useDebounce';
 import { useLocalStorage } from '../../hooks/useLocalStorage';
 import { Rule, RuleTestResult, TestResult } from '../../types';
-import { apiClient } from '../../utils/api';
+import { useApiClient } from '../../utils/api';
 import { ConditionEvaluator } from '../../utils/ConditionEvaluator';
 import { RulesHeader } from './RulesHeader';
+import { RulesHelp } from './RulesHelp';
 import { RulesList } from './RulesList';
 import { TestHarness } from './TestHarness';
-import { RulesHelp } from './RulesHelp';
 
 
 // Custom Confirmation Dialog Component
@@ -88,6 +88,7 @@ const ConfirmDialog: React.FC<{
 
 
 const Rules: React.FC = () => {
+  const apiClient = useApiClient();
   const [rules, setRules] = useState<Rule[]>([]);
   const [builtinRules, setBuiltinRules] = useState<Rule[]>([]);
   const [customRules, setCustomRules] = useState<Rule[]>([]);
@@ -125,7 +126,7 @@ const Rules: React.FC = () => {
         // Handle built-in rules response - with fallback
         if (builtinRulesResponse.status === 'fulfilled' && !builtinRulesResponse.value.error) {
           builtinRules = ((builtinRulesResponse.value.data as any)?.rules || []);
-          
+
           // If no built-in rules returned but we have the list, create fallback
           if (builtinRules.length === 0) {
             console.log('No built-in rules from API, using fallback built-in rules');
@@ -179,7 +180,7 @@ const Rules: React.FC = () => {
       } catch (err) {
         console.error('Failed to load rules:', err);
         setBackendError('Failed to load rules. Please try refreshing the page.');
-        
+
         // Set fallback built-in rules to ensure the UI shows something
         const fallbackBuiltinRules = getFallbackBuiltInRules();
         setBuiltinRules(fallbackBuiltinRules);
@@ -517,11 +518,10 @@ const Rules: React.FC = () => {
       <div className="mb-4 flex justify-end">
         <button
           onClick={() => setShowHelp(!showHelp)}
-          className={`inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm transition-colors ${
-            showHelp
+          className={`inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm transition-colors ${showHelp
               ? 'text-white bg-indigo-600 hover:bg-indigo-700 focus:ring-indigo-500'
               : 'text-indigo-600 bg-indigo-100 hover:bg-indigo-200 focus:ring-indigo-500'
-          } focus:outline-none focus:ring-2 focus:ring-offset-2`}
+            } focus:outline-none focus:ring-2 focus:ring-offset-2`}
         >
           <svg className={`w-4 h-4 mr-2 transition-transform ${showHelp ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
