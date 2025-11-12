@@ -1,9 +1,7 @@
 import fastifyAuth, { FastifyAuthFunction } from '@fastify/auth'
+import spec from '@orbitcheck/contracts/openapi.v1.json'
 import type { FastifyReply, FastifyRequest } from 'fastify'
 import fp from 'fastify-plugin'
-import fs from 'node:fs'
-import path from 'node:path'
-import { fileURLToPath } from 'node:url'
 import type { Pool } from 'pg'
 import { verifyAPIKey, verifyHttpMessageSignature, verifyPAT, verifySession } from '../services/auth.js'
 import { getDefaultProjectId } from '../services/utils.js'
@@ -38,11 +36,6 @@ interface Options {
 export default fp<Options>(async function openapiSecurity(app, opts) {
   app.register(fastifyAuth)
   const { pool } = opts
-
-  const __filename = fileURLToPath(import.meta.url)
-  const __dirname = path.dirname(__filename)
-  const specPath = path.resolve(__dirname, '../../../../packages/contracts/dist/openapi.v1.json')
-  const spec = JSON.parse(fs.readFileSync(specPath, 'utf-8'))
 
   const toFastifyPath = (p: string) => p.replace(/{([^}/]+)}/g, ':$1')
 

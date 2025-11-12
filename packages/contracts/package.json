@@ -15,20 +15,21 @@
       "import": "./dist/node.js",
       "default": "./dist/node.js"
     },
-    "./routes": {
-      "types": "./dist/routes.d.ts",
-      "import": "./dist/routes.js",
-      "default": "./dist/routes.js"
-    },
     "./api-client": {
       "types": "./dist/api-client/orbitCheckAPI.d.ts",
       "import": "./dist/api-client/orbitCheckAPI.js",
       "default": "./dist/api-client/orbitCheckAPI.js"
+    },
+    "./openapi.v1.json": {
+      "types": "./dist/openapi.v1.json",
+      "import": "./dist/openapi.v1.json",
+      "default": "./dist/openapi.v1.json"
     }
   },
   "files": [
     "dist",
     "dist/openapi.yaml",
+    "dist/openapi.v1.json",
     "README.md",
     "LICENSE"
   ],
@@ -44,7 +45,8 @@
   },
   "dependencies": {
     "axios": "^1.7.9",
-    "js-yaml": "^4.1.0"
+    "js-yaml": "^4.1.0",
+    "redocly": "^1.0.0"
   },
   "devDependencies": {
     "@types/js-yaml": "^4.0.5",

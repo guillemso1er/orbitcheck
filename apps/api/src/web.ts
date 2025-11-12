@@ -4,6 +4,7 @@ import { type Redis as IORedisType } from 'ioredis';
 import type { Pool } from "pg";
 
 import { API_V1_ROUTES, MGMT_V1_ROUTES } from "@orbitcheck/contracts";
+import spec from "@orbitcheck/contracts/openapi.v1.json";
 import { ROUTES } from "./config.js";
 import { HTTP_STATUS } from "./errors.js";
 import { serviceHandlers } from "./handlers/handlers.js";
@@ -36,7 +37,7 @@ export async function applyValidationLimits<TServer extends RawServerBase = RawS
     const userId = (request as any).user_id || request.auth?.userId;
     if (!userId) return;
 
-    try {       
+    try {
         const plansService = createPlansService(pool);
         await plansService.checkValidationLimit(userId, 1);
         await plansService.incrementValidationUsage(userId, 1);
@@ -135,7 +136,7 @@ export function registerRoutes<TServer extends RawServerBase = RawServerBase>(ap
 
     app.register(openapiGlue, {
         serviceHandlers: serviceHandlers(pool, redis, app),
-        specification: '../../packages/contracts/dist/openapi.v1.json',
+        specification: spec,
     });
 
 }
