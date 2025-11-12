@@ -8,6 +8,10 @@ properties:
     type: string
     minLength: 8
     description: User password
+  rememberMe:
+    type: boolean
+    description: Whether to extend the session duration for longer-term login
+    default: false
 required:
   - email
   - password

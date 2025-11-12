@@ -100,6 +100,7 @@ Object.defineProperty(window, 'ResizeObserver', {
 const renderWithAuth = (component: React.ReactElement) => {
   mockUseAuth.mockReturnValue({
     user: { id: 'user1', email: 'test@example.com' },
+    csrfToken: null,
     login: jest.fn(),
     logout: jest.fn(),
     isAuthenticated: true,

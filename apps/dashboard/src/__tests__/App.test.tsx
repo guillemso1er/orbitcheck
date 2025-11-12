@@ -177,6 +177,7 @@ Object.defineProperty(window, 'ResizeObserver', {
 let currentAuthState = {
   user: null as any,
   token: null as string | null,
+  csrfToken: null as string | null,
   login: jest.fn(),
   logout: jest.fn(),
   isAuthenticated: false,
@@ -201,6 +202,7 @@ const createMockAuthContext = (isAuthenticated: boolean, isLoading = false) => {
   const mockAuth = {
     user: isAuthenticated ? { id: 'user1', email: 'test@example.com' } : null,
     token: isAuthenticated ? 'test-token' : null,
+    csrfToken: null,
     login: jest.fn(),
     logout: jest.fn((callback?: () => void) => {
       // When logout is called, update the current auth state
@@ -208,6 +210,7 @@ const createMockAuthContext = (isAuthenticated: boolean, isLoading = false) => {
         ...currentAuthState,
         user: null,
         token: null,
+        csrfToken: null,
         isAuthenticated: false,
       };
       if (callback) callback();

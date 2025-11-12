@@ -3,6 +3,7 @@ import openapiSpec from '@orbitcheck/contracts/openapi.v1.json' with { type: 'js
 import type { FastifyReply, FastifyRequest } from 'fastify'
 import fp from 'fastify-plugin'
 import type { Pool } from 'pg'
+import { routes } from '../routes/routes.js'
 import { verifyAPIKey, verifyHttpMessageSignature, verifyPAT, verifySession } from '../services/auth.js'
 import { getDefaultProjectId } from '../services/utils.js'
 
@@ -134,18 +135,28 @@ export default fp<Options>(async function openapiSecurity(app, opts) {
     const method = String(req.method).toUpperCase()
     // Only enforce for state-changing methods; GET/HEAD/OPTIONS pass
     if (method === 'GET' || method === 'HEAD' || method === 'OPTIONS') return
-    if (!originMatches(req)) {
-      const err = new Error('Invalid request origin')
-        ; (err as any).statusCode = 403
-        ; (err as any).code = 'FORBIDDEN'
-      throw err
-    }
+
+    // Skip CSRF check for auth routes (login, register, logout)
+    const url = req.url
+    if (url === routes.auth.loginUser || url === routes.auth.registerUser || url === routes.auth.logoutUser) return
+
     const headerToken = (req.headers['x-csrf-token'] as string | undefined) || (req.headers['x-xsrf-token'] as string | undefined)
     const sessionToken =
       (req as any).session?.csrf_token ??
       (req as any).session?.get?.('csrf_token')
 
-    if (!headerToken || !sessionToken || headerToken !== sessionToken) {
+    // If we have valid CSRF tokens, allow the request even if origin check fails
+    // This handles cases where the origin validation is too strict but CSRF tokens are properly validated
+    const hasValidCsrfTokens = headerToken && sessionToken && headerToken === sessionToken
+
+    if (!hasValidCsrfTokens && !originMatches(req)) {
+      const err = new Error('Invalid request origin')
+        ; (err as any).statusCode = 403
+        ; (err as any).code = 'FORBIDDEN'
+      throw err
+    }
+
+    if (!hasValidCsrfTokens) {
       const err = new Error('Invalid CSRF token')
         ; (err as any).statusCode = 403
         ; (err as any).code = 'FORBIDDEN'

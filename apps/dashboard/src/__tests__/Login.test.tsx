@@ -75,6 +75,7 @@ describe('Login Component', () => {
     // Default mock implementation
     mockUseAuth.mockReturnValue({
       user: null,
+      csrfToken: null,
       login: jest.fn(),
       logout: jest.fn(),
       isAuthenticated: false,
@@ -168,6 +169,7 @@ describe('Login Component', () => {
     const mockLogin = jest.fn();
     mockUseAuth.mockReturnValue({
       user: null,
+      csrfToken: null,
       login: mockLogin,
       logout: jest.fn(),
       isAuthenticated: false,
@@ -178,8 +180,11 @@ describe('Login Component', () => {
     const { createApiClient } = require('@orbitcheck/contracts');
     const mockApiClient = {
       loginUser: jest.fn().mockResolvedValue({
-        token: 'test-token',
-        user: { id: 'user-id', email: 'test@example.com' }
+        data: {
+          csrf_token: 'test-csrf-token',
+          user: { id: 'user-id', email: 'test@example.com' },
+          request_id: 'req-123'
+        }
       })
     };
     (createApiClient as jest.Mock).mockReturnValue(mockApiClient);
@@ -199,7 +204,7 @@ describe('Login Component', () => {
       expect(mockLogin).toHaveBeenCalledWith({
         id: 'user-id',
         email: 'test@example.com',
-      });
+      }, 'test-csrf-token');
       expect(mockNavigate).toHaveBeenCalledWith('/api-keys');
     });
   });
@@ -208,6 +213,7 @@ describe('Login Component', () => {
     const mockLogin = jest.fn();
     mockUseAuth.mockReturnValue({
       user: null,
+      csrfToken: null,
       login: mockLogin,
       logout: jest.fn(),
       isAuthenticated: false,
@@ -217,8 +223,11 @@ describe('Login Component', () => {
     global.fetch = jest.fn().mockResolvedValue({
       ok: true,
       json: () => new Promise(resolve => setTimeout(() => resolve({
-        token: 'test-token',
-        user: { id: 'user-id', email: 'test@example.com' }
+        data: {
+          csrf_token: 'test-csrf-token',
+          user: { id: 'user-id', email: 'test@example.com' },
+          request_id: 'req-123'
+        }
       }), 100)),
     });
 
@@ -244,6 +253,7 @@ describe('Login Component', () => {
     const mockLogin = jest.fn();
     mockUseAuth.mockReturnValue({
       user: null,
+      csrfToken: null,
       login: mockLogin,
       logout: jest.fn(),
       isAuthenticated: false,

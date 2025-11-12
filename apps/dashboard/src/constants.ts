@@ -173,6 +173,7 @@ export const LOCAL_STORAGE_KEYS = {
   USER: 'user',
   THEME: 'theme',
   TEST_PAYLOAD: 'test_payload',
+  CSRF_TOKEN: 'csrf_token',
 } as const;
 
 

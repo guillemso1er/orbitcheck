@@ -517,6 +517,10 @@ export type LoginRequest = {
      * User password
      */
     password: string;
+    /**
+     * Whether to extend the session duration for longer-term login
+     */
+    rememberMe?: boolean;
 };
 
 export type LoginResponse = {
@@ -612,6 +616,10 @@ export type LoginUserData = {
          * User password
          */
         password: string;
+        /**
+         * Whether to extend the session duration for longer-term login
+         */
+        rememberMe?: boolean;
     };
     path?: never;
     query?: never;

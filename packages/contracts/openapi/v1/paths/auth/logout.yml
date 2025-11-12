@@ -5,6 +5,7 @@ description: Logs out the current user by clearing the session
 operationId: logoutUser
 security:
   - cookieAuth: []
+    csrfHeader: []
 responses:
   '200':
     description: Logout successful

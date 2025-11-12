@@ -85,7 +85,7 @@ export async function loginUser(
 ): Promise<FastifyReply<{ Body: LoginUserResponses }>> {
     try {
         const request_id = generateRequestId()
-        const { email, password } = request.body as LoginUserData['body']
+        const { email, password, rememberMe } = request.body as LoginUserData['body']
 
         const { rows } = await pool.query(
             'SELECT id, email, password_hash, first_name, last_name, created_at, updated_at FROM users WHERE email = $1',
@@ -98,10 +98,16 @@ export async function loginUser(
 
         const user = rows[0]
 
+        // Set session max age based on rememberMe flag
+        // Default: 7 days (604800000ms), Remember me: 30 days (2592000000ms)
+        const sessionMaxAge = rememberMe ? 2592000000 : 604800000;
+
         if ((request as any).session?.set) {
             (request as any).session.set('user_id', user.id)
+                ; (request as any).session.set('maxAge', sessionMaxAge)
         } else {
             (request as any).session.user_id = user.id
+                ; (request as any).session.maxAge = sessionMaxAge
         }
 
         // Generate CSRF token bound to session

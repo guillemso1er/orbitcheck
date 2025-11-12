@@ -1,6 +1,6 @@
-import React from 'react';
-import { render, screen, act, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
+import { act, render, screen, waitFor } from '@testing-library/react';
+import React from 'react';
 import { AuthProvider, useAuth } from '../AuthContext';
 
 // Mock localStorage
@@ -18,7 +18,7 @@ Object.defineProperty(window, 'localStorage', {
 
 // Test component to use the auth context
 const TestComponent: React.FC = () => {
-  const { user, isAuthenticated, isLoading, login, logout } = useAuth();
+  const { user, csrfToken, isAuthenticated, isLoading, login, logout } = useAuth();
 
   if (isLoading) {
     return <div>Loading...</div>;
@@ -27,8 +27,9 @@ const TestComponent: React.FC = () => {
   return (
     <div>
       <div data-testid="user">{user ? user.email : 'No user'}</div>
+      <div data-testid="csrf-token">{csrfToken || 'No token'}</div>
       <div data-testid="is-authenticated">{isAuthenticated.toString()}</div>
-      <button data-testid="login-btn" onClick={() => login({ id: '1', email: 'test@example.com' })}>
+      <button data-testid="login-btn" onClick={() => login({ id: '1', email: 'test@example.com' }, 'test-csrf-token')}>
         Login
       </button>
       <button data-testid="logout-btn" onClick={logout}>
@@ -58,6 +59,7 @@ describe('AuthContext', () => {
   it('should load user from localStorage on mount', async () => {
     mockLocalStorage.getItem.mockImplementation((key: string) => {
       if (key === 'user') return JSON.stringify({ id: '1', email: 'stored@example.com' });
+      if (key === 'csrf_token') return 'stored-csrf-token';
       return null;
     });
 
@@ -69,6 +71,7 @@ describe('AuthContext', () => {
 
     await waitFor(() => {
       expect(screen.getByTestId('user')).toHaveTextContent('stored@example.com');
+      expect(screen.getByTestId('csrf-token')).toHaveTextContent('stored-csrf-token');
       expect(screen.getByTestId('is-authenticated')).toHaveTextContent('true');
     });
   });
@@ -85,15 +88,18 @@ describe('AuthContext', () => {
     });
 
     expect(screen.getByTestId('user')).toHaveTextContent('test@example.com');
+    expect(screen.getByTestId('csrf-token')).toHaveTextContent('test-csrf-token');
     expect(screen.getByTestId('is-authenticated')).toHaveTextContent('true');
-    
+
     expect(mockLocalStorage.setItem).toHaveBeenCalledWith('user', JSON.stringify({ id: '1', email: 'test@example.com' }));
+    expect(mockLocalStorage.setItem).toHaveBeenCalledWith('csrf_token', 'test-csrf-token');
   });
 
   it('should logout user and remove from localStorage', async () => {
     // First login
     mockLocalStorage.getItem.mockImplementation((key: string) => {
       if (key === 'user') return JSON.stringify({ id: '1', email: 'stored@example.com' });
+      if (key === 'csrf_token') return 'stored-csrf-token';
       return null;
     });
 
@@ -111,9 +117,11 @@ describe('AuthContext', () => {
     });
 
     expect(screen.getByTestId('user')).toHaveTextContent('No user');
+    expect(screen.getByTestId('csrf-token')).toHaveTextContent('No token');
     expect(screen.getByTestId('is-authenticated')).toHaveTextContent('false');
 
     expect(mockLocalStorage.removeItem).toHaveBeenCalledWith('user');
+    expect(mockLocalStorage.removeItem).toHaveBeenCalledWith('csrf_token');
   });
 
   it('should transition to a loaded state upon initialization', async () => {

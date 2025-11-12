@@ -9,19 +9,7 @@ requestBody:
   content:
     application/json:
       schema:
-        type: object
-        required:
-          - email
-          - password
-        properties:
-          email:
-            type: string
-            format: email
-            description: User email address
-          password:
-            type: string
-            minLength: 8
-            description: User password
+        $ref: '../../components/schemas/LoginRequest.yml'
 responses:
   '200':
     description: Login successful; session established and cookie set

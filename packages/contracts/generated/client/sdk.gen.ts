@@ -62,6 +62,10 @@ export const logoutUser = <ThrowOnError extends boolean = false>(options?: Optio
                 in: 'cookie',
                 name: 'sid',
                 type: 'apiKey'
+            },
+            {
+                name: 'X-CSRF-Token',
+                type: 'apiKey'
             }
         ],
         url: '/auth/logout',

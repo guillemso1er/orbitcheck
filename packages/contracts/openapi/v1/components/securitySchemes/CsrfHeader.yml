@@ -1,0 +1,4 @@
+type: apiKey
+in: header
+name: X-CSRF-Token
+description: CSRF token obtained from login response. Required for state-changing operations when using cookie authentication.
