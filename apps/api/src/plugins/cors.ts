@@ -6,8 +6,14 @@ import { environment } from "../environment.js";
 /**
  * Configures CORS for the Fastify application based on environment settings.
  * Handles both development and production origins, with support for server-to-server requests.
+ * In production, CORS is handled by the reverse proxy (Caddy), so we skip registration here.
  */
 export async function setupCors<TServer extends RawServerBase = RawServerBase>(app: FastifyInstance<TServer>): Promise<void> {
+    // In production, CORS is handled by Caddy reverse proxy, so skip Fastify CORS to avoid duplicate headers
+    if (process.env.NODE_ENV === 'production') {
+        return;
+    }
+
     // Define allowed origins based on environment
     const allowedOrigins = new Set([
         `http://localhost:${environment.PORT}`, // API itself for health/docs
