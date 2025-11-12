@@ -787,27 +787,63 @@ runtime_manage_systemd_services() {
     fi
 }
 
+runtime_graphroot() {
+  local p
+  p="$(podman info --format '{{ .Store.GraphRoot }}' 2>/dev/null | tr -d '\r')"
+  if [[ -z "$p" ]]; then
+    # Fallback default for rootless
+    p="$HOME/.local/share/containers/storage"
+  fi
+  echo "$p"
+}
+
+runtime_report_storage() {
+  local gr
+  gr="$(runtime_graphroot)"
+  log_info "Podman GraphRoot: $gr"
+  log_info "Disk usage (GraphRoot):"
+  df -h "$gr" || true
+  log_info "Inode usage (GraphRoot):"
+  df -i "$gr" || true
+  log_info "Podman storage usage:"
+  podman system df || true
+}
+
+runtime_free_mb() {
+  local path="${1:-$HOME}"
+  df -Pk "$path" | awk 'NR==2 {print int($4/1024)}'
+}
+
+runtime_inodes_used_pct() {
+  local path="${1:-$HOME}"
+  df -Pi "$path" | awk 'NR==2 {gsub(/%/,"",$5); print $5}'
+}
+
+runtime_maybe_prune_images() {
+  log_warning "Low space at Podman GraphRoot; pruning unused images..."
+  podman container prune -f || true
+  podman image prune -a -f || true
+  runtime_report_storage
+}
+
 runtime_preflight_storage() {
-  local min_mb="${1:-2048}"     # require >= 2 GiB free
-  local max_inode_pct="${2:-95}"
+  local min_mb="${1:-2048}"      # need at least 2 GiB free
+  local max_inode_pct="${2:-95}" # don’t proceed if inodes > 95%
+  local gr free_mb inode_used
 
-  log_info "Disk usage for $HOME:"; df -h "$HOME" || true
-  log_info "Inodes for $HOME:"; df -i "$HOME" || true
-  log_info "Podman storage:"; podman system df || true
+  gr="$(runtime_graphroot)"
+  runtime_report_storage
 
-  local free_mb inode_used
-  free_mb="$(df -Pk "$HOME" | awk 'NR==2 {print int($4/1024)}')"
-  inode_used="$(df -Pi "$HOME" | awk 'NR==2 {gsub(/%/,"",$5); print $5}')"
+  free_mb="$(runtime_free_mb "$gr")"
+  inode_used="$(runtime_inodes_used_pct "$gr")"
 
   if (( free_mb < min_mb || inode_used > max_inode_pct )); then
-    log_warning "Low resources (free=${free_mb}MB, inodes=${inode_used}%) — pruning"
-    podman container prune -f || true
-    podman image prune -a -f || true
-    # Re-check
-    free_mb="$(df -Pk "$HOME" | awk 'NR==2 {print int($4/1024)}')"
-    inode_used="$(df -Pi "$HOME" | awk 'NR==2 {gsub(/%/,"",$5); print $5}')"
+    log_warning "Preflight: free=${free_mb}MB, inodes=${inode_used}% at $gr — attempting prune"
+    runtime_maybe_prune_images
+    free_mb="$(runtime_free_mb "$gr")"
+    inode_used="$(runtime_inodes_used_pct "$gr")"
     if (( free_mb < min_mb || inode_used > max_inode_pct )); then
-      log_error "Still low after prune (free=${free_mb}MB, inodes=${inode_used}%). Aborting."
+      log_error "Insufficient space after prune (free=${free_mb}MB, inodes=${inode_used}%) at $gr. Aborting."
       exit 1
     fi
   fi
