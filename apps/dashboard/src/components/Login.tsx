@@ -281,8 +281,7 @@ const Login: React.FC = () => {
           id: data.user.id || '',
           email: data.user.email || ''
         };
-        const csrfToken = !isRegister ? (data as any).csrf_token : null;
-        login(user, csrfToken, form.rememberMe);
+        login(user, form.rememberMe);
         navigate('/api-keys');
       } else {
         throw new Error(ERROR_MESSAGES.INVALID_SERVER_RESPONSE);

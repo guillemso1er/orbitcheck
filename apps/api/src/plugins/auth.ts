@@ -112,7 +112,10 @@ export default fp<Options>(async function openapiSecurity(app, opts) {
 
   // CSRF guard: header + Origin/Referer check
   const allowedOrigins = new Set(
-    (opts.allowedOrigins && opts.allowedOrigins.length ? opts.allowedOrigins : [process.env.DASHBOARD_ORIGIN || 'https://dashboard.orbitcheck.io']).map(s => s.toLowerCase())
+    (opts.allowedOrigins && opts.allowedOrigins.length ? opts.allowedOrigins : [
+      process.env.DASHBOARD_ORIGIN || 'https://dashboard.orbitcheck.io',
+      ...(process.env.NODE_ENV !== 'production' ? ['http://localhost:3000', 'http://localhost:5173', 'http://127.0.0.1:3000', 'http://127.0.0.1:5173'] : [])
+    ]).map(s => s.toLowerCase())
   )
 
   function originMatches(req: FastifyRequest): boolean {
@@ -141,15 +144,12 @@ export default fp<Options>(async function openapiSecurity(app, opts) {
     if (url === routes.auth.loginUser || url === routes.auth.registerUser || url === routes.auth.logoutUser) return
 
     const headerToken = (req.headers['x-csrf-token'] as string | undefined) || (req.headers['x-xsrf-token'] as string | undefined)
-    const sessionToken =
-      (req as any).session?.csrf_token ??
-      (req as any).session?.get?.('csrf_token')
+    const cookieToken = req.cookies?.csrf_token
 
-    // If we have valid CSRF tokens, allow the request even if origin check fails
-    // This handles cases where the origin validation is too strict but CSRF tokens are properly validated
-    const hasValidCsrfTokens = headerToken && sessionToken && headerToken === sessionToken
+    // For double-submit pattern: token must be present in both cookie and header and match
+    const hasValidCsrfTokens = headerToken && cookieToken && headerToken === cookieToken
 
-    console.log("CSRF check - method:", method, "headerToken:", headerToken, "sessionToken:", sessionToken, "hasValidCsrfTokens:", hasValidCsrfTokens)
+    console.log("CSRF check - method:", method, "headerToken:", headerToken, "cookieToken:", cookieToken, "hasValidCsrfTokens:", hasValidCsrfTokens)
 
     if (!hasValidCsrfTokens && !originMatches(req)) {
       const err = new Error('Invalid request origin')

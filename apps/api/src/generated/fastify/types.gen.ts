@@ -554,10 +554,6 @@ export type LoginResponse = {
      * Request identifier
      */
     request_id?: string;
-    /**
-     * CSRF token for subsequent requests
-     */
-    csrf_token?: string;
 };
 
 export type User = {
@@ -698,10 +694,6 @@ export type LoginUserResponses = {
          * Request identifier
          */
         request_id: string;
-        /**
-         * CSRF token for subsequent requests
-         */
-        csrf_token: string;
     };
 };
 

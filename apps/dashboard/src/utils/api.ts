@@ -1,10 +1,10 @@
 import { createClient } from "@orbitcheck/contracts";
 import { useMemo } from 'react';
-import { useAuth } from '../AuthContext';
 import { API_BASE, HTTP_HEADERS } from '../constants';
+import { useCsrfCookie } from '../hooks/useCsrfCookie';
 
 export const useApiClient = () => {
-    const { csrfToken } = useAuth();
+    const csrfToken = useCsrfCookie();
 
     const apiClient = useMemo(() => {
         const client = createClient({ baseUrl: API_BASE, credentials: 'include' });

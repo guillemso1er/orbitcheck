@@ -125,18 +125,31 @@ export async function loginUser(
 
         // Generate CSRF token bound to session
         const csrf = randomBytes(32).toString('base64url')
-        if ((request as any).session?.set) {
-            (request as any).session.set('csrf_token', csrf)
-        } else {
-            (request as any).session.csrf_token = csrf
-        }
+
+        // Set CSRF token as HttpOnly cookie for server-side verification
+        rep.setCookie('csrf_token', csrf, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'lax',
+            path: '/',
+            maxAge: sessionMaxAge / 1000, // Convert to seconds
+        })
+
+        // Set CSRF token as non-HttpOnly cookie for client to read
+        rep.setCookie('csrf_token_client', csrf, {
+            httpOnly: false,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'lax',
+            path: '/',
+            maxAge: sessionMaxAge / 1000, // Convert to seconds
+        })
 
         // Debug: Check if session was set and log response headers
         if (process.env.NODE_ENV === 'production') {
             request.log.info({
                 sessionSet: !!(request as any).session,
                 hasUserId: !!((request as any).session?.user_id || (request as any).session?.get?.('user_id')),
-                hasCsrf: !!((request as any).session?.csrf_token || (request as any).session?.get?.('csrf_token'))
+                hasCsrfCookie: !!csrf
             }, 'Session state after setting');
         }
 
@@ -150,7 +163,6 @@ export async function loginUser(
                 created_at: user.created_at,
                 updated_at: user.updated_at
             },
-            csrf_token: csrf,
             request_id
         }
 
@@ -195,6 +207,28 @@ export async function logoutUser(
             sameSite: process.env.NODE_ENV === 'lax',
             secure: process.env.NODE_ENV === 'production',
             httpOnly: true,
+            domain: process.env.NODE_ENV === 'production'
+                ? 'orbitcheck.io'
+                : undefined
+        })
+
+        // Clear CSRF cookie
+        rep.clearCookie('csrf_token', {
+            path: '/',
+            sameSite: 'lax',
+            secure: process.env.NODE_ENV === 'production',
+            httpOnly: true,
+            domain: process.env.NODE_ENV === 'production'
+                ? 'orbitcheck.io'
+                : undefined
+        })
+
+        // Clear client CSRF cookie
+        rep.clearCookie('csrf_token_client', {
+            path: '/',
+            sameSite: 'lax',
+            secure: process.env.NODE_ENV === 'production',
+            httpOnly: false,
             domain: process.env.NODE_ENV === 'production'
                 ? 'orbitcheck.io'
                 : undefined

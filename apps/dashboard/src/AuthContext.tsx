@@ -1,5 +1,6 @@
 import React, { createContext, ReactNode, useContext } from 'react';
 import { LOCAL_STORAGE_KEYS } from './constants';
+import { useCsrfCookie } from './hooks/useCsrfCookie';
 import { useLocalStorage } from './hooks/useLocalStorage';
 
 interface User {
@@ -10,7 +11,7 @@ interface User {
 interface AuthContextType {
   user: User | null;
   csrfToken: string | null;
-  login: (user: User, csrfToken: string, rememberMe?: boolean) => void;
+  login: (user: User, rememberMe?: boolean) => void;
   logout: () => void;
   isAuthenticated: boolean;
   isLoading: boolean;
@@ -34,14 +35,11 @@ interface AuthProviderProps {
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [localUser, setLocalUser] = useLocalStorage<User | null>(LOCAL_STORAGE_KEYS.USER, null);
   const [sessionUser, setSessionUser] = useLocalStorage<User | null>(LOCAL_STORAGE_KEYS.USER, null, sessionStorage);
-  const [localCsrfToken, setLocalCsrfToken] = useLocalStorage<string | null>(LOCAL_STORAGE_KEYS.CSRF_TOKEN, null);
-  const [sessionCsrfToken, setSessionCsrfToken] = useLocalStorage<string | null>(LOCAL_STORAGE_KEYS.CSRF_TOKEN, null, sessionStorage);
+  const csrfToken = useCsrfCookie();
 
   const user = localUser || sessionUser;
-  const csrfToken = localCsrfToken || sessionCsrfToken;
 
-  const login = (newUser: User, newCsrfToken: string, rememberMe: boolean = true) => {
-    setLocalCsrfToken(newCsrfToken);
+  const login = (newUser: User, rememberMe: boolean = true) => {
     if (rememberMe) {
       setLocalUser(newUser);
     } else {
@@ -52,8 +50,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const logout = () => {
     setLocalUser(null);
     setSessionUser(null);
-    setLocalCsrfToken(null);
-    setSessionCsrfToken(null);
   };
 
   const value: AuthContextType = {
