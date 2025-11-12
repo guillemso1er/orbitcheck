@@ -3,7 +3,7 @@ import openapiGlue from "fastify-openapi-glue";
 import { type Redis as IORedisType } from 'ioredis';
 import type { Pool } from "pg";
 
-import openapiSpec from "@orbitcheck/contracts/openapi.v1.json";
+import openapiSpec from "@orbitcheck/contracts/openapi.v1.json" assert { type: "json" };
 import { ROUTES } from "./config.js";
 import { HTTP_STATUS } from "./errors.js";
 import { serviceHandlers } from "./handlers/handlers.js";
