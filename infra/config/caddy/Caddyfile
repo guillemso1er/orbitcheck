@@ -75,7 +75,9 @@ api.orbitcheck.io {
     bind 127.0.0.1
 
     route {
-        request_body { max_size 10MB }
+        request_body {
+            max_size 10MB
+        }
 
         @mutating method POST PUT PATCH DELETE
         @auth_paths path /auth/* /login /logout /session/*
@@ -88,9 +90,27 @@ api.orbitcheck.io {
                                  {http.request.header.Signature} != ""
 
         # Never cache mutating, auth paths, or authenticated requests
-        handle @mutating { reverse_proxy 127.0.0.1:8080 { transport http { versions h2c 1.1 } } }
-        handle @auth_paths { reverse_proxy 127.0.0.1:8080 { transport http { versions h2c 1.1 } } }
-        handle @auth_headers { reverse_proxy 127.0.0.1:8080 { transport http { versions h2c 1.1 } } }
+        handle @mutating {
+            reverse_proxy 127.0.0.1:8080 {
+                transport http {
+                    versions h2c 1.1
+                }
+            }
+        }
+        handle @auth_paths {
+            reverse_proxy 127.0.0.1:8080 {
+                transport http {
+                    versions h2c 1.1
+                }
+            }
+        }
+        handle @auth_headers {
+            reverse_proxy 127.0.0.1:8080 {
+                transport http {
+                    versions h2c 1.1
+                }
+            }
+        }
 
         # Cache only anonymous GETs
         @anon_get {
@@ -111,14 +131,18 @@ api.orbitcheck.io {
                 stale 24h
             }
             reverse_proxy 127.0.0.1:8080 {
-                transport http { versions h2c 1.1 }
+                transport http {
+                    versions h2c 1.1
+                }
             }
         }
 
         # Fallback (no cache)
         handle {
             reverse_proxy 127.0.0.1:8080 {
-                transport http { versions h2c 1.1 }
+                transport http {
+                    versions h2c 1.1
+                }
             }
         }
     }
