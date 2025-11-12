@@ -3,14 +3,14 @@ import openapiGlue from "fastify-openapi-glue";
 import { type Redis as IORedisType } from 'ioredis';
 import type { Pool } from "pg";
 
+import openapiSpec from "@orbitcheck/contracts/openapi.v1.json";
 import { ROUTES } from "./config.js";
 import { HTTP_STATUS } from "./errors.js";
 import { serviceHandlers } from "./handlers/handlers.js";
 import { idempotency, rateLimit } from "./hooks.js";
 import openapiSecurity from "./plugins/auth.js";
-import { createPlansService } from './services/plans.js';
 import { managementRoutes, runtimeRoutes } from "./routes/routes.js";
-import openapiSpec from "@orbitcheck/contracts/openapi.v1.json";
+import { createPlansService } from './services/plans.js';
 
 
 
@@ -37,7 +37,7 @@ export async function applyValidationLimits<TServer extends RawServerBase = RawS
     const userId = (request as any).user_id || request.auth?.userId;
     if (!userId) return;
 
-    try {       
+    try {
         const plansService = createPlansService(pool);
         await plansService.checkValidationLimit(userId, 1);
         await plansService.incrementValidationUsage(userId, 1);
