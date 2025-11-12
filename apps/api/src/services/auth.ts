@@ -131,6 +131,15 @@ export async function loginUser(
             (request as any).session.csrf_token = csrf
         }
 
+        // Debug: Check if session was set and log response headers
+        if (process.env.NODE_ENV === 'production') {
+            request.log.info({
+                sessionSet: !!(request as any).session,
+                hasUserId: !!((request as any).session?.user_id || (request as any).session?.get?.('user_id')),
+                hasCsrf: !!((request as any).session?.csrf_token || (request as any).session?.get?.('csrf_token'))
+            }, 'Session state after setting');
+        }
+
 
         const response: LoginUserResponses[200] = {
             user: {
@@ -144,6 +153,16 @@ export async function loginUser(
             csrf_token: csrf,
             request_id
         }
+
+        // Debug: Log response headers after sending
+        if (process.env.NODE_ENV === 'production') {
+            const result = rep.send(response);
+            request.log.info({
+                setCookieHeader: rep.getHeader('set-cookie')
+            }, 'Response Set-Cookie header');
+            return result;
+        }
+
         return rep.send(response)
     } catch (error) {
         return sendServerError(request, rep, error, routes.auth.loginUser, generateRequestId())
