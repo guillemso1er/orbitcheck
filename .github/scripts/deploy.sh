@@ -787,6 +787,32 @@ runtime_manage_systemd_services() {
     fi
 }
 
+runtime_preflight_storage() {
+  local min_mb="${1:-2048}"     # require >= 2 GiB free
+  local max_inode_pct="${2:-95}"
+
+  log_info "Disk usage for $HOME:"; df -h "$HOME" || true
+  log_info "Inodes for $HOME:"; df -i "$HOME" || true
+  log_info "Podman storage:"; podman system df || true
+
+  local free_mb inode_used
+  free_mb="$(df -Pk "$HOME" | awk 'NR==2 {print int($4/1024)}')"
+  inode_used="$(df -Pi "$HOME" | awk 'NR==2 {gsub(/%/,"",$5); print $5}')"
+
+  if (( free_mb < min_mb || inode_used > max_inode_pct )); then
+    log_warning "Low resources (free=${free_mb}MB, inodes=${inode_used}%) — pruning"
+    podman container prune -f || true
+    podman image prune -a -f || true
+    # Re-check
+    free_mb="$(df -Pk "$HOME" | awk 'NR==2 {print int($4/1024)}')"
+    inode_used="$(df -Pi "$HOME" | awk 'NR==2 {gsub(/%/,"",$5); print $5}')"
+    if (( free_mb < min_mb || inode_used > max_inode_pct )); then
+      log_error "Still low after prune (free=${free_mb}MB, inodes=${inode_used}%). Aborting."
+      exit 1
+    fi
+  fi
+}
+
 runtime_main_deployment() {
     set -euo pipefail
     for cmd in rsync podman; do
@@ -799,6 +825,7 @@ runtime_main_deployment() {
     local dest_sys_d="$HOME/$REMOTE_SYSTEMD_USER_DIR"
     local dest_user_cfg="$HOME/.config"
 
+    runtime_preflight_storage 2048 95
     # These file deployments should always happen if the deploy job runs
     runtime_deploy_quadlet_files "$src" "$dest_sys_d"
     runtime_patch_quadlet_images "$dest_sys_d"
