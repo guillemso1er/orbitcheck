@@ -161,7 +161,7 @@ export async function logoutUser(
         rep.clearCookie('orbitcheck_session', {
             path: '/',
             sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
-            secure: process.env.NODE_ENV === 'production',
+            secure: 'auto', // Auto-detect based on X-Forwarded-Proto header
             httpOnly: true,
         })
 
