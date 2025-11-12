@@ -1,6 +1,6 @@
-import { DASHBOARD_ROUTES } from "@orbitcheck/contracts";
 import type { FastifyReply, FastifyRequest } from "fastify";
 import type { Pool } from "pg";
+import { routes } from "src/routes/routes.js";
 import { HTTP_STATUS } from "../errors.js";
 import type { CreateProjectData, CreateProjectResponses, DeleteProjectData, DeleteProjectResponses, GetUserProjectsResponses } from "../generated/fastify/types.gen.js";
 import { createPlansService } from "./plans.js";
@@ -44,7 +44,7 @@ export async function getUserProjects(
         };
         return rep.send(response);
     } catch (error) {
-        return sendServerError(request, rep, error, DASHBOARD_ROUTES.LIST_PROJECTS, generateRequestId());
+        return sendServerError(request, rep, error, routes.projects.getUserProjects, generateRequestId());
     }
 }
 
@@ -85,7 +85,7 @@ export async function createProject(
         const response: CreateProjectResponses[201] = { id: rows[0].id, name: rows[0].name, created_at: rows[0].created_at, request_id };
         return rep.status(HTTP_STATUS.CREATED).send(response);
     } catch (error) {
-        return sendServerError(request, rep, error, DASHBOARD_ROUTES.CREATE_PROJECT, generateRequestId());
+        return sendServerError(request, rep, error, routes.projects.createProject, generateRequestId());
     }
 }
 
@@ -122,6 +122,6 @@ export async function deleteProject(
         const response: DeleteProjectResponses[200] = { message: 'Project deleted successfully', request_id };
         return rep.send(response);
     } catch (error) {
-        return sendServerError(request, rep, error, DASHBOARD_ROUTES.DELETE_PROJECT, generateRequestId());
+        return sendServerError(request, rep, error, routes.projects.deleteProject, generateRequestId());
     }
 }

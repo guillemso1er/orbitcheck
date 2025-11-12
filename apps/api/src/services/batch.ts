@@ -1,8 +1,8 @@
-import { API_V1_ROUTES } from "@orbitcheck/contracts";
 import { Queue } from 'bullmq';
 import type { FastifyReply, FastifyRequest } from "fastify";
 import type { Redis as IORedisType } from 'ioredis';
 import type { Pool } from "pg";
+import { routes } from 'src/routes/routes.js';
 import { HTTP_STATUS } from "../errors.js";
 import type { BatchDedupeData, BatchDedupeResponses, BatchEvaluateOrdersData, BatchEvaluateOrdersResponses, BatchValidateData, BatchValidateResponses } from "../generated/fastify/types.gen.js";
 import { logEvent } from "../hooks.js";
@@ -52,14 +52,14 @@ export async function batchValidateData(
             request_id
         };
 
-        await logEvent(project_id, 'batch', API_V1_ROUTES.BATCH.BATCH_VALIDATE_DATA, [], HTTP_STATUS.ACCEPTED, {
+        await logEvent(project_id, 'batch', routes.v1.batch.batchValidate, [], HTTP_STATUS.ACCEPTED, {
             job_type: 'batch_validate',
             item_count: data.length
         }, pool);
 
         return rep.status(HTTP_STATUS.ACCEPTED).send(response);
     } catch (error) {
-        return sendServerError(request, rep, error, API_V1_ROUTES.BATCH.BATCH_VALIDATE_DATA, generateRequestId());
+        return sendServerError(request, rep, error, routes.v1.batch.batchValidate, generateRequestId());
     }
 }
 
@@ -107,14 +107,14 @@ export async function batchDeduplicateData(
             request_id
         };
 
-        await logEvent(project_id, 'batch', API_V1_ROUTES.BATCH.BATCH_DEDUPLICATE_DATA, [], HTTP_STATUS.ACCEPTED, {
+        await logEvent(project_id, 'batch', routes.v1.batch.batchDedupe, [], HTTP_STATUS.ACCEPTED, {
             job_type: 'batch_dedupe',
             item_count: data.length
         }, pool);
 
         return rep.status(HTTP_STATUS.ACCEPTED).send(response);
     } catch (error) {
-        return sendServerError(request, rep, error, API_V1_ROUTES.BATCH.BATCH_DEDUPLICATE_DATA, generateRequestId());
+        return sendServerError(request, rep, error, routes.v1.batch.batchDedupe, generateRequestId());
     }
 }
 
@@ -170,13 +170,13 @@ export async function batchEvaluateOrders(
             request_id
         };
 
-        await logEvent(project_id, 'batch', API_V1_ROUTES.BATCH.BATCH_EVALUATE_ORDERS, [], HTTP_STATUS.ACCEPTED, {
+        await logEvent(project_id, 'batch', routes.v1.batch.batchEvaluateOrders, [], HTTP_STATUS.ACCEPTED, {
             job_type: 'batch_evaluate_orders',
             item_count: orders.length
         }, pool);
 
         return rep.status(HTTP_STATUS.ACCEPTED).send(response);
     } catch (error) {
-        return sendServerError(request, rep, error, API_V1_ROUTES.BATCH.BATCH_EVALUATE_ORDERS, generateRequestId());
+        return sendServerError(request, rep, error, routes.v1.batch.batchEvaluateOrders, generateRequestId());
     }
 }

@@ -190,6 +190,7 @@ export const DEDUPE_TYPES = {
 
 export const ROUTES = {
   // Health and status routes
+  AUTH: '/v1/auth',
   HEALTH: '/health',
   READY: '/ready',
   STATUS: '/v1/status',

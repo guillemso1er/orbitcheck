@@ -1,12 +1,11 @@
-import { API_V1_ROUTES } from "@orbitcheck/contracts";
 import type { FastifyReply, FastifyRequest } from "fastify";
 import type { Pool } from "pg";
-import { dedupeAddress as dedupeAddressLogic, dedupeCustomer as dedupeCustomerLogic } from "../dedupe.js";
-import { HTTP_STATUS } from "../errors.js";
-import type { DedupeAddressData, DedupeAddressResponses, DedupeCustomerData, DedupeCustomerResponses, MergeDeduplicatedData, MergeDeduplicatedResponses } from "../generated/fastify/types.gen.js";
-import { logEvent } from "../hooks.js";
-import { MERGE_TYPES } from "../validation.js";
-import { generateRequestId, sendServerError } from "./utils.js";
+import { HTTP_STATUS } from "../../errors.js";
+import type { DedupeAddressData, DedupeAddressResponses, DedupeCustomerData, DedupeCustomerResponses, MergeDeduplicatedData, MergeDeduplicatedResponses } from "../../generated/fastify/types.gen.js";
+import { logEvent } from "../../hooks.js";
+import { MERGE_TYPES } from "../../validation.js";
+import { generateRequestId, sendServerError } from "../utils.js";
+import { dedupeAddress as dedupeAddressLogic, dedupeCustomer as dedupeCustomerLogic } from "./dedupe-logic.js";
 export async function dedupeCustomer(
     request: FastifyRequest<{ Body: DedupeCustomerData['body'] }>,
     rep: FastifyReply,
@@ -28,7 +27,7 @@ export async function dedupeCustomer(
         await logEvent(project_id, 'dedupe', '/dedupe/customer', reason_codes, HTTP_STATUS.OK, { matches_count: result.matches.length, suggested_action: result.suggested_action }, pool);
         return rep.send(response);
     } catch (error) {
-        return sendServerError(request, rep, error, API_V1_ROUTES.DEDUPE.DEDUPLICATE_CUSTOMER, generateRequestId());
+        return sendServerError(request, rep, error, "/v1/dedupe/customer", generateRequestId());
     }
 }
 
@@ -53,7 +52,7 @@ export async function dedupeAddress(
         await logEvent(project_id, 'dedupe', '/dedupe/address', reason_codes, HTTP_STATUS.OK, { matches_count: result.matches.length, suggested_action: result.suggested_action }, pool);
         return rep.send(response);
     } catch (error) {
-        return sendServerError(request, rep, error, API_V1_ROUTES.DEDUPE.DEDUPLICATE_ADDRESS, generateRequestId());
+        return sendServerError(request, rep, error, "/v1/dedupe/address", generateRequestId());
     }
 }
 
@@ -94,6 +93,6 @@ export async function mergeDeduplicatedRecords(
         await logEvent(project_id, 'dedupe', '/dedupe/merge', [], HTTP_STATUS.OK, { type, merged_count: count }, pool);
         return rep.send(response);
     } catch (error) {
-        return sendServerError(request, rep, error, API_V1_ROUTES.DEDUPE.MERGE_DEDUPLICATED_RECORDS, generateRequestId());
+        return sendServerError(request, rep, error, "/v1/dedupe/merge", generateRequestId());
     }
 }

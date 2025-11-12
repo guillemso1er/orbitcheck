@@ -1,4 +1,3 @@
-import { API_V1_ROUTES } from "@orbitcheck/contracts";
 import type { FastifyReply, FastifyRequest } from "fastify";
 import type { Pool } from "pg";
 import { HTTP_STATUS } from "../errors.js";
@@ -56,12 +55,12 @@ export async function getJobStatus(
             response.result = job.result_data;
         }
 
-        await logEvent(project_id, 'jobs', API_V1_ROUTES.JOBS.GET_JOB_STATUS, [], HTTP_STATUS.OK, {
+        await logEvent(project_id, 'jobs', "/v1/jobs/:id", [], HTTP_STATUS.OK, {
             job_status: job.status
         }, pool);
 
         return rep.send(response);
     } catch (error) {
-        return sendServerError(request, rep, error, API_V1_ROUTES.JOBS.GET_JOB_STATUS, generateRequestId());
+        return sendServerError(request, rep, error, "/v1/jobs/:id", generateRequestId());
     }
 }

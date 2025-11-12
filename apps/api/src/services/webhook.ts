@@ -1,4 +1,3 @@
-import { MGMT_V1_ROUTES } from "@orbitcheck/contracts";
 import type { FastifyReply, FastifyRequest } from "fastify";
 import crypto from "node:crypto";
 import type { Pool } from "pg";
@@ -38,7 +37,7 @@ export async function listWebhooks(
         const response: ListWebhooksResponses[200] = { data: rows, request_id };
         return rep.send(response);
     } catch (error) {
-        return sendServerError(request, rep, error, MGMT_V1_ROUTES.WEBHOOKS.LIST_WEBHOOKS, request_id);
+        return sendServerError(request, rep, error, "/v1/webhooks", request_id);
     }
 }
 
@@ -244,7 +243,7 @@ export async function testWebhook(
             request_id
         };
 
-        await logEvent(project_id, 'webhook_test', MGMT_V1_ROUTES.WEBHOOKS.TEST_WEBHOOK, [], HTTP_STATUS.OK, {
+        await logEvent(project_id, 'webhook_test', "/v1/webhooks/test_webhook", [], HTTP_STATUS.OK, {
             url,
             payload_type,
             response_status: response.status
@@ -268,7 +267,7 @@ export async function testWebhook(
             errorMessage = err.message;
         }
 
-        await logEvent(project_id, 'webhook_test', MGMT_V1_ROUTES.WEBHOOKS.TEST_WEBHOOK, [REASON_CODES.WEBHOOK_SEND_FAILED], HTTP_STATUS.INTERNAL_SERVER_ERROR, {
+        await logEvent(project_id, 'webhook_test', "/v1/webhooks/test_webhook", [REASON_CODES.WEBHOOK_SEND_FAILED], HTTP_STATUS.INTERNAL_SERVER_ERROR, {
             url,
             payload_type,
             error: errorMessage

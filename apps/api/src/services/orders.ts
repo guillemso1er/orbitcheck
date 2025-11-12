@@ -1,16 +1,15 @@
-import { API_V1_ROUTES } from "@orbitcheck/contracts";
 import type { FastifyInstance, FastifyReply, FastifyRequest, RawServerBase } from "fastify";
 import type { Redis } from "ioredis";
 import crypto from "node:crypto";
 import type { Pool } from "pg";
-import { DEDUPE_ACTIONS, HIGH_VALUE_THRESHOLD, ORDER_ACTIONS, ORDER_TAGS, PAYMENT_METHODS, REASON_CODES, RISK_ADDRESS_DEDUPE, RISK_BLOCK_THRESHOLD, RISK_COD, RISK_COD_HIGH, RISK_CUSTOMER_DEDUPE, RISK_GEO_OUT, RISK_GEOCODE_FAIL, RISK_HIGH_VALUE, RISK_HOLD_THRESHOLD, RISK_INVALID_ADDR, RISK_INVALID_EMAIL_PHONE, RISK_PO_BOX, RISK_POSTAL_MISMATCH, SIMILARITY_EXACT } from "../validation.js";
-import { dedupeAddress, dedupeCustomer } from "../dedupe.js";
 import { HTTP_STATUS } from "../errors.js";
 import type { EvaluateOrderData, EvaluateOrderResponses } from "../generated/fastify/types.gen.js";
 import { logEvent } from "../hooks.js";
+import { DEDUPE_ACTIONS, HIGH_VALUE_THRESHOLD, ORDER_ACTIONS, ORDER_TAGS, PAYMENT_METHODS, REASON_CODES, RISK_ADDRESS_DEDUPE, RISK_BLOCK_THRESHOLD, RISK_COD, RISK_COD_HIGH, RISK_CUSTOMER_DEDUPE, RISK_GEO_OUT, RISK_GEOCODE_FAIL, RISK_HIGH_VALUE, RISK_HOLD_THRESHOLD, RISK_INVALID_ADDR, RISK_INVALID_EMAIL_PHONE, RISK_PO_BOX, RISK_POSTAL_MISMATCH, SIMILARITY_EXACT } from "../validation.js";
 import { validateAddress } from "../validators/address.js";
 import { validateEmail } from "../validators/email.js";
 import { validatePhone } from "../validators/phone.js";
+import { dedupeAddress, dedupeCustomer } from "./dedupe/dedupe-logic.js";
 import { getBuiltInRules } from "./rules/rules.constants.js";
 import { validatePayload } from "./rules/rules.validation.js";
 import { RiskScoreCalculator, RuleEvaluator } from "./rules/test-rules.js";
@@ -95,17 +94,17 @@ export async function evaluateOrderForRiskAndRules<TServer extends RawServerBase
         // FIX: Handle concurrent processing by using a transaction and proper locking
         let isFirstOccurrence = true;
         let orderMatch: any[] = [];
-        
+
         try {
             await pool.query('BEGIN');
-            
+
             // Check for duplicate order within transaction using SELECT FOR UPDATE to prevent race conditions
             const duplicateResult = await pool.query(
                 'SELECT id FROM orders WHERE project_id = $1 AND order_id = $2 FOR UPDATE',
                 [project_id, order_id]
             );
             orderMatch = duplicateResult.rows;
-            
+
             if (orderMatch.length > 0) {
                 // This order has been seen before, add duplicate risk
                 risk_score = Math.min(risk_score + 50, 100);
@@ -113,13 +112,13 @@ export async function evaluateOrderForRiskAndRules<TServer extends RawServerBase
                 reason_codes.push(REASON_CODES.ORDER_DUPLICATE_DETECTED);
                 isFirstOccurrence = false;
             }
-            
+
             await pool.query('COMMIT');
         } catch (error) {
             await pool.query('ROLLBACK');
             throw error;
         }
-        
+
         if (isFirstOccurrence) {
             // Ensure first orders don't exceed reasonable risk scores
             risk_score = Math.min(risk_score, 50);
@@ -518,6 +517,6 @@ export async function evaluateOrderForRiskAndRules<TServer extends RawServerBase
         return rep.send(response);
     } catch (error) {
         app.log.error({ err: error, request_id }, "An unhandled error occurred in /v1/orders/evaluate");
-        return sendServerError(request, rep, error, API_V1_ROUTES.ORDERS.EVALUATE_ORDER_FOR_RISK_AND_RULES, request_id);
+        return sendServerError(request, rep, error, '/v1/orders/evaluate', request_id);
     }
 }

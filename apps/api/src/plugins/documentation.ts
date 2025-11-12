@@ -3,25 +3,25 @@ import fastifySwaggerUi from '@fastify/swagger-ui'
 import ScalarApiReference from '@scalar/fastify-api-reference'
 import type { FastifyInstance, RawServerBase } from 'fastify'
 
-import { DASHBOARD_ROUTES, MGMT_V1_ROUTES } from '@orbitcheck/contracts'
+import { managementRoutes, routes } from 'src/routes/routes.js'
 import { API_VERSION, ROUTES } from '../config.js'
 import { environment } from '../environment.js'
 
 function shouldHideRoute(url: string): boolean {
     return (
+
         url.startsWith(ROUTES.REFERENCE) ||
         url.startsWith(ROUTES.DOCUMENTATION) ||
         url.startsWith(ROUTES.METRICS) ||
-        Object.values(MGMT_V1_ROUTES).some(group =>
+        managementRoutes().some(group =>
             typeof group === 'object' && group !== null &&
-            Object.values(group).some(route => url.startsWith(route))) ||
+            Object.values(group).some(route => typeof route === 'string' && url.startsWith(route))) ||
         url.startsWith(ROUTES.STATUS) ||
         url.startsWith(ROUTES.HEALTH) ||
         url.startsWith(ROUTES.READY) ||
-        url.startsWith(DASHBOARD_ROUTES.REGISTER_NEW_USER) ||
-        url.startsWith(DASHBOARD_ROUTES.USER_LOGIN) ||
-        url.startsWith(DASHBOARD_ROUTES.USER_LOGOUT) ||
-        url.startsWith(MGMT_V1_ROUTES.DATA.ERASE))
+        url.startsWith(ROUTES.AUTH) ||
+        Object.values(routes.v1.data.eraseData).some(route => url.startsWith(route)))
+
         && environment.NODE_ENV === 'production'
 }
 

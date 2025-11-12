@@ -3,13 +3,13 @@ import openapiGlue from "fastify-openapi-glue";
 import { type Redis as IORedisType } from 'ioredis';
 import type { Pool } from "pg";
 
-import { API_V1_ROUTES, MGMT_V1_ROUTES } from "@orbitcheck/contracts";
 import { ROUTES } from "./config.js";
 import { HTTP_STATUS } from "./errors.js";
 import { serviceHandlers } from "./handlers/handlers.js";
 import { idempotency, rateLimit } from "./hooks.js";
 import openapiSecurity from "./plugins/auth.js";
 import { createPlansService } from './services/plans.js';
+import { managementRoutes, runtimeRoutes } from "./routes/routes.js";
 
 
 
@@ -27,7 +27,7 @@ export async function applyValidationLimits<TServer extends RawServerBase = RawS
     const url = request.url;
 
     // Only apply to validation routes
-    const isValidationRoute = Object.values(API_V1_ROUTES.VALIDATE).some(route => url.startsWith(route));
+    const isValidationRoute = runtimeRoutes().some(route => url.startsWith(route));
 
     if (!isValidationRoute) return;
 
@@ -73,16 +73,16 @@ export async function applyRateLimitingAndIdempotency<TServer extends RawServerB
     }
 
     // Skip middleware for management routes
-    const isMgmtRoute = Object.values(MGMT_V1_ROUTES).some(group =>
+    const isMgmtRoute = managementRoutes().some(group =>
         typeof group === 'object' && group !== null &&
         Object.values(group).some(route => {
             // Handle parameterized routes like '/v1/api-keys/:id'
-            if (route.includes(':')) {
+            if (typeof route === 'string' && route.includes(':')) {
                 const routePattern = route.replace(/:[^/]+/g, '[^/]+');
                 const regex = new RegExp(`^${routePattern}`);
                 return regex.test(url);
             }
-            return url.startsWith(route);
+            return typeof route === 'string' && url.startsWith(route);
         })
     );
 
@@ -91,18 +91,15 @@ export async function applyRateLimitingAndIdempotency<TServer extends RawServerB
     }
 
     // Only apply rate limiting and idempotency to runtime routes
-    const isRuntimeRoute = Object.values(API_V1_ROUTES).some(group =>
-        typeof group === 'object' && group !== null &&
-        Object.values(group).some(route => {
-            // Handle parameterized routes like '/v1/jobs/:id'
-            if (route.includes(':')) {
-                const routePattern = route.replace(/:[^/]+/g, '[^/]+');
-                const regex = new RegExp(`^${routePattern}`);
-                return regex.test(url);
-            }
-            return url.startsWith(route);
-        })
-    );
+    const isRuntimeRoute = runtimeRoutes().some(route => {
+        // Handle parameterized routes like '/v1/jobs/:id'
+        if (typeof route === 'string' && route.includes(':')) {
+            const routePattern = route.replace(/:[^/]+/g, '[^/]+');
+            const regex = new RegExp(`^${routePattern}`);
+            return regex.test(url);
+        }
+        return typeof route === 'string' && url.startsWith(route);
+    });
 
     if (isRuntimeRoute) {
         await rateLimit(request as any, rep as any, redis);

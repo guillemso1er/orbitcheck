@@ -4,5 +4,4 @@ export { createClient } from '../generated/client/client/client.gen.js';
 export * from '../generated/client/sdk.gen';
 export * from '../generated/client/types.gen';
 // Export route constants from dist
-export * from '../dist/routes.js';
 //# sourceMappingURL=index.js.map

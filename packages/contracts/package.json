@@ -3,32 +3,32 @@
   "version": "0.1.0",
   "description": "OpenAPI contracts and shared types for OrbitCheck services",
   "type": "module",
-  "main": "dist/index.js",
+  "main": "dist/src/index.js",
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "default": "./dist/index.js"
+      "types": "./dist/src/index.d.ts",
+      "import": "./dist/src/index.js",
+      "default": "./dist/src/index.js"
     },
     "./node": {
-      "types": "./dist/node.d.ts",
-      "import": "./dist/node.js",
-      "default": "./dist/node.js"
-    },
-    "./routes": {
-      "types": "./dist/routes.d.ts",
-      "import": "./dist/routes.js",
-      "default": "./dist/routes.js"
+      "types": "./dist/src/node.d.ts",
+      "import": "./dist/src/node.js",
+      "default": "./dist/src/node.js"
     },
     "./api-client": {
-      "types": "./dist/api-client/orbitCheckAPI.d.ts",
-      "import": "./dist/api-client/orbitCheckAPI.js",
-      "default": "./dist/api-client/orbitCheckAPI.js"
+      "types": "./dist/src/index.d.ts",
+      "import": "./dist/src/index.js",
+      "default": "./dist/src/index.js"
+    },
+    "./openapi.v1.json": {
+      "import": "./dist/openapi.v1.json",
+      "default": "./dist/openapi.v1.json"
     }
   },
   "files": [
     "dist",
     "dist/openapi.yaml",
+    "dist/openapi.v1.json",
     "README.md",
     "LICENSE"
   ],
@@ -44,7 +44,8 @@
   },
   "dependencies": {
     "axios": "^1.7.9",
-    "js-yaml": "^4.1.0"
+    "js-yaml": "^4.1.0",
+    "redocly": "^1.0.0"
   },
   "devDependencies": {
     "@types/js-yaml": "^4.0.5",

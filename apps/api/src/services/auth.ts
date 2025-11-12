@@ -1,4 +1,3 @@
-import { DASHBOARD_ROUTES } from "@orbitcheck/contracts";
 import bcrypt from 'bcryptjs';
 import type { FastifyReply, FastifyRequest, RawServerBase, RouteGenericInterface } from "fastify";
 import * as crypto from "node:crypto";
@@ -11,6 +10,7 @@ import { getDefaultProjectId, sendError, sendServerError } from "./utils.js";
 
 import argon2 from 'argon2';
 import { randomBytes } from "node:crypto";
+import { routes } from 'src/routes/routes.js';
 import { parsePat } from "./pats.js";
 
 
@@ -74,7 +74,7 @@ export async function registerUser(
         if (error.code === PG_UNIQUE_VIOLATION) {
             return sendError(rep, HTTP_STATUS.BAD_REQUEST, ERROR_CODES.USER_EXISTS, ERROR_MESSAGES[ERROR_CODES.USER_EXISTS], generateRequestId());
         }
-        return sendServerError(request, rep, error, DASHBOARD_ROUTES.REGISTER_NEW_USER, generateRequestId());
+        return sendServerError(request, rep, error, routes.auth.registerUser, generateRequestId());
     }
 }
 
@@ -127,7 +127,7 @@ export async function loginUser(
         }
         return rep.send(response)
     } catch (error) {
-        return sendServerError(request, rep, error, DASHBOARD_ROUTES.USER_LOGIN, generateRequestId())
+        return sendServerError(request, rep, error, routes.auth.loginUser, generateRequestId())
     }
 }
 
@@ -161,7 +161,7 @@ export async function logoutUser(
 
         return rep.send({ message: 'Logged out' })
     } catch (error) {
-        return sendServerError(request, rep, error, DASHBOARD_ROUTES.USER_LOGOUT, generateRequestId())
+        return sendServerError(request, rep, error, routes.auth.logoutUser, generateRequestId())
     }
 }
 

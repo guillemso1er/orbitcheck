@@ -1,4 +1,3 @@
-import { API_V1_ROUTES } from "@orbitcheck/contracts";
 import type { FastifyReply, FastifyRequest } from "fastify";
 import type { Redis as IORedisType } from "ioredis";
 import type { Pool } from "pg";
@@ -53,7 +52,7 @@ export async function validateEmailAddress(
         if (rep.saveIdem) {
             await rep.saveIdem(out);
         }
-        await logEvent((request as any).project_id!, 'validation', API_V1_ROUTES.VALIDATE.VALIDATE_EMAIL_ADDRESS, out.reason_codes, HTTP_STATUS.OK, {
+        await logEvent((request as any).project_id!, 'validation', '/v1/validate/email', out.reason_codes, HTTP_STATUS.OK, {
             domain: out.normalized.split('@')[1],
             disposable: out.disposable,
             mx_found: out.mx_found,
@@ -62,7 +61,7 @@ export async function validateEmailAddress(
         return rep.send(response);
     } catch (error) {
         console.error('Email validation error:', error);
-        return sendServerError(request, rep, error, API_V1_ROUTES.VALIDATE.VALIDATE_EMAIL_ADDRESS, generateRequestId());
+        return sendServerError(request, rep, error, '/v1/validate/email', generateRequestId());
     }
 }
 
@@ -99,11 +98,11 @@ export async function validatePhoneNumber(
         if (rep.saveIdem) {
             await rep.saveIdem(response);
         }
-        await logEvent((request as any).project_id!, "validation", API_V1_ROUTES.VALIDATE.VALIDATE_PHONE_NUMBER, response.reason_codes, HTTP_STATUS.OK, { request_otp, otp_status: verification_sid ? 'otp_sent' : 'no_otp' }, pool);
+        await logEvent((request as any).project_id!, "validation", "/v1/validate/phone", response.reason_codes, HTTP_STATUS.OK, { request_otp, otp_status: verification_sid ? 'otp_sent' : 'no_otp' }, pool);
         const phoneResponse: ValidatePhoneResponses[200] = { ...response, request_id };
         return rep.send(phoneResponse);
     } catch (error) {
-        return sendServerError(request, rep, error, API_V1_ROUTES.VALIDATE.VALIDATE_PHONE_NUMBER, generateRequestId());
+        return sendServerError(request, rep, error, "/v1/validate/phone", generateRequestId());
     }
 }
 
@@ -137,11 +136,11 @@ export async function validateAddress(
         if (rep.saveIdem) {
             await rep.saveIdem(out);
         }
-        await logEvent((request as any).project_id!, "validation", API_V1_ROUTES.VALIDATE.VALIDATE_ADDRESS, out.reason_codes, HTTP_STATUS.OK, { po_box: out.po_box, postal_city_match: out.postal_city_match }, pool);
+        await logEvent((request as any).project_id!, "validation", "/v1/validate/address", out.reason_codes, HTTP_STATUS.OK, { po_box: out.po_box, postal_city_match: out.postal_city_match }, pool);
         const response: ValidateAddressResponses[200] = { ...out, request_id };
         return rep.send(response);
     } catch (error) {
-        return sendServerError(request, rep, error, API_V1_ROUTES.VALIDATE.VALIDATE_ADDRESS, generateRequestId());
+        return sendServerError(request, rep, error, "/v1/validate/address", generateRequestId());
     }
 }
 
@@ -159,11 +158,11 @@ export async function validateTaxId(
         if (rep.saveIdem) {
             await rep.saveIdem(out);
         }
-        await logEvent((request as any).project_id!, "validation", API_V1_ROUTES.VALIDATE.VALIDATE_TAX_ID, out.reason_codes, HTTP_STATUS.OK, { type }, pool);
+        await logEvent((request as any).project_id!, "validation", "/v1/validate/tax_id", out.reason_codes, HTTP_STATUS.OK, { type }, pool);
         const response: ValidateTaxIdResponses[200] = { ...out, request_id };
         return rep.send(response);
     } catch (error) {
-        return sendServerError(request, rep, error, API_V1_ROUTES.VALIDATE.VALIDATE_TAX_ID, generateRequestId());
+        return sendServerError(request, rep, error, "/v1/validate/tax_id", generateRequestId());
     }
 }
 
@@ -191,7 +190,7 @@ export async function validateName(
         const response: ValidateNameResponses[200] = { ...out, request_id };
         return rep.send(response);
     } catch (error) {
-        return sendServerError(request, rep, error, API_V1_ROUTES.VALIDATE.VALIDATE_NAME, generateRequestId());
+        return sendServerError(request, rep, error, "/v1/validate/name", generateRequestId());
     }
 }
 
@@ -214,9 +213,9 @@ export async function verifyPhoneOtp(
         const reason_codes = valid ? [] : ['phone.otp_invalid'];
         const response: VerifyPhoneOtpResponses[200] = { valid, reason_codes, request_id };
         await (rep as any).saveIdem?.(response);
-        await logEvent((request as any).project_id, "verification", API_V1_ROUTES.VERIFY.VERIFY_PHONE_OTP, reason_codes, valid ? HTTP_STATUS.OK : HTTP_STATUS.BAD_REQUEST, { verified: valid }, pool);
+        await logEvent((request as any).project_id, "verification", "/v1/verify/phone_otp", reason_codes, valid ? HTTP_STATUS.OK : HTTP_STATUS.BAD_REQUEST, { verified: valid }, pool);
         return rep.send(response);
     } catch (error) {
-        return sendServerError(request, rep, error, API_V1_ROUTES.VERIFY.VERIFY_PHONE_OTP, generateRequestId());
+        return sendServerError(request, rep, error, "/v1/verify/phone_otp", generateRequestId());
     }
 }

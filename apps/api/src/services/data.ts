@@ -1,7 +1,7 @@
-import { MGMT_V1_ROUTES } from "@orbitcheck/contracts";
 import type { FastifyReply, FastifyRequest } from "fastify";
 import nodemailer from "nodemailer";
 import type { Pool } from "pg";
+import { routes } from "src/routes/routes.js";
 import { CACHE_HIT_PLACEHOLDER, COMPLIANCE_REASONS, LOGS_DEFAULT_LIMIT, LOGS_MAX_LIMIT, MESSAGES, TOP_REASONS_LIMIT, USAGE_DAYS, USAGE_PERIOD } from "../config.js";
 import { ERROR_CODES, HTTP_STATUS } from "../errors.js";
 import type { DeleteLogData, DeleteLogResponses, EraseDataData, EraseDataResponses, GetLogsData, GetLogsResponses, GetUsageResponses } from "../generated/fastify/types.gen.js";
@@ -75,7 +75,7 @@ export async function getEventLogs(
         };
         return rep.send(response);
     } catch (error) {
-        return sendServerError(request, rep, error, MGMT_V1_ROUTES.DATA.GET_EVENT_LOGS, generateRequestId());
+        return sendServerError(request, rep, error, routes.v1.data.getLogs, generateRequestId());
     }
 }
 
@@ -122,7 +122,7 @@ export async function getUsageStatistics(
         };
         return rep.send(response);
     } catch (error) {
-        return sendServerError(request, rep, error, MGMT_V1_ROUTES.DATA.GET_USAGE_STATISTICS, generateRequestId());
+        return sendServerError(request, rep, error, routes.v1.data.getUsage, generateRequestId());
     }
 }
 
@@ -213,7 +213,7 @@ export async function eraseUserData(
         };
         return rep.code(202).send(response);
     } catch (error) {
-        return sendServerError(request, rep, error, MGMT_V1_ROUTES.DATA.ERASE_USER_DATA, generateRequestId());
+        return sendServerError(request, rep, error, routes.v1.data.eraseData, generateRequestId());
     }
 }
 
@@ -241,6 +241,6 @@ export async function deleteLogEntry(
         };
         return rep.send(response);
     } catch (error) {
-        return sendServerError(request, rep, error, MGMT_V1_ROUTES.LOGS.DELETE_LOG_ENTRY, generateRequestId());
+        return sendServerError(request, rep, error, routes.v1.logs.deleteLog, generateRequestId());
     }
 }

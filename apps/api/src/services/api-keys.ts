@@ -1,7 +1,7 @@
-import { MGMT_V1_ROUTES } from "@orbitcheck/contracts";
 import type { FastifyReply, FastifyRequest } from "fastify";
 import crypto, { webcrypto as nodeWebCrypto } from "node:crypto";
 import type { Pool } from "pg";
+import { routes } from "src/routes/routes.js";
 import { API_KEY_PREFIX, CRYPTO_IV_BYTES, CRYPTO_KEY_BYTES, ENCODING_HEX, ENCODING_UTF8, ENCRYPTION_ALGORITHM, HASH_ALGORITHM, STATUS } from "../config.js";
 import { environment } from "../environment.js";
 import { HTTP_STATUS } from "../errors.js";
@@ -23,7 +23,7 @@ export async function listApiKeys(
         const response: ListApiKeysResponses[200] = { data: rows, request_id };
         return rep.send(response);
     } catch (error) {
-        return sendServerError(request, rep, error, MGMT_V1_ROUTES.API_KEYS.LIST_API_KEYS, generateRequestId());
+        return sendServerError(request, rep, error, routes.v1.apiKeys.listApiKeys, generateRequestId());
     }
 }
 
@@ -102,7 +102,7 @@ export async function createApiKey(
         };
         return rep.status(HTTP_STATUS.CREATED).send(response);
     } catch (error) {
-        return sendServerError(request, rep, error, MGMT_V1_ROUTES.API_KEYS.CREATE_API_KEY, generateRequestId());
+        return sendServerError(request, rep, error, routes.v1.apiKeys.createApiKey, generateRequestId());
     }
 }
 
@@ -134,6 +134,6 @@ export async function revokeApiKey(
         const response: RevokeApiKeyResponses[200] = { id, status: STATUS.REVOKED, request_id };
         return rep.send(response);
     } catch (error) {
-        return sendServerError(request, rep, error, `${MGMT_V1_ROUTES.API_KEYS.LIST_API_KEYS}/:id`, generateRequestId());
+        return sendServerError(request, rep, error, `${routes.v1.apiKeys.listApiKeys}/:id`, generateRequestId());
     }
 }

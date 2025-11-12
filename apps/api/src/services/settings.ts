@@ -1,4 +1,3 @@
-import { MGMT_V1_ROUTES } from "@orbitcheck/contracts";
 import type { FastifyReply, FastifyRequest } from "fastify";
 import type { Pool } from "pg";
 import type { GetSettingsResponses, UpdateSettingsData, UpdateSettingsResponses } from "../generated/fastify/types.gen.js";
@@ -38,7 +37,7 @@ export async function getTenantSettings(
         return rep.send(response);
     } catch (error) {
         console.error('Error fetching settings:', error);
-        return sendServerError(request, rep, error, MGMT_V1_ROUTES.SETTINGS.GET_TENANT_SETTINGS, request_id);
+        return sendServerError(request, rep, error, '/v1/settings', request_id);
     }
 }
 
@@ -70,6 +69,6 @@ export async function updateTenantSettings(
         return rep.send(response);
     } catch (error) {
         console.error('Error updating settings:', error);
-        return sendServerError(request, rep, error, MGMT_V1_ROUTES.SETTINGS.UPDATE_TENANT_SETTINGS, request_id);
+        return sendServerError(request, rep, error, '/v1/settings', request_id);
     }
 }

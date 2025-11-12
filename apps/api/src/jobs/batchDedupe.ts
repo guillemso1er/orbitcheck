@@ -2,7 +2,7 @@ import type { Job } from "bullmq";
 import type { Pool } from "pg";
 
 import { DEDUPE_TYPES, MESSAGES } from "../config.js";
-import { dedupeAddress, dedupeCustomer } from "../dedupe.js";
+import { dedupeAddress, dedupeCustomer } from "../services/dedupe/dedupe-logic.js";
 import { processBatchJob } from "./batchJobProcessor.js";
 
 export interface BatchDedupeInput {

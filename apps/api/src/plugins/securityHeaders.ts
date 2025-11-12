@@ -1,5 +1,5 @@
 import type { FastifyInstance, FastifyRequest, RawServerBase, RouteGenericInterface } from "fastify";
-import { DASHBOARD_ROUTES } from "@orbitcheck/contracts";
+import { dashboardRoutes } from "src/routes/routes";
 
 
 /**
@@ -18,7 +18,7 @@ export async function setupSecurityHeaders<TServer extends RawServerBase = RawSe
 
         // Add CSP for dashboard routes
         if (request.url.startsWith('/dashboard') ||
-            Object.values(DASHBOARD_ROUTES).some(route => request.url.startsWith(route))) {
+            Object.values(dashboardRoutes()).some(route => request.url.startsWith(route))) {
             reply.header('Content-Security-Policy',
                 "default-src 'self'; " +
                 "script-src 'self' 'unsafe-inline' 'unsafe-eval'; " + // May need to adjust for your frontend

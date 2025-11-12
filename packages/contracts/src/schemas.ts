@@ -5,10 +5,11 @@
  */
 
 // Re-export the generated schemas for compile-time access
-export { FastifyRequestSchemas } from '../dist/schemas/requests.js';
-export { FastifyResponseSchemas } from '../dist/schemas/responses.js';
+// TODO: Fix missing dist/schemas files
+// export { FastifyRequestSchemas } from '../dist/schemas/requests.js';
+// export { FastifyResponseSchemas } from '../dist/schemas/responses.js';
 
 // Export the types for better IntelliSense
-export type { FastifyRequestSchemas as FastifyRequestSchemasType } from '../dist/schemas/requests.js';
-export type { FastifyResponseSchemas as FastifyResponseSchemasType } from '../dist/schemas/responses.js';
+// export type { FastifyRequestSchemas as FastifyRequestSchemasType } from '../dist/schemas/requests.js';
+// export type { FastifyResponseSchemas as FastifyResponseSchemasType } from '../dist/schemas/responses.js';
 

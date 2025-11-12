@@ -8,7 +8,7 @@ import { loginUser, logoutUser, registerUser } from "../services/auth.js";
 import { batchDeduplicateData, batchEvaluateOrders, batchValidateData } from "../services/batch.js";
 import { createStripeCheckoutSession, createStripeCustomerPortalSession } from "../services/billing.js";
 import { deleteLogEntry, eraseUserData, getEventLogs, getUsageStatistics } from "../services/data.js";
-import { dedupeAddress, dedupeCustomer, mergeDeduplicatedRecords } from "../services/dedupe.js";
+import { dedupeAddress, dedupeCustomer, mergeDeduplicatedRecords } from "../services/dedupe/dedupe.js";
 import { getJobStatus } from "../services/jobs.js";
 import { normalizeAddressCheap } from "../services/normalize.js";
 import { evaluateOrderForRiskAndRules } from "../services/orders.js";
