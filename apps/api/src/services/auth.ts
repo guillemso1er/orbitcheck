@@ -192,7 +192,7 @@ export async function logoutUser(
         // Clear cookie explicitly (provided by @fastify/cookie)
         rep.clearCookie('orbitcheck_session', {
             path: '/',
-            sameSite: process.env.NODE_ENV === 'lax',
+            sameSite: process.env.NODE_ENV === 'none',
             secure: process.env.NODE_ENV === 'production',
             httpOnly: true,
             domain: process.env.NODE_ENV === 'production'
