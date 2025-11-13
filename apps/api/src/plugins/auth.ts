@@ -115,7 +115,9 @@ export default fp<Options>(async function openapiSecurity(app, opts) {
     (opts.allowedOrigins && opts.allowedOrigins.length ? opts.allowedOrigins : [
       process.env.DASHBOARD_ORIGIN || 'https://dashboard.orbitcheck.io',
       process.env.API_ORIGIN || 'https://api.orbitcheck.io',
-      ...(process.env.NODE_ENV !== 'production' ? ['http://localhost:3000', 'http://localhost:5173', 'http://127.0.0.1:3000', 'http://127.0.0.1:5173'] : [])
+      ...(process.env.NODE_ENV !== 'production' ? ['http://localhost:3000',
+        'http://localhost:5173', 'http://127.0.0.1:3000',
+        'http://127.0.0.1:5173', 'http://localhost:8080', 'http://127.0.0.1:8080'] : [])
     ]).map(s => s.toLowerCase())
   )
 
@@ -144,6 +146,9 @@ export default fp<Options>(async function openapiSecurity(app, opts) {
     const url = req.url
     if (url === routes.auth.loginUser || url === routes.auth.registerUser || url === routes.auth.logoutUser) return
 
+    // Skip CSRF token check for requests from allowed origins (e.g., Swagger UI on API domain)
+    if (originMatches(req)) return
+
     const headerToken = (req.headers['x-csrf-token'] as string | undefined) || (req.headers['x-xsrf-token'] as string | undefined)
     const cookieToken = req.cookies?.csrf_token
 
@@ -151,13 +156,6 @@ export default fp<Options>(async function openapiSecurity(app, opts) {
     const hasValidCsrfTokens = headerToken && cookieToken && headerToken === cookieToken
 
     console.log("CSRF check - method:", method, "headerToken:", headerToken, "cookieToken:", cookieToken, "hasValidCsrfTokens:", hasValidCsrfTokens)
-
-    if (!hasValidCsrfTokens && !originMatches(req)) {
-      const err = new Error('Invalid request origin')
-        ; (err as any).statusCode = 403
-        ; (err as any).code = 'FORBIDDEN'
-      throw err
-    }
 
     if (!hasValidCsrfTokens) {
       const err = new Error('Invalid CSRF token')
