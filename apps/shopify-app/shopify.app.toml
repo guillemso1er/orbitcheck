@@ -1,0 +1,28 @@
+application_url = "https://shopify.orbitcheck.io/"
+embedded = true
+
+[access_scopes]
+scopes = "read_orders,write_orders"
+
+[webhooks]
+api_version = "2025-10"
+
+[[webhooks.subscriptions]]
+topics = ["app/uninstalled"]
+uri = "https://api.orbitcheck.io/integrations/shopify/webhooks/app-uninstalled"
+
+[[webhooks.subscriptions]]
+topics = ["orders/create"]
+uri = "https://api.orbitcheck.io/integrations/shopify/webhooks/orders-create"
+
+[[webhooks.subscriptions]]
+topics = ["customers/data_request"]
+uri = "https://api.orbitcheck.io/integrations/shopify/webhooks/gdpr/customers-data-request"
+
+[[webhooks.subscriptions]]
+topics = ["customers/redact"]
+uri = "https://api.orbitcheck.io/integrations/shopify/webhooks/gdpr/customers-redact"
+
+[[webhooks.subscriptions]]
+topics = ["shop/redact"]
+uri = "https://api.orbitcheck.io/integrations/shopify/webhooks/gdpr/shop-redact"

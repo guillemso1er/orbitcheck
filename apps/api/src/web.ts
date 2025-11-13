@@ -129,4 +129,7 @@ export function registerRoutes<TServer extends RawServerBase = RawServerBase>(ap
         specification: openapiSpec,
     });
 
+    // Register Shopify integration
+    app.register(import('./integrations/shopify.js'));
+
 }
