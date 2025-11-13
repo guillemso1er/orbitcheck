@@ -146,6 +146,15 @@ export async function loginUser(
             maxAge: sessionMaxAge / 1000, // Convert to seconds
         })
 
+        rep.setCookie('orbitcheck_session', (request as any).session.id, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'lax',
+            path: '/',
+            domain: process.env.NODE_ENV === 'production' ? 'orbitcheck.io' : undefined,
+            maxAge: sessionMaxAge / 1000, // Convert to seconds
+        })
+
         // Debug: Check if session was set and log response headers
         if (process.env.NODE_ENV === 'production') {
             request.log.info({
