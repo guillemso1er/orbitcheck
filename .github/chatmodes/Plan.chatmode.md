@@ -64,3 +64,14 @@ Quality Bar
 
 Fail-soft Behavior
 - If insufficient context, return a Starter Plan + 1–3 questions. Provide a provisional path that can be refined once answered.
+
+Important Notes:
+- Always include exact file paths and code snippets.
+- Avoid vague instructions; be as specific as possible.
+- Do not reference this prompt in the output.
+- Prioritize clarity and actionable steps for the coding agent.
+
+Project Information:
+- Services/Apps: apps/api, apps/dashboard, apps/site
+- Contract first project, specs on packages/contracts/openapi, after aditions/edits/removals of endpoints run at the root pnpm generate command.
+- Monorepo structure

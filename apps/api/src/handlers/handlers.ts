@@ -10,15 +10,16 @@ import { createStripeCheckoutSession, createStripeCustomerPortalSession } from "
 import { deleteLogEntry, eraseUserData, getEventLogs, getUsageStatistics } from "../services/data.js";
 import { dedupeAddress, dedupeCustomer, mergeDeduplicatedRecords } from "../services/dedupe/dedupe.js";
 import { getJobStatus } from "../services/jobs.js";
-import { normalizeAddressCheap } from "../services/normalize.js";
 import { evaluateOrderForRiskAndRules } from "../services/orders.js";
 import { createPersonalAccessToken, listPersonalAccessTokens, revokePersonalAccessToken } from "../services/pats.js";
 import { PlansService } from "../services/plans.js";
 import { createProject, deleteProject, getUserProjects } from "../services/projects.js";
+import { computeRoiEstimate } from "../services/roi.js";
 import { deleteCustomRule, getAvailableRules, getBuiltInRules, getErrorCodeCatalog, getReasonCodeCatalog, registerCustomRules, testRulesAgainstPayload } from "../services/rules/rules.js";
 import { getTenantSettings, updateTenantSettings } from "../services/settings.js";
 import { validateAddress, validateEmailAddress, validateName, validatePhoneNumber, validateTaxId, verifyPhoneOtp } from "../services/validation.js";
 import { createWebhook, deleteWebhook, listWebhooks, testWebhook } from "../services/webhook.js";
+import { normalizeAddressCheap } from "../services/normalize.js";
 
 export const serviceHandlers = <TServer extends RawServerBase = RawServerBase>(pool: Pool, redis: IORedisType, app: FastifyInstance<TServer>): RouteHandlers => ({
     // Auth handlers
@@ -83,8 +84,6 @@ export const serviceHandlers = <TServer extends RawServerBase = RawServerBase>(p
         // Placeholder implementation returning error (bad request)
         return reply.status(400).send({ error: { code: 'INVALID_INPUT', message: 'Create user not implemented' }, request_id: crypto.randomUUID?.() });
     },
-
-    // Normalization handlers
     normalizeAddress: async (request, reply) => normalizeAddressCheap(request, reply),
 
     // Dedupe handlers
@@ -99,6 +98,43 @@ export const serviceHandlers = <TServer extends RawServerBase = RawServerBase>(p
 
     // Job handlers
     getJobStatusById: async (request, reply) => getJobStatus(request, reply, pool),
+
+    // ROI handlers
+    estimateRoi: async (request) => {
+        const body = request.body as any;
+        const { inputs, estimates } = computeRoiEstimate({
+            orders_per_month: body.orders_per_month,
+            issue_rate: body.issue_rate,
+            carrier_fee_share: body.carrier_fee_share,
+            avg_correction_fee: body.avg_correction_fee,
+            reship_share: body.reship_share,
+            reship_cost: body.reship_cost,
+            prevention_rate: body.prevention_rate
+        });
+
+        return {
+            inputs: {
+                orders_per_month: inputs.orders_per_month,
+                issue_rate: inputs.issue_rate,
+                carrier_fee_share: inputs.carrier_fee_share,
+                avg_correction_fee: inputs.avg_correction_fee,
+                reship_share: inputs.reship_share,
+                reship_cost: inputs.reship_cost,
+                prevention_rate: inputs.prevention_rate,
+                currency: body.currency ?? 'USD'
+            },
+            estimates: {
+                issues_per_month: estimates.issues_per_month,
+                loss_per_issue: Number(estimates.loss_per_issue.toFixed(2)),
+                baseline_loss_per_month: Number(estimates.baseline_loss_per_month.toFixed(2)),
+                savings_per_month: Number(estimates.savings_per_month.toFixed(2))
+            },
+            meta: {
+                model_version: 'roi-v1',
+                request_id: crypto.randomUUID?.() ?? 'unknown'
+            }
+        } as any;
+    },
 
     // Project handlers
     getUserProjects: async (request, reply) => getUserProjects(request, reply, pool),

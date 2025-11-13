@@ -2,7 +2,7 @@
 
 import type { Client, Options as Options2, TDataShape } from './client';
 import { client } from './client.gen';
-import type { BatchDedupeData, BatchDedupeErrors, BatchDedupeResponses, BatchEvaluateOrdersData, BatchEvaluateOrdersErrors, BatchEvaluateOrdersResponses, BatchValidateData, BatchValidateErrors, BatchValidateResponses, CheckValidationLimitsData, CheckValidationLimitsErrors, CheckValidationLimitsResponses, CreateApiKeyData, CreateApiKeyErrors, CreateApiKeyResponses, CreateCheckoutSessionData, CreateCheckoutSessionErrors, CreateCheckoutSessionResponses, CreateCustomerPortalSessionData, CreateCustomerPortalSessionErrors, CreateCustomerPortalSessionResponses, CreatePersonalAccessTokenData, CreatePersonalAccessTokenErrors, CreatePersonalAccessTokenResponses, CreateProjectData, CreateProjectErrors, CreateProjectResponses, CreateUserData, CreateUserErrors, CreateUserResponses, CreateWebhookData, CreateWebhookErrors, CreateWebhookResponses, DedupeAddressData, DedupeAddressErrors, DedupeAddressResponses, DedupeCustomerData, DedupeCustomerErrors, DedupeCustomerResponses, DeleteCustomRuleData, DeleteCustomRuleErrors, DeleteCustomRuleResponses, DeleteLogData, DeleteLogErrors, DeleteLogResponses, DeleteProjectData, DeleteProjectErrors, DeleteProjectResponses, DeleteWebhookData, DeleteWebhookErrors, DeleteWebhookResponses, EraseDataData, EraseDataErrors, EraseDataResponses, EvaluateOrderData, EvaluateOrderErrors, EvaluateOrderResponses, GetAvailablePlansData, GetAvailablePlansErrors, GetAvailablePlansResponses, GetAvailableRulesData, GetAvailableRulesErrors, GetAvailableRulesResponses, GetBuiltInRulesData, GetBuiltInRulesErrors, GetBuiltInRulesResponses, GetErrorCodeCatalogData, GetErrorCodeCatalogErrors, GetErrorCodeCatalogResponses, GetJobStatusByIdData, GetJobStatusByIdErrors, GetJobStatusByIdResponses, GetLogsData, GetLogsErrors, GetLogsResponses, GetReasonCodeCatalogData, GetReasonCodeCatalogErrors, GetReasonCodeCatalogResponses, GetSettingsData, GetSettingsErrors, GetSettingsResponses, GetUsageData, GetUsageErrors, GetUsageResponses, GetUserPlanData, GetUserPlanErrors, GetUserPlanResponses, GetUserProjectsData, GetUserProjectsErrors, GetUserProjectsResponses, ListApiKeysData, ListApiKeysErrors, ListApiKeysResponses, ListPersonalAccessTokensData, ListPersonalAccessTokensErrors, ListPersonalAccessTokensResponses, ListUsersData, ListUsersErrors, ListUsersResponses, ListWebhooksData, ListWebhooksErrors, ListWebhooksResponses, LoginUserData, LoginUserErrors, LoginUserResponses, LogoutUserData, LogoutUserErrors, LogoutUserResponses, MergeDeduplicatedData, MergeDeduplicatedErrors, MergeDeduplicatedResponses, NormalizeAddressData, NormalizeAddressErrors, NormalizeAddressResponses, RegisterCustomRulesData, RegisterCustomRulesErrors, RegisterCustomRulesResponses, RegisterUserData, RegisterUserErrors, RegisterUserResponses, RevokeApiKeyData, RevokeApiKeyErrors, RevokeApiKeyResponses, RevokePersonalAccessTokenData, RevokePersonalAccessTokenErrors, RevokePersonalAccessTokenResponses, TestRulesAgainstPayloadData, TestRulesAgainstPayloadErrors, TestRulesAgainstPayloadResponses, TestWebhookData, TestWebhookErrors, TestWebhookResponses, UpdateSettingsData, UpdateSettingsErrors, UpdateSettingsResponses, UpdateUserPlanData, UpdateUserPlanErrors, UpdateUserPlanResponses, ValidateAddressData, ValidateAddressErrors, ValidateAddressResponses, ValidateEmailData, ValidateEmailErrors, ValidateEmailResponses, ValidateNameData, ValidateNameErrors, ValidateNameResponses, ValidatePhoneData, ValidatePhoneErrors, ValidatePhoneResponses, ValidateTaxIdData, ValidateTaxIdErrors, ValidateTaxIdResponses, VerifyPhoneOtpData, VerifyPhoneOtpErrors, VerifyPhoneOtpResponses } from './types.gen';
+import type { BatchDedupeData, BatchDedupeErrors, BatchDedupeResponses, BatchEvaluateOrdersData, BatchEvaluateOrdersErrors, BatchEvaluateOrdersResponses, BatchValidateData, BatchValidateErrors, BatchValidateResponses, CheckValidationLimitsData, CheckValidationLimitsErrors, CheckValidationLimitsResponses, CreateApiKeyData, CreateApiKeyErrors, CreateApiKeyResponses, CreateCheckoutSessionData, CreateCheckoutSessionErrors, CreateCheckoutSessionResponses, CreateCustomerPortalSessionData, CreateCustomerPortalSessionErrors, CreateCustomerPortalSessionResponses, CreatePersonalAccessTokenData, CreatePersonalAccessTokenErrors, CreatePersonalAccessTokenResponses, CreateProjectData, CreateProjectErrors, CreateProjectResponses, CreateUserData, CreateUserErrors, CreateUserResponses, CreateWebhookData, CreateWebhookErrors, CreateWebhookResponses, DedupeAddressData, DedupeAddressErrors, DedupeAddressResponses, DedupeCustomerData, DedupeCustomerErrors, DedupeCustomerResponses, DeleteCustomRuleData, DeleteCustomRuleErrors, DeleteCustomRuleResponses, DeleteLogData, DeleteLogErrors, DeleteLogResponses, DeleteProjectData, DeleteProjectErrors, DeleteProjectResponses, DeleteWebhookData, DeleteWebhookErrors, DeleteWebhookResponses, EraseDataData, EraseDataErrors, EraseDataResponses, EstimateRoiData, EstimateRoiErrors, EstimateRoiResponses, EvaluateOrderData, EvaluateOrderErrors, EvaluateOrderResponses, GetAvailablePlansData, GetAvailablePlansErrors, GetAvailablePlansResponses, GetAvailableRulesData, GetAvailableRulesErrors, GetAvailableRulesResponses, GetBuiltInRulesData, GetBuiltInRulesErrors, GetBuiltInRulesResponses, GetErrorCodeCatalogData, GetErrorCodeCatalogErrors, GetErrorCodeCatalogResponses, GetJobStatusByIdData, GetJobStatusByIdErrors, GetJobStatusByIdResponses, GetLogsData, GetLogsErrors, GetLogsResponses, GetReasonCodeCatalogData, GetReasonCodeCatalogErrors, GetReasonCodeCatalogResponses, GetSettingsData, GetSettingsErrors, GetSettingsResponses, GetUsageData, GetUsageErrors, GetUsageResponses, GetUserPlanData, GetUserPlanErrors, GetUserPlanResponses, GetUserProjectsData, GetUserProjectsErrors, GetUserProjectsResponses, ListApiKeysData, ListApiKeysErrors, ListApiKeysResponses, ListPersonalAccessTokensData, ListPersonalAccessTokensErrors, ListPersonalAccessTokensResponses, ListUsersData, ListUsersErrors, ListUsersResponses, ListWebhooksData, ListWebhooksErrors, ListWebhooksResponses, LoginUserData, LoginUserErrors, LoginUserResponses, LogoutUserData, LogoutUserErrors, LogoutUserResponses, MergeDeduplicatedData, MergeDeduplicatedErrors, MergeDeduplicatedResponses, NormalizeAddressData, NormalizeAddressErrors, NormalizeAddressResponses, RegisterCustomRulesData, RegisterCustomRulesErrors, RegisterCustomRulesResponses, RegisterUserData, RegisterUserErrors, RegisterUserResponses, RevokeApiKeyData, RevokeApiKeyErrors, RevokeApiKeyResponses, RevokePersonalAccessTokenData, RevokePersonalAccessTokenErrors, RevokePersonalAccessTokenResponses, TestRulesAgainstPayloadData, TestRulesAgainstPayloadErrors, TestRulesAgainstPayloadResponses, TestWebhookData, TestWebhookErrors, TestWebhookResponses, UpdateSettingsData, UpdateSettingsErrors, UpdateSettingsResponses, UpdateUserPlanData, UpdateUserPlanErrors, UpdateUserPlanResponses, ValidateAddressData, ValidateAddressErrors, ValidateAddressResponses, ValidateEmailData, ValidateEmailErrors, ValidateEmailResponses, ValidateNameData, ValidateNameErrors, ValidateNameResponses, ValidatePhoneData, ValidatePhoneErrors, ValidatePhoneResponses, ValidateTaxIdData, ValidateTaxIdErrors, ValidateTaxIdResponses, VerifyPhoneOtpData, VerifyPhoneOtpErrors, VerifyPhoneOtpResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean> = Options2<TData, ThrowOnError> & {
     /**
@@ -1004,6 +1004,41 @@ export const normalizeAddress = <ThrowOnError extends boolean = false>(options: 
             }
         ],
         url: '/v1/normalize/address',
+        ...options,
+        headers: {
+            'Content-Type': 'application/json',
+            ...options.headers
+        }
+    });
+};
+
+/**
+ * Estimate ROI for Orbitcheck implementation
+ *
+ * Calculates potential monthly savings from implementing Orbitcheck based on order volume and default assumptions
+ */
+export const estimateRoi = <ThrowOnError extends boolean = false>(options: Options<EstimateRoiData, ThrowOnError>) => {
+    return (options.client ?? client).post<EstimateRoiResponses, EstimateRoiErrors, ThrowOnError>({
+        security: [
+            {
+                name: 'X-API-Key',
+                type: 'apiKey'
+            },
+            {
+                name: 'Signature-Input',
+                type: 'apiKey'
+            },
+            {
+                name: 'Signature',
+                type: 'apiKey'
+            },
+            {
+                in: 'cookie',
+                name: 'sid',
+                type: 'apiKey'
+            }
+        ],
+        url: '/v1/roi/estimate',
         ...options,
         headers: {
             'Content-Type': 'application/json',

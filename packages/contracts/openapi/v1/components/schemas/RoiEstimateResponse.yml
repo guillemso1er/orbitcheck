@@ -1,0 +1,53 @@
+type: object
+properties:
+  inputs:
+    type: object
+    properties:
+      orders_per_month:
+        type: number
+        description: Number of orders processed per month
+      issue_rate:
+        type: number
+        description: Rate of orders that have issues
+      carrier_fee_share:
+        type: number
+        description: Share of issues that trigger carrier fees
+      avg_correction_fee:
+        type: number
+        description: Average carrier correction fee in USD
+      reship_share:
+        type: number
+        description: Share of issues that require reshipping
+      reship_cost:
+        type: number
+        description: Cost of reshipping in USD
+      prevention_rate:
+        type: number
+        description: Rate at which Orbitcheck prevents issues
+      currency:
+        type: string
+        description: Currency code
+  estimates:
+    type: object
+    properties:
+      issues_per_month:
+        type: number
+        description: Estimated number of issues per month
+      loss_per_issue:
+        type: number
+        description: Average loss per issue in USD
+      baseline_loss_per_month:
+        type: number
+        description: Baseline monthly loss without Orbitcheck in USD
+      savings_per_month:
+        type: number
+        description: Estimated monthly savings with Orbitcheck in USD
+  meta:
+    type: object
+    properties:
+      model_version:
+        type: string
+        description: Version of the ROI calculation model
+      request_id:
+        type: string
+        description: Unique request identifier

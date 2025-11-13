@@ -165,6 +165,11 @@ paths:
     post:
       $ref: './paths/normalize/address.yml'
   
+  # Tools paths
+  /v1/roi/estimate:
+    post:
+      $ref: './paths/tools/roi-estimate.yml'
+  
   # Dedupe paths
   /v1/dedupe/customer:
     post:
@@ -296,6 +301,10 @@ components:
       $ref: './components/schemas/ServerError.yml'
     PersonalAccessToken:
       $ref: './components/schemas/PersonalAccessToken.yml'
+    RoiEstimateRequest:
+      $ref: './components/schemas/RoiEstimateRequest.yml'
+    RoiEstimateResponse:
+      $ref: './components/schemas/RoiEstimateResponse.yml'
     CreateUserRequest:
       $ref: './components/schemas/CreateUserRequest.yml'
     LoginRequest:

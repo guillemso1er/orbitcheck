@@ -489,6 +489,106 @@ export type PersonalAccessToken = {
     created_at: string;
 };
 
+export type RoiEstimateRequest = {
+    /**
+     * Number of orders processed per month
+     */
+    orders_per_month: number;
+    /**
+     * Rate of orders that have issues (default 0.021)
+     */
+    issue_rate?: number;
+    /**
+     * Share of issues that trigger carrier fees (default 0.5)
+     */
+    carrier_fee_share?: number;
+    /**
+     * Average carrier correction fee in USD (default 23.75)
+     */
+    avg_correction_fee?: number;
+    /**
+     * Share of issues that require reshipping (default 0.1)
+     */
+    reship_share?: number;
+    /**
+     * Cost of reshipping in USD (default 10)
+     */
+    reship_cost?: number;
+    /**
+     * Rate at which Orbitcheck prevents issues (default 0.5)
+     */
+    prevention_rate?: number;
+    /**
+     * Currency code (default USD)
+     */
+    currency?: string;
+};
+
+export type RoiEstimateResponse = {
+    inputs?: {
+        /**
+         * Number of orders processed per month
+         */
+        orders_per_month?: number;
+        /**
+         * Rate of orders that have issues
+         */
+        issue_rate?: number;
+        /**
+         * Share of issues that trigger carrier fees
+         */
+        carrier_fee_share?: number;
+        /**
+         * Average carrier correction fee in USD
+         */
+        avg_correction_fee?: number;
+        /**
+         * Share of issues that require reshipping
+         */
+        reship_share?: number;
+        /**
+         * Cost of reshipping in USD
+         */
+        reship_cost?: number;
+        /**
+         * Rate at which Orbitcheck prevents issues
+         */
+        prevention_rate?: number;
+        /**
+         * Currency code
+         */
+        currency?: string;
+    };
+    estimates?: {
+        /**
+         * Estimated number of issues per month
+         */
+        issues_per_month?: number;
+        /**
+         * Average loss per issue in USD
+         */
+        loss_per_issue?: number;
+        /**
+         * Baseline monthly loss without Orbitcheck in USD
+         */
+        baseline_loss_per_month?: number;
+        /**
+         * Estimated monthly savings with Orbitcheck in USD
+         */
+        savings_per_month?: number;
+    };
+    meta?: {
+        /**
+         * Version of the ROI calculation model
+         */
+        model_version?: string;
+        /**
+         * Unique request identifier
+         */
+        request_id?: string;
+    };
+};
+
 export type CreateUserRequest = {
     /**
      * User email address
@@ -3963,6 +4063,155 @@ export type NormalizeAddressResponses = {
 };
 
 export type NormalizeAddressResponse = NormalizeAddressResponses[keyof NormalizeAddressResponses];
+
+export type EstimateRoiData = {
+    body: {
+        /**
+         * Number of orders processed per month
+         */
+        orders_per_month: number;
+        /**
+         * Rate of orders that have issues (default 0.021)
+         */
+        issue_rate?: number;
+        /**
+         * Share of issues that trigger carrier fees (default 0.5)
+         */
+        carrier_fee_share?: number;
+        /**
+         * Average carrier correction fee in USD (default 23.75)
+         */
+        avg_correction_fee?: number;
+        /**
+         * Share of issues that require reshipping (default 0.1)
+         */
+        reship_share?: number;
+        /**
+         * Cost of reshipping in USD (default 10)
+         */
+        reship_cost?: number;
+        /**
+         * Rate at which Orbitcheck prevents issues (default 0.5)
+         */
+        prevention_rate?: number;
+        /**
+         * Currency code (default USD)
+         */
+        currency?: string;
+    };
+    path?: never;
+    query?: never;
+    url: '/v1/roi/estimate';
+};
+
+export type EstimateRoiErrors = {
+    /**
+     * Bad request
+     */
+    400: {
+        error?: {
+            code?: 'INVALID_INPUT' | 'INVALID_PLAN';
+            /**
+             * Error message
+             */
+            message?: string;
+        };
+    };
+    /**
+     * Unauthorized
+     */
+    401: {
+        code?: 'UNAUTHORIZED';
+        /**
+         * Error message
+         */
+        message?: string;
+    };
+    /**
+     * Rate limit exceeded
+     */
+    429: {
+        code?: 'LIMIT_EXCEEDED';
+        /**
+         * Error message
+         */
+        message?: string;
+    };
+};
+
+export type EstimateRoiError = EstimateRoiErrors[keyof EstimateRoiErrors];
+
+export type EstimateRoiResponses = {
+    /**
+     * ROI estimate result
+     */
+    200: {
+        inputs?: {
+            /**
+             * Number of orders processed per month
+             */
+            orders_per_month?: number;
+            /**
+             * Rate of orders that have issues
+             */
+            issue_rate?: number;
+            /**
+             * Share of issues that trigger carrier fees
+             */
+            carrier_fee_share?: number;
+            /**
+             * Average carrier correction fee in USD
+             */
+            avg_correction_fee?: number;
+            /**
+             * Share of issues that require reshipping
+             */
+            reship_share?: number;
+            /**
+             * Cost of reshipping in USD
+             */
+            reship_cost?: number;
+            /**
+             * Rate at which Orbitcheck prevents issues
+             */
+            prevention_rate?: number;
+            /**
+             * Currency code
+             */
+            currency?: string;
+        };
+        estimates?: {
+            /**
+             * Estimated number of issues per month
+             */
+            issues_per_month?: number;
+            /**
+             * Average loss per issue in USD
+             */
+            loss_per_issue?: number;
+            /**
+             * Baseline monthly loss without Orbitcheck in USD
+             */
+            baseline_loss_per_month?: number;
+            /**
+             * Estimated monthly savings with Orbitcheck in USD
+             */
+            savings_per_month?: number;
+        };
+        meta?: {
+            /**
+             * Version of the ROI calculation model
+             */
+            model_version?: string;
+            /**
+             * Unique request identifier
+             */
+            request_id?: string;
+        };
+    };
+};
+
+export type EstimateRoiResponse = EstimateRoiResponses[keyof EstimateRoiResponses];
 
 export type DedupeCustomerData = {
     body: {
