@@ -18,34 +18,63 @@
   <meta name="twitter:title" content="Data Processing Agreement | Orbitcheck" />
   <meta name="twitter:description" content="Learn about Orbitcheck's data processing practices and GDPR compliance." />
   <meta name="twitter:image" content="https://orbitcheck.io/og-cover.png" />
-  <!-- Tailwind v2 CDN -->
-  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet" />
+  <!-- Tailwind v4 CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class'
+    }
+  </script>
+
+  <!-- Initialize theme immediately to prevent FOUC -->
+  <script>
+      // This needs to run immediately, not on DOMContentLoaded
+      (function () {
+        const theme = localStorage.getItem('theme') || 'light';
+        if (theme === 'dark') {
+          document.documentElement.classList.add('dark');
+        }
+      })();
+  </script>
   <!-- Custom styles that cannot be handled by Tailwind utilities -->
   <link rel="stylesheet" href="/css/common.css" />
 </head>
 
-<body class="bg-gray-50 text-gray-900 antialiased">
+<body class="bg-gray-50 text-gray-900 antialiased dark:bg-gray-900 dark:text-gray-100">
   <!-- Header -->
-  <header class="bg-white border-b border-gray-100">
+  <header class="bg-white border-b border-gray-100 dark:bg-gray-800 dark:border-gray-700">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
       <a href="/" class="flex items-center space-x-2">
         <img src="/logo.svg" alt="Orbitcheck logo" width="32" height="32">
-          <circle cx="12" cy="12" r="10" class="text-indigo-100" fill="currentColor" opacity="0.2"></circle>
-          <path d="M12 3a9 9 0 109 9h-9V3z" class="text-indigo-600" fill="currentColor"></path>
+        <circle cx="12" cy="12" r="10" class="text-indigo-100" fill="currentColor" opacity="0.2"></circle>
+        <path d="M12 3a9 9 0 109 9h-9V3z" class="text-indigo-600" fill="currentColor"></path>
         </svg>
         <span class="font-extrabold text-xl">Orbitcheck</span>
       </a>
       <nav class="hidden md:flex items-center space-x-6">
-        <a href="/#features" class="text-gray-700 hover:text-gray-900">Product</a>
-        <a href="/pricing.html" class="text-gray-700 hover:text-gray-900">Pricing</a>
-        <a href="/docs/index.html" class="text-gray-700 hover:text-gray-900">Docs</a>
-        <a href="/changelog.html" class="text-gray-700 hover:text-gray-900">Changelog</a>
-        <a href="/tools/index.html" class="text-gray-700 hover:text-gray-900">Free Tools</a>
-        <a href="https://status.orbitcheck.io" class="text-gray-700 hover:text-gray-900">Status</a>
+        <a href="/#features"
+          class="text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100">Product</a>
+        <a href="/pricing.html"
+          class="text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100">Pricing</a>
+        <a href="/docs/index.html"
+          class="text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100">Docs</a>
+        <a href="/changelog.html"
+          class="text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100">Changelog</a>
+        <a href="/tools/index.html"
+          class="text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100">Free Tools</a>
+        <a href="https://status.orbitcheck.io"
+          class="text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100">Status</a>
+        <button id="theme-toggle"
+          class="p-2 rounded-md text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100"
+          aria-label="Toggle theme">
+          <svg id="theme-icon" class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+            <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"></path>
+          </svg>
+        </button>
       </nav>
       <div class="hidden md:flex items-center space-x-3">
         <a href="/pricing.html"
-          class="inline-flex items-center justify-center px-5 py-3 rounded-md font-semibold bg-white text-indigo-700 border border-indigo-200 hover:border-indigo-300">See
+          class="inline-flex items-center justify-center px-5 py-3 rounded-md font-semibold bg-white text-indigo-700 border border-indigo-200 hover:border-indigo-300 dark:bg-gray-800 dark:text-indigo-400 dark:border-indigo-600 dark:hover:border-indigo-500">See
           pricing</a>
         <!-- Replace # with your actual signup URL -->
         <a href="#"
@@ -56,20 +85,31 @@
       <details class="md:hidden relative">
         <summary class="list-none cursor-pointer inline-flex items-center space-x-2">
           <span class="sr-only">Menu</span>
-          <svg class="w-7 h-7 text-gray-700 rotate transition-transform">
+          <svg class="w-7 h-7 text-gray-700 rotate transition-transform dark:text-gray-300">
             <path fill="currentColor" d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z" />
           </svg>
         </summary>
-        <div class="absolute right-0 mt-3 w-64 bg-white border border-gray-100 shadow-lg rounded-md p-3 space-y-2 z-50">
-          <a href="/#features" class="block px-3 py-2 rounded hover:bg-gray-50">Product</a>
-          <a href="/pricing.html" class="block px-3 py-2 rounded hover:bg-gray-50">Pricing</a>
-          <a href="/docs/index.html" class="block px-3 py-2 rounded hover:bg-gray-50">Docs</a>
-          <a href="/changelog.html" class="block px-3 py-2 rounded hover:bg-gray-50">Changelog</a>
-          <a href="/tools/index.html" class="block px-3 py-2 rounded hover:bg-gray-50">Free Tools</a>
-          <a href="https://status.orbitcheck.io" class="block px-3 py-2 rounded hover:bg-gray-50">Status</a>
-          <div class="border-t border-gray-100 pt-2 flex space-x-2">
+        <div
+          class="absolute right-0 mt-3 w-64 bg-white border border-gray-100 shadow-lg rounded-md p-3 space-y-2 z-50 dark:bg-gray-800 dark:border-gray-700">
+          <a href="/#features" class="block px-3 py-2 rounded hover:bg-gray-50 dark:hover:bg-gray-700">Product</a>
+          <a href="/pricing.html" class="block px-3 py-2 rounded hover:bg-gray-50 dark:hover:bg-gray-700">Pricing</a>
+          <a href="/docs/index.html" class="block px-3 py-2 rounded hover:bg-gray-50 dark:hover:bg-gray-700">Docs</a>
+          <a href="/changelog.html"
+            class="block px-3 py-2 rounded hover:bg-gray-50 dark:hover:bg-gray-700">Changelog</a>
+          <a href="/tools/index.html" class="block px-3 py-2 rounded hover:bg-gray-50 dark:hover:bg-gray-700">Free
+            Tools</a>
+          <a href="https://status.orbitcheck.io"
+            class="block px-3 py-2 rounded hover:bg-gray-50 dark:hover:bg-gray-700">Status</a>
+          <button id="theme-toggle-mobile"
+            class="w-full p-2 rounded-md text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100"
+            aria-label="Toggle theme">
+            <svg id="theme-icon-mobile" class="w-5 h-5 mx-auto" fill="currentColor" viewBox="0 0 20 20">
+              <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"></path>
+            </svg>
+          </button>
+          <div class="border-t border-gray-100 pt-2 flex space-x-2 dark:border-gray-700">
             <a href="/pricing.html"
-              class="flex-1 w-full inline-flex items-center justify-center px-5 py-3 rounded-md font-semibold bg-white text-indigo-700 border border-indigo-200 hover:border-indigo-300">Pricing</a>
+              class="flex-1 w-full inline-flex items-center justify-center px-5 py-3 rounded-md font-semibold bg-white text-indigo-700 border border-indigo-200 hover:border-indigo-300 dark:bg-gray-800 dark:text-indigo-400 dark:border-indigo-600 dark:hover:border-indigo-500">Pricing</a>
             <!-- Replace # with your actual signup URL -->
             <a href="#"
               class="flex-1 w-full inline-flex items-center justify-center px-5 py-3 rounded-md font-semibold bg-indigo-600 text-white hover:bg-indigo-700">Start</a>
@@ -82,7 +122,7 @@
   <!-- Main Content -->
   <main class="max-w-3xl mx-auto px-4 py-12">
     <h1 class="text-3xl font-extrabold">Data Processing Addendum (DPA)</h1>
-    <p class="mt-4 text-gray-700">
+    <p class="mt-4 text-gray-700 dark:text-gray-300">
       This Data Processing Addendum (“DPA”) forms part of and is subject to the Orbitcheck Terms of Service or other
       written agreement governing your use of the Services (the “Agreement”) between Orbitcheck (“Processor”) and the
       customer entity identified in the Agreement (“Controller”). This DPA applies to Processor’s Processing of Personal
@@ -91,38 +131,46 @@
       meanings in the Agreement.
     </p>
 
-    <p class="mt-2 text-gray-700">
+    <p class="mt-2 text-gray-700 dark:text-gray-300">
       If you require a countersigned copy of this DPA, contact <a href="mailto:dpa@orbitcheck.io"
         class="text-indigo-700 hover:underline">dpa@orbitcheck.io</a>.
     </p>
 
     <h2 id="definitions" class="text-xl font-semibold mt-8">1. Definitions</h2>
-    <p class="mt-2 text-gray-700"><strong>“Data Protection Laws”</strong> means all laws and regulations applicable to
+    <p class="mt-2 text-gray-700 dark:text-gray-300"><strong>“Data Protection Laws”</strong> means all laws and
+      regulations applicable to
       the Processing of Personal Data under the Agreement, including as applicable: the EU GDPR, the UK GDPR and UK Data
       Protection Act 2018, the Swiss FADP, and U.S. state privacy laws such as the CCPA/CPRA (collectively, “Applicable
       Laws”).</p>
-    <p class="mt-2 text-gray-700"><strong>“EU GDPR”</strong> means Regulation (EU) 2016/679; <strong>“UK GDPR”</strong>
+    <p class="mt-2 text-gray-700 dark:text-gray-300"><strong>“EU GDPR”</strong> means Regulation (EU) 2016/679;
+      <strong>“UK GDPR”</strong>
       has the meaning in the UK Data Protection Act 2018; <strong>“FADP”</strong> means the Swiss Federal Act on Data
       Protection; <strong>“CCPA/CPRA”</strong> means California Civil Code §1798.100 et seq., as amended.</p>
-    <p class="mt-2 text-gray-700"><strong>“Personal Data”</strong> means any information relating to an identified or
+    <p class="mt-2 text-gray-700 dark:text-gray-300"><strong>“Personal Data”</strong> means any information relating to
+      an identified or
       identifiable natural person that Processor Processes on behalf of Controller in connection with the Services.</p>
-    <p class="mt-2 text-gray-700"><strong>“Processing”</strong> means any operation performed on Personal Data,
+    <p class="mt-2 text-gray-700 dark:text-gray-300"><strong>“Processing”</strong> means any operation performed on
+      Personal Data,
       including collection, validation, normalization, deduplication, enrichment, storage, caching, retrieval,
       disclosure, or deletion.</p>
-    <p class="mt-2 text-gray-700"><strong>“Services”</strong> means Orbitcheck’s data validation, deduplication, entity
+    <p class="mt-2 text-gray-700 dark:text-gray-300"><strong>“Services”</strong> means Orbitcheck’s data validation,
+      deduplication, entity
       resolution, and risk-driven order control services and related APIs, SDKs, connectors, dashboards, and support.
     </p>
-    <p class="mt-2 text-gray-700"><strong>“Subprocessor”</strong> means any third party engaged by Processor to Process
+    <p class="mt-2 text-gray-700 dark:text-gray-300"><strong>“Subprocessor”</strong> means any third party engaged by
+      Processor to Process
       Personal Data on behalf of Controller.</p>
-    <p class="mt-2 text-gray-700"><strong>“SCCs”</strong> means the European Commission’s Standard Contractual Clauses
+    <p class="mt-2 text-gray-700 dark:text-gray-300"><strong>“SCCs”</strong> means the European Commission’s Standard
+      Contractual Clauses
       for the transfer of personal data to third countries (Module Two: Controller to Processor), and any UK and Swiss
       addenda or equivalents, each as updated or replaced from time to time.</p>
-    <p class="mt-2 text-gray-700"><strong>“Security Incident”</strong> means a breach of Processor’s security leading to
+    <p class="mt-2 text-gray-700 dark:text-gray-300"><strong>“Security Incident”</strong> means a breach of Processor’s
+      security leading to
       the accidental or unlawful destruction, loss, alteration, unauthorized disclosure of, or access to Personal Data
       transmitted, stored or otherwise Processed by Processor.</p>
 
     <h2 id="scope" class="text-xl font-semibold mt-6">2. Scope, Instructions, and Purpose</h2>
-    <p class="mt-2 text-gray-700">
+    <p class="mt-2 text-gray-700 dark:text-gray-300">
       Processor will Process Personal Data only on documented instructions from Controller, including as necessary to
       provide, maintain, secure, and improve the Services, to comply with law, and as otherwise set out in this DPA and
       the Agreement. The subject-matter, nature, purpose, duration, categories of Personal Data, and Data Subjects are
@@ -131,7 +179,7 @@
     </p>
 
     <h2 id="roles" class="text-xl font-semibold mt-6">3. Roles and Responsibilities</h2>
-    <p class="mt-2 text-gray-700">
+    <p class="mt-2 text-gray-700 dark:text-gray-300">
       Controller determines the purposes and means of Processing. Controller is responsible for (a) ensuring it has a
       lawful basis and appropriate transparency notices for the Processing; (b) providing accurate, relevant, and
       minimized data; and (c) not submitting Prohibited Data (see Section 14). Processor acts as a processor/service
@@ -141,14 +189,14 @@
     </p>
 
     <h2 id="confidentiality" class="text-xl font-semibold mt-6">4. Confidentiality and Personnel</h2>
-    <p class="mt-2 text-gray-700">
+    <p class="mt-2 text-gray-700 dark:text-gray-300">
       Processor ensures that persons authorized to Process Personal Data are bound by confidentiality obligations and
       receive appropriate privacy and security training. Processor will limit access to Personal Data to personnel who
       need such access to provide the Services.
     </p>
 
     <h2 id="security" class="text-xl font-semibold mt-6">5. Security Measures</h2>
-    <p class="mt-2 text-gray-700">
+    <p class="mt-2 text-gray-700 dark:text-gray-300">
       Processor implements and maintains appropriate technical and organizational measures to protect Personal Data,
       taking into account the nature of Processing and the risks involved. These measures include encryption in transit
       and at rest, access controls and least privilege, multi-factor authentication for administrative access, network
@@ -159,7 +207,7 @@
     </p>
 
     <h2 id="breach" class="text-xl font-semibold mt-6">6. Security Incidents</h2>
-    <p class="mt-2 text-gray-700">
+    <p class="mt-2 text-gray-700 dark:text-gray-300">
       Processor will notify Controller without undue delay (and in any case within 72 hours after confirmation) upon
       becoming aware of a Security Incident affecting Personal Data, and will provide information reasonably available
       about the nature of the incident, the categories and approximate number of Data Subjects and records concerned,
@@ -169,7 +217,7 @@
     </p>
 
     <h2 id="dsr" class="text-xl font-semibold mt-6">7. Data Subject Requests and Assistance</h2>
-    <p class="mt-2 text-gray-700">
+    <p class="mt-2 text-gray-700 dark:text-gray-300">
       Taking into account the nature of the Processing, Processor will assist Controller by appropriate technical and
       organizational measures, insofar as possible, to respond to requests to exercise rights under Applicable Laws
       (e.g., access, rectification, erasure, restriction, portability, objection). If Processor receives a request
@@ -178,7 +226,7 @@
     </p>
 
     <h2 id="dpia" class="text-xl font-semibold mt-6">8. DPIAs and Regulatory Cooperation</h2>
-    <p class="mt-2 text-gray-700">
+    <p class="mt-2 text-gray-700 dark:text-gray-300">
       Processor will provide reasonable assistance to Controller with data protection impact assessments, prior
       consultations with supervisory authorities, and security assessments required by Applicable Laws, in each case
       solely in relation to the Processing of Personal Data by Processor and taking into account the nature of the
@@ -186,7 +234,7 @@
     </p>
 
     <h2 id="subprocessors" class="text-xl font-semibold mt-6">9. Subprocessors</h2>
-    <p class="mt-2 text-gray-700">
+    <p class="mt-2 text-gray-700 dark:text-gray-300">
       Controller authorizes Processor to engage Subprocessors to support the Services. A current list is available at
       <a href="/subprocessors" class="text-indigo-700 hover:underline">orbitcheck.io/subprocessors</a> (“Subprocessor
       List”). Processor will impose data protection obligations on Subprocessors that are no less protective than those
@@ -197,7 +245,7 @@
     </p>
 
     <h2 id="transfers" class="text-xl font-semibold mt-6">10. International Data Transfers</h2>
-    <p class="mt-2 text-gray-700">
+    <p class="mt-2 text-gray-700 dark:text-gray-300">
       Processor may Process Personal Data globally, including outside the EEA/UK/Switzerland, subject to appropriate
       transfer mechanisms. Where Personal Data is transferred to a third country that does not ensure an adequate level
       of protection, the parties agree that the SCCs (Module Two: Controller to Processor), as incorporated by reference
@@ -207,7 +255,7 @@
     </p>
 
     <h2 id="retention" class="text-xl font-semibold mt-6">11. Retention, Return, and Deletion</h2>
-    <p class="mt-2 text-gray-700">
+    <p class="mt-2 text-gray-700 dark:text-gray-300">
       Processor retains Personal Data only for as long as necessary to provide the Services, to comply with the
       Agreement and Applicable Laws, and as described in Annex I (e.g., by plan configuration, typically between 7 and
       365 days). Upon termination or upon Controller’s written request, Processor will delete or return Personal Data
@@ -216,7 +264,7 @@
     </p>
 
     <h2 id="audit" class="text-xl font-semibold mt-6">12. Audits and Information</h2>
-    <p class="mt-2 text-gray-700">
+    <p class="mt-2 text-gray-700 dark:text-gray-300">
       Processor will make available to Controller information necessary to demonstrate compliance with this DPA and,
       upon reasonable advance notice no more than once per year (unless required by a supervisory authority or following
       a Security Incident), allow for and contribute to audits, including inspections, conducted by Controller or an
@@ -226,14 +274,14 @@
     </p>
 
     <h2 id="gov-requests" class="text-xl font-semibold mt-6">13. Government and Third-Party Requests</h2>
-    <p class="mt-2 text-gray-700">
+    <p class="mt-2 text-gray-700 dark:text-gray-300">
       If a government, law enforcement, or third party requests access to Personal Data, Processor will (i) notify
       Controller promptly unless legally prohibited, (ii) use commercially reasonable efforts to redirect the request to
       Controller, and (iii) disclose only the minimum necessary to comply with the request after assessing its legality.
     </p>
 
     <h2 id="ccpa" class="text-xl font-semibold mt-6">14. California (CCPA/CPRA) Terms</h2>
-    <p class="mt-2 text-gray-700">
+    <p class="mt-2 text-gray-700 dark:text-gray-300">
       To the extent the CCPA/CPRA applies, Processor acts as Controller’s “service provider” and/or “contractor.”
       Processor will not: (a) sell or share Personal Information; (b) retain, use, or disclose Personal Information for
       any purpose other than the business purposes specified in the Agreement, this DPA, or as permitted by the
@@ -243,7 +291,7 @@
     </p>
 
     <h2 id="prohibited" class="text-xl font-semibold mt-6">15. Prohibited Data and Controller Responsibilities</h2>
-    <p class="mt-2 text-gray-700">
+    <p class="mt-2 text-gray-700 dark:text-gray-300">
       Unless expressly agreed in writing, Controller will not submit and Processor has no obligation to Process: (i)
       special categories of personal data under GDPR (e.g., health, biometric, genetic, racial or ethnic origin,
       religious or philosophical beliefs, sexual orientation), (ii) precise geolocation, (iii) payment card primary
@@ -255,7 +303,7 @@
     </p>
 
     <h2 id="deidentified" class="text-xl font-semibold mt-6">16. De-identified and Aggregated Data</h2>
-    <p class="mt-2 text-gray-700">
+    <p class="mt-2 text-gray-700 dark:text-gray-300">
       Processor may create and use de-identified and/or aggregated data for purposes such as analytics, benchmarking,
       and improving the Services, provided such data does not identify or reasonably relate to a specific Data Subject
       or Controller and Processor implements technical safeguards and public commitments consistent with Applicable Laws
@@ -263,7 +311,7 @@
     </p>
 
     <h2 id="liability" class="text-xl font-semibold mt-6">17. Liability; Order of Precedence</h2>
-    <p class="mt-2 text-gray-700">
+    <p class="mt-2 text-gray-700 dark:text-gray-300">
       Each party’s liability arising from or related to this DPA is subject to the limitations and exclusions of
       liability in the Agreement; provided that nothing limits either party’s liability to the extent such limitation is
       prohibited by Applicable Laws or the SCCs. In the event of conflict between: (i) this DPA and the Agreement, this
@@ -271,7 +319,7 @@
     </p>
 
     <h2 id="misc" class="text-xl font-semibold mt-6">18. Term, Governing Law, and Amendments</h2>
-    <p class="mt-2 text-gray-700">
+    <p class="mt-2 text-gray-700 dark:text-gray-300">
       This DPA is effective for the term of the Agreement and will automatically terminate upon termination of the
       Agreement, except for provisions that by their nature survive. Governing law and venue are as set forth in the
       Agreement; where the SCCs apply, the SCCs’ governing law provisions control. Processor may update this DPA as
@@ -282,24 +330,29 @@
     <hr class="my-8 border-gray-200">
 
     <h2 id="annex1" class="text-xl font-semibold mt-6">Annex I — Details of Processing</h2>
-    <p class="mt-2 text-gray-700"><strong>Subject Matter</strong>: Processing Personal Data submitted by Controller via
+    <p class="mt-2 text-gray-700 dark:text-gray-300"><strong>Subject Matter</strong>: Processing Personal Data submitted
+      by Controller via
       API, connectors, and dashboard to provide data validation, deduplication, entity resolution, and risk-driven order
       controls.</p>
-    <p class="mt-2 text-gray-700"><strong>Nature and Purpose</strong>: Validation against public or semi-public
+    <p class="mt-2 text-gray-700 dark:text-gray-300"><strong>Nature and Purpose</strong>: Validation against public or
+      semi-public
       registries and datasets (e.g., EU VIES for VAT validation; ES NIF/NIE; BR CPF/CNPJ; MX RFC; AR CUIT; CL RUT; PE
       RUC/DNI), normalization, deduplication, fuzzy matching (e.g., similarity scoring), enrichment for operational
       efficiency, fraud- and risk-related heuristics (e.g., PO Box controls, COD/RTO checks), and generation of
       structured results and audit logs for operational use.</p>
-    <p class="mt-2 text-gray-700"><strong>Duration</strong>: For the term of the Agreement and in accordance with
+    <p class="mt-2 text-gray-700 dark:text-gray-300"><strong>Duration</strong>: For the term of the Agreement and in
+      accordance with
       retention settings selected by Controller or applicable plan defaults (typically 7–365 days), unless otherwise
       required by law.</p>
-    <p class="mt-2 text-gray-700"><strong>Categories of Data Subjects</strong>: Customers and prospective customers of
+    <p class="mt-2 text-gray-700 dark:text-gray-300"><strong>Categories of Data Subjects</strong>: Customers and
+      prospective customers of
       Controller (consumers and business contacts), Controller’s personnel who use the Services, and other individuals
       whose data Controller submits.</p>
-    <p class="mt-2 text-gray-700"><strong>Categories of Personal Data</strong> (as determined by Controller and
+    <p class="mt-2 text-gray-700 dark:text-gray-300"><strong>Categories of Personal Data</strong> (as determined by
+      Controller and
       depending on features used):
     </p>
-    <ul class="list-disc pl-6 mt-2 text-gray-700">
+    <ul class="list-disc pl-6 mt-2 text-gray-700 dark:text-gray-300">
       <li>Identification and contact: full name, email address, phone number.</li>
       <li>Addresses: shipping/billing address lines, city, region, postal code, country.</li>
       <li>Official and tax identifiers for validation: EU VAT ID, ES NIF/NIE, BR CPF/CNPJ, MX RFC, AR CUIT, CL RUT, PE
@@ -312,56 +365,72 @@
     <p class="mt-2 
 
   <!-- Footer -->
-  <footer class=" bg-white border-t border-gray-100">
+  <footer class=" bg-white border-t border-gray-100 dark:bg-gray-800 dark:border-gray-700">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 grid md:grid-cols-4 gap-8">
       <div>
         <a href="/" class="flex items-center space-x-2">
           <img src="/logo.svg" alt="Orbitcheck logo" width="28" height="28">
-            <circle cx="12" cy="12" r="10" opacity="0.2"></circle>
-            </path>
+          <circle cx="12" cy="12" r="10" opacity="0.2"></circle>
+          </path>
           </svg>
           <span class="font-bold">Orbitcheck</span>
         </a>
-        <p class="text-gray-500 mt-3 text-sm">The API-first data hygiene guard for ecommerce.</p>
+        <p class="text-gray-500 mt-3 text-sm dark:text-gray-400">The API-first data hygiene guard for ecommerce.</p>
       </div>
       <div>
         <h5 class="font-semibold">Product</h5>
         <ul class="mt-3 space-y-2 text-sm">
-          <li><a href="/#features" class="text-gray-700 hover:text-gray-900">Features</a></li>
-          <li><a href="/pricing.html" class="text-gray-700 hover:text-gray-900">Pricing</a></li>
-          <li><a href="/docs/index.html" class="text-gray-700 hover:text-gray-900">Docs</a></li>
-          <li><a href="/changelog.html" class="text-gray-700 hover:text-gray-900">Changelog</a></li>
-          <li><a href="https://status.orbitcheck.io" class="text-gray-700 hover:text-gray-900">Status</a></li>
+          <li><a href="/#features"
+              class="text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100">Features</a></li>
+          <li><a href="/pricing.html"
+              class="text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100">Pricing</a></li>
+          <li><a href="/docs/index.html"
+              class="text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100">Docs</a></li>
+          <li><a href="/changelog.html"
+              class="text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100">Changelog</a></li>
+          <li><a href="https://status.orbitcheck.io"
+              class="text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100">Status</a></li>
         </ul>
       </div>
       <div>
         <h5 class="font-semibold">Company</h5>
         <ul class="mt-3 space-y-2 text-sm">
-          <li><a href="/legal/tos.html" class="text-gray-700 hover:text-gray-900">Terms of Service</a></li>
-          <li><a href="/legal/privacy.html" class="text-gray-700 hover:text-gray-900">Privacy Policy</a></li>
-          <li><a href="/legal/dpa.html" class="text-gray-700 hover:text-gray-900">DPA</a></li>
+          <li><a href="/legal/tos.html"
+              class="text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100">Terms of Service</a>
+          </li>
+          <li><a href="/legal/privacy.html"
+              class="text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100">Privacy Policy</a>
+          </li>
+          <li><a href="/legal/dpa.html"
+              class="text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100">DPA</a></li>
         </ul>
       </div>
       <div>
         <h5 class="font-semibold">Support</h5>
         <ul class="mt-3 space-y-2 text-sm">
-          <li><a href="/docs/index.html" class="text-gray-700 hover:text-gray-900">Developer Docs</a></li>
-          <li><a href="mailto:sales@orbitcheck.io" class="text-gray-700 hover:text-gray-900">Sales</a></li>
-          <li><a href="https://status.orbitcheck.io" class="text-gray-700 hover:text-gray-900">System Status</a></li>
+          <li><a href="/docs/index.html"
+              class="text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100">Developer Docs</a>
+          </li>
+          <li><a href="mailto:sales@orbitcheck.io"
+              class="text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100">Sales</a></li>
+          <li><a href="https://status.orbitcheck.io"
+              class="text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100">System Status</a>
+          </li>
         </ul>
       </div>
     </div>
     <div
-      class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 border-t border-gray-100 flex flex-col md:flex-row items-center justify-between text-sm text-gray-500">
+      class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 border-t border-gray-100 flex flex-col md:flex-row items-center justify-between text-sm text-gray-500 dark:border-gray-700 dark:text-gray-400">
       <p>© <span id="copyright-year">2025</span> Orbitcheck</p>
       <div class="space-x-4">
-        <a href="/legal/tos.html" class="hover:text-gray-900">ToS</a>
-        <a href="/legal/privacy.html" class="hover:text-gray-900">Privacy</a>
-        <a href="/legal/dpa.html" class="hover:text-gray-900">DPA</a>
+        <a href="/legal/tos.html" class="hover:text-gray-900 dark:hover:text-gray-100">ToS</a>
+        <a href="/legal/privacy.html" class="hover:text-gray-900 dark:hover:text-gray-100">Privacy</a>
+        <a href="/legal/dpa.html" class="hover:text-gray-900 dark:hover:text-gray-100">DPA</a>
       </div>
     </div>
     </footer>
 
+    <script src="/theme.js"></script>
     <script>
       // Automatically update the copyright year
       document.getElementById('copyright-year').textContent = new Date().getFullYear();

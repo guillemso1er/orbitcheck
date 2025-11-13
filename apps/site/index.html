@@ -22,6 +22,22 @@
   <meta name="twitter:image" content="https://orbitcheck.io/og-cover.png" />
   <!-- Tailwind v4 CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class'
+    }
+  </script>
+
+  <!-- Initialize theme immediately to prevent FOUC -->
+  <script>
+      // This needs to run immediately, not on DOMContentLoaded
+      (function () {
+        const theme = localStorage.getItem('theme') || 'light';
+        if (theme === 'dark') {
+          document.documentElement.classList.add('dark');
+        }
+      })();
+  </script>
   <!-- Custom styles that cannot be handled by Tailwind utilities -->
   <link rel="stylesheet" href="/css/common.css" />
   <script type="application/ld+json">
@@ -57,16 +73,24 @@
   </script>
 </head>
 
-<body class="bg-gray-50 text-gray-900 antialiased">
+<body class="bg-gray-50 text-gray-900 antialiased dark:bg-gray-900 dark:text-gray-100">
   <!-- Top notice -->
-  <div class="bg-indigo-700">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2 text-center text-indigo-50 text-sm">
+  <div class="bg-indigo-700 dark:bg-indigo-800">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2 text-center text-indigo-50">
       14-day Growth trial included. Refund guarantee if no 1% absolute RTO/failed delivery reduction in 60 days.
     </div>
   </div>
 
+  <!-- Early Access strip -->
+  <div class="bg-green-700 dark:bg-green-800">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2 text-center text-green-50">
+      Early Access: 60 days free + white‑glove setup. Limited slots <a href="/early-access.html"
+        class="underline hover:no-underline">→</a>
+    </div>
+  </div>
+
   <!-- Header -->
-  <header class="bg-white border-b border-gray-100">
+  <header class="bg-white border-b border-gray-100 dark:bg-gray-800 dark:border-gray-700">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
       <a href="/" class="flex items-center gap-2">
         <div class="w-12 h-12 flex items-center justify-center">
@@ -75,16 +99,30 @@
         <span class="font-extrabold text-xl">Orbitcheck</span>
       </a>
       <nav class="hidden md:flex items-center gap-6">
-        <a href="/#features" class="text-gray-700 hover:text-gray-900">Product</a>
-        <a href="/pricing.html" class="text-gray-700 hover:text-gray-900">Pricing</a>
-        <a href="/docs/index.html" class="text-gray-700 hover:text-gray-900">Docs</a>
-        <a href="/changelog.html" class="text-gray-700 hover:text-gray-900">Changelog</a>
-        <a href="/tools/index.html" class="text-gray-700 hover:text-gray-900">Free Tools</a>
-        <a href="https://status.orbitcheck.io" class="text-gray-700 hover:text-gray-900">Status</a>
+        <a href="/#features"
+          class="text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100">Product</a>
+        <a href="/pricing.html"
+          class="text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100">Pricing</a>
+        <a href="/docs/index.html"
+          class="text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100">Docs</a>
+        <a href="/changelog.html"
+          class="text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100">Changelog</a>
+        <a href="/tools/index.html"
+          class="text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100">Free Tools</a>
+        <a href="https://status.orbitcheck.io"
+          class="text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100">Status</a>
       </nav>
       <div class="hidden md:flex items-center gap-3">
+        <button id="theme-toggle"
+          class="p-2 rounded-md text-gray-700 hover:text-gray-900 hover:bg-gray-100 dark:text-gray-300 dark:hover:text-gray-100 dark:hover:bg-gray-800 transition-colors">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z">
+            </path>
+          </svg>
+        </button>
         <a href="/pricing.html"
-          class="inline-flex items-center justify-center px-5 py-3 rounded-md font-semibold bg-white text-indigo-700 border border-indigo-200 hover:border-indigo-300">See
+          class="inline-flex items-center justify-center px-5 py-3 rounded-md font-semibold bg-white text-indigo-700 border border-indigo-200 hover:border-indigo-300 dark:bg-gray-800 dark:text-indigo-400 dark:border-indigo-600 dark:hover:border-indigo-500">See
           pricing</a>
         <!-- Replace # with your actual signup URL -->
         <a href="#"
@@ -95,20 +133,32 @@
       <details class="md:hidden relative">
         <summary class="list-none cursor-pointer inline-flex items-center gap-2">
           <span class="sr-only">Menu</span>
-          <svg class="w-7 h-7 text-gray-700 rotate transition-transform">
+          <svg class="w-7 h-7 text-gray-700 dark:text-gray-300 rotate transition-transform">
             <path fill="currentColor" d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z" />
           </svg>
         </summary>
-        <div class="absolute right-0 mt-3 w-64 bg-white border border-gray-100 shadow-lg rounded-md p-3 space-y-2 z-50">
-          <a href="/#features" class="block px-3 py-2 rounded hover:bg-gray-50">Product</a>
-          <a href="/pricing.html" class="block px-3 py-2 rounded hover:bg-gray-50">Pricing</a>
-          <a href="/docs/index.html" class="block px-3 py-2 rounded hover:bg-gray-50">Docs</a>
-          <a href="/changelog.html" class="block px-3 py-2 rounded hover:bg-gray-50">Changelog</a>
-          <a href="/tools/index.html" class="block px-3 py-2 rounded hover:bg-gray-50">Free Tools</a>
-          <a href="https://status.orbitcheck.io" class="block px-3 py-2 rounded hover:bg-gray-50">Status</a>
-          <div class="border-t border-gray-100 pt-2 flex gap-2">
+        <div
+          class="absolute right-0 mt-3 w-64 bg-white border border-gray-100 shadow-lg rounded-md p-3 space-y-2 z-50 dark:bg-gray-800 dark:border-gray-700">
+          <a href="/#features" class="block px-3 py-2 rounded hover:bg-gray-50 dark:hover:bg-gray-700">Product</a>
+          <a href="/pricing.html" class="block px-3 py-2 rounded hover:bg-gray-50 dark:hover:bg-gray-700">Pricing</a>
+          <a href="/docs/index.html" class="block px-3 py-2 rounded hover:bg-gray-50 dark:hover:bg-gray-700">Docs</a>
+          <a href="/changelog.html"
+            class="block px-3 py-2 rounded hover:bg-gray-50 dark:hover:bg-gray-700">Changelog</a>
+          <a href="/tools/index.html" class="block px-3 py-2 rounded hover:bg-gray-50 dark:hover:bg-gray-700">Free
+            Tools</a>
+          <a href="https://status.orbitcheck.io"
+            class="block px-3 py-2 rounded hover:bg-gray-50 dark:hover:bg-gray-700">Status</a>
+          <div class="border-t border-gray-100 pt-2 flex gap-2 dark:border-gray-700">
+            <button id="theme-toggle-mobile"
+              class="flex-1 p-2 rounded-md text-gray-700 hover:text-gray-900 hover:bg-gray-100 dark:text-gray-300 dark:hover:text-gray-100 dark:hover:bg-gray-700 transition-colors">
+              <svg class="w-5 h-5 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z">
+                </path>
+              </svg>
+            </button>
             <a href="/pricing.html"
-              class="flex-1 w-full inline-flex items-center justify-center px-5 py-3 rounded-md font-semibold bg-white text-indigo-700 border border-indigo-200 hover:border-indigo-300">Pricing</a>
+              class="flex-1 w-full inline-flex items-center justify-center px-5 py-3 rounded-md font-semibold bg-white text-indigo-700 border border-indigo-200 hover:border-indigo-300 dark:bg-gray-800 dark:text-indigo-400 dark:border-indigo-600 dark:hover:border-indigo-500">Pricing</a>
             <!-- Replace # with your actual signup URL -->
             <a href="#"
               class="flex-1 w-full inline-flex items-center justify-center px-5 py-3 rounded-md font-semibold bg-indigo-600 text-white hover:bg-indigo-700">Start</a>
@@ -119,18 +169,19 @@
   </header>
 
   <!-- Hero -->
-  <section class="bg-white">
+  <section class="bg-white dark:bg-gray-800">
     <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-16 lg:py-24 grid lg:grid-cols-2 gap-12">
       <div>
-        <p class="text-sm uppercase tracking-wide font-semibold text-indigo-700">Data hygiene for ecommerce</p>
+        <p class="text-sm uppercase tracking-wide font-semibold text-indigo-700 dark:text-indigo-400">Data hygiene for
+          ecommerce</p>
         <h1 class="text-4xl sm:text-5xl font-extrabold tracking-tight mt-2">
           Stop failed deliveries. Validate globally.
         </h1>
-        <p class="mt-5 text-lg text-gray-700">
+        <p class="mt-5 text-lg text-gray-700 dark:text-gray-300">
           Orbitcheck is the API-first data hygiene guard for ecommerce — addresses, phones, emails, EU VAT, and ES-LATAM
           tax IDs with dedupe and risk-driven order controls.
         </p>
-        <ul class="list-check mt-6 text-gray-800">
+        <ul class="list-check mt-6 text-gray-800 dark:text-gray-200">
           <li>Deep validation: EU VIES + Spain NIF/NIE + LATAM IDs (CPF/CNPJ, RFC, CUIT, RUT, RUC/DNI)</li>
           <li>Entity resolution that actually works: deterministic + fuzzy (pg_trgm)</li>
           <li>Ops-ready: auto-hold, PO Box controls, COD/RTO heuristics; structured reasons + audit logs</li>
@@ -140,9 +191,9 @@
 
         <div class="mt-8 flex items-center gap-3">
           <!-- Replace # with your actual signup URL -->
-          <a href="#"
-            class="inline-flex items-center justify-center px-5 py-3 rounded-md font-semibold bg-indigo-600 text-white hover:bg-indigo-700">Start
-            free — 1,000 validations/mo</a>
+          <a href="/early-access.html"
+            class="inline-flex items-center justify-center px-5 py-3 rounded-md font-semibold bg-indigo-600 text-white hover:bg-indigo-700">Join
+            Early Access</a>
           <a href="#lead-form"
             class="inline-flex items-center justify-center px-5 py-3 rounded-md font-semibold bg-white text-indigo-700 border border-indigo-200 hover:border-indigo-300">Book
             a demo</a>
@@ -150,29 +201,33 @@
         <p class="mt-3 text-sm text-gray-500">14-day Growth trial included. No credit card required.</p>
       </div>
 
-      <div class="bg-white shadow-sm rounded-lg border border-gray-100 p-6">
+      <div class="bg-white shadow-sm rounded-lg border border-gray-100 p-6 dark:bg-gray-800 dark:border-gray-700">
         <h2 class="text-xl font-semibold">Get a tailored ROI estimate</h2>
-        <p class="text-gray-500 text-sm mt-1">Typical stores see a 1–3% reduction in failed delivery/RTO in 30 days.</p>
+        <p class="text-gray-500 dark:text-gray-400 text-sm mt-1">Typical stores see a 1–3% reduction in failed
+          delivery/RTO in 30 days.</p>
         <!-- Lead form -->
         <!-- Replace # with your form endpoint (e.g., HubSpot/Formspree/Netlify). -->
         <form id="lead-form" class="mt-5 space-y-4" method="POST" action="#">
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1" for="email">Work email</label>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" for="email">Work
+              email</label>
             <input
-              class="block w-full px-4 py-2 rounded-md border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              class="block w-full px-4 py-2 rounded-md border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 dark:focus:ring-indigo-400 dark:focus:border-indigo-400"
               id="email" name="email" type="email" placeholder="you@company.com" required>
           </div>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1" for="company">Company</label>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                for="company">Company</label>
               <input
-                class="block w-full px-4 py-2 rounded-md border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                class="block w-full px-4 py-2 rounded-md border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 dark:focus:ring-indigo-400 dark:focus:border-indigo-400"
                 id="company" name="company" type="text" placeholder="Acme Inc." required>
             </div>
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1" for="platform">Platform</label>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                for="platform">Platform</label>
               <select
-                class="block w-full px-4 py-2 rounded-md border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                class="block w-full px-4 py-2 rounded-md border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 dark:focus:ring-indigo-400 dark:focus:border-indigo-400"
                 id="platform" name="platform" required>
                 <option value="">Select…</option>
                 <option>Shopify</option>
@@ -186,9 +241,10 @@
           </div>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1" for="monthly_orders">Monthly orders</label>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                for="monthly_orders">Monthly orders</label>
               <select
-                class="block w-full px-4 py-2 rounded-md border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                class="block w-full px-4 py-2 rounded-md border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 dark:focus:ring-indigo-400 dark:focus:border-indigo-400"
                 id="monthly_orders" name="monthly_orders" required>
                 <option value="">Select…</option>
                 <option>&lt; 1,000</option>
@@ -199,17 +255,19 @@
               </select>
             </div>
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1" for="country">Primary market</label>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" for="country">Primary
+                market</label>
               <input
-                class="block w-full px-4 py-2 rounded-md border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                class="block w-full px-4 py-2 rounded-md border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 dark:focus:ring-indigo-400 dark:focus:border-indigo-400"
                 id="country" name="country" type="text" placeholder="ES, BR, MX, EU, ..." required>
             </div>
           </div>
           <div class="flex items-start gap-2">
             <input id="consent" name="consent" type="checkbox" class="mt-1" required>
-            <label for="consent" class="text-sm text-gray-600">I agree to the <a href="/legal/tos.html"
-                class="text-indigo-600 hover:underline">ToS</a> and <a href="/legal/privacy.html"
-                class="text-indigo-600 hover:underline">Privacy Policy</a>.</label>
+            <label for="consent" class="text-sm text-gray-600 dark:text-gray-400">I agree to the <a
+                href="/legal/tos.html" class="text-indigo-600 hover:underline dark:text-indigo-400">ToS</a> and <a
+                href="/legal/privacy.html" class="text-indigo-600 hover:underline dark:text-indigo-400">Privacy
+                Policy</a>.</label>
           </div>
           <div class="flex items-center gap-3">
             <button type="submit"
@@ -231,11 +289,29 @@
     </div>
   </section>
 
+  <!-- Calendly Booking -->
+  <section class="bg-gray-50 dark:bg-gray-900 py-16">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+      <h2 class="text-3xl font-semibold">Book a Meeting</h2>
+      <p class="text-gray-600 dark:text-gray-400 mt-2">Schedule a call to discuss how Orbitcheck can help your store.
+      </p>
+      <div class="mt-8">
+        <!-- Calendly inline widget begin -->
+        <div class="calendly-inline-widget" data-url="https://calendly.com/orbitcheck?primary_color=4c51bf"
+          style="min-width:320px;height:700px;"></div>
+        <script type="text/javascript" src="https://assets.calendly.com/assets/external/widget.js" async></script>
+        <!-- Calendly inline widget end -->
+      </div>
+    </div>
+  </section>
+
   <!-- Logos / connectors -->
   <section aria-label="Connectors" class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
     <div class="flex flex-wrap items-center justify-center gap-4 text-gray-600">
       <span
         class="inline-flex items-center px-2.5 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">Shopify</span>
+      <span
+        class="inline-flex items-center px-2.5 py-0.5 rounded text-xs font-medium bg-orange-100 text-orange-800">Shopify-first</span>
       <span
         class="inline-flex items-center px-2.5 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">WooCommerce</span>
       <span
@@ -254,9 +330,10 @@
   <!-- Features -->
   <section id="features" class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
     <div class="grid lg:grid-cols-2 gap-10">
-      <div class="bg-white shadow-sm rounded-lg border border-gray-100 p-6">
+      <div class="bg-white shadow-sm rounded-lg border border-gray-100 p-6 dark:bg-gray-800 dark:border-gray-700">
         <h3 class="text-2xl font-semibold">Deep global validation</h3>
-        <p class="mt-2 text-gray-500">EU VIES + Spain NIF/NIE + LATAM IDs (CPF/CNPJ, RFC, CUIT, RUT, RUC/DNI). Email,
+        <p class="mt-2 text-gray-500 dark:text-gray-400">EU VIES + Spain NIF/NIE + LATAM IDs (CPF/CNPJ, RFC, CUIT, RUT,
+          RUC/DNI). Email,
           phone
           (E.164), and address normalization.</p>
         <ul class="list-check mt-4">
@@ -264,12 +341,14 @@
           <li>Structured reason codes you can expose to customers</li>
           <li>Webhooks + CSV export for BI</li>
         </ul>
-        <a href="/docs/index.html#validation" class="mt-4 inline-block text-indigo-700 hover:underline">See validation
+        <a href="/docs/index.html#validation"
+          class="mt-4 inline-block text-indigo-700 hover:underline dark:text-indigo-400">See validation
           API →</a>
       </div>
-      <div class="bg-white shadow-sm rounded-lg border border-gray-100 p-6">
+      <div class="bg-white shadow-sm rounded-lg border border-gray-100 p-6 dark:bg-gray-800 dark:border-gray-700">
         <h3 class="text-2xl font-semibold">Entity resolution that cleans your ops</h3>
-        <p class="mt-2 text-gray-500">Deterministic + fuzzy (pg_trgm) matching for customers, addresses, and orders —
+        <p class="mt-2 text-gray-500 dark:text-gray-400">Deterministic + fuzzy (pg_trgm) matching for customers,
+          addresses, and orders —
           tunable
           thresholds and merge suggestions.</p>
         <ul class="list-check mt-4">
@@ -277,23 +356,27 @@
           <li>Cluster suggestions with confidence scores</li>
           <li>Actionable merge queues</li>
         </ul>
-        <a href="/docs/index.html#dedupe" class="mt-4 inline-block text-indigo-700 hover:underline">See dedupe API →</a>
+        <a href="/docs/index.html#dedupe"
+          class="mt-4 inline-block text-indigo-700 hover:underline dark:text-indigo-400">See dedupe API →</a>
       </div>
-      <div class="bg-white shadow-sm rounded-lg border border-gray-100 p-6">
+      <div class="bg-white shadow-sm rounded-lg border border-gray-100 p-6 dark:bg-gray-800 dark:border-gray-700">
         <h3 class="text-2xl font-semibold">Ops-ready controls</h3>
-        <p class="mt-2 text-gray-500">Auto-hold, PO Box controls, COD/RTO heuristics, and audit logs — with reason codes
+        <p class="mt-2 text-gray-500 dark:text-gray-400">Auto-hold, PO Box controls, COD/RTO heuristics, and audit logs
+          — with reason codes
           standardized across channels.</p>
         <ul class="list-check mt-4">
           <li>Hold and tag risky orders automatically</li>
           <li>Expose friendly messages at checkout</li>
           <li>Workflows via webhooks</li>
         </ul>
-        <a href="/docs/index.html#rules" class="mt-4 inline-block text-indigo-700 hover:underline">See rules engine
+        <a href="/docs/index.html#rules"
+          class="mt-4 inline-block text-indigo-700 hover:underline dark:text-indigo-400">See rules engine
           →</a>
       </div>
-      <div class="bg-white shadow-sm rounded-lg border border-gray-100 p-6">
+      <div class="bg-white shadow-sm rounded-lg border border-gray-100 p-6 dark:bg-gray-800 dark:border-gray-700">
         <h3 class="text-2xl font-semibold">Edge-aware and fast</h3>
-        <p class="mt-2 text-gray-500">Typical p95 &lt; 150 ms; sub-50 ms cache hits. Built for ingestion and
+        <p class="mt-2 text-gray-500 dark:text-gray-400">Typical p95 &lt; 150 ms; sub-50 ms cache hits. Built for
+          ingestion and
           checkout-time
           validation.</p>
         <ul class="list-check mt-4">
@@ -301,21 +384,25 @@
           <li>Cache warming for frequent patterns</li>
           <li>Observability with status.orbitcheck.io</li>
         </ul>
-        <a href="/changelog.html" class="mt-4 inline-block text-indigo-700 hover:underline">Performance updates →</a>
+        <a href="/changelog.html"
+          class="mt-4 inline-block text-indigo-700 hover:underline dark:text-indigo-400">Performance updates →</a>
       </div>
     </div>
   </section>
 
   <!-- ROI / Guarantee -->
-  <section class="bg-indigo-50">
+  <section class="bg-indigo-50 dark:bg-indigo-900/20">
     <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-      <div class="bg-white shadow-sm rounded-lg border border-gray-100 p-8 bg-white">
+      <div
+        class="bg-white shadow-sm rounded-lg border border-gray-100 p-8 bg-white dark:bg-gray-800 dark:border-gray-700">
         <div class="grid md:grid-cols-3 gap-6 items-center">
           <div class="md:col-span-2">
             <h3 class="text-2xl font-semibold">Guaranteed ROI</h3>
-            <p class="mt-2 text-gray-700">See a 1–3% reduction in failed deliveries/RTO within 30 days for COD/ES-LATAM
+            <p class="mt-2 text-gray-700 dark:text-gray-300">See a 1–3% reduction in failed deliveries/RTO within 30
+              days for COD/ES-LATAM
               stores, and 100% VAT error catch rate when VIES is available.</p>
-            <p class="mt-3 text-gray-700"><strong>Guarantee:</strong> If you do not see at least a 1% absolute reduction
+            <p class="mt-3 text-gray-700 dark:text-gray-300"><strong>Guarantee:</strong> If you do not see at least a 1%
+              absolute reduction
               in failed deliveries or RTO rate within 60 days after enabling in production (with comparable traffic), we
               refund up to 2 months of subscription fees upon request.</p>
           </div>
@@ -325,9 +412,10 @@
               plans & pricing</a>
             <!-- Replace # with your actual signup URL -->
             <a href="#"
-              class="w-full inline-flex items-center justify-center px-5 py-3 rounded-md font-semibold bg-white text-indigo-700 border border-indigo-200 hover:border-indigo-300">Start
+              class="w-full inline-flex items-center justify-center px-5 py-3 rounded-md font-semibold bg-white text-indigo-700 border border-indigo-200 hover:border-indigo-300 dark:bg-gray-800 dark:text-indigo-400 dark:border-indigo-600 dark:hover:border-indigo-500">Start
               free</a>
-            <p class="text-xs text-gray-500 mt-2 text-center">Your pricing, your billing. No platform lock-in.</p>
+            <p class="text-xs text-gray-500 dark:text-gray-400 mt-2 text-center">Your pricing, your billing. No platform
+              lock-in.</p>
           </div>
         </div>
       </div>
@@ -338,25 +426,29 @@
   <section class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
     <h3 class="text-2xl font-semibold">Who benefits</h3>
     <div class="grid md:grid-cols-2 gap-8 mt-6">
-      <div class="bg-white shadow-sm rounded-lg border border-gray-100 p-6">
+      <div class="bg-white shadow-sm rounded-lg border border-gray-100 p-6 dark:bg-gray-800 dark:border-gray-700">
         <h4 class="font-semibold text-lg">DTC stores in ES-LATAM</h4>
-        <p class="text-gray-500 mt-1">High COD and address correctness pain? We cut RTOs with real tax ID checks and
+        <p class="text-gray-500 dark:text-gray-400 mt-1">High COD and address correctness pain? We cut RTOs with real
+          tax ID checks and
           address/phone normalization.</p>
       </div>
-      <div class="bg-white shadow-sm rounded-lg border border-gray-100 p-6">
+      <div class="bg-white shadow-sm rounded-lg border border-gray-100 p-6 dark:bg-gray-800 dark:border-gray-700">
         <h4 class="font-semibold text-lg">EU stores needing VAT/TAX compliance</h4>
-        <p class="text-gray-500 mt-1">VIES validation + Spain NIF/NIE fallback. Expose reasons to customers to fix at
+        <p class="text-gray-500 dark:text-gray-400 mt-1">VIES validation + Spain NIF/NIE fallback. Expose reasons to
+          customers to fix at
           checkout.
         </p>
       </div>
-      <div class="bg-white shadow-sm rounded-lg border border-gray-100 p-6">
+      <div class="bg-white shadow-sm rounded-lg border border-gray-100 p-6 dark:bg-gray-800 dark:border-gray-700">
         <h4 class="font-semibold text-lg">COD-heavy verticals</h4>
-        <p class="text-gray-500 mt-1">Fashion, electronics, supplements — reduce fake orders and RTOs with COD
+        <p class="text-gray-500 dark:text-gray-400 mt-1">Fashion, electronics, supplements — reduce fake orders and RTOs
+          with COD
           heuristics.</p>
       </div>
-      <div class="bg-white shadow-sm rounded-lg border border-gray-100 p-6">
+      <div class="bg-white shadow-sm rounded-lg border border-gray-100 p-6 dark:bg-gray-800 dark:border-gray-700">
         <h4 class="font-semibold text-lg">B2B + Marketplaces/3PLs</h4>
-        <p class="text-gray-500 mt-1">Validate VAT/company IDs and standardize incoming data to reduce WISMO and
+        <p class="text-gray-500 dark:text-gray-400 mt-1">Validate VAT/company IDs and standardize incoming data to
+          reduce WISMO and
           returns.</p>
       </div>
     </div>
@@ -366,19 +458,19 @@
   <section class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
     <div class="grid md:grid-cols-3 gap-6">
       <a href="/tools/vat.html"
-        class="bg-white shadow-sm rounded-lg border border-gray-100 p-6 hover:shadow-md transition">
+        class="bg-white shadow-sm rounded-lg border border-gray-100 p-6 hover:shadow-md transition dark:bg-gray-800 dark:border-gray-700 dark:hover:bg-gray-700">
         <h4 class="font-semibold">EU VAT validation that actually works →</h4>
-        <p class="text-gray-500 mt-1">Live VIES checks with caching and audit logs.</p>
+        <p class="text-gray-500 dark:text-gray-400 mt-1">Live VIES checks with caching and audit logs.</p>
       </a>
       <a href="/tools/cpf-cnpj.html"
-        class="bg-white shadow-sm rounded-lg border border-gray-100 p-6 hover:shadow-md transition">
+        class="bg-white shadow-sm rounded-lg border border-gray-100 p-6 hover:shadow-md transition dark:bg-gray-800 dark:border-gray-700 dark:hover:bg-gray-700">
         <h4 class="font-semibold">ES-LATAM tax IDs with real checksum logic →</h4>
-        <p class="text-gray-500 mt-1">CPF/CNPJ, RFC, CUIT, RUT, RUC/NIT — format + checksum.</p>
+        <p class="text-gray-500 dark:text-gray-400 mt-1">CPF/CNPJ, RFC, CUIT, RUT, RUC/NIT — format + checksum.</p>
       </a>
       <a href="/tools/phone.html"
-        class="bg-white shadow-sm rounded-lg border border-gray-100 p-6 hover:shadow-md transition">
+        class="bg-white shadow-sm rounded-lg border border-gray-100 p-6 hover:shadow-md transition dark:bg-gray-800 dark:border-gray-700 dark:hover:bg-gray-700">
         <h4 class="font-semibold">E.164 phone formatting →</h4>
-        <p class="text-gray-500 mt-1">Clean and standardize for global delivery.</p>
+        <p class="text-gray-500 dark:text-gray-400 mt-1">Clean and standardize for global delivery.</p>
       </a>
     </div>
   </section>
@@ -387,24 +479,28 @@
   <section class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
     <h3 class="text-2xl font-semibold">FAQ</h3>
     <div class="mt-6 space-y-3">
-      <details class="bg-white shadow-sm rounded-lg border border-gray-100 p-4">
+      <details class="bg-white shadow-sm rounded-lg border border-gray-100 p-4 dark:bg-gray-800 dark:border-gray-700">
         <summary class="font-semibold cursor-pointer">Does Orbitcheck work with Shopify/Woo/BigCommerce/Magento?
         </summary>
-        <div class="mt-2 text-gray-700">Yes. We ship thin connectors so you keep ownership of billing and roadmap.</div>
+        <div class="mt-2 text-gray-700 dark:text-gray-300">Yes. We ship thin connectors so you keep ownership of billing
+          and roadmap.</div>
       </details>
-      <details class="bg-white shadow-sm rounded-lg border border-gray-100 p-4">
+      <details class="bg-white shadow-sm rounded-lg border border-gray-100 p-4 dark:bg-gray-800 dark:border-gray-700">
         <summary class="font-semibold cursor-pointer">How fast is it?</summary>
-        <div class="mt-2 text-gray-700">Typical p95 under 150 ms, with sub-50 ms cache hits on repeated patterns.</div>
+        <div class="mt-2 text-gray-700 dark:text-gray-300">Typical p95 under 150 ms, with sub-50 ms cache hits on
+          repeated patterns.</div>
       </details>
-      <details class="bg-white shadow-sm rounded-lg border border-gray-100 p-4">
+      <details class="bg-white shadow-sm rounded-lg border border-gray-100 p-4 dark:bg-gray-800 dark:border-gray-700">
         <summary class="font-semibold cursor-pointer">What about privacy and compliance?</summary>
-        <div class="mt-2 text-gray-700">We provide DPA, data residency options for Enterprise, and audit logs with
+        <div class="mt-2 text-gray-700 dark:text-gray-300">We provide DPA, data residency options for Enterprise, and
+          audit logs with
           reason codes.</div>
       </details>
-      <details class="bg-white shadow-sm rounded-lg border border-gray-100 p-4">
+      <details class="bg-white shadow-sm rounded-lg border border-gray-100 p-4 dark:bg-gray-800 dark:border-gray-700">
         <summary class="font-semibold cursor-pointer">What's the pricing model?</summary>
-        <div class="mt-2 text-gray-700">Transparent, usage-based plans with aggressive caching to keep margins
-          predictable. See <a href="/pricing.html" class="text-indigo-700">pricing</a>.</div>
+        <div class="mt-2 text-gray-700 dark:text-gray-300">Transparent, usage-based plans with aggressive caching to
+          keep margins
+          predictable. See <a href="/pricing.html" class="text-indigo-700 dark:text-indigo-400">pricing</a>.</div>
       </details>
     </div>
   </section>
@@ -423,47 +519,62 @@
   </script>
 
   <!-- Footer -->
-  <footer class="bg-white border-t border-gray-100">
+  <footer class="bg-white border-t border-gray-100 dark:bg-gray-800 dark:border-gray-700">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 grid md:grid-cols-4 gap-8">
       <div>
         <a href="/" class="flex items-center gap-2">
           <img src="/logo.svg" alt="Orbitcheck logo" width="28" height="28">
-            <circle cx="12" cy="12" r="10" opacity="0.2"></circle>
-            </path>
+          <circle cx="12" cy="12" r="10" opacity="0.2"></circle>
+          </path>
           </svg>
           <span class="font-bold">Orbitcheck</span>
         </a>
-        <p class="text-gray-500 mt-3 text-sm">The API-first data hygiene guard for ecommerce.</p>
+        <p class="text-gray-500 dark:text-gray-400 mt-3 text-sm">The API-first data hygiene guard for ecommerce.</p>
       </div>
       <div>
         <h5 class="font-semibold">Product</h5>
         <ul class="mt-3 space-y-2 text-sm">
-          <li><a href="/#features" class="text-gray-700 hover:text-gray-900">Features</a></li>
-          <li><a href="/pricing.html" class="text-gray-700 hover:text-gray-900">Pricing</a></li>
-          <li><a href="/docs/index.html" class="text-gray-700 hover:text-gray-900">Docs</a></li>
-          <li><a href="/changelog.html" class="text-gray-700 hover:text-gray-900">Changelog</a></li>
-          <li><a href="https://status.orbitcheck.io" class="text-gray-700 hover:text-gray-900">Status</a></li>
+          <li><a href="/#features"
+              class="text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100">Features</a></li>
+          <li><a href="/pricing.html"
+              class="text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100">Pricing</a></li>
+          <li><a href="/docs/index.html"
+              class="text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100">Docs</a></li>
+          <li><a href="/changelog.html"
+              class="text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100">Changelog</a></li>
+          <li><a href="https://status.orbitcheck.io"
+              class="text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100">Status</a></li>
         </ul>
       </div>
       <div>
         <h5 class="font-semibold">Company</h5>
         <ul class="mt-3 space-y-2 text-sm">
-          <li><a href="/legal/tos.html" class="text-gray-700 hover:text-gray-900">Terms of Service</a></li>
-          <li><a href="/legal/privacy.html" class="text-gray-700 hover:text-gray-900">Privacy Policy</a></li>
-          <li><a href="/legal/dpa.html" class="text-gray-700 hover:text-gray-900">DPA</a></li>
+          <li><a href="/legal/tos.html"
+              class="text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100">Terms of Service</a>
+          </li>
+          <li><a href="/legal/privacy.html"
+              class="text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100">Privacy Policy</a>
+          </li>
+          <li><a href="/legal/dpa.html"
+              class="text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100">DPA</a></li>
         </ul>
       </div>
       <div>
         <h5 class="font-semibold">Free Tools</h5>
         <ul class="mt-3 space-y-2 text-sm">
-          <li><a href="/tools/vat.html" class="text-gray-700 hover:text-gray-900">VAT checker</a></li>
-          <li><a href="/tools/cpf-cnpj.html" class="text-gray-700 hover:text-gray-900">CPF/CNPJ checker</a></li>
-          <li><a href="/tools/phone.html" class="text-gray-700 hover:text-gray-900">E.164 formatter</a></li>
+          <li><a href="/tools/vat.html"
+              class="text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100">VAT checker</a></li>
+          <li><a href="/tools/cpf-cnpj.html"
+              class="text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100">CPF/CNPJ checker</a>
+          </li>
+          <li><a href="/tools/phone.html"
+              class="text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100">E.164 formatter</a>
+          </li>
         </ul>
       </div>
     </div>
     <div
-      class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 border-t border-gray-100 flex flex-col md:flex-row items-center justify-between text-sm text-gray-500">
+      class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 border-t border-gray-100 flex flex-col md:flex-row items-center justify-between text-sm text-gray-500 dark:border-gray-700 dark:text-gray-400">
       <p>© <span id="copyright-year">2025</span> Orbitcheck • Primary: orbitcheck.io • Backups: sanityaxis.com,
         cleangrid.com</p>
       <p>Made with ❤️ for ecommerce ops.</p>
@@ -474,6 +585,8 @@
     // Automatically update the copyright year
     document.getElementById('copyright-year').textContent = new Date().getFullYear();
   </script>
+
+  <script src="/theme.js"></script>
 
 </body>
 

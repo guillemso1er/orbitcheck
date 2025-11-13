@@ -19,34 +19,63 @@
   <meta name="twitter:description"
     content="Learn how Orbitcheck handles your data privacy and complies with regulations." />
   <meta name="twitter:image" content="https://orbitcheck.io/og-cover.png" />
-  <!-- Tailwind v2 CDN -->
-  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet" />
+  <!-- Tailwind v4 CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class'
+    }
+  </script>
+
+  <!-- Initialize theme immediately to prevent FOUC -->
+  <script>
+      // This needs to run immediately, not on DOMContentLoaded
+      (function () {
+        const theme = localStorage.getItem('theme') || 'light';
+        if (theme === 'dark') {
+          document.documentElement.classList.add('dark');
+        }
+      })();
+  </script>
   <!-- Custom styles that cannot be handled by Tailwind utilities -->
   <link rel="stylesheet" href="/css/common.css" />
 </head>
 
-<body class="bg-gray-50 text-gray-900 antialiased">
+<body class="bg-gray-50 text-gray-900 antialiased dark:bg-gray-900 dark:text-gray-100">
   <!-- Header -->
-  <header class="bg-white border-b border-gray-100">
+  <header class="bg-white border-b border-gray-100 dark:bg-gray-800 dark:border-gray-700">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
       <a href="/" class="flex items-center space-x-2">
         <img src="/logo.svg" alt="Orbitcheck logo" width="32" height="32">
-          <circle cx="12" cy="12" r="10" class="text-indigo-100" fill="currentColor" opacity="0.2"></circle>
-          <path d="M12 3a9 9 0 109 9h-9V3z" class="text-indigo-600" fill="currentColor"></path>
+        <circle cx="12" cy="12" r="10" class="text-indigo-100" fill="currentColor" opacity="0.2"></circle>
+        <path d="M12 3a9 9 0 109 9h-9V3z" class="text-indigo-600" fill="currentColor"></path>
         </svg>
         <span class="font-extrabold text-xl">Orbitcheck</span>
       </a>
       <nav class="hidden md:flex items-center space-x-6">
-        <a href="/#features" class="text-gray-700 hover:text-gray-900">Product</a>
-        <a href="/pricing.html" class="text-gray-700 hover:text-gray-900">Pricing</a>
-        <a href="/docs/index.html" class="text-gray-700 hover:text-gray-900">Docs</a>
-        <a href="/changelog.html" class="text-gray-700 hover:text-gray-900">Changelog</a>
-        <a href="/tools/index.html" class="text-gray-700 hover:text-gray-900">Free Tools</a>
-        <a href="https://status.orbitcheck.io" class="text-gray-700 hover:text-gray-900">Status</a>
+        <a href="/#features"
+          class="text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100">Product</a>
+        <a href="/pricing.html"
+          class="text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100">Pricing</a>
+        <a href="/docs/index.html"
+          class="text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100">Docs</a>
+        <a href="/changelog.html"
+          class="text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100">Changelog</a>
+        <a href="/tools/index.html"
+          class="text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100">Free Tools</a>
+        <a href="https://status.orbitcheck.io"
+          class="text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100">Status</a>
+        <button id="theme-toggle"
+          class="p-2 rounded-md text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100"
+          aria-label="Toggle theme">
+          <svg id="theme-icon" class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+            <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"></path>
+          </svg>
+        </button>
       </nav>
       <div class="hidden md:flex items-center space-x-3">
         <a href="/pricing.html"
-          class="inline-flex items-center justify-center px-5 py-3 rounded-md font-semibold bg-white text-indigo-700 border border-indigo-200 hover:border-indigo-300">See
+          class="inline-flex items-center justify-center px-5 py-3 rounded-md font-semibold bg-white text-indigo-700 border border-indigo-200 hover:border-indigo-300 dark:bg-gray-800 dark:text-indigo-400 dark:border-indigo-600 dark:hover:border-indigo-500">See
           pricing</a>
         <!-- Replace # with your actual signup URL -->
         <a href="#"
@@ -57,20 +86,31 @@
       <details class="md:hidden relative">
         <summary class="list-none cursor-pointer inline-flex items-center space-x-2">
           <span class="sr-only">Menu</span>
-          <svg class="w-7 h-7 text-gray-700 rotate transition-transform">
+          <svg class="w-7 h-7 text-gray-700 rotate transition-transform dark:text-gray-300">
             <path fill="currentColor" d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z" />
           </svg>
         </summary>
-        <div class="absolute right-0 mt-3 w-64 bg-white border border-gray-100 shadow-lg rounded-md p-3 space-y-2 z-50">
-          <a href="/#features" class="block px-3 py-2 rounded hover:bg-gray-50">Product</a>
-          <a href="/pricing.html" class="block px-3 py-2 rounded hover:bg-gray-50">Pricing</a>
-          <a href="/docs/index.html" class="block px-3 py-2 rounded hover:bg-gray-50">Docs</a>
-          <a href="/changelog.html" class="block px-3 py-2 rounded hover:bg-gray-50">Changelog</a>
-          <a href="/tools/index.html" class="block px-3 py-2 rounded hover:bg-gray-50">Free Tools</a>
-          <a href="https://status.orbitcheck.io" class="block px-3 py-2 rounded hover:bg-gray-50">Status</a>
-          <div class="border-t border-gray-100 pt-2 flex space-x-2">
+        <div
+          class="absolute right-0 mt-3 w-64 bg-white border border-gray-100 shadow-lg rounded-md p-3 space-y-2 z-50 dark:bg-gray-800 dark:border-gray-700">
+          <a href="/#features" class="block px-3 py-2 rounded hover:bg-gray-50 dark:hover:bg-gray-700">Product</a>
+          <a href="/pricing.html" class="block px-3 py-2 rounded hover:bg-gray-50 dark:hover:bg-gray-700">Pricing</a>
+          <a href="/docs/index.html" class="block px-3 py-2 rounded hover:bg-gray-50 dark:hover:bg-gray-700">Docs</a>
+          <a href="/changelog.html"
+            class="block px-3 py-2 rounded hover:bg-gray-50 dark:hover:bg-gray-700">Changelog</a>
+          <a href="/tools/index.html" class="block px-3 py-2 rounded hover:bg-gray-50 dark:hover:bg-gray-700">Free
+            Tools</a>
+          <a href="https://status.orbitcheck.io"
+            class="block px-3 py-2 rounded hover:bg-gray-50 dark:hover:bg-gray-700">Status</a>
+          <button id="theme-toggle-mobile"
+            class="w-full p-2 rounded-md text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100"
+            aria-label="Toggle theme">
+            <svg id="theme-icon-mobile" class="w-5 h-5 mx-auto" fill="currentColor" viewBox="0 0 20 20">
+              <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"></path>
+            </svg>
+          </button>
+          <div class="border-t border-gray-100 pt-2 flex space-x-2 dark:border-gray-700">
             <a href="/pricing.html"
-              class="flex-1 w-full inline-flex items-center justify-center px-5 py-3 rounded-md font-semibold bg-white text-indigo-700 border border-indigo-200 hover:border-indigo-300">Pricing</a>
+              class="flex-1 w-full inline-flex items-center justify-center px-5 py-3 rounded-md font-semibold bg-white text-indigo-700 border border-indigo-200 hover:border-indigo-300 dark:bg-gray-800 dark:text-indigo-400 dark:border-indigo-600 dark:hover:border-indigo-500">Pricing</a>
             <!-- Replace # with your actual signup URL -->
             <a href="#"
               class="flex-1 w-full inline-flex items-center justify-center px-5 py-3 rounded-md font-semibold bg-indigo-600 text-white hover:bg-indigo-700">Start</a>
@@ -83,20 +123,20 @@
   <!-- Main Content -->
   <main class="max-w-3xl mx-auto px-4 py-12">
     <h1 class="text-3xl font-extrabold">Privacy Policy</h1>
-    <p class="mt-4 text-gray-700">
-      This Privacy Policy explains how Orbitcheck (“Orbitcheck,” “we,” “us,” or “our”) collects, uses, discloses, and
+    <p class="mt-4 text-gray-700 dark:text-gray-300">
+      This Privacy Policy explains how Orbitcheck ("Orbitcheck," "we," "us," or "our") collects, uses, discloses, and
       protects Personal Data when you visit our websites, use our APIs, SDKs, connectors, and dashboards (the
-      “Services”), or otherwise interact with us. It also describes your privacy rights and how to exercise them.
+      "Services"), or otherwise interact with us. It also describes your privacy rights and how to exercise them.
     </p>
-    <p class="mt-2 text-gray-700">
+    <p class="mt-2 text-gray-700 dark:text-gray-300">
       If you require a countersigned copy or have questions, contact <a href="mailto:privacy@orbitcheck.io"
         class="text-indigo-700 hover:underline">privacy@orbitcheck.io</a>.
     </p>
 
-    <div class="mt-6 rounded-md border border-gray-200 bg-gray-50 p-4">
-      <p class="text-gray-800">
+    <div class="mt-6 rounded-md border border-gray-200 bg-gray-50 p-4 dark:bg-gray-800 dark:border-gray-700">
+      <p class="text-gray-800 dark:text-gray-200">
         Highlights:
-      <ul class="list-disc pl-6 mt-2 text-gray-700">
+      <ul class="list-disc pl-6 mt-2 text-gray-700 dark:text-gray-300">
         <li>We process end-customer data on your instructions to validate addresses, phones, emails, and business/tax
           IDs.</li>
         <li>We do not sell or share Personal Data for cross-context behavioral advertising.</li>
@@ -107,11 +147,11 @@
     </div>
 
     <h2 id="scope" class="text-xl font-semibold mt-8">1) Who We Are and Scope</h2>
-    <p class="mt-2 text-gray-700">
+    <p class="mt-2 text-gray-700 dark:text-gray-300">
       Orbitcheck provides API-first data hygiene and validation for ecommerce: addresses, phones, emails, EU VAT, and
       ES–LATAM tax IDs with deduplication, entity resolution, and risk-driven order controls.
     </p>
-    <p class="mt-2 text-gray-700">
+    <p class="mt-2 text-gray-700 dark:text-gray-300">
       This Policy applies to: (a) visitors to our websites and people who interact with our marketing or sales (we act
       as a controller); and (b) customers and their end users whose Personal Data is submitted to the Services (we
       generally act as a processor/service provider on behalf of our customers). For processor activities, our <a
@@ -119,7 +159,7 @@
     </p>
 
     <h2 id="roles" class="text-xl font-semibold mt-6">2) Roles; End-User Data</h2>
-    <p class="mt-2 text-gray-700">
+    <p class="mt-2 text-gray-700 dark:text-gray-300">
       For data you send to the Services about your customers, leads, or orders, you are the controller (or business) and
       Orbitcheck is your processor (or service provider/contractor). We process such data only on your documented
       instructions. If you are an end user of a merchant using Orbitcheck, please contact that merchant to exercise your
@@ -127,10 +167,10 @@
     </p>
 
     <h2 id="data-we-collect" class="text-xl font-semibold mt-6">3) Personal Data We Collect</h2>
-    <p class="mt-2 text-gray-700">
+    <p class="mt-2 text-gray-700 dark:text-gray-300">
       The Personal Data we process depends on how you interact with us and which features you use.
     </p>
-    <ul class="list-disc pl-6 mt-2 text-gray-700">
+    <ul class="list-disc pl-6 mt-2 text-gray-700 dark:text-gray-300">
       <li><strong>Account and Contact Data</strong>: name, company, role, email, phone, login identifiers,
         workspace/user IDs.</li>
       <li><strong>Service (Customer) Data</strong>: data you submit to validate or deduplicate, such as names, emails,
@@ -145,14 +185,13 @@
       <li><strong>Public/Third-Party Sources</strong>: validation against public or semi-public registries (e.g., EU
         VIES, government tax ID registries) and data from service providers acting on our behalf.</li>
     </ul>
-    <p class="mt-2 text-gray-700">
+    <p class="mt-2 text-gray-700 dark:text-gray-300">
       We do not seek to collect special categories of data (e.g., health, biometric, or precise geolocation), images of
-      identity documents, full bank details, or children’s data. Please do not send such data to the Services unless we
+      identity documents, full bank details, or children's data. Please do not send such data to the Services unless we
       have expressly agreed in writing.
     </p>
-
     <h2 id="how-we-use" class="text-xl font-semibold mt-6">4) How We Use Personal Data</h2>
-    <ul class="list-disc pl-6 mt-2 text-gray-700">
+    <ul class="list-disc pl-6 mt-2 text-gray-700 dark:text-gray-300">
       <li>Provide, maintain, validate, deduplicate, and improve the Services (including caching for performance and
         entity resolution).</li>
       <li>Secure the Services, prevent abuse and fraud, and ensure integrity and availability.</li>
@@ -165,7 +204,7 @@
     </ul>
 
     <h2 id="legal-bases" class="text-xl font-semibold mt-6">5) Legal Bases (EU/UK/Swiss)</h2>
-    <p class="mt-2 text-gray-700">
+    <p class="mt-2 text-gray-700 dark:text-gray-300">
       Where GDPR/UK GDPR/Swiss FADP applies, we rely on: (a) <strong>contractual necessity</strong> to provide the
       Services; (b) <strong>legitimate interests</strong> (e.g., security, fraud prevention, product improvement, and
       communicating with business users); (c) <strong>consent</strong> where required (e.g., certain cookies/marketing);
@@ -173,7 +212,7 @@
     </p>
 
     <h2 id="sharing" class="text-xl font-semibold mt-6">6) How We Share Personal Data</h2>
-    <ul class="list-disc pl-6 mt-2 text-gray-700">
+    <ul class="list-disc pl-6 mt-2 text-gray-700 dark:text-gray-300">
       <li><strong>Subprocessors/Service Providers</strong> that host, store, or process data for us (e.g., cloud
         infrastructure, databases, analytics, email). Our current list is at <a href="/subprocessors"
           class="text-indigo-700 hover:underline">orbitcheck.io/subprocessors</a>.</li>
@@ -187,13 +226,13 @@
       <li><strong>De-identified/Aggregated Data</strong> for analytics and improvement that does not identify
         individuals or customers.</li>
     </ul>
-    <p class="mt-2 text-gray-700">
+    <p class="mt-2 text-gray-700 dark:text-gray-300">
       We do <strong>not</strong> sell or share Personal Data for cross-context behavioral advertising as defined by the
       CCPA/CPRA, and we do not use sensitive Personal Data to infer characteristics about individuals.
     </p>
 
     <h2 id="intl-transfers" class="text-xl font-semibold mt-6">7) International Data Transfers</h2>
-    <p class="mt-2 text-gray-700">
+    <p class="mt-2 text-gray-700 dark:text-gray-300">
       We may transfer Personal Data to countries where we or our subprocessors operate, including outside the
       EEA/UK/Switzerland. When we do, we rely on appropriate safeguards such as the EU Standard Contractual Clauses
       (SCCs) and the UK International Data Transfer Addendum, and we implement additional measures as needed. Data
@@ -201,7 +240,7 @@
     </p>
 
     <h2 id="retention" class="text-xl font-semibold mt-6">8) Retention</h2>
-    <p class="mt-2 text-gray-700">
+    <p class="mt-2 text-gray-700 dark:text-gray-300">
       We retain Personal Data only as long as necessary for the purposes described in this Policy and our contract with
       you. For Service (Customer) Data, retention is configurable by plan or by your settings (typically 7–365 days).
       Ephemeral caches and most logs are short-lived and purged in the ordinary course; backups are deleted on a rolling
@@ -209,7 +248,7 @@
     </p>
 
     <h2 id="security" class="text-xl font-semibold mt-6">9) Security</h2>
-    <p class="mt-2 text-gray-700">
+    <p class="mt-2 text-gray-700 dark:text-gray-300">
       We implement technical and organizational measures appropriate to the risk, including encryption in transit and at
       rest, access controls and least privilege, MFA for administrative access, network and application security,
       logging and monitoring, vulnerability management, business continuity and disaster recovery, and vendor risk
@@ -218,17 +257,17 @@
     </p>
 
     <h2 id="your-rights" class="text-xl font-semibold mt-6">10) Your Privacy Rights</h2>
-    <p class="mt-2 text-gray-700">
+    <p class="mt-2 text-gray-700 dark:text-gray-300">
       Depending on your location, you may have rights to request: access, correction, deletion, restriction,
       portability, and to object to certain processing. Where processing is based on consent, you can withdraw consent
       at any time. You also have the right to lodge a complaint with a supervisory authority.
     </p>
-    <p class="mt-2 text-gray-700">
+    <p class="mt-2 text-gray-700 dark:text-gray-300">
       California and other U.S. states (e.g., CO, CT, VA, UT) provide additional rights: to know, delete, correct, and
       to opt out of sale/share or targeted advertising. We do not sell or share Personal Data for cross-context
       behavioral advertising. We honor browser-based Global Privacy Control (GPC) signals where legally required.
     </p>
-    <p class="mt-2 text-gray-700">
+    <p class="mt-2 text-gray-700 dark:text-gray-300">
       To exercise your rights, contact <a href="mailto:privacy@orbitcheck.io"
         class="text-indigo-700 hover:underline">privacy@orbitcheck.io</a>. If you are an end user of a merchant using
       Orbitcheck, please direct your request to that merchant (the controller). We may need to verify your identity and
@@ -236,36 +275,36 @@
     </p>
 
     <h2 id="cookies" class="text-xl font-semibold mt-6">11) Cookies and Similar Technologies</h2>
-    <p class="mt-2 text-gray-700">
+    <p class="mt-2 text-gray-700 dark:text-gray-300">
       We use cookies and similar technologies to operate and secure the Services, remember preferences, and analyze
       usage. Where required, we request your consent for non-essential cookies. You can manage preferences via your
       browser settings and, if available, our cookie banner. For details, see our <a href="/cookies"
         class="text-indigo-700 hover:underline">Cookie Notice</a>.
     </p>
 
-    <h2 id="children" class="text-xl font-semibold mt-6">12) Children’s Privacy</h2>
-    <p class="mt-2 text-gray-700">
+    <h2 id="children" class="text-xl font-semibold mt-6">12) Children's Privacy</h2>
+    <p class="mt-2 text-gray-700 dark:text-gray-300">
       Our Services are not directed to children and we do not knowingly collect Personal Data from individuals under 16.
       If you believe a child has provided us Personal Data, contact us and we will delete it.
     </p>
 
     <h2 id="data-minimization" class="text-xl font-semibold mt-6">13) Data Minimization; Prohibited Data</h2>
-    <p class="mt-2 text-gray-700">
+    <p class="mt-2 text-gray-700 dark:text-gray-300">
       Send only data necessary for validation and operational use. Unless expressly agreed in writing, do not submit
       special categories of data, precise geolocation, payment card primary account numbers, full bank account numbers,
-      identity document images, or children’s data. While certain tax identifiers may be considered sensitive under some
+      identity document images, or children's data. While certain tax identifiers may be considered sensitive under some
       laws, we use them solely to provide the Services and not to infer characteristics.
     </p>
 
     <h2 id="changes" class="text-xl font-semibold mt-6">14) Changes to This Policy</h2>
-    <p class="mt-2 text-gray-700">
+    <p class="mt-2 text-gray-700 dark:text-gray-300">
       We may update this Policy to reflect changes to our practices, legal requirements, or the Services. If we make
-      material changes, we will provide reasonable notice (e.g., in-app notice or email). The “Last updated” date below
+      material changes, we will provide reasonable notice (e.g., in-app notice or email). The "Last updated" date below
       indicates when this Policy was last revised.
     </p>
 
     <h2 id="contact" class="text-xl font-semibold mt-6">15) Contact Us</h2>
-    <p class="mt-2 text-gray-700">
+    <p class="mt-2 text-gray-700 dark:text-gray-300">
       Questions, requests, or complaints:
       <br>
       Email: <a href="mailto:privacy@orbitcheck.io" class="text-indigo-700 hover:underline">privacy@orbitcheck.io</a>
@@ -275,70 +314,85 @@
     </p>
 
     <h2 id="links" class="text-xl font-semibold mt-6">Related Documents</h2>
-    <ul class="list-disc pl-6 mt-2 text-gray-700">
+    <ul class="list-disc pl-6 mt-2 text-gray-700 dark:text-gray-300">
       <li><a href="/terms" class="text-indigo-700 hover:underline">Terms of Service</a></li>
       <li><a href="/dpa" class="text-indigo-700 hover:underline">Data Processing Addendum (DPA)</a></li>
       <li><a href="/subprocessors" class="text-indigo-700 hover:underline">Subprocessor List</a></li>
     </ul>
 
-    <p class="mt-10 text-sm text-gray-500">Last updated: 2025-10-16</p>
+    <p class="mt-10 text-sm text-gray-500 dark:text-gray-400">Last updated: 2025-10-16</p>
   </main>
 
   <!-- Footer -->
-  <footer class="bg-white border-t border-gray-100">
+  <footer class="bg-white border-t border-gray-100 dark:bg-gray-800 dark:border-gray-700">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 grid md:grid-cols-4 gap-8">
       <div>
         <a href="/" class="flex items-center space-x-2">
           <img src="/logo.svg" alt="Orbitcheck logo" width="28" height="28">
-            <circle cx="12" cy="12" r="10" opacity="0.2"></circle>
-            </path>
+          <circle cx="12" cy="12" r="10" opacity="0.2"></circle>
+          </path>
           </svg>
           <span class="font-bold">Orbitcheck</span>
         </a>
-        <p class="text-gray-500 mt-3 text-sm">The API-first data hygiene guard for ecommerce.</p>
+        <p class="text-gray-500 mt-3 text-sm dark:text-gray-400">The API-first data hygiene guard for ecommerce.</p>
       </div>
       <div>
         <h5 class="font-semibold">Product</h5>
         <ul class="mt-3 space-y-2 text-sm">
-          <li><a href="/#features" class="text-gray-700 hover:text-gray-900">Features</a></li>
-          <li><a href="/pricing.html" class="text-gray-700 hover:text-gray-900">Pricing</a></li>
-          <li><a href="/docs/index.html" class="text-gray-700 hover:text-gray-900">Docs</a></li>
-          <li><a href="/changelog.html" class="text-gray-700 hover:text-gray-900">Changelog</a></li>
-          <li><a href="https://status.orbitcheck.io" class="text-gray-700 hover:text-gray-900">Status</a></li>
+          <li><a href="/#features"
+              class="text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100">Features</a></li>
+          <li><a href="/pricing.html"
+              class="text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100">Pricing</a></li>
+          <li><a href="/docs/index.html"
+              class="text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100">Docs</a></li>
+          <li><a href="/changelog.html"
+              class="text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100">Changelog</a></li>
+          <li><a href="https://status.orbitcheck.io"
+              class="text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100">Status</a></li>
         </ul>
       </div>
       <div>
         <h5 class="font-semibold">Company</h5>
         <ul class="mt-3 space-y-2 text-sm">
-          <li><a href="/legal/tos.html" class="text-gray-700 hover:text-gray-900">Terms of Service</a></li>
-          <li><a href="/legal/privacy.html" class="text-gray-700 hover:text-gray-900">Privacy Policy</a></li>
-          <li><a href="/legal/dpa.html" class="text-gray-700 hover:text-gray-900">DPA</a></li>
+          <li><a href="/legal/tos.html"
+              class="text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100">Terms of Service</a>
+          </li>
+          <li><a href="/legal/privacy.html"
+              class="text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100">Privacy Policy</a>
+          </li>
+          <li><a href="/legal/dpa.html"
+              class="text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100">DPA</a></li>
         </ul>
       </div>
       <div>
         <h5 class="font-semibold">Support</h5>
         <ul class="mt-3 space-y-2 text-sm">
-          <li><a href="/docs/index.html" class="text-gray-700 hover:text-gray-900">Developer Docs</a></li>
-          <li><a href="mailto:sales@orbitcheck.io" class="text-gray-700 hover:text-gray-900">Sales</a></li>
-          <li><a href="https://status.orbitcheck.io" class="text-gray-700 hover:text-gray-900">System Status</a></li>
+          <li><a href="/docs/index.html"
+              class="text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100">Developer Docs</a>
+          </li>
+          <li><a href="mailto:sales@orbitcheck.io"
+              class="text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100">Sales</a></li>
+          <li><a href="https://status.orbitcheck.io"
+              class="text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100">System Status</a>
+          </li>
         </ul>
       </div>
     </div>
     <div
-      class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 border-t border-gray-100 flex flex-col md:flex-row items-center justify-between text-sm text-gray-500">
+      class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 border-t border-gray-100 flex flex-col md:flex-row items-center justify-between text-sm text-gray-500 dark:border-gray-700 dark:text-gray-400">
       <p>© <span id="copyright-year">2025</span> Orbitcheck</p>
       <div class="space-x-4">
-        <a href="/legal/tos.html" class="hover:text-gray-900">ToS</a>
-        <a href="/legal/privacy.html" class="hover:text-gray-900">Privacy</a>
-        <a href="/legal/dpa.html" class="hover:text-gray-900">DPA</a>
+        <a href="/legal/tos.html" class="hover:text-gray-900 dark:hover:text-gray-100">ToS</a>
+        <a href="/legal/privacy.html" class="hover:text-gray-900 dark:hover:text-gray-100">Privacy</a>
+        <a href="/legal/dpa.html" class="hover:text-gray-900 dark:hover:text-gray-100">DPA</a>
       </div>
     </div>
   </footer>
-
   <script>
     // Automatically update the copyright year
     document.getElementById('copyright-year').textContent = new Date().getFullYear();
   </script>
+  <script src="/theme.js"></script>
 
 </body>
 
