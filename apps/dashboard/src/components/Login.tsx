@@ -1,8 +1,9 @@
-import { createClient, loginUser, registerUser } from '@orbitcheck/contracts';
+import { loginUser, registerUser } from '@orbitcheck/contracts';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
-import { API_BASE, ERROR_MESSAGES } from '../constants';
+import { ERROR_MESSAGES } from '../constants';
+import { useApiClient } from '../utils/api.ts';
 import ThemeToggle from './ThemeToggle';
 
 // Icons (you can replace with actual icon libraries like lucide-react or heroicons)
@@ -177,6 +178,7 @@ const Login: React.FC = () => {
   const [touched, setTouched] = useState<Partial<Record<keyof LoginForm, boolean>>>({});
 
   const { login } = useAuth();
+  const apiClient = useApiClient();
   const navigate = useNavigate();
   const emailRef = useRef<HTMLInputElement>(null);
 
@@ -251,7 +253,6 @@ const Login: React.FC = () => {
     setError(null);
 
     try {
-      const apiClient = createClient({ baseUrl: API_BASE });
 
       let data;
       if (isRegister) {
