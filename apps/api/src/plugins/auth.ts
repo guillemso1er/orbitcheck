@@ -114,6 +114,7 @@ export default fp<Options>(async function openapiSecurity(app, opts) {
   const allowedOrigins = new Set(
     (opts.allowedOrigins && opts.allowedOrigins.length ? opts.allowedOrigins : [
       process.env.DASHBOARD_ORIGIN || 'https://dashboard.orbitcheck.io',
+      process.env.API_ORIGIN || 'https://api.orbitcheck.io',
       ...(process.env.NODE_ENV !== 'production' ? ['http://localhost:3000', 'http://localhost:5173', 'http://127.0.0.1:3000', 'http://127.0.0.1:5173'] : [])
     ]).map(s => s.toLowerCase())
   )
