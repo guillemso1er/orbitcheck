@@ -132,6 +132,7 @@ export async function loginUser(
             secure: process.env.NODE_ENV === 'production',
             sameSite: 'lax',
             path: '/',
+            domain: process.env.NODE_ENV === 'production' ? 'orbitcheck.io' : undefined,
             maxAge: sessionMaxAge / 1000, // Convert to seconds
         })
 
@@ -141,6 +142,7 @@ export async function loginUser(
             secure: process.env.NODE_ENV === 'production',
             sameSite: 'lax',
             path: '/',
+            domain: process.env.NODE_ENV === 'production' ? 'orbitcheck.io' : undefined,
             maxAge: sessionMaxAge / 1000, // Convert to seconds
         })
 
@@ -218,9 +220,7 @@ export async function logoutUser(
             sameSite: 'lax',
             secure: process.env.NODE_ENV === 'production',
             httpOnly: true,
-            domain: process.env.NODE_ENV === 'production'
-                ? 'orbitcheck.io'
-                : undefined
+            domain: process.env.NODE_ENV === 'production' ? 'orbitcheck.io' : undefined
         })
 
         // Clear client CSRF cookie
@@ -229,9 +229,7 @@ export async function logoutUser(
             sameSite: 'lax',
             secure: process.env.NODE_ENV === 'production',
             httpOnly: false,
-            domain: process.env.NODE_ENV === 'production'
-                ? 'orbitcheck.io'
-                : undefined
+            domain: process.env.NODE_ENV === 'production' ? 'orbitcheck.io' : undefined
         })
 
         return rep.send({ message: 'Logged out' })
