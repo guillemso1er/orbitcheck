@@ -349,6 +349,19 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   return isAuthenticated ? <>{children}</> : <Navigate to="/login" replace />;
 }
 
+/**
+ * Unauthenticated route wrapper component - redirects authenticated users away from login page
+ */
+function UnauthenticatedRoute({ children }: { children: React.ReactNode }) {
+  const { isAuthenticated, isLoading } = useAuth();
+
+  if (isLoading) {
+    return <LoadingSpinner />;
+  }
+
+  return isAuthenticated ? <Navigate to="/api-keys" replace /> : <>{children}</>;
+}
+
 function App() {
   const { logout, isAuthenticated } = useAuth();
   const navigate = useNavigate();
@@ -417,7 +430,11 @@ function App() {
       >
         <div className="container mx-auto p-6">
           <Routes>
-            <Route path="/login" element={<Login />} />
+            <Route path="/login" element={
+              <UnauthenticatedRoute>
+                <Login />
+              </UnauthenticatedRoute>
+            } />
 
             {/* Generate protected routes from NAV_ITEMS */}
             {NAV_ITEMS.map(({ path, label, component: Component }) => (

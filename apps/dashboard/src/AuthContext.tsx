@@ -57,7 +57,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     csrfToken,
     login,
     logout,
-    isAuthenticated: !!user,
+    isAuthenticated: !!user && !!csrfToken,
     isLoading: false,
   };
 
