@@ -164,11 +164,7 @@ paths:
   /v1/normalize/address:
     post:
       $ref: './paths/normalize/address.yml'
-  
-  # Tools paths
-  /v1/roi/estimate:
-    post:
-      $ref: './paths/tools/roi-estimate.yml'
+
   
   # Dedupe paths
   /v1/dedupe/customer:
@@ -216,6 +212,9 @@ paths:
   /public/plans:
     get:
       $ref: './paths/plans/list.yml'
+  /public/roi/estimate:
+    post:
+      $ref: './paths/tools/roi-estimate.yml'
   /user/plan/usage/check:
     post:
       $ref: './paths/plans/usage-check.yml'

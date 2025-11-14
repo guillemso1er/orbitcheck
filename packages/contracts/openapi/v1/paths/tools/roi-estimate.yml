@@ -1,13 +1,9 @@
 tags:
-  - Runtime API
+  - Public
 summary: Estimate ROI for Orbitcheck implementation
 description: Calculates potential monthly savings from implementing Orbitcheck based on order volume and default assumptions
 operationId: estimateRoi
-security:
-  - apiKeyAuth: []
-  - httpMessageSigInput: []
-    httpMessageSig: []
-  - cookieAuth: []
+security: []
 requestBody:
   required: true
   content:
@@ -27,15 +23,3 @@ responses:
       application/json:
         schema:
           $ref: ../../components/schemas/ValidationError.yml
-  '401':
-    description: Unauthorized
-    content:
-      application/json:
-        schema:
-          $ref: ../../components/schemas/UnauthorizedError.yml
-  '429':
-    description: Rate limit exceeded
-    content:
-      application/json:
-        schema:
-          $ref: ../../components/schemas/LimitExceededError.yml

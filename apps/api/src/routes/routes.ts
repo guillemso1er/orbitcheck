@@ -157,7 +157,7 @@ export const routes = {
 
         // Tools
         tools: {
-            estimateRoi: '/v1/roi/estimate',
+            estimateRoi: '/public/roi/estimate',
         },
     },
     // Projects
@@ -285,6 +285,13 @@ export const runtimeRoutes = () => {
 
     ];
 };
+
+export const publicRoutes = () => {
+    return [
+        ...Object.values(routes.auth),
+        ...Object.values(routes.public),
+    ];
+}
 
 export const managementRoutes = () => {
     return [

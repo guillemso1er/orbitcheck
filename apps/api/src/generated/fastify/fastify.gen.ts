@@ -144,10 +144,6 @@ export type RouteHandlers = {
         Body: NormalizeAddressData['body'];
         Reply: NormalizeAddressErrors & NormalizeAddressResponses;
     }>;
-    estimateRoi: RouteHandler<{
-        Body: EstimateRoiData['body'];
-        Reply: EstimateRoiErrors & EstimateRoiResponses;
-    }>;
     dedupeCustomer: RouteHandler<{
         Body: DedupeCustomerData['body'];
         Reply: DedupeCustomerErrors & DedupeCustomerResponses;
@@ -196,6 +192,10 @@ export type RouteHandlers = {
     }>;
     getAvailablePlans: RouteHandler<{
         Reply: GetAvailablePlansErrors & GetAvailablePlansResponses;
+    }>;
+    estimateRoi: RouteHandler<{
+        Body: EstimateRoiData['body'];
+        Reply: EstimateRoiErrors & EstimateRoiResponses;
     }>;
     checkValidationLimits: RouteHandler<{
         Body: CheckValidationLimitsData['body'];

@@ -1022,41 +1022,6 @@ export const normalizeAddress = <ThrowOnError extends boolean = false>(options: 
 };
 
 /**
- * Estimate ROI for Orbitcheck implementation
- *
- * Calculates potential monthly savings from implementing Orbitcheck based on order volume and default assumptions
- */
-export const estimateRoi = <ThrowOnError extends boolean = false>(options: Options<EstimateRoiData, ThrowOnError>) => {
-    return (options.client ?? client).post<EstimateRoiResponses, EstimateRoiErrors, ThrowOnError>({
-        security: [
-            {
-                name: 'X-API-Key',
-                type: 'apiKey'
-            },
-            {
-                name: 'Signature-Input',
-                type: 'apiKey'
-            },
-            {
-                name: 'Signature',
-                type: 'apiKey'
-            },
-            {
-                in: 'cookie',
-                name: 'sid',
-                type: 'apiKey'
-            }
-        ],
-        url: '/v1/roi/estimate',
-        ...options,
-        headers: {
-            'Content-Type': 'application/json',
-            ...options.headers
-        }
-    });
-};
-
-/**
  * Deduplicate customer
  *
  * Searches for existing customers in your project using multiple matching strategies. Performs exact matching on normalized email and phone fields, plus fuzzy matching on customer names with similarity scoring. Returns potential duplicates with confidence scores and suggested actions for handling the matches.
@@ -1440,6 +1405,22 @@ export const getAvailablePlans = <ThrowOnError extends boolean = false>(options?
         ],
         url: '/public/plans',
         ...options
+    });
+};
+
+/**
+ * Estimate ROI for Orbitcheck implementation
+ *
+ * Calculates potential monthly savings from implementing Orbitcheck based on order volume and default assumptions
+ */
+export const estimateRoi = <ThrowOnError extends boolean = false>(options: Options<EstimateRoiData, ThrowOnError>) => {
+    return (options.client ?? client).post<EstimateRoiResponses, EstimateRoiErrors, ThrowOnError>({
+        url: '/public/roi/estimate',
+        ...options,
+        headers: {
+            'Content-Type': 'application/json',
+            ...options.headers
+        }
     });
 };
 
