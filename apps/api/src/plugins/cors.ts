@@ -25,7 +25,8 @@ export async function setupCors<TServer extends RawServerBase = RawServerBase>(a
         // Allow origins from environment variable or use defaults
         const corsOrigins = environment.CORS_ORIGINS && environment.CORS_ORIGINS.length > 0 ? environment.CORS_ORIGINS : [
             'https://dashboard.orbitcheck.io',
-            'https://api.orbitcheck.io'
+            'https://api.orbitcheck.io',
+            'https://orbitcheck.io'
         ];
         corsOrigins.forEach(origin => allowedOrigins.add(origin));
 
