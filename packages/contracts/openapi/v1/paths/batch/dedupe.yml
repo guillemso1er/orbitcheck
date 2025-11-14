@@ -1,7 +1,7 @@
 tags:
   - Runtime API
 summary: Batch deduplicate data
-description: Performs batch deduplication of customers or addresses asynchronously
+description: Performs asynchronous batch deduplication of multiple customers or addresses. Accepts an array of customer or address objects and processes them in the background using the same matching logic as individual dedupe endpoints. Creates a job that can be tracked via the jobs endpoint. Maximum 10,000 items per request. Results include match suggestions for each input item.
 operationId: batchDedupe
 security:
   - apiKeyAuth: []
@@ -28,11 +28,12 @@ requestBody:
             type: array
             items:
               type: object
+            minItems: 1
             maxItems: 10000
-            description: Array of items to deduplicate
+            description: Array of items to deduplicate (1-10,000 items)
 responses:
   '202':
-    description: Batch deduplication job started
+    description: Batch deduplication job accepted and queued for processing
     content:
       application/json:
         schema:
@@ -40,17 +41,17 @@ responses:
           properties:
             job_id:
               type: string
-              description: Unique job identifier
+              description: Unique job identifier for tracking progress and retrieving results
             status:
               type: string
               enum:
                 - pending
-              description: Job status
+              description: Job status (always 'pending' when job is created)
             request_id:
               type: string
-              description: Request identifier
+              description: Request identifier for debugging
   '400':
-    description: Bad request
+    description: Bad request - invalid input data or exceeds item limit
     content:
       application/json:
         schema:

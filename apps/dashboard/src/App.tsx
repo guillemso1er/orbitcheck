@@ -435,6 +435,11 @@ function App() {
                 <Login />
               </UnauthenticatedRoute>
             } />
+            <Route path="/signup" element={
+              <UnauthenticatedRoute>
+                <Login isSignup={true} />
+              </UnauthenticatedRoute>
+            } />
 
             {/* Generate protected routes from NAV_ITEMS */}
             {NAV_ITEMS.map(({ path, label, component: Component }) => (

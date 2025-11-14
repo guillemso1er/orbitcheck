@@ -2,8 +2,10 @@ tags:
   - Management API
 summary: Get tenant settings
 description: >
-  Retrieves tenant settings including country defaults, formatting, and
-  risk thresholds
+  Retrieves the current tenant (project) settings including country-specific defaults,
+  data formatting preferences, and risk assessment thresholds. If no custom settings
+  have been configured, returns default empty configuration objects that can be
+  used as a baseline for customization.
 operationId: getSettings
 security:
   - patAuth: []

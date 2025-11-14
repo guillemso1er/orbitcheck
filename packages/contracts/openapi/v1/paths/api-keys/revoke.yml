@@ -1,7 +1,7 @@
 tags:
   - Management API
 summary: Revoke API key
-description: Revokes an API key by setting its status to revoked
+description: Revokes an API key by marking it as inactive. The key becomes unusable for authentication but remains in the database for audit purposes. This is a soft delete operation that changes the key's status to 'revoked'.
 operationId: revokeApiKey
 security:
   - patAuth: []
@@ -10,7 +10,7 @@ parameters:
   - name: id
     in: path
     required: true
-    description: ID of the API key to revoke
+    description: Unique identifier of the API key to revoke
     schema:
       type: string
 responses:
@@ -23,10 +23,11 @@ responses:
           properties:
             id:
               type: string
-              description: API key ID
+              description: API key ID that was revoked
             status:
               type: string
-              description: API key status
+              enum: [revoked]
+              description: Updated status of the API key (always 'revoked')
             request_id:
               type: string
   '401':
@@ -36,7 +37,7 @@ responses:
         schema:
           $ref: '../../components/schemas/Error.yml'
   '404':
-    description: API key not found
+    description: API key not found or does not belong to the authenticated project
     content:
       application/json:
         schema:

@@ -1,7 +1,7 @@
 tags:
   - Runtime API
 summary: Validate tax ID
-description: Validates a tax identification number
+description: Validates various tax identification numbers for different countries using format-specific algorithms and checksum validation. Supports Brazilian CPF/CNPJ, Mexican RFC, Argentine CUIT, Chilean RUT, Peruvian RUC, Colombian NIT, Spanish NIF/NIE/CIF, US EIN, and EU VAT numbers via VIES web service. Returns normalized format, validation status, and detailed reason codes indicating format or checksum errors.
 operationId: validateTaxId
 security:
   - apiKeyAuth: []

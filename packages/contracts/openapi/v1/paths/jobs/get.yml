@@ -1,7 +1,7 @@
 tags:
   - Runtime API
 summary: Get job status
-description: Retrieves the status and results of an asynchronous job
+description: Retrieves the status and results of an asynchronous batch job. Jobs are scoped to your project - you can only access jobs created by your project. Returns progress as a percentage calculated from processed vs total items. Result data is only included for completed jobs and varies by job type (validation results vs deduplication matches).
 operationId: getJobStatusById
 security:
   - apiKeyAuth: []
@@ -30,7 +30,7 @@ responses:
               type: string
               enum:
                 - pending
-                - running
+                - processing
                 - completed
                 - failed
               description: Current job status
@@ -41,7 +41,7 @@ responses:
               description: Job completion percentage
             result:
               type: [object, "null"]
-              description: Job result data
+              description: Job result data, only included when status is 'completed'. Structure varies by job type - validation jobs return validation results per item, deduplication jobs return match suggestions per item.
               additionalProperties: true
             result_url:
               type: [string, "null"]

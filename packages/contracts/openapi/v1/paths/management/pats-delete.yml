@@ -1,7 +1,10 @@
 tags:
   - Management API
 summary: Revoke Personal Access Token
-description: Revokes a personal access token by disabling it
+description: >
+  Revokes a personal access token by marking it as disabled. This prevents further use
+  of the token while maintaining the token record for audit purposes. Only the token
+  owner can revoke their own tokens, ensuring secure access control.
 operationId: revokePersonalAccessToken
 security:
   - patAuth: []

@@ -107,10 +107,9 @@
           class="text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100">Docs</a>
         <a href="/changelog.html"
           class="text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100">Changelog</a>
-        <a href="/tools/index.html"
-          class="text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100">Free Tools</a>
-        <a href="https://status.orbitcheck.io"
-          class="text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100">Status</a>
+        <a href="/early-access.html"
+          class="text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100">Early Access</a>
+
       </nav>
       <div class="hidden md:flex items-center gap-3">
         <button id="theme-toggle"
@@ -125,7 +124,7 @@
           class="inline-flex items-center justify-center px-5 py-3 rounded-md font-semibold bg-white text-indigo-700 border border-indigo-200 hover:border-indigo-300 dark:bg-gray-800 dark:text-indigo-400 dark:border-indigo-600 dark:hover:border-indigo-500">See
           pricing</a>
         <!-- Replace # with your actual signup URL -->
-        <a href="#"
+        <a href="https://dashboard.orbitcheck.io/"
           class="inline-flex items-center justify-center px-5 py-3 rounded-md font-semibold bg-indigo-600 text-white hover:bg-indigo-700">Start
           free</a>
       </div>
@@ -144,10 +143,8 @@
           <a href="/docs/index.html" class="block px-3 py-2 rounded hover:bg-gray-50 dark:hover:bg-gray-700">Docs</a>
           <a href="/changelog.html"
             class="block px-3 py-2 rounded hover:bg-gray-50 dark:hover:bg-gray-700">Changelog</a>
-          <a href="/tools/index.html" class="block px-3 py-2 rounded hover:bg-gray-50 dark:hover:bg-gray-700">Free
-            Tools</a>
-          <a href="https://status.orbitcheck.io"
-            class="block px-3 py-2 rounded hover:bg-gray-50 dark:hover:bg-gray-700">Status</a>
+
+          class="block px-3 py-2 rounded hover:bg-gray-50 dark:hover:bg-gray-700">Status</a>
           <div class="border-t border-gray-100 pt-2 flex gap-2 dark:border-gray-700">
             <button id="theme-toggle-mobile"
               class="flex-1 p-2 rounded-md text-gray-700 hover:text-gray-900 hover:bg-gray-100 dark:text-gray-300 dark:hover:text-gray-100 dark:hover:bg-gray-700 transition-colors">
@@ -194,7 +191,7 @@
           <a href="/early-access.html"
             class="inline-flex items-center justify-center px-5 py-3 rounded-md font-semibold bg-indigo-600 text-white hover:bg-indigo-700">Join
             Early Access</a>
-          <a href="#lead-form"
+          <a href="https://calendly.com/orbitcheck"
             class="inline-flex items-center justify-center px-5 py-3 rounded-md font-semibold bg-white text-indigo-700 border border-indigo-200 hover:border-indigo-300">Book
             a demo</a>
         </div>
@@ -207,7 +204,8 @@
           delivery/RTO in 30 days.</p>
         <!-- Lead form -->
         <!-- Replace # with your form endpoint (e.g., HubSpot/Formspree/Netlify). -->
-        <form id="lead-form" class="mt-5 space-y-4" method="POST" action="#">
+        <!-- Lead form -->
+        <form id="lead-form" class="mt-5 space-y-4" method="POST" action="#" onsubmit="handleRoiSubmit(event)">
           <div>
             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" for="email">Work
               email</label>
@@ -273,7 +271,7 @@
             <button type="submit"
               class="inline-flex items-center justify-center px-5 py-3 rounded-md font-semibold bg-indigo-600 text-white hover:bg-indigo-700">Get
               ROI estimate</button>
-            <a href="mailto:sales@orbitcheck.io?subject=Orbitcheck%20Demo"
+            <a href="mailto:support@orbitcheck.io?subject=Orbitcheck%20Demo"
               class="text-sm text-indigo-700 hover:underline">Email
               sales</a>
           </div>
@@ -542,9 +540,6 @@
               class="text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100">Docs</a></li>
           <li><a href="/changelog.html"
               class="text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100">Changelog</a></li>
-          <li><a href="https://status.orbitcheck.io"
-              class="text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100">Status</a></li>
-        </ul>
       </div>
       <div>
         <h5 class="font-semibold">Company</h5>
@@ -560,7 +555,6 @@
         </ul>
       </div>
       <div>
-        <h5 class="font-semibold">Free Tools</h5>
         <ul class="mt-3 space-y-2 text-sm">
           <li><a href="/tools/vat.html"
               class="text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100">VAT checker</a></li>
@@ -575,8 +569,7 @@
     </div>
     <div
       class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 border-t border-gray-100 flex flex-col md:flex-row items-center justify-between text-sm text-gray-500 dark:border-gray-700 dark:text-gray-400">
-      <p>© <span id="copyright-year">2025</span> Orbitcheck • Primary: orbitcheck.io • Backups: sanityaxis.com,
-        cleangrid.com</p>
+      <p>© <span id="copyright-year">2025</span> Orbitcheck • https://orbitcheck.io</p>
       <p>Made with ❤️ for ecommerce ops.</p>
     </div>
   </footer>
@@ -584,6 +577,55 @@
   <script>
     // Automatically update the copyright year
     document.getElementById('copyright-year').textContent = new Date().getFullYear();
+  </script>
+
+  <script>
+    async function handleRoiSubmit(event) {
+      event.preventDefault();
+
+      const form = event.target;
+      const formData = new FormData(form);
+
+      // Map monthly_orders string values to numbers
+      const monthlyOrdersMap = {
+        '< 1,000': 500,
+        '1,000–5,000': 3000,
+        '5,000–25,000': 15000,
+        '25,000–100,000': 62500,
+        '> 100,000': 150000
+      };
+
+      const monthlyOrdersValue = formData.get('monthly_orders');
+      const ordersPerMonth = monthlyOrdersMap[monthlyOrdersValue] || 1000;
+
+      // Prepare ROI request payload
+      const roiPayload = {
+        orders_per_month: ordersPerMonth
+      };
+
+      try {
+        const response = await fetch('/api/v1/roi/estimate', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(roiPayload)
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          // For now, just log the result and show a success message
+          console.log('ROI Estimate:', result);
+          alert(`ROI Estimate calculated! Estimated monthly savings: $${result.estimates.savings_per_month}`);
+        } else {
+          console.error('ROI calculation failed:', response.status, response.statusText);
+          alert('Failed to calculate ROI. Please try again or contact sales.');
+        }
+      } catch (error) {
+        console.error('Error calling ROI API:', error);
+        alert('Error calculating ROI. Please try again or contact sales.');
+      }
+    }
   </script>
 
   <script src="/theme.js"></script>

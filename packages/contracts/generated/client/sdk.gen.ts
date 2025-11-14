@@ -21,7 +21,7 @@ export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends 
 /**
  * User login
  *
- * Authenticates user and establishes server-side session with secure cookie
+ * Authenticates user credentials, establishes server-side session with secure HttpOnly cookies, generates CSRF tokens for protection, and sets session duration based on rememberMe flag (7 days default, 30 days when enabled)
  */
 export const loginUser = <ThrowOnError extends boolean = false>(options: Options<LoginUserData, ThrowOnError>) => {
     return (options.client ?? client).post<LoginUserResponses, LoginUserErrors, ThrowOnError>({
@@ -37,7 +37,7 @@ export const loginUser = <ThrowOnError extends boolean = false>(options: Options
 /**
  * Register new user
  *
- * Creates a new user account with default project and API key
+ * Creates a new user account, assigns the default free plan, creates a default project, and establishes a server-side session with secure cookies for dashboard access
  */
 export const registerUser = <ThrowOnError extends boolean = false>(options: Options<RegisterUserData, ThrowOnError>) => {
     return (options.client ?? client).post<RegisterUserResponses, RegisterUserErrors, ThrowOnError>({
@@ -53,7 +53,7 @@ export const registerUser = <ThrowOnError extends boolean = false>(options: Opti
 /**
  * User logout
  *
- * Logs out the current user by clearing the session
+ * Logs out the current user by destroying the server-side session and clearing all authentication cookies (session, CSRF tokens)
  */
 export const logoutUser = <ThrowOnError extends boolean = false>(options?: Options<LogoutUserData, ThrowOnError>) => {
     return (options?.client ?? client).post<LogoutUserResponses, LogoutUserErrors, ThrowOnError>({
@@ -76,7 +76,7 @@ export const logoutUser = <ThrowOnError extends boolean = false>(options?: Optio
 /**
  * List API keys
  *
- * Retrieves API keys for the authenticated project
+ * Retrieves all API keys associated with the authenticated project, ordered by creation date (newest first). Returns key metadata including ID, prefix, name, status, and usage timestamps.
  */
 export const listApiKeys = <ThrowOnError extends boolean = false>(options?: Options<ListApiKeysData, ThrowOnError>) => {
     return (options?.client ?? client).get<ListApiKeysResponses, ListApiKeysErrors, ThrowOnError>({
@@ -99,7 +99,7 @@ export const listApiKeys = <ThrowOnError extends boolean = false>(options?: Opti
 /**
  * Create API key
  *
- * Generates a new API key for the authenticated project
+ * Generates a new API key for the authenticated project. Creates a cryptographically secure random key, encrypts and stores it securely in the database, and automatically creates a corresponding personal access token for internal use. The full key is returned only once for security reasons.
  */
 export const createApiKey = <ThrowOnError extends boolean = false>(options: Options<CreateApiKeyData, ThrowOnError>) => {
     return (options.client ?? client).post<CreateApiKeyResponses, CreateApiKeyErrors, ThrowOnError>({
@@ -126,7 +126,7 @@ export const createApiKey = <ThrowOnError extends boolean = false>(options: Opti
 /**
  * Revoke API key
  *
- * Revokes an API key by setting its status to revoked
+ * Revokes an API key by marking it as inactive. The key becomes unusable for authentication but remains in the database for audit purposes. This is a soft delete operation that changes the key's status to 'revoked'.
  */
 export const revokeApiKey = <ThrowOnError extends boolean = false>(options: Options<RevokeApiKeyData, ThrowOnError>) => {
     return (options.client ?? client).delete<RevokeApiKeyResponses, RevokeApiKeyErrors, ThrowOnError>({
@@ -418,7 +418,7 @@ export const deleteCustomRule = <ThrowOnError extends boolean = false>(options: 
 /**
  * Validate email
  *
- * Validates an email address
+ * Validates an email address format using industry-standard parsing, checks for disposable email domain detection via Redis-backed database, performs DNS MX record validation with A/AAAA record fallback for domain verification, and provides normalized email format in lowercase ASCII. Results are cached for performance and include detailed validation reason codes.
  */
 export const validateEmail = <ThrowOnError extends boolean = false>(options: Options<ValidateEmailData, ThrowOnError>) => {
     return (options.client ?? client).post<ValidateEmailResponses, ValidateEmailErrors, ThrowOnError>({
@@ -453,7 +453,7 @@ export const validateEmail = <ThrowOnError extends boolean = false>(options: Opt
 /**
  * Validate phone
  *
- * Validates a phone number
+ * Validates and formats phone numbers to international E.164 standard using libphonenumber-js library. Supports country-specific validation rules and optional country hints for ambiguous numbers. Can initiate OTP (One-Time Password) verification via Twilio SMS when requested, returning verification SID for subsequent OTP confirmation. Results include normalized E.164 format and detailed reason codes.
  */
 export const validatePhone = <ThrowOnError extends boolean = false>(options: Options<ValidatePhoneData, ThrowOnError>) => {
     return (options.client ?? client).post<ValidatePhoneResponses, ValidatePhoneErrors, ThrowOnError>({
@@ -488,7 +488,7 @@ export const validatePhone = <ThrowOnError extends boolean = false>(options: Opt
 /**
  * Validate address
  *
- * Validates an address
+ * Validates and normalizes a postal address comprehensively. Performs address parsing and standardization using libpostal, detects P.O. Box addresses, verifies postal code-city matching against GeoNames database, geocodes the address using LocationIQ/Nominatim with Google Maps fallback, and validates geographic coordinates are within country boundaries. Returns normalized address components, validation status, geocoding results, and detailed reason codes.
  */
 export const validateAddress = <ThrowOnError extends boolean = false>(options: Options<ValidateAddressData, ThrowOnError>) => {
     return (options.client ?? client).post<ValidateAddressResponses, ValidateAddressErrors, ThrowOnError>({
@@ -523,7 +523,7 @@ export const validateAddress = <ThrowOnError extends boolean = false>(options: O
 /**
  * Validate tax ID
  *
- * Validates a tax identification number
+ * Validates various tax identification numbers for different countries using format-specific algorithms and checksum validation. Supports Brazilian CPF/CNPJ, Mexican RFC, Argentine CUIT, Chilean RUT, Peruvian RUC, Colombian NIT, Spanish NIF/NIE/CIF, US EIN, and EU VAT numbers via VIES web service. Returns normalized format, validation status, and detailed reason codes indicating format or checksum errors.
  */
 export const validateTaxId = <ThrowOnError extends boolean = false>(options: Options<ValidateTaxIdData, ThrowOnError>) => {
     return (options.client ?? client).post<ValidateTaxIdResponses, ValidateTaxIdErrors, ThrowOnError>({
@@ -558,7 +558,7 @@ export const validateTaxId = <ThrowOnError extends boolean = false>(options: Opt
 /**
  * Validate name
  *
- * Validates and normalizes a name string
+ * Validates and normalizes a person's name string. Checks for valid length (1-100 characters), ensures only alphabetic characters, spaces, hyphens, apostrophes, and periods are used, and provides normalized formatting with detailed validation reason codes for any issues found.
  */
 export const validateName = <ThrowOnError extends boolean = false>(options: Options<ValidateNameData, ThrowOnError>) => {
     return (options.client ?? client).post<ValidateNameResponses, ValidateNameErrors, ThrowOnError>({
@@ -663,7 +663,8 @@ export const verifyPhoneOtp = <ThrowOnError extends boolean = false>(options: Op
 /**
  * Get event logs
  *
- * Retrieves event logs for the project with optional filters
+ * Retrieves paginated event logs for the project with support for filtering by reason codes, API endpoints, and HTTP status codes. Results are ordered by creation time (newest first) and include pagination with cursor-based navigation for efficient retrieval of large datasets. Each log entry contains detailed information about API requests including timestamps, endpoints, response status, and associated metadata.
+ *
  */
 export const getLogs = <ThrowOnError extends boolean = false>(options?: Options<GetLogsData, ThrowOnError>) => {
     return (options?.client ?? client).get<GetLogsResponses, GetLogsErrors, ThrowOnError>({
@@ -686,7 +687,8 @@ export const getLogs = <ThrowOnError extends boolean = false>(options?: Options<
 /**
  * Get usage statistics
  *
- * Retrieves usage statistics for the project
+ * Retrieves comprehensive usage statistics and analytics for the project including total validations and orders processed, daily breakdowns over the specified period, most frequent validation failure reason codes, and estimated cache hit ratio. Statistics cover the last 30 days by default and help monitor API usage patterns and system performance.
+ *
  */
 export const getUsage = <ThrowOnError extends boolean = false>(options?: Options<GetUsageData, ThrowOnError>) => {
     return (options?.client ?? client).get<GetUsageResponses, GetUsageErrors, ThrowOnError>({
@@ -709,7 +711,8 @@ export const getUsage = <ThrowOnError extends boolean = false>(options?: Options
 /**
  * Delete log entry
  *
- * Deletes a specific log entry
+ * Deletes a specific event log entry by its unique identifier. The operation ensures that only log entries belonging to the authenticated user's project can be deleted, providing secure access control for log management.
+ *
  */
 export const deleteLog = <ThrowOnError extends boolean = false>(options: Options<DeleteLogData, ThrowOnError>) => {
     return (options.client ?? client).delete<DeleteLogResponses, DeleteLogErrors, ThrowOnError>({
@@ -732,7 +735,8 @@ export const deleteLog = <ThrowOnError extends boolean = false>(options: Options
 /**
  * List Personal Access Tokens
  *
- * Retrieves personal access tokens for the authenticated user
+ * Retrieves all personal access tokens associated with the authenticated user. Each token includes detailed metadata such as creation time, expiration date, access scopes, usage tracking (last used timestamp and IP), and current status. Tokens are ordered by creation date with the most recent first.
+ *
  */
 export const listPersonalAccessTokens = <ThrowOnError extends boolean = false>(options?: Options<ListPersonalAccessTokensData, ThrowOnError>) => {
     return (options?.client ?? client).get<ListPersonalAccessTokensResponses, ListPersonalAccessTokensErrors, ThrowOnError>({
@@ -755,7 +759,8 @@ export const listPersonalAccessTokens = <ThrowOnError extends boolean = false>(o
 /**
  * Create Personal Access Token
  *
- * Creates a new personal access token for management API access
+ * Creates a new personal access token with configurable permissions and restrictions. The token can be scoped to specific API operations, environments (test/live), and optionally restricted to specific IP addresses or projects. If no expiration is specified, a default expiration period is applied. The full token value is returned only once upon creation and should be securely stored by the client.
+ *
  */
 export const createPersonalAccessToken = <ThrowOnError extends boolean = false>(options: Options<CreatePersonalAccessTokenData, ThrowOnError>) => {
     return (options.client ?? client).post<CreatePersonalAccessTokenResponses, CreatePersonalAccessTokenErrors, ThrowOnError>({
@@ -782,7 +787,8 @@ export const createPersonalAccessToken = <ThrowOnError extends boolean = false>(
 /**
  * Revoke Personal Access Token
  *
- * Revokes a personal access token by disabling it
+ * Revokes a personal access token by marking it as disabled. This prevents further use of the token while maintaining the token record for audit purposes. Only the token owner can revoke their own tokens, ensuring secure access control.
+ *
  */
 export const revokePersonalAccessToken = <ThrowOnError extends boolean = false>(options: Options<RevokePersonalAccessTokenData, ThrowOnError>) => {
     return (options.client ?? client).delete<RevokePersonalAccessTokenResponses, RevokePersonalAccessTokenErrors, ThrowOnError>({
@@ -805,7 +811,7 @@ export const revokePersonalAccessToken = <ThrowOnError extends boolean = false>(
 /**
  * Get tenant settings
  *
- * Retrieves tenant settings including country defaults, formatting, and risk thresholds
+ * Retrieves the current tenant (project) settings including country-specific defaults, data formatting preferences, and risk assessment thresholds. If no custom settings have been configured, returns default empty configuration objects that can be used as a baseline for customization.
  *
  */
 export const getSettings = <ThrowOnError extends boolean = false>(options?: Options<GetSettingsData, ThrowOnError>) => {
@@ -829,7 +835,7 @@ export const getSettings = <ThrowOnError extends boolean = false>(options?: Opti
 /**
  * Update tenant settings
  *
- * Updates tenant settings including country defaults, formatting, and risk thresholds
+ * Updates tenant (project) settings for country defaults, formatting preferences, and risk thresholds. The operation performs an upsert - if settings don't exist they will be created, otherwise existing settings will be updated. All three setting categories are optional and can be updated independently.
  *
  */
 export const updateSettings = <ThrowOnError extends boolean = false>(options: Options<UpdateSettingsData, ThrowOnError>) => {
@@ -857,7 +863,8 @@ export const updateSettings = <ThrowOnError extends boolean = false>(options: Op
 /**
  * Erase user data
  *
- * Initiates data erasure for GDPR/CCPA compliance
+ * Initiates a comprehensive data erasure process for GDPR/CCPA compliance. Permanently deletes all project-related data including event logs, API keys, webhooks, settings, background jobs, personal access tokens, and audit logs. The user's account information is anonymized by replacing email and password with placeholder values. A confirmation email is sent to the user upon successful completion of the erasure process.
+ *
  */
 export const eraseData = <ThrowOnError extends boolean = false>(options: Options<EraseDataData, ThrowOnError>) => {
     return (options.client ?? client).post<EraseDataResponses, EraseDataErrors, ThrowOnError>({
@@ -884,7 +891,8 @@ export const eraseData = <ThrowOnError extends boolean = false>(options: Options
 /**
  * Create Stripe Checkout session
  *
- * Creates a Stripe Checkout session with base plan and usage-based line items
+ * Creates a Stripe Checkout session for subscription billing. Calculates the total cost including the base plan and additional store addons based on the number of active stores beyond the included stores in the plan. The session supports promotion codes and redirects users to success/cancel URLs after payment completion.
+ *
  */
 export const createCheckoutSession = <ThrowOnError extends boolean = false>(options?: Options<CreateCheckoutSessionData, ThrowOnError>) => {
     return (options?.client ?? client).post<CreateCheckoutSessionResponses, CreateCheckoutSessionErrors, ThrowOnError>({
@@ -907,7 +915,8 @@ export const createCheckoutSession = <ThrowOnError extends boolean = false>(opti
 /**
  * Create Stripe Customer Portal session
  *
- * Creates a Stripe Customer Portal session for managing billing
+ * Creates a Stripe Customer Portal session that allows customers to manage their billing information including subscription details, payment methods, billing history, and invoices. The portal is hosted by Stripe and provides a secure interface for customers to update their billing settings without requiring direct API access.
+ *
  */
 export const createCustomerPortalSession = <ThrowOnError extends boolean = false>(options?: Options<CreateCustomerPortalSessionData, ThrowOnError>) => {
     return (options?.client ?? client).post<CreateCustomerPortalSessionResponses, CreateCustomerPortalSessionErrors, ThrowOnError>({
@@ -1050,7 +1059,7 @@ export const estimateRoi = <ThrowOnError extends boolean = false>(options: Optio
 /**
  * Deduplicate customer
  *
- * Searches for existing customers using deterministic and fuzzy matching
+ * Searches for existing customers in your project using multiple matching strategies. Performs exact matching on normalized email and phone fields, plus fuzzy matching on customer names with similarity scoring. Returns potential duplicates with confidence scores and suggested actions for handling the matches.
  */
 export const dedupeCustomer = <ThrowOnError extends boolean = false>(options: Options<DedupeCustomerData, ThrowOnError>) => {
     return (options.client ?? client).post<DedupeCustomerResponses, DedupeCustomerErrors, ThrowOnError>({
@@ -1085,7 +1094,7 @@ export const dedupeCustomer = <ThrowOnError extends boolean = false>(options: Op
 /**
  * Deduplicate address
  *
- * Searches for existing addresses using deterministic and fuzzy matching
+ * Searches for existing addresses in your project using address normalization and multiple matching strategies. First normalizes the input address, then performs exact matching on address hashes, postal code combinations, and fuzzy matching on street addresses and cities. Returns potential duplicates with confidence scores and suggested actions.
  */
 export const dedupeAddress = <ThrowOnError extends boolean = false>(options: Options<DedupeAddressData, ThrowOnError>) => {
     return (options.client ?? client).post<DedupeAddressResponses, DedupeAddressErrors, ThrowOnError>({
@@ -1120,7 +1129,7 @@ export const dedupeAddress = <ThrowOnError extends boolean = false>(options: Opt
 /**
  * Merge deduplicated records
  *
- * Merges multiple customer or address records into a canonical one
+ * Consolidates multiple duplicate customer or address records into a single canonical record. Updates the database to mark the specified records as merged, setting their merged_to field to point to the canonical record. All specified IDs must belong to your project and the canonical record must be valid.
  */
 export const mergeDeduplicated = <ThrowOnError extends boolean = false>(options: Options<MergeDeduplicatedData, ThrowOnError>) => {
     return (options.client ?? client).post<MergeDeduplicatedResponses, MergeDeduplicatedErrors, ThrowOnError>({
@@ -1155,7 +1164,7 @@ export const mergeDeduplicated = <ThrowOnError extends boolean = false>(options:
 /**
  * Batch validate data
  *
- * Performs batch validation of emails, phones, addresses, or tax IDs asynchronously
+ * Performs asynchronous batch validation of emails, phones, addresses, or tax IDs. Creates a background job that processes the data and stores results for later retrieval. Maximum 10,000 items per request. Use the returned job_id to check status and retrieve results via the jobs endpoint.
  */
 export const batchValidate = <ThrowOnError extends boolean = false>(options: Options<BatchValidateData, ThrowOnError>) => {
     return (options.client ?? client).post<BatchValidateResponses, BatchValidateErrors, ThrowOnError>({
@@ -1190,7 +1199,7 @@ export const batchValidate = <ThrowOnError extends boolean = false>(options: Opt
 /**
  * Batch deduplicate data
  *
- * Performs batch deduplication of customers or addresses asynchronously
+ * Performs asynchronous batch deduplication of multiple customers or addresses. Accepts an array of customer or address objects and processes them in the background using the same matching logic as individual dedupe endpoints. Creates a job that can be tracked via the jobs endpoint. Maximum 10,000 items per request. Results include match suggestions for each input item.
  */
 export const batchDedupe = <ThrowOnError extends boolean = false>(options: Options<BatchDedupeData, ThrowOnError>) => {
     return (options.client ?? client).post<BatchDedupeResponses, BatchDedupeErrors, ThrowOnError>({
@@ -1225,7 +1234,7 @@ export const batchDedupe = <ThrowOnError extends boolean = false>(options: Optio
 /**
  * Batch evaluate orders
  *
- * Performs batch evaluation of orders for risk and rules asynchronously
+ * Performs asynchronous batch evaluation of orders for risk assessment and rule validation. Creates a background job that analyzes each order against fraud detection rules and risk models, storing detailed results for later retrieval. Maximum 10,000 orders per request. Each order must include order_id and customer_email. Use the returned job_id to check status and retrieve results via the jobs endpoint.
  */
 export const batchEvaluateOrders = <ThrowOnError extends boolean = false>(options: Options<BatchEvaluateOrdersData, ThrowOnError>) => {
     return (options.client ?? client).post<BatchEvaluateOrdersResponses, BatchEvaluateOrdersErrors, ThrowOnError>({
@@ -1260,7 +1269,7 @@ export const batchEvaluateOrders = <ThrowOnError extends boolean = false>(option
 /**
  * Get job status
  *
- * Retrieves the status and results of an asynchronous job
+ * Retrieves the status and results of an asynchronous batch job. Jobs are scoped to your project - you can only access jobs created by your project. Returns progress as a percentage calculated from processed vs total items. Result data is only included for completed jobs and varies by job type (validation results vs deduplication matches).
  */
 export const getJobStatusById = <ThrowOnError extends boolean = false>(options: Options<GetJobStatusByIdData, ThrowOnError>) => {
     return (options.client ?? client).get<GetJobStatusByIdResponses, GetJobStatusByIdErrors, ThrowOnError>({

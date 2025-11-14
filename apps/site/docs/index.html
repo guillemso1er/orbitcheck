@@ -46,10 +46,8 @@
                     class="text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100">Docs</a>
                 <a href="/changelog.html"
                     class="text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100">Changelog</a>
-                <a href="/tools/index.html"
-                    class="text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100">Free Tools</a>
-                <a href="https://status.orbitcheck.io"
-                    class="text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100">Status</a>
+                <a href="/early-access.html"
+                    class="text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100">Early Access</a>
             </nav>
             <div class="hidden md:flex items-center gap-3">
                 <button id="theme-toggle"
@@ -64,7 +62,7 @@
                     class="inline-flex items-center justify-center px-5 py-3 rounded-md font-semibold bg-white text-indigo-700 border border-indigo-200 hover:border-indigo-300 dark:bg-gray-800 dark:text-indigo-400 dark:border-indigo-600 dark:hover:border-indigo-500">See
                     pricing</a>
                 <!-- Replace # with your actual signup URL -->
-                <a href="#"
+                <a href="https://dashboard.orbitcheck.io"
                     class="inline-flex items-center justify-center px-5 py-3 rounded-md font-semibold bg-indigo-600 text-white hover:bg-indigo-700">Start
                     free</a>
             </div>
@@ -86,11 +84,8 @@
                         class="block px-3 py-2 rounded hover:bg-gray-50 dark:hover:bg-gray-700">Docs</a>
                     <a href="/changelog.html"
                         class="block px-3 py-2 rounded hover:bg-gray-50 dark:hover:bg-gray-700">Changelog</a>
-                    <a href="/tools/index.html"
-                        class="block px-3 py-2 rounded hover:bg-gray-50 dark:hover:bg-gray-700">Free
-                        Tools</a>
-                    <a href="https://status.orbitcheck.io"
-                        class="block px-3 py-2 rounded hover:bg-gray-50 dark:hover:bg-gray-700">Status</a>
+
+                    class="block px-3 py-2 rounded hover:bg-gray-50 dark:hover:bg-gray-700">Status</a>
                     <div class="border-t border-gray-100 pt-2 flex gap-2 dark:border-gray-700">
                         <button id="theme-toggle-mobile"
                             class="flex-1 p-2 rounded-md text-gray-700 hover:text-gray-900 hover:bg-gray-100 dark:text-gray-300 dark:hover:text-gray-100 dark:hover:bg-gray-700 transition-colors">
@@ -116,10 +111,10 @@
             <h2 class="text-4xl font-bold mb-4">Explore Our API</h2>
             <p class="text-xl mb-8 text-indigo-100">View interactive documentation with examples and test endpoints</p>
             <div class="flex flex-col sm:flex-row gap-4 justify-center">
-                <a href="/reference"
+                <a href="https://api.orbitcheck.io/documentation"
                     class="inline-flex items-center justify-center px-8 py-4 rounded-lg font-semibold bg-white text-indigo-600 hover:bg-gray-50 transition-colors">📖
                     View API Documentation</a>
-                <a href="https://dashboard.orbitcheck.io/auth/login"
+                <a href="https://dashboard.orbitcheck.io"
                     class="inline-flex items-center justify-center px-8 py-4 rounded-lg font-semibold bg-indigo-500 text-white hover:bg-indigo-400 transition-colors">⚡
                     Try Live in Dashboard</a>
             </div>
@@ -174,51 +169,6 @@
                         security and 99.9% uptime.</p>
                 </div>
             </div>
-        </div>
-    </section>
-
-    <section class="py-20 bg-white dark:bg-gray-900">
-        <div class="max-w-4xl mx-auto px-4">
-            <h3 class="text-3xl font-bold text-center mb-12 text-gray-900 dark:text-gray-100">Quick Start Example</h3>
-            <div class="mb-12">
-                <pre
-                    class="bg-gray-900 dark:bg-slate-900 text-gray-100 dark:text-slate-200 p-6 rounded-lg overflow-x-auto text-sm leading-relaxed"><code># Validate an email address
-curl -X POST "https://api.orbitcheck.io/v1/validate/email" \
-  -H "Authorization: Bearer your_api_key" \
-  -H "Content-Type: application/json" \
-  -d '{"email": "user@example.com"}'
-
-# Response
-{
-  "valid": true,
-  "normalized": "user@example.com",
-  "domain": "example.com",
-  "mx_found": true,
-  "disposable": false,
-  "reason_codes": []
-}</code></pre>
-            </div>
-
-            <h3 class="text-3xl font-bold text-center mb-12 text-gray-900 dark:text-gray-100">Order Risk Assessment</h3>
-            <pre
-                class="bg-gray-900 dark:bg-slate-900 text-gray-100 dark:text-slate-200 p-6 rounded-lg overflow-x-auto text-sm leading-relaxed"><code># Evaluate order for fraud risk
-curl -X POST "https://api.orbitcheck.io/v1/orders/evaluate" \
-  -H "Authorization: Bearer your_api_key" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "customer": {
-      "email": "customer@example.com",
-      "phone": "+1234567890",
-      "name": "John Doe"
-    },
-    "order": {
-      "amount": 99.99,
-      "currency": "USD",
-      "items": [...]
-    }
-  }'
-
-# Response includes risk score, recommended action, and detailed analysis</code></pre>
         </div>
     </section>
 

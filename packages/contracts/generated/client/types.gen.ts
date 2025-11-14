@@ -1006,7 +1006,7 @@ export type ListApiKeysError = ListApiKeysErrors[keyof ListApiKeysErrors];
 
 export type ListApiKeysResponses = {
     /**
-     * List of API keys
+     * List of API keys for the project
      */
     200: {
         data?: Array<{
@@ -1044,7 +1044,7 @@ export type ListApiKeysResponse = ListApiKeysResponses[keyof ListApiKeysResponse
 export type CreateApiKeyData = {
     body: {
         /**
-         * Optional name for the API key
+         * Optional human-readable name for the API key
          */
         name?: string;
     };
@@ -1083,21 +1083,21 @@ export type CreateApiKeyResponses = {
      */
     201: {
         /**
-         * API key ID
+         * Unique identifier for the API key
          */
         id?: string;
         /**
-         * API key prefix (first 6 characters)
+         * API key prefix (first 6 characters) for identification
          */
         prefix?: string;
         /**
-         * The full API key (shown only once)
+         * The complete API key (returned only once for security)
          */
         full_key?: string;
         /**
-         * API key status
+         * API key status (always 'active' for new keys)
          */
-        status?: string;
+        status?: 'active';
         /**
          * Creation timestamp
          */
@@ -1112,7 +1112,7 @@ export type RevokeApiKeyData = {
     body?: never;
     path: {
         /**
-         * ID of the API key to revoke
+         * Unique identifier of the API key to revoke
          */
         id: string;
     };
@@ -1141,7 +1141,7 @@ export type RevokeApiKeyErrors = {
         request_id?: string;
     };
     /**
-     * API key not found
+     * API key not found or does not belong to the authenticated project
      */
     404: {
         error?: {
@@ -1169,13 +1169,13 @@ export type RevokeApiKeyResponses = {
      */
     200: {
         /**
-         * API key ID
+         * API key ID that was revoked
          */
         id?: string;
         /**
-         * API key status
+         * Updated status of the API key (always 'revoked')
          */
-        status?: string;
+        status?: 'revoked';
         request_id?: string;
     };
 };
@@ -4500,7 +4500,7 @@ export type BatchValidateData = {
          */
         type: 'email' | 'phone' | 'address' | 'tax-id';
         /**
-         * Array of items to validate
+         * Array of items to validate (1-10,000 items)
          */
         data: Array<{
             [key: string]: unknown;
@@ -4513,7 +4513,7 @@ export type BatchValidateData = {
 
 export type BatchValidateErrors = {
     /**
-     * Bad request
+     * Bad request - invalid input data or exceeds item limit
      */
     400: {
         error?: {
@@ -4550,19 +4550,19 @@ export type BatchValidateError = BatchValidateErrors[keyof BatchValidateErrors];
 
 export type BatchValidateResponses = {
     /**
-     * Batch validation job started
+     * Batch validation job accepted and queued for processing
      */
     202: {
         /**
-         * Unique job identifier
+         * Unique job identifier for tracking progress and retrieving results
          */
         job_id?: string;
         /**
-         * Job status
+         * Job status (always 'pending' when job is created)
          */
         status?: 'pending';
         /**
-         * Request identifier
+         * Request identifier for debugging
          */
         request_id?: string;
     };
@@ -4577,7 +4577,7 @@ export type BatchDedupeData = {
          */
         type: 'customers' | 'addresses';
         /**
-         * Array of items to deduplicate
+         * Array of items to deduplicate (1-10,000 items)
          */
         data: Array<{
             [key: string]: unknown;
@@ -4590,7 +4590,7 @@ export type BatchDedupeData = {
 
 export type BatchDedupeErrors = {
     /**
-     * Bad request
+     * Bad request - invalid input data or exceeds item limit
      */
     400: {
         error?: {
@@ -4627,19 +4627,19 @@ export type BatchDedupeError = BatchDedupeErrors[keyof BatchDedupeErrors];
 
 export type BatchDedupeResponses = {
     /**
-     * Batch deduplication job started
+     * Batch deduplication job accepted and queued for processing
      */
     202: {
         /**
-         * Unique job identifier
+         * Unique job identifier for tracking progress and retrieving results
          */
         job_id?: string;
         /**
-         * Job status
+         * Job status (always 'pending' when job is created)
          */
         status?: 'pending';
         /**
-         * Request identifier
+         * Request identifier for debugging
          */
         request_id?: string;
     };
@@ -4655,27 +4655,27 @@ export type BatchEvaluateOrdersData = {
              */
             order_id: string;
             /**
-             * Customer email address
+             * Customer email address for risk assessment
              */
             customer_email: string;
             /**
-             * Customer phone number
+             * Customer phone number (optional, used for additional validation)
              */
             customer_phone?: string;
             /**
-             * Order total amount
+             * Order total amount in the specified currency
              */
             total_amount?: number;
             /**
-             * Currency code (e.g., USD, EUR)
+             * Currency code (e.g., USD, EUR) - defaults to USD if not specified
              */
             currency?: string;
             /**
-             * Comma-separated list of items
+             * Comma-separated list of item names or SKUs in the order
              */
             items?: string;
             /**
-             * Shipping address
+             * Full shipping address for delivery risk assessment
              */
             shipping_address?: string;
         }>;
@@ -4687,7 +4687,7 @@ export type BatchEvaluateOrdersData = {
 
 export type BatchEvaluateOrdersErrors = {
     /**
-     * Bad request
+     * Bad request - missing required fields, invalid data, or exceeds order limit
      */
     400: {
         error?: {
@@ -4724,19 +4724,19 @@ export type BatchEvaluateOrdersError = BatchEvaluateOrdersErrors[keyof BatchEval
 
 export type BatchEvaluateOrdersResponses = {
     /**
-     * Batch order evaluation job started
+     * Batch order evaluation job accepted and queued for processing
      */
     202: {
         /**
-         * Unique job identifier
+         * Unique job identifier for tracking progress and retrieving results
          */
         job_id?: string;
         /**
-         * Job status
+         * Job status (always 'pending' when job is created)
          */
         status?: 'pending';
         /**
-         * Request identifier
+         * Request identifier for debugging
          */
         request_id?: string;
     };
@@ -4785,13 +4785,13 @@ export type GetJobStatusByIdResponses = {
         /**
          * Current job status
          */
-        status?: 'pending' | 'running' | 'completed' | 'failed';
+        status?: 'pending' | 'processing' | 'completed' | 'failed';
         /**
          * Job completion percentage
          */
         progress?: number;
         /**
-         * Job result data
+         * Job result data, only included when status is 'completed'. Structure varies by job type - validation jobs return validation results per item, deduplication jobs return match suggestions per item.
          */
         result?: {
             [key: string]: unknown;

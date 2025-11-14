@@ -1,7 +1,7 @@
 tags:
   - Runtime API
 summary: Batch validate data
-description: Performs batch validation of emails, phones, addresses, or tax IDs asynchronously
+description: Performs asynchronous batch validation of emails, phones, addresses, or tax IDs. Creates a background job that processes the data and stores results for later retrieval. Maximum 10,000 items per request. Use the returned job_id to check status and retrieve results via the jobs endpoint.
 operationId: batchValidate
 security:
   - apiKeyAuth: []
@@ -30,11 +30,12 @@ requestBody:
             type: array
             items:
               type: object
+            minItems: 1
             maxItems: 10000
-            description: Array of items to validate
+            description: Array of items to validate (1-10,000 items)
 responses:
   '202':
-    description: Batch validation job started
+    description: Batch validation job accepted and queued for processing
     content:
       application/json:
         schema:
@@ -42,17 +43,17 @@ responses:
           properties:
             job_id:
               type: string
-              description: Unique job identifier
+              description: Unique job identifier for tracking progress and retrieving results
             status:
               type: string
               enum:
                 - pending
-              description: Job status
+              description: Job status (always 'pending' when job is created)
             request_id:
               type: string
-              description: Request identifier
+              description: Request identifier for debugging
   '400':
-    description: Bad request
+    description: Bad request - invalid input data or exceeds item limit
     content:
       application/json:
         schema:

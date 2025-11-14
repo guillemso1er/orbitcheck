@@ -1,0 +1,6 @@
+- When sturggling debuggin an issue add debug logs to help trace the issue.
+- Contract first project, specs on packages/contracts/openapi, after aditions/edits/removals of endpoints run at the root pnpm generate command.
+- Check package.json scripts for running running commangs
+- Monorepo structure
+- Services/Apps: apps/api, apps/dashboard, apps/site
+- Run single tests when there is too much output from all tests.

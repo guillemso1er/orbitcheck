@@ -36,7 +36,7 @@ export async function createApiKey(
         const project_id = (request as any).project_id!;
         request.log.info('Creating API key for project_id: ' + project_id);
         const body = request.body as CreateApiKeyData['body'];
-        const { name } = body;
+        const name = body?.name;
         const request_id = generateRequestId();
 
         // Generate full key

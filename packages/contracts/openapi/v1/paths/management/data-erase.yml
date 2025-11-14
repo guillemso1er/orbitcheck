@@ -1,7 +1,12 @@
 tags:
   - Management API
 summary: Erase user data
-description: Initiates data erasure for GDPR/CCPA compliance
+description: >
+  Initiates a comprehensive data erasure process for GDPR/CCPA compliance. Permanently deletes
+  all project-related data including event logs, API keys, webhooks, settings, background jobs,
+  personal access tokens, and audit logs. The user's account information is anonymized by
+  replacing email and password with placeholder values. A confirmation email is sent to the
+  user upon successful completion of the erasure process.
 operationId: eraseData
 security:
   - patAuth: []

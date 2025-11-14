@@ -1,7 +1,12 @@
 tags:
   - Management API
 summary: Create Personal Access Token
-description: Creates a new personal access token for management API access
+description: >
+  Creates a new personal access token with configurable permissions and restrictions.
+  The token can be scoped to specific API operations, environments (test/live), and
+  optionally restricted to specific IP addresses or projects. If no expiration is specified,
+  a default expiration period is applied. The full token value is returned only once
+  upon creation and should be securely stored by the client.
 operationId: createPersonalAccessToken
 security:
   - patAuth: []

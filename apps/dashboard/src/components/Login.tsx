@@ -163,14 +163,14 @@ const useFormValidation = (_form: LoginForm, isRegister: boolean) => {
   };
 };
 
-const Login: React.FC = () => {
+const Login: React.FC<{ isSignup?: boolean }> = ({ isSignup = false }) => {
   const [form, setForm] = useState<LoginForm>({
     email: '',
     password: '',
     confirm_password: '',
     rememberMe: false
   });
-  const [isRegister, setIsRegister] = useState(false);
+  const [isRegister, setIsRegister] = useState(isSignup);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);

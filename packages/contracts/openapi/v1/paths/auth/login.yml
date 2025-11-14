@@ -1,7 +1,7 @@
 tags:
   - UI Endpoints
 summary: User login
-description: Authenticates user and establishes server-side session with secure cookie
+description: Authenticates user credentials, establishes server-side session with secure HttpOnly cookies, generates CSRF tokens for protection, and sets session duration based on rememberMe flag (7 days default, 30 days when enabled)
 operationId: loginUser
 security: []
 requestBody:

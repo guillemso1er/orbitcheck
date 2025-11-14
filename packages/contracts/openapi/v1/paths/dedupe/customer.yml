@@ -1,7 +1,7 @@
 tags:
   - Runtime API
 summary: Deduplicate customer
-description: Searches for existing customers using deterministic and fuzzy matching
+description: Searches for existing customers in your project using multiple matching strategies. Performs exact matching on normalized email and phone fields, plus fuzzy matching on customer names with similarity scoring. Returns potential duplicates with confidence scores and suggested actions for handling the matches.
 operationId: dedupeCustomer
 security:
   - apiKeyAuth: []
