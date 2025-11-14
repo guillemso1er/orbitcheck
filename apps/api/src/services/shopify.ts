@@ -1,5 +1,7 @@
 import type { Pool } from "pg";
 
+export type Mode = 'disabled' | 'enabled' | 'test';
+
 export interface ShopifyShop {
     id: string;
     shop_domain: string;
