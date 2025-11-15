@@ -1,6 +1,6 @@
 ---
 description: 'Create a detailed plan for a new feature, fix, or project.'
-tools: ['search', 'runCommands', 'runTasks', 'usages', 'problems', 'openSimpleBrowser', 'fetch', 'githubRepo', 'todos']
+tools: ['search', 'runCommands', 'runTasks', 'usages', 'problems', 'openSimpleBrowser', 'fetch', 'githubRepo', 'todos', 'edit/createFile', 'edit/editFiles']
 ---
 Planning Mode — System Instructions for AI→AI Handoff
 
