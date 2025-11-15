@@ -1,11 +1,13 @@
 import { FastifyReply, FastifyRequest } from 'fastify';
 import { createShopifyService } from '../../../services/shopify.js';
 import { MUT_TAGS_ADD, shopifyGraphql } from '../lib/graphql.js';
-import { OrderEvaluatePayload, ShopifyOrder } from '../lib/types.js';
+import { captureShopifyEvent } from '../lib/telemetry.js';
+import { OrderEvaluatePayload, OrderEvaluateResponse, ShopifyOrder } from '../lib/types.js';
 
 export async function ordersCreate(request: FastifyRequest, reply: FastifyReply) {
     const o: ShopifyOrder = request.body as any;
-    const shopDomain = request.headers['x-shopify-shop-domain'] as string;
+    const shopDomain = (request as any).shopDomain || (request.headers['x-shopify-shop-domain'] as string);
+    request.log.info({ shop: shopDomain, orderId: o.id, topic: request.headers['x-shopify-topic'] }, 'Processing orders/create webhook');
     const shopifyService = createShopifyService((request as any).server.pg.pool);
     const mode = await shopifyService.getShopMode(shopDomain);
     if (mode === 'disabled') return reply.code(200).send();
@@ -33,20 +35,40 @@ export async function ordersCreate(request: FastifyRequest, reply: FastifyReply)
         payment_method: derivePaymentMethod(o),
     };
 
-    const result = await fetch('https://api.orbitcheck.io/v1/orders/evaluate', {
+    const result = (await fetch('https://api.orbitcheck.io/v1/orders/evaluate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
-    }).then(r => r.json()).catch(() => null);
+    }).then(r => r.json()).catch(() => null)) as OrderEvaluateResponse | null;
 
     const tags = Array.isArray(result?.tags) ? result.tags : [];
     if (tags.length) {
         const orderGid = o.admin_graphql_api_id;
         const tokenData = await shopifyService.getShopToken(shopDomain);
-        if (tokenData) {
-            const client = await shopifyGraphql(shopDomain, tokenData.access_token, process.env.SHOPIFY_API_VERSION!);
-            await client.mutate(MUT_TAGS_ADD, { id: orderGid, tags });
+        if (!tokenData) {
+            request.log.warn({ shop: shopDomain }, 'Missing Shopify token when trying to tag order');
+        } else {
+            try {
+                const client = await shopifyGraphql(shopDomain, tokenData.access_token, process.env.SHOPIFY_API_VERSION!);
+                await client.mutate(MUT_TAGS_ADD, { id: orderGid, tags });
+            } catch (error) {
+                request.log.error({ err: error, shop: shopDomain, order: orderGid }, 'Failed to add Shopify tags');
+            }
         }
+    }
+
+    const actionEvent = mapActionToEvent(result?.action);
+    if (actionEvent) {
+        captureShopifyEvent(shopDomain, actionEvent, {
+            order_id: payload.order_id,
+            action: result?.action,
+            risk_score: result?.risk_score,
+            tags,
+        });
+    }
+
+    if (!tags.length) {
+        request.log.debug({ shop: shopDomain, order: payload.order_id, action: result?.action }, 'No new order tags returned');
     }
 
     return reply.code(200).send();
@@ -58,4 +80,17 @@ function derivePaymentMethod(o: ShopifyOrder): string | undefined {
     if (gateway?.includes('cod')) return 'cod';
     if (gateway?.includes('bank') || gateway?.includes('transfer')) return 'bank_transfer';
     return undefined;
+}
+
+function mapActionToEvent(action?: string | null): string | null {
+    switch (action) {
+        case 'approve':
+            return 'first_validation';
+        case 'hold':
+            return 'correction';
+        case 'block':
+            return 'block';
+        default:
+            return null;
+    }
 }

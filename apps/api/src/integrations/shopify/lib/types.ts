@@ -54,4 +54,6 @@ export interface OrderEvaluatePayload {
 
 export interface OrderEvaluateResponse {
     tags?: string[];
+    action?: string;
+    risk_score?: number;
 }

@@ -1,4 +1,5 @@
 import type { Pool } from "pg";
+import { decryptShopifyToken, encryptShopifyToken } from "../integrations/shopify/lib/crypto.js";
 import { Mode } from "../integrations/shopify/lib/types.js";
 
 export interface ShopifyShop {
@@ -27,6 +28,7 @@ export class ShopifyService {
             await client.query('BEGIN');
 
             // Insert or update shop
+            const encryptedToken = encryptShopifyToken(accessToken);
             const shopResult = await client.query(`
         INSERT INTO shopify_shops (shop_domain, access_token, scopes)
         VALUES ($1, $2, $3)
@@ -36,7 +38,7 @@ export class ShopifyService {
           scopes = EXCLUDED.scopes,
           updated_at = now()
         RETURNING id
-      `, [shopDomain, accessToken, scopes]);
+    `, [shopDomain, encryptedToken, scopes]);
 
             const shopId = shopResult.rows[0].id;
 
@@ -65,10 +67,15 @@ export class ShopifyService {
             return null;
         }
 
-        return {
-            access_token: result.rows[0].access_token,
-            scopes: result.rows[0].scopes
-        };
+        try {
+            const decryptedToken = decryptShopifyToken(result.rows[0].access_token);
+            return {
+                access_token: decryptedToken,
+                scopes: result.rows[0].scopes
+            };
+        } catch (error) {
+            throw new Error('Failed to decrypt Shopify access token');
+        }
     }
 
     async getShopMode(shopDomain: string): Promise<Mode> {
@@ -79,6 +86,13 @@ export class ShopifyService {
     `, [shopDomain]);
 
         return result.rows.length > 0 ? result.rows[0].mode : 'disabled';
+    }
+
+    async recordGdprEvent(shopDomain: string, topic: string, payload: Record<string, unknown>): Promise<void> {
+        await this.pool.query(`
+            INSERT INTO shopify_gdpr_events (shop_id, topic, payload)
+            SELECT id, $2, $3 FROM shopify_shops WHERE shop_domain = $1
+        `, [shopDomain, topic, payload]);
     }
 
     async setShopMode(shopDomain: string, mode: Mode): Promise<void> {

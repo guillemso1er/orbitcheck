@@ -1,4 +1,4 @@
-import { BlockStack, Card, InlineStack, Page, SegmentedControl, Text } from '@shopify/polaris';
+import { BlockStack, Card, InlineStack, Page,  Tabs, Text } from '@shopify/polaris';
 import { useEffect, useState } from 'react';
 
 type Mode = 'disabled' | 'notify' | 'activated';
@@ -33,15 +33,19 @@ export default function Settings() {
                 <BlockStack gap="400">
                     <Text as="p">Choose how OrbitCheck handles new orders.</Text>
                     <InlineStack>
-                        <SegmentedControl
-                            segments={[
-                                { id: 'disabled', label: 'Disabled' },
-                                { id: 'notify', label: 'Notify' },
-                                { id: 'activated', label: 'Activated' },
+                        <Tabs
+                            tabs={[
+                                { id: 'disabled', content: 'Disabled' },
+                                { id: 'notify', content: 'Notify' },
+                                { id: 'activated', content: 'Activated' },
                             ]}
-                            selected={mode}
-                            onChange={onChange}
-                            disabled={loading}
+                            selected={['disabled', 'notify', 'activated'].indexOf(mode)}
+                            onSelect={(index) => {
+                                if (loading) return;
+                                const newMode = (['disabled', 'notify', 'activated'][index] as Mode);
+                                console.debug('Tabs.onSelect', { index, newMode });
+                                onChange(newMode);
+                            }}
                         />
                     </InlineStack>
                 </BlockStack>

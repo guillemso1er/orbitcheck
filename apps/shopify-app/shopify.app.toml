@@ -2,7 +2,7 @@ application_url = "https://shopify.orbitcheck.io/"
 embedded = true
 
 [access_scopes]
-scopes = "read_orders,write_orders"
+scopes = "read_orders,write_orders,read_customers,write_customers"
 
 [webhooks]
 api_version = "2025-10"

@@ -14,6 +14,7 @@ import { Pool } from "pg";
 import { MESSAGES, REQUEST_TIMEOUT_MS, ROUTES, SESSION_MAX_AGE_MS, STARTUP_SMOKE_TEST_TIMEOUT_MS } from "./config.js";
 import { runLogRetention } from './cron/retention.js';
 import { environment } from "./environment.js";
+import { shutdownShopifyTelemetry } from './integrations/shopify/lib/telemetry.js';
 import { batchDedupeProcessor } from './jobs/batchDedupe.js';
 import { batchValidationProcessor } from './jobs/batchValidation.js';
 import { disposableProcessor } from './jobs/refreshDisposable.js';
@@ -152,6 +153,8 @@ async function closeResources(
     if (!isTestEnvironment) {
         console.log('Closing application resources...');
     }
+
+    await shutdownShopifyTelemetry();
 
     // Stop all workers
     if (activeWorkers.length > 0) {

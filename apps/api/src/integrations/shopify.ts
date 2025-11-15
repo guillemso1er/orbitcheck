@@ -1,5 +1,6 @@
 import { FastifyInstance } from 'fastify';
 import fp from 'fastify-plugin';
+import { getAccessScopes } from './shopify/api/access-scopes.js';
 import { getShopSettings, updateShopSettings } from './shopify/api/shop-settings.js';
 import { callback } from './shopify/auth/callback.js';
 import { install } from './shopify/auth/install.js';
@@ -27,6 +28,7 @@ async function shopifyIntegration(app: FastifyInstance) {
     });
     app.get('/integrations/shopify/api/shop-settings', getShopSettings);
     app.post('/integrations/shopify/api/shop-settings', updateShopSettings);
+    app.get('/integrations/shopify/api/access-scopes', getAccessScopes);
 
     // Webhook routes with HMAC and idempotency
     app.addHook('preHandler', async (request, reply) => {

@@ -57,6 +57,7 @@
         "@orbitcheck/contracts": "workspace:^",
         "@scalar/fastify-api-reference": "^1.38.1",
         "@sentry/node": "^10.15.0",
+        "posthog-node": "^3.2.0",
         "@sinclair/typebox": "^0.34.41",
         "@types/nodemailer": "^7.0.3",
         "adm-zip": "^0.5.16",

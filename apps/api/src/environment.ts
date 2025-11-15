@@ -60,6 +60,9 @@ export const env = cleanEnv(process.env, {
   DISPOSABLE_LIST_URL: url({ default: 'https://raw.githubusercontent.com/disposable/disposable-email-domains/master/domains.json' }),
   VIES_WSDL_URL: url({ default: 'https://ec.europa.eu/taxation_customs/vies/checkVatService.wsdl' }),
 
+  POSTHOG_KEY: str({ default: '' }),
+  POSTHOG_HOST: url({ default: 'https://us.i.posthog.com' }),
+
   // Retention / rate limits
   RETENTION_DAYS: num({ default: 90 }),
   RATE_LIMIT_COUNT: num({ default: 300 }),
