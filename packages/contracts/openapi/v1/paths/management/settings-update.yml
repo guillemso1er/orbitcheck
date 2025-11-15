@@ -2,8 +2,10 @@ tags:
   - Management API
 summary: Update tenant settings
 description: >
-  Updates tenant settings including country defaults, formatting, and risk
-  thresholds
+  Updates tenant (project) settings for country defaults, formatting preferences,
+  and risk thresholds. The operation performs an upsert - if settings don't exist
+  they will be created, otherwise existing settings will be updated. All three
+  setting categories are optional and can be updated independently.
 operationId: updateSettings
 security:
   - patAuth: []

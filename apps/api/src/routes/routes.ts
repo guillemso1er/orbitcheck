@@ -18,6 +18,7 @@ import type {
     DeleteProjectData,
     DeleteWebhookData,
     EraseDataData,
+    EstimateRoiData,
     EvaluateOrderData,
     GetAvailablePlansData,
     GetAvailableRulesData,
@@ -102,7 +103,6 @@ export const routes = {
         verify: {
             verifyPhoneOtp: '/v1/verify/phone',
         },
-        // Normalize
         normalize: {
             normalizeAddress: '/v1/normalize/address',
         },
@@ -153,6 +153,11 @@ export const routes = {
         // Jobs
         jobs: {
             getJobStatusById: '/v1/jobs/{id}',
+        },
+
+        // Tools
+        tools: {
+            estimateRoi: '/public/roi/estimate',
         },
     },
     // Projects
@@ -235,11 +240,9 @@ export const routes = {
         users: {
             listUsers: ListUsersData['url'];
             createUser: CreateUserData['url'];
-        };
-        normalize: {
+        }; normalize: {
             normalizeAddress: NormalizeAddressData['url'];
-        };
-        dedupe: {
+        }; dedupe: {
             dedupeCustomer: DedupeCustomerData['url'];
             dedupeAddress: DedupeAddressData['url'];
             mergeDeduplicated: MergeDeduplicatedData['url'];
@@ -251,6 +254,9 @@ export const routes = {
         };
         jobs: {
             getJobStatusById: GetJobStatusByIdData['url'];
+        };
+        tools: {
+            estimateRoi: EstimateRoiData['url'];
         };
     };
     projects: {
@@ -272,11 +278,20 @@ export const runtimeRoutes = () => {
     return [
         ...Object.values(routes.v1.validate),
         ...Object.values(routes.v1.dedupe),
-        ...Object.values(routes.v1.normalize),
         ...Object.values(routes.v1.orders),
         ...Object.values(routes.v1.batch),
+        ...Object.values(routes.v1.tools),
+        ...Object.values(routes.v1.normalize),
+
     ];
 };
+
+export const publicRoutes = () => {
+    return [
+        ...Object.values(routes.auth),
+        ...Object.values(routes.public),
+    ];
+}
 
 export const managementRoutes = () => {
     return [
@@ -309,6 +324,7 @@ export const dashboardRoutes = () => {
         ...Object.values(routes.v1.pats),
         ...Object.values(routes.v1.rules),
         ...Object.values(routes.v1.normalize),
+
         ...Object.values(routes.v1.dedupe),
         ...Object.values(routes.v1.batch),
     ];

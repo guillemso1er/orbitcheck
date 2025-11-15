@@ -1,7 +1,12 @@
 tags:
   - Management API
 summary: Get event logs
-description: Retrieves event logs for the project with optional filters
+description: >
+  Retrieves paginated event logs for the project with support for filtering by reason codes,
+  API endpoints, and HTTP status codes. Results are ordered by creation time (newest first)
+  and include pagination with cursor-based navigation for efficient retrieval of large datasets.
+  Each log entry contains detailed information about API requests including timestamps,
+  endpoints, response status, and associated metadata.
 operationId: getLogs
 security:
   - patAuth: []

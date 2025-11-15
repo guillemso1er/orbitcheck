@@ -7,6 +7,7 @@ let app: Awaited<ReturnType<typeof build>>
 let pool: ReturnType<typeof getPool>
 let redis: Redis
 let cookieJar: Record<string, string>
+let csrfToken: string
 
 beforeAll(async () => {
     try {
@@ -51,6 +52,9 @@ beforeAll(async () => {
         cookieJar = {}
         for (const c of loginRes.cookies ?? []) {
             cookieJar[c.name] = c.value
+            if (c.name === 'csrf_token_client') {
+                csrfToken = c.value
+            }
         }
     } catch (error) {
         console.error('Failed to start test environment:', error)
@@ -100,6 +104,7 @@ describe('Comprehensive Rule Logic Testing', () => {
                     method: 'POST',
                     url: '/v1/rules/test',
                     cookies: cookieJar,
+                    headers: { 'x-csrf-token': csrfToken },
                     payload: { payload: { email } }
                 })
 
@@ -129,6 +134,7 @@ describe('Comprehensive Rule Logic Testing', () => {
                     method: 'POST',
                     url: '/v1/rules/test',
                     cookies: cookieJar,
+                    headers: { 'x-csrf-token': csrfToken },
                     payload: { payload: { email } }
                 })
 
@@ -157,6 +163,7 @@ describe('Comprehensive Rule Logic Testing', () => {
                     method: 'POST',
                     url: '/v1/rules/test',
                     cookies: cookieJar,
+                    headers: { 'x-csrf-token': csrfToken },
                     payload: {
                         payload: {
                             email,
@@ -187,6 +194,7 @@ describe('Comprehensive Rule Logic Testing', () => {
                     method: 'POST',
                     url: '/v1/rules/test',
                     cookies: cookieJar,
+                    headers: { 'x-csrf-token': csrfToken },
                     payload: { payload: { email: testCase.email } }
                 })
 
@@ -218,6 +226,7 @@ describe('Comprehensive Rule Logic Testing', () => {
                     method: 'POST',
                     url: '/v1/rules/test',
                     cookies: cookieJar,
+                    headers: { 'x-csrf-token': csrfToken },
                     payload: { payload: { phone } }
                 })
 
@@ -243,6 +252,7 @@ describe('Comprehensive Rule Logic Testing', () => {
                     method: 'POST',
                     url: '/v1/rules/test',
                     cookies: cookieJar,
+                    headers: { 'x-csrf-token': csrfToken },
                     payload: { payload: { phone } }
                 })
 
@@ -266,6 +276,7 @@ describe('Comprehensive Rule Logic Testing', () => {
                     method: 'POST',
                     url: '/v1/rules/test',
                     cookies: cookieJar,
+                    headers: { 'x-csrf-token': csrfToken },
                     payload: { payload: { phone } }
                 })
 
@@ -294,6 +305,7 @@ describe('Comprehensive Rule Logic Testing', () => {
                     method: 'POST',
                     url: '/v1/rules/test',
                     cookies: cookieJar,
+                    headers: { 'x-csrf-token': csrfToken },
                     payload: { payload: testCase }
                 })
 
@@ -339,6 +351,7 @@ describe('Comprehensive Rule Logic Testing', () => {
                     method: 'POST',
                     url: '/v1/rules/test',
                     cookies: cookieJar,
+                    headers: { 'x-csrf-token': csrfToken },
                     payload: { payload: testCase }
                 })
 
@@ -370,6 +383,7 @@ describe('Comprehensive Rule Logic Testing', () => {
                     method: 'POST',
                     url: '/v1/rules/test',
                     cookies: cookieJar,
+                    headers: { 'x-csrf-token': csrfToken },
                     payload: { payload: testCase }
                 })
 
@@ -412,6 +426,7 @@ describe('Comprehensive Rule Logic Testing', () => {
                 method: 'POST',
                 url: '/v1/rules/test',
                 cookies: cookieJar,
+                headers: { 'x-csrf-token': csrfToken },
                 payload: { payload: duplicateOrderData[0] }
             })
 
@@ -424,6 +439,7 @@ describe('Comprehensive Rule Logic Testing', () => {
                 method: 'POST',
                 url: '/v1/rules/test',
                 cookies: cookieJar,
+                headers: { 'x-csrf-token': csrfToken },
                 payload: { payload: duplicateOrderData[1] }
             })
 
@@ -460,6 +476,7 @@ describe('Comprehensive Rule Logic Testing', () => {
                     method: 'POST',
                     url: '/v1/rules/test',
                     cookies: cookieJar,
+                    headers: { 'x-csrf-token': csrfToken },
                     payload: { payload: order }
                 })
 
@@ -489,6 +506,7 @@ describe('Comprehensive Rule Logic Testing', () => {
                     method: 'POST',
                     url: '/v1/rules/test',
                     cookies: cookieJar,
+                    headers: { 'x-csrf-token': csrfToken },
                     payload: { payload: order }
                 })
 
@@ -547,6 +565,7 @@ describe('Comprehensive Rule Logic Testing', () => {
                 method: 'POST',
                 url: '/v1/rules/register',
                 cookies: cookieJar,
+                headers: { 'x-csrf-token': csrfToken },
                 payload: { rules: customRules }
             })
             expect(registerRes.statusCode).toBe(201)
@@ -556,6 +575,7 @@ describe('Comprehensive Rule Logic Testing', () => {
                 method: 'POST',
                 url: '/v1/rules/test',
                 cookies: cookieJar,
+                headers: { 'x-csrf-token': csrfToken },
                 payload: { payload: { email: 'user@suspicious-new-domain.com' } }
             })
             expect(suspiciousRes.statusCode).toBe(200)
@@ -566,6 +586,7 @@ describe('Comprehensive Rule Logic Testing', () => {
                 method: 'POST',
                 url: '/v1/rules/test',
                 cookies: cookieJar,
+                headers: { 'x-csrf-token': csrfToken },
                 payload: { payload: { email: 'user@google.com' } }
             })
             expect(whitelistedRes.statusCode).toBe(200)
@@ -576,6 +597,7 @@ describe('Comprehensive Rule Logic Testing', () => {
                 method: 'POST',
                 url: '/v1/rules/test',
                 cookies: cookieJar,
+                headers: { 'x-csrf-token': csrfToken },
                 payload: { payload: { email: 'user@whitelist-test.com' } }
             })
             expect(whitelistedRes2.statusCode).toBe(200)
@@ -583,10 +605,11 @@ describe('Comprehensive Rule Logic Testing', () => {
         })
 
         test('tests custom business logic rules', async () => {
+            const timestamp = Date.now()
             const businessRules = [
                 {
-                    id: 'high_value_customer_priority',
-                    name: 'High Value Customer Priority',
+                    id: `high_value_customer_priority_${timestamp}`,
+                    name: `High Value Customer Priority ${timestamp}`,
                     description: 'Prioritize orders from high-value customers',
                     category: 'order',
                     enabled: true,
@@ -603,6 +626,7 @@ describe('Comprehensive Rule Logic Testing', () => {
                 method: 'POST',
                 url: '/v1/rules/register',
                 cookies: cookieJar,
+                headers: { 'x-csrf-token': csrfToken },
                 payload: { rules: businessRules }
             })
             expect(registerRes.statusCode).toBe(201)
@@ -612,6 +636,7 @@ describe('Comprehensive Rule Logic Testing', () => {
                 method: 'POST',
                 url: '/v1/rules/test',
                 cookies: cookieJar,
+                headers: { 'x-csrf-token': csrfToken },
                 payload: {
                     payload: {
                         email: 'user@company.com',
@@ -623,15 +648,17 @@ describe('Comprehensive Rule Logic Testing', () => {
             const body = highValueRes.json()
 
             const highValueRule = body.rule_evaluations.find((rule: any) =>
-                rule.rule_id === 'high_value_customer_priority' && rule.triggered
+                rule.rule_id === `high_value_customer_priority_${timestamp}` && rule.triggered
             )
             expect(highValueRule).toBeDefined()
         })
 
         test('validates rule condition evaluation logic for transaction amount, email, phone, and address', async () => {
+            const timestamp = Date.now()
             const complexRules = [
                 {
-                    name: 'Complex Conditions Test',
+                    id: `complex_conditions_test_${timestamp}`,
+                    name: `Complex Conditions Test ${timestamp}`,
                     description: 'Tests complex AND/OR condition logic',
                     category: 'order',
                     enabled: true,
@@ -639,6 +666,18 @@ describe('Comprehensive Rule Logic Testing', () => {
                     actions: {
                         block: true,
                         reason_code: 'COMPLEX_CONDITIONS_MET'
+                    }
+                },
+                {
+                    id: `high_value_customer_priority_${timestamp}`,
+                    name: `High Value Customer Priority ${timestamp}`,
+                    description: 'Prioritize orders from high-value customers',
+                    category: 'order',
+                    enabled: true,
+                    condition: 'transaction_amount >= 1000 && email && email.domain && (["company.com", "enterprise.com"].includes(email.domain))',
+                    actions: {
+                        priority_boost: true,
+                        reason_code: 'HIGH_VALUE_CUSTOMER'
                     }
                 }
             ]
@@ -648,6 +687,7 @@ describe('Comprehensive Rule Logic Testing', () => {
                 method: 'POST',
                 url: '/v1/rules/register',
                 cookies: cookieJar,
+                headers: { 'x-csrf-token': csrfToken },
                 payload: { rules: complexRules }
             })
             expect(registerRes.statusCode).toBe(201)
@@ -657,6 +697,7 @@ describe('Comprehensive Rule Logic Testing', () => {
                 method: 'POST',
                 url: '/v1/rules/test',
                 cookies: cookieJar,
+                headers: { 'x-csrf-token': csrfToken },
                 payload: {
                     payload: {
                         email: 'invalid-email',
@@ -668,7 +709,7 @@ describe('Comprehensive Rule Logic Testing', () => {
             const body1 = case1Res.json()
 
             const complexRule1 = body1.rule_evaluations.find((rule: any) =>
-                rule.rule_name === 'Complex Conditions Test' && rule.triggered
+                rule.rule_id === `complex_conditions_test_${timestamp}` && rule.triggered
             )
             expect(complexRule1).toBeDefined()
 
@@ -677,6 +718,7 @@ describe('Comprehensive Rule Logic Testing', () => {
                 method: 'POST',
                 url: '/v1/rules/test',
                 cookies: cookieJar,
+                headers: { 'x-csrf-token': csrfToken },
                 payload: {
                     payload: {
                         email: 'executive@company.com',
@@ -690,14 +732,16 @@ describe('Comprehensive Rule Logic Testing', () => {
             const body = res.json()
 
             const highValueRule = body.rule_evaluations.find((rule: any) =>
-                rule.rule_id === 'high_value_customer_priority' && rule.triggered
+                rule.rule_id === `high_value_customer_priority_${timestamp}` && rule.triggered
             )
             expect(highValueRule).toBeDefined()
         })
 
         test('validates rule condition evaluation logic for email, phone and transaction amount', async () => {
+            const timestamp = Date.now()
             const complexRules = [
                 {
+                    id: `complex_conditions_test_${timestamp}`,
                     name: 'Complex Conditions Test',
                     description: 'Tests complex AND/OR conditions',
                     category: 'general',
@@ -714,14 +758,16 @@ describe('Comprehensive Rule Logic Testing', () => {
                 method: 'POST',
                 url: '/v1/rules/register',
                 cookies: cookieJar,
+                headers: { 'x-csrf-token': csrfToken },
                 payload: { rules: complexRules }
-            })
+            }).then(res => expect(res.statusCode).toBe(201))
 
             // Test case 1: Valid email and phone (should trigger)
             const res1 = await app.inject({
                 method: 'POST',
                 url: '/v1/rules/test',
                 cookies: cookieJar,
+                headers: { 'x-csrf-token': csrfToken },
                 payload: {
                     payload: {
                         email: 'user@example.com',
@@ -733,7 +779,7 @@ describe('Comprehensive Rule Logic Testing', () => {
             expect(res1.statusCode).toBe(200)
             const body1 = res1.json()
             const complexRule1 = body1.rule_evaluations.find((rule: any) =>
-                rule.rule_name === 'Complex Conditions Test' && rule.triggered
+                rule.rule_id === `complex_conditions_test_${timestamp}` && rule.triggered
             )
             expect(complexRule1).toBeDefined()
 
@@ -742,6 +788,7 @@ describe('Comprehensive Rule Logic Testing', () => {
                 method: 'POST',
                 url: '/v1/rules/test',
                 cookies: cookieJar,
+                headers: { 'x-csrf-token': csrfToken },
                 payload: {
                     payload: {
                         email: 'invalid-email',
@@ -753,7 +800,7 @@ describe('Comprehensive Rule Logic Testing', () => {
             expect(res2.statusCode).toBe(200)
             const body2 = res2.json()
             const complexRule2 = body2.rule_evaluations.find((rule: any) =>
-                rule.rule_name === 'Complex Conditions Test' && rule.triggered
+                rule.rule_id === `complex_conditions_test_${timestamp}` && rule.triggered
             )
             expect(complexRule2).toBeDefined()
         })
@@ -798,6 +845,7 @@ describe('Comprehensive Rule Logic Testing', () => {
                 method: 'POST',
                 url: '/v1/rules/register',
                 cookies: cookieJar,
+                headers: { 'x-csrf-token': csrfToken },
                 payload: { rules: priorityRules }
             })
 
@@ -806,6 +854,7 @@ describe('Comprehensive Rule Logic Testing', () => {
                 method: 'POST',
                 url: '/v1/rules/test',
                 cookies: cookieJar,
+                headers: { 'x-csrf-token': csrfToken },
                 payload: { payload: { email: 'user@tempmail.com' } }
             })
 
@@ -833,6 +882,7 @@ describe('Comprehensive Rule Logic Testing', () => {
                 method: 'POST',
                 url: '/v1/rules/test',
                 cookies: cookieJar,
+                headers: { 'x-csrf-token': csrfToken },
                 payload: { payload: multiIssueData }
             })
 
@@ -872,6 +922,7 @@ describe('Comprehensive Rule Logic Testing', () => {
                 method: 'POST',
                 url: '/v1/rules/register',
                 cookies: cookieJar,
+                headers: { 'x-csrf-token': csrfToken },
                 payload: { rules: malformedRules }
             })
 
@@ -880,6 +931,7 @@ describe('Comprehensive Rule Logic Testing', () => {
                 method: 'POST',
                 url: '/v1/rules/test',
                 cookies: cookieJar,
+                headers: { 'x-csrf-token': csrfToken },
                 payload: { payload: { email: 'test@example.com' } }
             })
 
@@ -907,6 +959,7 @@ describe('Comprehensive Rule Logic Testing', () => {
                 method: 'POST',
                 url: '/v1/rules/test',
                 cookies: cookieJar,
+                headers: { 'x-csrf-token': csrfToken },
                 payload: { payload: largePayload }
             })
 
@@ -924,6 +977,7 @@ describe('Comprehensive Rule Logic Testing', () => {
                         method: 'POST',
                         url: '/v1/rules/test',
                         cookies: cookieJar,
+                        headers: { 'x-csrf-token': csrfToken },
                         payload: {
                             payload: {
                                 email: `user${i}@example.com`,
@@ -952,6 +1006,7 @@ describe('Comprehensive Rule Logic Testing', () => {
                     method: 'POST',
                     url: '/v1/rules/test',
                     cookies: cookieJar,
+                    headers: { 'x-csrf-token': csrfToken },
                     payload: {
                         payload: {
                             email: `user${i}@example.com`,
@@ -978,6 +1033,7 @@ describe('Comprehensive Rule Logic Testing', () => {
 
     describe('Real-World Rule Scenarios', () => {
         let rwCookieJar: Record<string, string>;
+        let rwCsrfToken: string;
 
         beforeAll(async () => {
             const email = `realworld+${Date.now()}@example.com`;
@@ -994,6 +1050,9 @@ describe('Comprehensive Rule Logic Testing', () => {
             rwCookieJar = {}
             for (const c of login.cookies ?? []) {
                 rwCookieJar[c.name] = c.value
+                if (c.name === 'csrf_token_client') {
+                    rwCsrfToken = c.value
+                }
             }
         });
 
@@ -1020,6 +1079,7 @@ describe('Comprehensive Rule Logic Testing', () => {
                 method: 'POST',
                 url: '/v1/rules/test',
                 cookies: rwCookieJar,
+                headers: { 'x-csrf-token': rwCsrfToken },
                 payload: { payload: highRiskOrder }
             })
 
@@ -1064,6 +1124,7 @@ describe('Comprehensive Rule Logic Testing', () => {
                 method: 'POST',
                 url: '/v1/rules/test',
                 cookies: rwCookieJar,
+                headers: { 'x-csrf-token': rwCsrfToken },
                 payload: { payload: kycData }
             })
 
@@ -1104,6 +1165,7 @@ describe('Comprehensive Rule Logic Testing', () => {
                 method: 'POST',
                 url: '/v1/rules/test',
                 cookies: rwCookieJar,
+                headers: { 'x-csrf-token': rwCsrfToken },
                 payload: { payload: subscriptionData }
             })
 

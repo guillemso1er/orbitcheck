@@ -2,7 +2,7 @@
 tags:
   - UI Endpoints
 summary: Register new user
-description: Creates a new user account with default project and API key
+description: Creates a new user account, assigns the default free plan, creates a default project, and establishes a server-side session with secure cookies for dashboard access
 operationId: registerUser
 security: []
 requestBody:

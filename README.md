@@ -4,15 +4,15 @@ Orbitcheck is a validation and risk assessment platform for e-commerce and busin
 
 ## Technologies
 
-- **Backend**: Node.js, TypeScript, Fastify
-- **Frontend**: React 18, TypeScript, Vite
-- **Database**: PostgreSQL
-- **Cache**: Redis
-- **Testing**: Jest (unit), Playwright (E2E), k6 (load)
+- **Backend**: Node.js, TypeScript, Fastify 5.6.1
+- **Frontend**: React 18.3.1, TypeScript, Vite 6.3.5
+- **Database**: PostgreSQL 16
+- **Cache**: Valkey 7.2 (Redis-compatible)
+- **Testing**: Jest (unit), Vitest (integration), Playwright (E2E), k6 (load)
 - **Deployment**: Docker, Docker Compose
-- **Observability**: Loki, Prometheus, Promtail, Grafana, Statping, Uptime Kuma, Infisical
-- **Package Manager**: pnpm
-- **Monorepo Tool**: pnpm workspaces
+- **Observability**: Loki, Prometheus, Promtail, Grafana, Statping, Uptime Kuma
+- **Package Manager**: pnpm 9.12.0+
+- **Monorepo Tool**: pnpm workspaces, Turbo
 
 ## Features
 
@@ -21,6 +21,7 @@ Orbitcheck is a validation and risk assessment platform for e-commerce and busin
 - **Phone**: Standardization to E.164 (libphonenumber-js); optional OTP via Twilio Verify.
 - **Address**: Normalization (libpostal), geocoding/validation (Google Maps Geocoding API primary; LocationIQ fallback), postal code-city match (GeoNames dataset in Postgres), geo-validation (lat/lng in country bounding boxes), P.O. box detection.
 - **Tax ID**: EU VAT via VIES SOAP (Spain NIF/NIE fallback), BR CPF/CNPJ, MX RFC, AR CUIT, CL RUT, PE RUC, CO NIT, ES NIF/NIE/CIF, US EIN.
+- **Name**: Basic name validation and normalization.
 - **Postal code-city matching**: GeoNames lookup + address geocode reconciliation.
 
 ### Dedupe/Entity Resolution
@@ -34,6 +35,21 @@ Orbitcheck is a validation and risk assessment platform for e-commerce and busin
 - COD/RTO heuristics: +20 COD, +50 if new customer + COD + region mismatch + disposable email.
 - Fraud/risk: Disposable email, invalid phone, out-of-bounds geo (virtual/hotels), postal/city mismatch.
 
+### Batch Operations
+- **Batch Validation**: Process multiple emails, phones, addresses, or tax IDs in a single request.
+- **Batch Deduplication**: Check multiple customers or addresses for duplicates.
+- **Batch Order Evaluation**: Evaluate multiple orders for risk assessment.
+
+### Billing & Plans
+- Subscription management via Stripe integration with multiple tiers:
+  - **Free**: 1,000 validations/month, 2 projects, 7-day log retention
+  - **Starter**: $49/month, 10,000 validations/month, 5 projects, 90-day retention
+  - **Growth**: $149/month, 50,000 validations/month, 15 projects, 180-day retention, webhooks
+  - **Scale**: $399/month, 200,000 validations/month, 40 projects, 365-day retention, review queues
+  - **Enterprise**: $1,500/month, unlimited usage, custom limits, dedicated support
+- Usage-based pricing with overage charges for exceeding plan limits
+- Self-service billing portal for plan upgrades and payment management
+
 ### Observability
 - Audit logs: All events with reason codes, status, meta.
 - Metrics: Per-rule counts in usage_daily (jsonb reason_counts).
@@ -44,9 +60,13 @@ Orbitcheck is a validation and risk assessment platform for e-commerce and busin
 ### Validation
 - POST /v1/validate/email: Email validation.
 - POST /v1/validate/phone: Phone validation with optional OTP.
-- POST /v1/verify/phone: Verify OTP.
 - POST /v1/validate/address: Address validation.
 - POST /v1/validate/tax-id: Tax ID validation.
+- POST /v1/validate/name: Name validation.
+- POST /v1/normalize/address: Address normalization.
+
+### Verification
+- POST /v1/verify/phone: Verify OTP.
 
 ### Dedupe
 - POST /v1/dedupe/customer: Customer dedupe.
@@ -55,6 +75,14 @@ Orbitcheck is a validation and risk assessment platform for e-commerce and busin
 
 ### Orders
 - POST /v1/orders/evaluate: Order risk assessment.
+
+### Batch Operations
+- POST /v1/batch/validate: Batch validation.
+- POST /v1/batch/dedupe: Batch deduplication.
+- POST /v1/batch/orders: Batch order evaluation.
+
+### Jobs
+- GET /v1/jobs/{id}: Get status of async batch operation jobs.
 
 ### Authentication
 Orbitcheck uses different authentication methods for different APIs:
@@ -72,20 +100,50 @@ Orbitcheck uses different authentication methods for different APIs:
 - GET /v1/api-keys: List API keys.
 - POST /v1/api-keys: Create API key.
 - DELETE /v1/api-keys/:id: Delete API key.
+- GET /v1/pats: List Personal Access Tokens.
+- POST /v1/pats: Create Personal Access Token.
+- DELETE /v1/pats/{token_id}: Delete Personal Access Token.
+- GET /v1/webhooks: List webhooks.
+- POST /v1/webhooks: Create webhook.
+- DELETE /v1/webhooks/{id}: Delete webhook.
 - POST /v1/webhooks/test: Test webhook.
 - GET /v1/data/logs: Get event logs.
+- DELETE /v1/logs/{id}: Delete log entry.
 - GET /v1/data/usage: Get usage statistics.
 - GET /v1/rules: Get available rules.
+- GET /v1/rules/builtin: Get builtin rules.
+- GET /v1/rules/error-codes: Get error codes.
 - GET /v1/rules/catalog: Get reason code catalog.
+- POST /v1/rules/test: Test rules.
 - POST /v1/rules/register: Register custom rules.
+- DELETE /v1/rules/{id}: Delete custom rule.
+- GET /v1/settings: Get project settings (country defaults, formatting, risk thresholds).
+- PUT /v1/settings: Update project settings.
+- POST /v1/data/erase: Erase user data.
+- POST /v1/billing/checkout: Create billing checkout session.
+- POST /v1/billing/portal: Access billing portal.
+- GET /v1/users: List users.
+- POST /v1/users: Create user.
+
+### Projects & Plans
+- GET /projects: List projects.
+- POST /projects: Create project.
+- DELETE /projects/{id}: Delete project.
+- GET /user/plan: Get current plan.
+- PATCH /user/plan: Update plan.
+- GET /public/plans: List available plans.
+- POST /user/plan/usage/check: Check usage limits.
 
 ### Usage Dashboard
 - GET /usage: Project usage dashboard.
 
 ## Webhooks
 
-Orbitcheck supports webhook testing for integration verification:
+Orbitcheck supports webhook management for real-time notifications and integration verification:
 
+- GET /v1/webhooks: List configured webhooks for a project.
+- POST /v1/webhooks: Create a new webhook endpoint.
+- DELETE /v1/webhooks/{id}: Delete a webhook configuration.
 - POST /v1/webhooks/test: Send test payloads (validation, order evaluation, custom) to webhook URLs.
 
 ## Applications
@@ -119,7 +177,7 @@ Automatic connections: Prometheus scrapes API metrics, Promtail ships logs to Lo
 Orbitcheck is a monorepo with multiple applications: the API (backend server), the Dashboard (React frontend), the Site (static marketing site), and shared Contracts package.
 
 ### Prerequisites
-- Node.js (v20+ recommended)
+- Node.js (v22+ for API, v20.10+ for dashboard)
 - pnpm (package manager)
 - PostgreSQL database
 - Redis (for caching and rate limiting)
@@ -155,7 +213,7 @@ Ensure your PostgreSQL and Redis servers are running locally or update the URLs 
 ### 3. Database Setup
 Run migrations for the API:
 ```
-pnpm --filter @orbitcheck/api run migrate
+pnpm --filter @orbitcheck/api run migrate:local
 ```
 
 Seed initial data (creates a dev project and API key):
@@ -213,7 +271,7 @@ Access services at:
 
 ## Production Deployment
 
-For production deployment, use the production Docker Compose configuration:
+For production deployment, set up the services manually or adapt the development compose configuration:
 
 ### Prerequisites for Production
 - Docker/Podman and Docker Compose
@@ -241,16 +299,13 @@ LOCATIONIQ_KEY=your_locationiq_api_key
 
 ### Production Deployment Steps
 1. **Configure Environment**: Copy and update `.env` with production values
-2. **Build and Deploy**: Run the production compose
+2. **Build and Deploy**: Use Docker Compose or manual deployment (reference `infra/compose/dev.compose.yml` for service configuration)
+3. **Database Migration**: Run migrations
    ```
-   podman compose -f infra/compose/prod.compose.yml up -d
+   pnpm --filter @orbitcheck/api run migrate:ci
    ```
-3. **Database Migration**: Run migrations in the API container
-   ```
-   podman compose -f infra/compose/prod.compose.yml exec api pnpm run migrate
-   ```
-4. **Access Services**:
-   - **API**: https://yourdomain.com (reverse proxied by Caddy)
+4. **Access Services**: Configure reverse proxy (Caddy) for your domain
+   - **API**: https://yourdomain.com
    - **Dashboard**: https://yourdomain.com/dashboard
    - **Site**: https://yourdomain.com (marketing pages)
    - **Grafana**: https://yourdomain.com/grafana
@@ -278,12 +333,15 @@ LOCATIONIQ_KEY=your_locationiq_api_key
 ## Testing
 
 ### Unit Tests (API)
-The API uses Jest for unit and integration tests.
+The API uses Jest for unit tests and Vitest for integration tests.
 From the root:
 ```
 pnpm --filter @orbitcheck/api run test
 ```
-This runs tests in `apps/api/src/__tests__/`. Coverage reports are generated if configured.
+Integration tests:
+```
+pnpm --filter @orbitcheck/api run test:int
+```
 
 Watch mode:
 ```

@@ -1,7 +1,12 @@
 tags:
   - Management API
 summary: Get usage statistics
-description: Retrieves usage statistics for the project
+description: >
+  Retrieves comprehensive usage statistics and analytics for the project including
+  total validations and orders processed, daily breakdowns over the specified period,
+  most frequent validation failure reason codes, and estimated cache hit ratio.
+  Statistics cover the last 30 days by default and help monitor API usage patterns
+  and system performance.
 operationId: getUsage
 security:
   - patAuth: []

@@ -1,0 +1,25 @@
+tags:
+  - Public
+summary: Estimate ROI for Orbitcheck implementation
+description: Calculates potential monthly savings from implementing Orbitcheck based on order volume and default assumptions
+operationId: estimateRoi
+security: []
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        $ref: ../../components/schemas/RoiEstimateRequest.yml
+responses:
+  '200':
+    description: ROI estimate result
+    content:
+      application/json:
+        schema:
+          $ref: ../../components/schemas/RoiEstimateResponse.yml
+  '400':
+    description: Bad request
+    content:
+      application/json:
+        schema:
+          $ref: ../../components/schemas/ValidationError.yml

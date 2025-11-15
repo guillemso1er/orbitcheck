@@ -3,16 +3,26 @@
 /* Adds the checkmark icon to list items */
 .list-check li {
   position: relative;
-  padding-left: 1.75rem; /* pl-7 */
-  margin-bottom: 0.5rem; /* mb-2 */
+  padding-left: 1.75rem;
+  /* pl-7 */
+  margin-bottom: 0.5rem;
+  /* mb-2 */
 }
 
 .list-check li::before {
   content: '✓';
   position: absolute;
   left: 0;
-  color: #16a34a; /* text-green-600 */
-  font-weight: 700; /* font-bold */
+  color: #16a34a;
+  /* text-green-600 */
+  font-weight: 700;
+  /* font-bold */
+}
+
+/* Dark theme styles for checkmark */
+.dark .list-check li::before {
+  color: #22c55e;
+  /* text-green-500 for dark mode */
 }
 
 /* Rotates the mobile menu icon when the <details> element is open */
@@ -27,11 +37,24 @@ code {
 }
 
 pre {
-  background-color: #111827; /* bg-gray-900 */
-  color: #f3f4f6; /* text-gray-100 */
-  padding: 1rem; /* p-4 */
-  border-radius: 0.5rem; /* rounded-lg */
+  background-color: #111827;
+  /* bg-gray-900 */
+  color: #f3f4f6;
+  /* text-gray-100 */
+  padding: 1rem;
+  /* p-4 */
+  border-radius: 0.5rem;
+  /* rounded-lg */
   overflow-x: auto;
-  font-size: 0.875rem; /* text-sm */
+  font-size: 0.875rem;
+  /* text-sm */
   line-height: 1.25rem;
+}
+
+/* Dark theme code blocks */
+.dark pre {
+  background-color: #0f172a;
+  /* bg-slate-900 */
+  color: #e2e8f0;
+  /* text-slate-200 */
 }

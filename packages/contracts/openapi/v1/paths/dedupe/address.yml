@@ -1,7 +1,7 @@
 tags:
   - Runtime API
 summary: Deduplicate address
-description: Searches for existing addresses using deterministic and fuzzy matching
+description: Searches for existing addresses in your project using address normalization and multiple matching strategies. First normalizes the input address, then performs exact matching on address hashes, postal code combinations, and fuzzy matching on street addresses and cities. Returns potential duplicates with confidence scores and suggested actions.
 operationId: dedupeAddress
 security:
   - apiKeyAuth: []

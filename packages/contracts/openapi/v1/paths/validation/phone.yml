@@ -1,7 +1,7 @@
 tags:
   - Runtime API
 summary: Validate phone
-description: Validates a phone number
+description: Validates and formats phone numbers to international E.164 standard using libphonenumber-js library. Supports country-specific validation rules and optional country hints for ambiguous numbers. Can initiate OTP (One-Time Password) verification via Twilio SMS when requested, returning verification SID for subsequent OTP confirmation. Results include normalized E.164 format and detailed reason codes.
 operationId: validatePhone
 security:
   - apiKeyAuth: []

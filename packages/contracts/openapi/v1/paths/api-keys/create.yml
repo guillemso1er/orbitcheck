@@ -1,7 +1,7 @@
 tags:
   - Management API
 summary: Create API key
-description: Generates a new API key for the authenticated project
+description: Generates a new API key for the authenticated project. Creates a cryptographically secure random key, encrypts and stores it securely in the database, and automatically creates a corresponding personal access token for internal use. The full key is returned only once for security reasons.
 operationId: createApiKey
 security:
   - patAuth: []
@@ -15,7 +15,7 @@ requestBody:
         properties:
           name:
             type: string
-            description: Optional name for the API key
+            description: Optional human-readable name for the API key
 responses:
   '201':
     description: API key created successfully
@@ -26,16 +26,17 @@ responses:
           properties:
             id:
               type: string
-              description: API key ID
+              description: Unique identifier for the API key
             prefix:
               type: string
-              description: API key prefix (first 6 characters)
+              description: API key prefix (first 6 characters) for identification
             full_key:
               type: string
-              description: The full API key (shown only once)
+              description: The complete API key (returned only once for security)
             status:
               type: string
-              description: API key status
+              enum: [active]
+              description: API key status (always 'active' for new keys)
             created_at:
               type: string
               format: date-time

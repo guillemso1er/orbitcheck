@@ -1,7 +1,7 @@
 tags:
   - UI Endpoints
 summary: User logout
-description: Logs out the current user by clearing the session
+description: Logs out the current user by destroying the server-side session and clearing all authentication cookies (session, CSRF tokens)
 operationId: logoutUser
 security:
   - cookieAuth: []

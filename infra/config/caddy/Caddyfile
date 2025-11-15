@@ -33,9 +33,10 @@
 api.orbitcheck.io {
     import common_security_headers
 
-    # Allow credentialed CORS only from the dashboard
+    # Allow credentialed CORS only from the dashboard and site
     @cors_origin {
         header Origin https://dashboard.orbitcheck.io
+        header Origin https://orbitcheck.io
         not method OPTIONS
     }
     header @cors_origin Access-Control-Allow-Origin "{http.request.header.Origin}"

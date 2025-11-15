@@ -1,7 +1,11 @@
 tags:
   - Management API
 summary: Create Stripe Checkout session
-description: Creates a Stripe Checkout session with base plan and usage-based line items
+description: >
+  Creates a Stripe Checkout session for subscription billing. Calculates the total cost including
+  the base plan and additional store addons based on the number of active stores beyond the
+  included stores in the plan. The session supports promotion codes and redirects users to
+  success/cancel URLs after payment completion.
 operationId: createCheckoutSession
 security:
   - patAuth: []

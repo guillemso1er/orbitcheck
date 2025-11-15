@@ -1,7 +1,7 @@
 tags:
   - Runtime API
 summary: Batch evaluate orders
-description: Performs batch evaluation of orders for risk and rules asynchronously
+description: Performs asynchronous batch evaluation of orders for risk assessment and rule validation. Creates a background job that analyzes each order against fraud detection rules and risk models, storing detailed results for later retrieval. Maximum 10,000 orders per request. Each order must include order_id and customer_email. Use the returned job_id to check status and retrieve results via the jobs endpoint.
 operationId: batchEvaluateOrders
 security:
   - apiKeyAuth: []
@@ -19,6 +19,7 @@ requestBody:
         properties:
           orders:
             type: array
+            minItems: 1
             maxItems: 1000
             items:
               type: object
@@ -31,26 +32,29 @@ requestBody:
                   description: Unique order identifier
                 customer_email:
                   type: string
-                  description: Customer email address
+                  format: email
+                  description: Customer email address for risk assessment
                 customer_phone:
                   type: string
-                  description: Customer phone number
+                  description: Customer phone number (optional, used for additional validation)
                 total_amount:
                   type: number
-                  description: Order total amount
+                  minimum: 0
+                  description: Order total amount in the specified currency
                 currency:
                   type: string
                   pattern: ^[A-Z]{3}$
-                  description: Currency code (e.g., USD, EUR)
+                  default: USD
+                  description: Currency code (e.g., USD, EUR) - defaults to USD if not specified
                 items:
                   type: string
-                  description: Comma-separated list of items
+                  description: Comma-separated list of item names or SKUs in the order
                 shipping_address:
                   type: string
-                  description: Shipping address
+                  description: Full shipping address for delivery risk assessment
 responses:
   '202':
-    description: Batch order evaluation job started
+    description: Batch order evaluation job accepted and queued for processing
     content:
       application/json:
         schema:
@@ -58,17 +62,17 @@ responses:
           properties:
             job_id:
               type: string
-              description: Unique job identifier
+              description: Unique job identifier for tracking progress and retrieving results
             status:
               type: string
               enum:
                 - pending
-              description: Job status
+              description: Job status (always 'pending' when job is created)
             request_id:
               type: string
-              description: Request identifier
+              description: Request identifier for debugging
   '400':
-    description: Bad request
+    description: Bad request - missing required fields, invalid data, or exceeds order limit
     content:
       application/json:
         schema:

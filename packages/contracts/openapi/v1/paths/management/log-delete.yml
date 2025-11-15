@@ -1,7 +1,10 @@
 tags:
   - Management API
 summary: Delete log entry
-description: Deletes a specific log entry
+description: >
+  Deletes a specific event log entry by its unique identifier. The operation ensures that
+  only log entries belonging to the authenticated user's project can be deleted, providing
+  secure access control for log management.
 operationId: deleteLog
 security:
   - patAuth: []

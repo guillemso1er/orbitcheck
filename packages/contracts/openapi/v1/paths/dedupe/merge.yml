@@ -1,7 +1,7 @@
 tags:
   - Runtime API
 summary: Merge deduplicated records
-description: Merges multiple customer or address records into a canonical one
+description: Consolidates multiple duplicate customer or address records into a single canonical record. Updates the database to mark the specified records as merged, setting their merged_to field to point to the canonical record. All specified IDs must belong to your project and the canonical record must be valid.
 operationId: mergeDeduplicated
 security:
   - apiKeyAuth: []

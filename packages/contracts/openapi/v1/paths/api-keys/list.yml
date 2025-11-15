@@ -1,14 +1,14 @@
 tags:
   - Management API
 summary: List API keys
-description: Retrieves API keys for the authenticated project
+description: Retrieves all API keys associated with the authenticated project, ordered by creation date (newest first). Returns key metadata including ID, prefix, name, status, and usage timestamps.
 operationId: listApiKeys
 security:
   - patAuth: []
   - cookieAuth: []
 responses:
   '200':
-    description: List of API keys
+    description: List of API keys for the project
     content:
       application/json:
         schema:

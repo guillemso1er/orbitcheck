@@ -1,0 +1,41 @@
+type: object
+required:
+  - orders_per_month
+properties:
+  orders_per_month:
+    type: number
+    minimum: 1
+    description: Number of orders processed per month
+  issue_rate:
+    type: number
+    minimum: 0
+    maximum: 1
+    description: Rate of orders that have issues (default 0.021)
+  carrier_fee_share:
+    type: number
+    minimum: 0
+    maximum: 1
+    description: Share of issues that trigger carrier fees (default 0.5)
+  avg_correction_fee:
+    type: number
+    minimum: 0
+    description: Average carrier correction fee in USD (default 23.75)
+  reship_share:
+    type: number
+    minimum: 0
+    maximum: 1
+    description: Share of issues that require reshipping (default 0.1)
+  reship_cost:
+    type: number
+    minimum: 0
+    description: Cost of reshipping in USD (default 10)
+  prevention_rate:
+    type: number
+    minimum: 0
+    maximum: 1
+    description: Rate at which Orbitcheck prevents issues (default 0.5)
+  currency:
+    type: string
+    minLength: 3
+    maxLength: 3
+    description: Currency code (default USD)

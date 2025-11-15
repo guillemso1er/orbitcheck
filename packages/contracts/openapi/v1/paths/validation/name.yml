@@ -1,7 +1,7 @@
 tags:
   - Runtime API
 summary: Validate name
-description: Validates and normalizes a name string
+description: Validates and normalizes a person's name string. Checks for valid length (1-100 characters), ensures only alphabetic characters, spaces, hyphens, apostrophes, and periods are used, and provides normalized formatting with detailed validation reason codes for any issues found.
 operationId: validateName
 security:
   - apiKeyAuth: []

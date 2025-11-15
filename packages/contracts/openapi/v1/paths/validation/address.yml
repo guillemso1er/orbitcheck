@@ -1,7 +1,7 @@
 tags:
   - Runtime API
 summary: Validate address
-description: Validates an address
+description: Validates and normalizes a postal address comprehensively. Performs address parsing and standardization using libpostal, detects P.O. Box addresses, verifies postal code-city matching against GeoNames database, geocodes the address using LocationIQ/Nominatim with Google Maps fallback, and validates geographic coordinates are within country boundaries. Returns normalized address components, validation status, geocoding results, and detailed reason codes.
 operationId: validateAddress
 security:
   - apiKeyAuth: []

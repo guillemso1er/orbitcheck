@@ -1,7 +1,11 @@
 tags:
   - Management API
 summary: Create Stripe Customer Portal session
-description: Creates a Stripe Customer Portal session for managing billing
+description: >
+  Creates a Stripe Customer Portal session that allows customers to manage their billing
+  information including subscription details, payment methods, billing history, and invoices.
+  The portal is hosted by Stripe and provides a secure interface for customers to update
+  their billing settings without requiring direct API access.
 operationId: createCustomerPortalSession
 security:
   - patAuth: []

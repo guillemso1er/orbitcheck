@@ -1,7 +1,7 @@
 tags:
   - Runtime API
 summary: Validate email
-description: Validates an email address
+description: Validates an email address format using industry-standard parsing, checks for disposable email domain detection via Redis-backed database, performs DNS MX record validation with A/AAAA record fallback for domain verification, and provides normalized email format in lowercase ASCII. Results are cached for performance and include detailed validation reason codes.
 operationId: validateEmail
 security:
   - apiKeyAuth: []
