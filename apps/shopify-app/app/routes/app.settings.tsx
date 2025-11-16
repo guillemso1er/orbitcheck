@@ -1,3 +1,4 @@
+import { getShopifyShopSettings, updateShopifyShopSettings } from "@orbitcheck/contracts";
 import { useEffect, useState } from "react";
 
 type Mode = 'disabled' | 'notify' | 'activated';
@@ -8,23 +9,32 @@ export default function Settings() {
 
     useEffect(() => {
         (async () => {
-            const res = await fetch('https://api.orbitcheck.io/integrations/shopify/api/shop-settings');
-            if (res.ok) {
-                const json = await res.json();
-                setMode((json?.mode as Mode) ?? 'disabled');
+            try {
+                const response = await getShopifyShopSettings();
+                const data = response?.data;
+                if (data?.mode) {
+                    setMode(data.mode as Mode);
+                }
+            } catch (error) {
+                console.error('Failed to fetch shop settings:', error);
+            } finally {
+                setLoading(false);
             }
-            setLoading(false);
         })();
     }, []);
 
     async function onChange(event: Event & { currentTarget: { value: string } }) {
         const val = event.currentTarget.value;
         setMode(val as Mode);
-        await fetch('https://api.orbitcheck.io/integrations/shopify/api/shop-settings', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ mode: val }),
-        });
+        try {
+            await updateShopifyShopSettings({
+                data: { mode: val as Mode }
+            });
+        } catch (error) {
+            console.error('Failed to update shop settings:', error);
+            // Optionally revert the mode change if the update failed
+            setMode(mode);
+        }
     }
 
     return (
