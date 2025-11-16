@@ -9,7 +9,6 @@
   "scripts": {
     "api": "pnpm --filter @orbitcheck/api dev",
     "dashboard": "pnpm --filter @orbitcheck/dashboard dev",
-    "shopify": "pnpm --filter @orbitcheck/shopify-app dev",
     "migrate": "pnpm --filter @orbitcheck/api run migrate:local",
     "migrate:down": "pnpm --filter @orbitcheck/api run migrate:local-down",
     "k6": "k6 run -e KEY=ok_test_a450e23f007460bc2a01e5ec715a12a76952 --vus 1 --iterations 1 tests/k6/main.js",
@@ -17,6 +16,7 @@
     "k6:all": "k6 run -e KEY=ok_test_a450e23f007460bc2a01e5ec715a12a76952  tests/k6/main.js",
     "generate": "pnpm --filter @orbitcheck/contracts run build && pnpm --filter @orbitcheck/api run gen",
     "infra": "podman compose -f infra/compose/local.compose.yml up -d",
+    "shopify": "pnpm infra && concurrently \"pnpm api\" \"pnpm --filter @orbitcheck/shopify-app dev\"",
     "all": "pnpm infra && concurrently \"pnpm api\" \"pnpm dashboard\"",
     "podman": "podman compose -f  infra/compose/dev.compose.yml up --build -d",
     "typecheck": "pnpm -r typecheck",

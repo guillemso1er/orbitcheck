@@ -39,7 +39,8 @@
     "lint:oas": "redocly lint openapi/v1/openapi.yml",
     "bundle:v1": "redocly bundle openapi/v1/openapi.yml --dereferenced --output dist/openapi.v1.json",
     "gen:client": "openapi-ts",
-    "build": "pnpm lint:oas && pnpm bundle:v1 && pnpm gen:client",
+    "compile": "tsc --project tsconfig.json",
+    "build": "pnpm lint:oas && pnpm bundle:v1 && pnpm gen:client && pnpm compile",
     "watch": "concurrently -n oas,gen \"redocly bundle openapi/v1/openapi.yml --dereferenced --output dist/openapi.v1.json --watch\" \"openapi --config openapi-ts.client.config.ts --watch\""
   },
   "dependencies": {

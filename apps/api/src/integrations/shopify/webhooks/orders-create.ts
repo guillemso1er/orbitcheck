@@ -35,11 +35,41 @@ export async function ordersCreate(request: FastifyRequest, reply: FastifyReply)
         payment_method: derivePaymentMethod(o),
     };
 
-    const result = (await fetch('https://api.orbitcheck.io/v1/orders/evaluate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-    }).then(r => r.json()).catch(() => null)) as OrderEvaluateResponse | null;
+    let result: OrderEvaluateResponse | null = null;
+    try {
+        request.log.debug({ shop: shopDomain, orderId: payload.order_id }, 'Calling OrbitCheck order evaluation API');
+        const response = await fetch('https://api.orbitcheck.io/v1/orders/evaluate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+        });
+
+        if (!response.ok) {
+            request.log.warn({
+                shop: shopDomain,
+                orderId: payload.order_id,
+                status: response.status,
+                statusText: response.statusText
+            }, 'OrbitCheck API returned error status');
+            return reply.code(200).send(); // Return 200 to avoid webhook retries
+        }
+
+        result = await response.json();
+        request.log.info({
+            shop: shopDomain,
+            orderId: payload.order_id,
+            action: result?.action,
+            riskScore: result?.risk_score,
+            tagCount: result?.tags?.length || 0
+        }, 'OrbitCheck evaluation completed');
+    } catch (error) {
+        request.log.error({
+            shop: shopDomain,
+            orderId: payload.order_id,
+            error: error instanceof Error ? error.message : 'Unknown error'
+        }, 'Failed to call OrbitCheck API');
+        return reply.code(200).send(); // Return 200 to avoid webhook retries
+    }
 
     const tags = Array.isArray(result?.tags) ? result.tags : [];
     if (tags.length) {
@@ -49,10 +79,17 @@ export async function ordersCreate(request: FastifyRequest, reply: FastifyReply)
             request.log.warn({ shop: shopDomain }, 'Missing Shopify token when trying to tag order');
         } else {
             try {
+                request.log.debug({ shop: shopDomain, orderId: payload.order_id, tags }, 'Adding tags to Shopify order');
                 const client = await shopifyGraphql(shopDomain, tokenData.access_token, process.env.SHOPIFY_API_VERSION!);
                 await client.mutate(MUT_TAGS_ADD, { id: orderGid, tags });
+                request.log.info({ shop: shopDomain, orderId: payload.order_id, tags }, 'Successfully added tags to Shopify order');
             } catch (error) {
-                request.log.error({ err: error, shop: shopDomain, order: orderGid }, 'Failed to add Shopify tags');
+                request.log.error({
+                    err: error instanceof Error ? error.message : 'Unknown error',
+                    shop: shopDomain,
+                    order: orderGid,
+                    tags
+                }, 'Failed to add Shopify tags');
             }
         }
     }

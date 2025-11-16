@@ -28,7 +28,7 @@ export default function Settings() {
         setMode(val as Mode);
         try {
             await updateShopifyShopSettings({
-                data: { mode: val as Mode }
+                body: { mode: val as Mode }
             });
         } catch (error) {
             console.error('Failed to update shop settings:', error);
