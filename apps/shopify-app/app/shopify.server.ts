@@ -1,3 +1,4 @@
+import { shopifyAppInstalledEvent } from "@orbitcheck/contracts";
 import "@shopify/shopify-app-react-router/adapters/node";
 import {
   ApiVersion,
@@ -6,6 +7,7 @@ import {
 } from "@shopify/shopify-app-react-router/server";
 import { PrismaSessionStorage } from "@shopify/shopify-app-session-storage-prisma";
 import prisma from "./db.server";
+import { getOrbitcheckClient } from "./utils/orbitcheck.server.js";
 
 const shopify = shopifyApp({
   apiKey: process.env.SHOPIFY_API_KEY,
@@ -16,6 +18,46 @@ const shopify = shopifyApp({
   authPathPrefix: "/auth",
   sessionStorage: new PrismaSessionStorage(prisma),
   distribution: AppDistribution.AppStore,
+  hooks: {
+    afterAuth: async ({ session }) => {
+      const client = getOrbitcheckClient();
+
+      const scopeList = session.scope
+        ? session.scope
+          .split(",")
+          .map((scope) => scope.trim().toLowerCase())
+          .filter(Boolean)
+        : [];
+
+      if (!session.isOnline) {
+        if (!session.accessToken) {
+          console.warn("Shopify session missing access token during afterAuth hook", {
+            shop: session.shop,
+          });
+          return;
+        }
+        try {
+          await shopifyAppInstalledEvent<true>({
+            client,
+            body: {
+              shop: session.shop,
+              accessToken: session.accessToken,
+              grantedScopes: scopeList,
+            },
+            throwOnError: true,
+          });
+        } catch (error) {
+          console.error("Failed to notify OrbitCheck API about Shopify installation", error);
+        }
+      }
+
+      try {
+        await shopify.registerWebhooks({ session });
+      } catch (error) {
+        console.error("Failed to register Shopify webhooks", error);
+      }
+    },
+  },
   ...(process.env.SHOP_CUSTOM_DOMAIN
     ? { customShopDomains: [process.env.SHOP_CUSTOM_DOMAIN] }
     : {}),

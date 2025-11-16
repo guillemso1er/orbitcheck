@@ -58,6 +58,10 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/v1/, ''),
       },
+      '/integrations': {
+        target: 'http://localhost:8080',
+        changeOrigin: true,
+      },
     },
   },
   plugins: [

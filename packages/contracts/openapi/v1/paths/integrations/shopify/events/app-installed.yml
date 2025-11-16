@@ -1,0 +1,37 @@
+tags:
+  - Integrations
+summary: Shopify app installed event
+description: Registers a Shopify shop installation and stores its offline access token for future API calls.
+operationId: shopifyAppInstalledEvent
+security: []
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        required:
+          - shop
+          - accessToken
+          - grantedScopes
+        properties:
+          shop:
+            type: string
+            description: Shopify shop domain (e.g., my-store.myshopify.com)
+          accessToken:
+            type: string
+            description: Offline access token issued by Shopify
+          grantedScopes:
+            type: array
+            description: Scopes granted to the app during installation
+            items:
+              type: string
+responses:
+  '200':
+    description: Installation recorded successfully
+  '400':
+    description: Missing or invalid installation payload
+    content:
+      application/json:
+        schema:
+          $ref: '../../../../components/schemas/Error.yml'

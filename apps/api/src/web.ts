@@ -117,23 +117,26 @@ export function registerRoutes<TServer extends RawServerBase = RawServerBase>(ap
     // Register OpenAPI routes with integrated security
     const shopifyAppKey = process.env.SHOPIFY_API_KEY;
     const shopifyAppSecret = process.env.SHOPIFY_API_SECRET;
-    const shopifySessionVerifier = (shopifyAppKey && shopifyAppSecret)
-        ? verifyShopifySessionToken(shopifyAppKey, shopifyAppSecret)
-        : undefined;
 
-    if (!shopifySessionVerifier) {
-        app.log.warn('Shopify API credentials missing; Shopify embedded endpoints will skip session verification guard');
-        app.register(openapiSecurity, { pool });
-    } else {
-        app.register(openapiSecurity, {
-            pool,
-            guards: {
-                shopifySessionToken: async (request, reply) => {
-                    await shopifySessionVerifier(request, reply);
-                },
+    app.register(openapiSecurity, {
+        pool,
+        guards: {
+            shopifySessionToken: async (request, reply) => {
+                if (!shopifyAppKey || !shopifyAppSecret) {
+                    request.log.warn('Shopify API credentials missing; cannot verify session token');
+                    return reply.status(503).send({
+                        error: {
+                            code: 'SHOPIFY_CREDENTIALS_MISSING',
+                            message: 'Shopify API credentials are not configured'
+                        },
+                        request_id: crypto.randomUUID?.() ?? 'unknown'
+                    });
+                }
+                const shopifySessionVerifier = verifyShopifySessionToken(shopifyAppKey, shopifyAppSecret);
+                await shopifySessionVerifier(request, reply);
             },
-        });
-    }
+        },
+    });
     // Global preHandler hook chain: validation limits + rate limiting/idempotency middleware
     app.addHook("preHandler", async (request, rep) => {
         await applyValidationLimits(request, rep, pool);

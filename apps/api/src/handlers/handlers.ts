@@ -7,6 +7,7 @@ import { getAccessScopes } from "../integrations/shopify/api/access-scopes.js";
 import { getShopSettings, updateShopSettings } from "../integrations/shopify/api/shop-settings.js";
 import { callback } from "../integrations/shopify/auth/callback.js";
 import { install } from "../integrations/shopify/auth/install.js";
+import { appInstalled } from "../integrations/shopify/events/app-installed.js";
 import { appUninstalled } from "../integrations/shopify/webhooks/app-uninstalled.js";
 import { customersDataRequest, customersRedact, shopRedact } from "../integrations/shopify/webhooks/gdpr.js";
 import { ordersCreate } from "../integrations/shopify/webhooks/orders-create.js";
@@ -172,6 +173,7 @@ export const serviceHandlers = <TServer extends RawServerBase = RawServerBase>(p
     updateShopifyShopSettings: async (request, reply) => updateShopSettings(request, reply, pool),
     getShopifyAccessScopes: async (request, reply) => getAccessScopes(request, reply, pool),
 
+    shopifyAppInstalledEvent: async (request, reply) => appInstalled(request, reply),
     shopifyOrdersCreateWebhook: async (request, reply) => ordersCreate(request, reply),
     shopifyAppUninstalledWebhook: async (request, reply) => appUninstalled(request, reply),
     shopifyGdprCustomersDataRequestWebhook: async (request, reply) => customersDataRequest(request, reply),

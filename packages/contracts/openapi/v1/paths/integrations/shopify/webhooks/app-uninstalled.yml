@@ -4,6 +4,13 @@ summary: Shopify app/uninstalled webhook
 description: Handles Shopify app/uninstalled webhook events
 operationId: shopifyAppUninstalledWebhook
 security: []
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        additionalProperties: true
 responses:
   '200':
     description: Webhook processed successfully

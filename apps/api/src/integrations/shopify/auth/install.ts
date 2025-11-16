@@ -9,7 +9,12 @@ export async function install(request: FastifyRequest, reply: FastifyReply) {
     // Assuming env vars are set
     const clientId = process.env.SHOPIFY_API_KEY!;
     const scopes = SHOPIFY_SCOPE_STRING;
-    const redirectUri = `${process.env.APP_BASE_URL}/integrations/shopify/auth/callback`;
+    const forwardedHost = request.headers['x-forwarded-host'] as string | undefined;
+    const host = forwardedHost || request.headers.host || '';
+    const protocolHeader = request.headers['x-forwarded-proto'] as string | undefined;
+    const protocol = protocolHeader || request.protocol || 'https';
+    const baseUrl = process.env.APP_BASE_URL?.replace(/\/$/, '') || `${protocol}://${host}`;
+    const redirectUri = `${baseUrl}/integrations/shopify/auth/callback`;
     const url = `https://${shop}/admin/oauth/authorize?client_id=${clientId}&scope=${scopes}&redirect_uri=${encodeURIComponent(redirectUri)}&state=${shop}`;
     return reply.redirect(url);
 }

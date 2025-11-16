@@ -8,6 +8,7 @@ export async function callback(request: FastifyRequest, reply: FastifyReply, poo
     if (!code || !shop || state !== shop) {
         return reply.code(400).send('Invalid parameters');
     }
+    request.log.info({ shop }, 'Processing Shopify OAuth callback');
     // Exchange code for token
     const clientId = process.env.SHOPIFY_API_KEY!;
     const clientSecret = process.env.SHOPIFY_API_SECRET!;
@@ -34,6 +35,7 @@ export async function callback(request: FastifyRequest, reply: FastifyReply, poo
     // Store in DB
     const shopifyService = createShopifyService(pool);
     await shopifyService.storeShopToken(shop, access_token, grantedScopes);
+    request.log.info({ shop }, 'Stored Shopify access token and scopes');
     captureShopifyEvent(shop, 'signup', { scopes: grantedScopes });
 
     // Redirect to app

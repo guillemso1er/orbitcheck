@@ -79,6 +79,10 @@ export class ShopifyService {
     }
 
     async getShopMode(shopDomain: string): Promise<Mode> {
+        if (!shopDomain || typeof shopDomain !== 'string') {
+            throw new Error('Invalid shop domain provided to getShopMode: must be a non-empty string');
+        }
+
         const result = await this.pool.query(`
       SELECT ss.mode FROM shopify_settings ss
       JOIN shopify_shops s ON s.id = ss.shop_id
@@ -89,6 +93,10 @@ export class ShopifyService {
     }
 
     async recordGdprEvent(shopDomain: string, topic: string, payload: Record<string, unknown>): Promise<void> {
+        if (!shopDomain || typeof shopDomain !== 'string') {
+            throw new Error('Invalid shop domain provided to recordGdprEvent: must be a non-empty string');
+        }
+
         await this.pool.query(`
             INSERT INTO shopify_gdpr_events (shop_id, topic, payload)
             SELECT id, $2, $3 FROM shopify_shops WHERE shop_domain = $1
@@ -96,6 +104,10 @@ export class ShopifyService {
     }
 
     async setShopMode(shopDomain: string, mode: Mode): Promise<void> {
+        if (!shopDomain || typeof shopDomain !== 'string') {
+            throw new Error('Invalid shop domain provided to setShopMode: must be a non-empty string');
+        }
+
         await this.pool.query(`
       UPDATE shopify_settings
       SET mode = $2, updated_at = now()
@@ -106,6 +118,10 @@ export class ShopifyService {
     }
 
     async deleteShopData(shopDomain: string): Promise<void> {
+        if (!shopDomain || typeof shopDomain !== 'string') {
+            throw new Error('Invalid shop domain provided to deleteShopData: must be a non-empty string');
+        }
+
         const client = await this.pool.connect();
         try {
             await client.query('BEGIN');
@@ -131,6 +147,10 @@ export class ShopifyService {
     }
 
     async getCustomerData(shopDomain: string, customerId: string): Promise<Record<string, unknown> | null> {
+        if (!shopDomain || typeof shopDomain !== 'string') {
+            throw new Error('Invalid shop domain provided to getCustomerData: must be a non-empty string');
+        }
+
         const result = await this.pool.query(`
             SELECT
                 ss.id as shop_id,
@@ -188,6 +208,10 @@ export class ShopifyService {
     }
 
     async sendCustomerDataToShopify(shopDomain: string, customerId: string, data: Record<string, unknown>): Promise<boolean> {
+        if (!shopDomain || typeof shopDomain !== 'string') {
+            throw new Error('Invalid shop domain provided to sendCustomerDataToShopify: must be a non-empty string');
+        }
+
         const tokenData = await this.getShopToken(shopDomain);
         if (!tokenData) {
             return false;

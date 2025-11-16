@@ -182,6 +182,9 @@ paths:
   /integrations/shopify/api/access-scopes:
     get:
       $ref: './paths/integrations/shopify/api/access-scopes.yml'
+  /integrations/shopify/events/app-installed:
+    post:
+      $ref: './paths/integrations/shopify/events/app-installed.yml'
   /integrations/shopify/webhooks/orders-create:
     post:
       $ref: './paths/integrations/shopify/webhooks/orders-create.yml'

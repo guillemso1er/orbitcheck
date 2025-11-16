@@ -7,7 +7,13 @@ export async function getAccessScopes(request: FastifyRequest, reply: FastifyRep
     const shop = (request as any).shopDomain || ((request as any).shopHost as string | undefined)?.replace(/^https?:\/\//, '');
     if (!shop) {
         request.log.warn('Missing shop domain for access scopes request');
-        return reply.code(400).send({ error: 'Missing shop domain' });
+        return reply.status(400).send({
+            error: {
+                code: 'MISSING_SHOP_DOMAIN',
+                message: 'Shop domain is required but not provided in the request'
+            },
+            request_id: crypto.randomUUID?.() ?? 'unknown'
+        });
     }
     const shopifyService = createShopifyService(pool);
     const tokenData = await shopifyService.getShopToken(shop);

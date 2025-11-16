@@ -4494,6 +4494,57 @@ export type GetShopifyAccessScopesResponses = {
 
 export type GetShopifyAccessScopesResponse = GetShopifyAccessScopesResponses[keyof GetShopifyAccessScopesResponses];
 
+export type ShopifyAppInstalledEventData = {
+    body: {
+        /**
+         * Shopify shop domain (e.g., my-store.myshopify.com)
+         */
+        shop: string;
+        /**
+         * Offline access token issued by Shopify
+         */
+        accessToken: string;
+        /**
+         * Scopes granted to the app during installation
+         */
+        grantedScopes: Array<string>;
+    };
+    path?: never;
+    query?: never;
+    url: '/integrations/shopify/events/app-installed';
+};
+
+export type ShopifyAppInstalledEventErrors = {
+    /**
+     * Missing or invalid installation payload
+     */
+    400: {
+        error?: {
+            /**
+             * Error code
+             */
+            code?: string;
+            /**
+             * Error message
+             */
+            message?: string;
+        };
+        /**
+         * Request identifier
+         */
+        request_id?: string;
+    };
+};
+
+export type ShopifyAppInstalledEventError = ShopifyAppInstalledEventErrors[keyof ShopifyAppInstalledEventErrors];
+
+export type ShopifyAppInstalledEventResponses = {
+    /**
+     * Installation recorded successfully
+     */
+    200: unknown;
+};
+
 export type ShopifyOrdersCreateWebhookData = {
     body?: never;
     path?: never;
@@ -4533,7 +4584,9 @@ export type ShopifyOrdersCreateWebhookResponses = {
 };
 
 export type ShopifyAppUninstalledWebhookData = {
-    body?: never;
+    body: {
+        [key: string]: unknown;
+    };
     path?: never;
     query?: never;
     url: '/integrations/shopify/webhooks/app-uninstalled';
