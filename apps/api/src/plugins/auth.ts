@@ -26,6 +26,7 @@ type SchemeName =
   | 'cookieAuth'        // new alias to match OpenAPI scheme
   | 'httpMessageSigAuth'
   | 'csrfHeader'        // new CSRF scheme
+  | 'shopifySessionToken'
 
 interface Options {
   pool: Pool
@@ -165,7 +166,7 @@ export default fp<Options>(async function openapiSecurity(app, opts) {
     }
   }
 
-  const defaultGuards: Record<SchemeName, FastifyAuthFunction> = {
+  const defaultGuards: Partial<Record<SchemeName, FastifyAuthFunction>> = {
     patAuth: asGuard(verifyPatNoReply),
     apiKeyAuth: asGuard(verifyApiKeyNoReply),
     cookieAuth: asGuard(verifySessionNoReply),
@@ -173,15 +174,17 @@ export default fp<Options>(async function openapiSecurity(app, opts) {
     csrfHeader: asGuard(verifyCsrfNoReply),
   }
 
-  const guards = { ...defaultGuards, ...opts.guards }
+  const guards = { ...defaultGuards, ...opts.guards } as Partial<Record<SchemeName, FastifyAuthFunction>>
 
-  const guardMap: Record<string, FastifyAuthFunction> = {
+  const guardMap: Record<string, FastifyAuthFunction | undefined> = {
     patAuth: guards.patAuth,
     apiKeyAuth: guards.apiKeyAuth,
     cookieAuth: guards.cookieAuth,
     httpMessageSigInput: guards.httpMessageSigAuth,
     httpMessageSig: guards.httpMessageSigAuth,
     csrfHeader: guards.csrfHeader,
+    shopifySessionToken: guards.shopifySessionToken,
+    shopifysessiontoken: guards.shopifySessionToken,
   }
 
   function composeSecurity(sec?: Array<Record<string, string[]>>) {
@@ -195,7 +198,7 @@ export default fp<Options>(async function openapiSecurity(app, opts) {
         .filter(Boolean) as FastifyAuthFunction[])]
 
       // Enforce CSRF protection for cookie authentication on state-changing methods
-      if (andHandlers.some(handler => handler === guards.cookieAuth)) {
+      if (guards.cookieAuth && guards.csrfHeader && andHandlers.some(handler => handler === guards.cookieAuth)) {
         andHandlers.push(guards.csrfHeader)
       }
 

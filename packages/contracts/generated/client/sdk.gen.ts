@@ -1056,11 +1056,6 @@ export const getShopifyShopSettings = <ThrowOnError extends boolean = false>(opt
             {
                 scheme: 'bearer',
                 type: 'http'
-            },
-            {
-                in: 'cookie',
-                name: 'sid',
-                type: 'apiKey'
             }
         ],
         url: '/integrations/shopify/api/shop-settings',
@@ -1079,11 +1074,6 @@ export const updateShopifyShopSettings = <ThrowOnError extends boolean = false>(
             {
                 scheme: 'bearer',
                 type: 'http'
-            },
-            {
-                in: 'cookie',
-                name: 'sid',
-                type: 'apiKey'
             }
         ],
         url: '/integrations/shopify/api/shop-settings',
@@ -1106,11 +1096,6 @@ export const getShopifyAccessScopes = <ThrowOnError extends boolean = false>(opt
             {
                 scheme: 'bearer',
                 type: 'http'
-            },
-            {
-                in: 'cookie',
-                name: 'sid',
-                type: 'apiKey'
             }
         ],
         url: '/integrations/shopify/api/access-scopes',

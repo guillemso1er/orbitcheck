@@ -4,8 +4,7 @@ summary: Get Shopify shop settings
 description: Retrieves the current Shopify shop mode setting
 operationId: getShopifyShopSettings
 security:
-  - patAuth: []
-  - cookieAuth: []
+  - shopifySessionToken: []
 responses:
   '200':
     description: Shop settings retrieved successfully

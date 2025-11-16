@@ -4,8 +4,7 @@ summary: Update Shopify shop settings
 description: Updates the Shopify shop mode setting
 operationId: updateShopifyShopSettings
 security:
-  - patAuth: []
-  - cookieAuth: []
+  - shopifySessionToken: []
 requestBody:
   required: true
   content:

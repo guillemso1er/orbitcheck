@@ -17,7 +17,7 @@ function extractCustomerId(payload: Record<string, unknown>): string | null {
  * Removes PII while preserving audit trail for compliance
  */
 async function redactCustomerLogsFromDatabase(
-    shop: string,
+    _shop: string,
     customerId: string | null,
     shopifyService: any
 ): Promise<void> {
@@ -69,7 +69,7 @@ async function redactCustomerLogsFromDatabase(
  * Removes sensitive data while preserving validation results for analytics
  */
 async function redactCustomerValidationData(
-    shop: string,
+    _shop: string,
     customerId: string | null,
     shopifyService: any
 ): Promise<void> {

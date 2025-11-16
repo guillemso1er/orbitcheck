@@ -4,8 +4,7 @@ summary: Get Shopify access scopes
 description: Retrieves the current Shopify access scopes for the authenticated shop
 operationId: getShopifyAccessScopes
 security:
-  - patAuth: []
-  - cookieAuth: []
+  - shopifySessionToken: []
 responses:
   '200':
     description: Access scopes retrieved successfully

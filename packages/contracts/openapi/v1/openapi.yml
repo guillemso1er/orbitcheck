@@ -287,6 +287,12 @@ components:
         in: header
         name: Signature
         description: HTTP Message Signatures value (RFC 9421).
+
+      shopifySessionToken:
+        type: http
+        scheme: bearer
+        bearerFormat: ShopifySession
+        description: Shopify embedded app session JWT sent in the Authorization header.
   schemas:
     Error:
       $ref: './components/schemas/Error.yml'

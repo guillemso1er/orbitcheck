@@ -8,6 +8,7 @@ import { ROUTES } from "./config.js";
 import { HTTP_STATUS } from "./errors.js";
 import { serviceHandlers } from "./handlers/handlers.js";
 import { idempotency, rateLimit } from "./hooks.js";
+import { verifyShopifySessionToken } from './integrations/shopify/lib/jwt.js';
 import shopifyPlugin from './integrations/shopify/shopify.js';
 import openapiSecurity from "./plugins/auth.js";
 import { managementRoutes, runtimeRoutes } from "./routes/routes.js";
@@ -114,7 +115,25 @@ export async function applyRateLimitingAndIdempotency<TServer extends RawServerB
 export function registerRoutes<TServer extends RawServerBase = RawServerBase>(app: FastifyInstance<TServer>, pool: Pool, redis: IORedisType): void {
 
     // Register OpenAPI routes with integrated security
-    app.register(openapiSecurity, { pool });
+    const shopifyAppKey = process.env.SHOPIFY_API_KEY;
+    const shopifyAppSecret = process.env.SHOPIFY_API_SECRET;
+    const shopifySessionVerifier = (shopifyAppKey && shopifyAppSecret)
+        ? verifyShopifySessionToken(shopifyAppKey, shopifyAppSecret)
+        : undefined;
+
+    if (!shopifySessionVerifier) {
+        app.log.warn('Shopify API credentials missing; Shopify embedded endpoints will skip session verification guard');
+        app.register(openapiSecurity, { pool });
+    } else {
+        app.register(openapiSecurity, {
+            pool,
+            guards: {
+                shopifySessionToken: async (request, reply) => {
+                    await shopifySessionVerifier(request, reply);
+                },
+            },
+        });
+    }
     // Global preHandler hook chain: validation limits + rate limiting/idempotency middleware
     app.addHook("preHandler", async (request, rep) => {
         await applyValidationLimits(request, rep, pool);
@@ -123,7 +142,6 @@ export function registerRoutes<TServer extends RawServerBase = RawServerBase>(ap
     });
 
     app.register(shopifyPlugin, {
-        appKey: process.env.SHOPIFY_API_KEY!,
         appSecret: process.env.SHOPIFY_API_SECRET!,
         redis,
     });
