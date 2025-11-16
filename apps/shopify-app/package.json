@@ -1,9 +1,9 @@
 {
-  "name": "orbitcheck-shopify-app",
+  "name": "@orbitcheck/orbitcheck-shopify-app",
   "private": true,
   "scripts": {
     "build": "react-router build",
-    "dev": "shopify app dev",
+    "dev": "shopify app dev --config shopify.app.orbitcheck.toml",
     "config:link": "shopify app config link",
     "generate": "shopify app generate",
     "deploy": "shopify app deploy",

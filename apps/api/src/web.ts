@@ -8,7 +8,7 @@ import { ROUTES } from "./config.js";
 import { HTTP_STATUS } from "./errors.js";
 import { serviceHandlers } from "./handlers/handlers.js";
 import { idempotency, rateLimit } from "./hooks.js";
-import shopifyPlugin from './integrations/shopify.js';
+import shopifyPlugin from './integrations/shopify/shopify.js';
 import openapiSecurity from "./plugins/auth.js";
 import { managementRoutes, runtimeRoutes } from "./routes/routes.js";
 import { createPlansService } from './services/plans.js';

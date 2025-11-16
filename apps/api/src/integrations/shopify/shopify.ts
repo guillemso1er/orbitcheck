@@ -1,10 +1,10 @@
 // plugins/shopify.ts
 import fp from 'fastify-plugin';
 import type { Redis as IORedisType } from 'ioredis';
-import { setCsp } from './shopify/lib/csp.js';
-import { rawBody, verifyHmac } from './shopify/lib/hmac.js';
-import { preventDuplicates } from './shopify/lib/idempotency.js';
-import { verifyShopifySessionToken } from './shopify/lib/jwt.js';
+import { setCsp } from './lib/csp.js';
+import { rawBody, verifyHmac } from './lib/hmac.js';
+import { preventDuplicates } from './lib/idempotency.js';
+import { verifyShopifySessionToken } from './lib/jwt.js';
 
 
 interface ShopifyPluginOpts {

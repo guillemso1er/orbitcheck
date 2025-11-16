@@ -6,6 +6,7 @@ import type {
   LoaderFunctionArgs,
 } from "react-router";
 import { authenticate } from "../shopify.server";
+import { useApiClient } from "../utils/api.js";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   await authenticate.admin(request);
@@ -17,13 +18,14 @@ export default function Index() {
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
   const [mode, setMode] = useState<'disabled' | 'notify' | 'activated'>('disabled');
+  const apiClient = useApiClient();
 
   useEffect(() => {
     // Check app status and settings
     const checkStatus = async () => {
       setLoading(true);
       try {
-        const response = await getShopifyShopSettings();
+        const response = await getShopifyShopSettings({ client: apiClient });
         const data = response?.data;
         if (data?.mode) {
           setMode(data.mode);
@@ -44,6 +46,7 @@ export default function Index() {
   const updateMode = async (newMode: 'disabled' | 'notify' | 'activated') => {
     try {
       await updateShopifyShopSettings({
+        client: apiClient,
         body: { mode: newMode }
       });
       setMode(newMode);
