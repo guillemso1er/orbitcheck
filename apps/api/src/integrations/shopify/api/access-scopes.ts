@@ -3,13 +3,13 @@ import * as crypto from 'node:crypto';
 import { createShopifyService } from '../../../services/shopify.js';
 import { missingScopes, parseScopes } from '../lib/scopes.js';
 
-export async function getAccessScopes(request: FastifyRequest, reply: FastifyReply) {
+export async function getAccessScopes(request: FastifyRequest, reply: FastifyReply, pool: any) {
     const shop = (request as any).shopDomain || ((request as any).shopHost as string | undefined)?.replace(/^https?:\/\//, '');
     if (!shop) {
         request.log.warn('Missing shop domain for access scopes request');
         return reply.code(400).send({ error: 'Missing shop domain' });
     }
-    const shopifyService = createShopifyService((request as any).server.pg.pool);
+    const shopifyService = createShopifyService(pool);
     const tokenData = await shopifyService.getShopToken(shop);
     if (!tokenData) {
         request.log.warn({ shop }, 'Shop not found while checking access scopes');

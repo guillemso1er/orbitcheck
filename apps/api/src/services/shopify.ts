@@ -80,7 +80,7 @@ export class ShopifyService {
 
     async getShopMode(shopDomain: string): Promise<Mode> {
         const result = await this.pool.query(`
-      SELECT s.mode FROM shopify_settings ss
+      SELECT ss.mode FROM shopify_settings ss
       JOIN shopify_shops s ON s.id = ss.shop_id
       WHERE s.shop_domain = $1
     `, [shopDomain]);

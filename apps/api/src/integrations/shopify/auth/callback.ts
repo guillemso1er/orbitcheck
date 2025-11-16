@@ -3,7 +3,7 @@ import { createShopifyService } from '../../../services/shopify.js';
 import { missingScopes, parseScopes } from '../lib/scopes.js';
 import { captureShopifyEvent } from '../lib/telemetry.js';
 
-export async function callback(request: FastifyRequest, reply: FastifyReply) {
+export async function callback(request: FastifyRequest, reply: FastifyReply, pool: any) {
     const { code, shop, state } = request.query as { code: string; shop: string; state: string };
     if (!code || !shop || state !== shop) {
         return reply.code(400).send('Invalid parameters');
@@ -32,7 +32,7 @@ export async function callback(request: FastifyRequest, reply: FastifyReply) {
     }
 
     // Store in DB
-    const shopifyService = createShopifyService((request as any).server.pg.pool);
+    const shopifyService = createShopifyService(pool);
     await shopifyService.storeShopToken(shop, access_token, grantedScopes);
     captureShopifyEvent(shop, 'signup', { scopes: grantedScopes });
 

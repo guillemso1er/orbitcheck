@@ -166,11 +166,11 @@ export const serviceHandlers = <TServer extends RawServerBase = RawServerBase>(p
     },
     //shopify integration handlers will go here in the future
     shopifyInstall: async (request, reply) => install(request, reply),
-    shopifyCallback: async (request, reply) => callback(request, reply),
+    shopifyCallback: async (request, reply) => callback(request, reply, pool),
 
-    getShopifyShopSettings: async (request, reply) => getShopSettings(request, reply),
-    updateShopifyShopSettings: async (request, reply) => updateShopSettings(request, reply),
-    getShopifyAccessScopes: async (request, reply) => getAccessScopes(request, reply),
+    getShopifyShopSettings: async (request, reply) => getShopSettings(request, reply, pool),
+    updateShopifyShopSettings: async (request, reply) => updateShopSettings(request, reply, pool),
+    getShopifyAccessScopes: async (request, reply) => getAccessScopes(request, reply, pool),
 
     shopifyOrdersCreateWebhook: async (request, reply) => ordersCreate(request, reply),
     shopifyAppUninstalledWebhook: async (request, reply) => appUninstalled(request, reply),
