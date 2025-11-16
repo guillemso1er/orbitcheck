@@ -2,7 +2,7 @@
 
 import type { Client, Options as Options2, TDataShape } from './client';
 import { client } from './client.gen';
-import type { BatchDedupeData, BatchDedupeErrors, BatchDedupeResponses, BatchEvaluateOrdersData, BatchEvaluateOrdersErrors, BatchEvaluateOrdersResponses, BatchValidateData, BatchValidateErrors, BatchValidateResponses, CheckValidationLimitsData, CheckValidationLimitsErrors, CheckValidationLimitsResponses, CreateApiKeyData, CreateApiKeyErrors, CreateApiKeyResponses, CreateCheckoutSessionData, CreateCheckoutSessionErrors, CreateCheckoutSessionResponses, CreateCustomerPortalSessionData, CreateCustomerPortalSessionErrors, CreateCustomerPortalSessionResponses, CreatePersonalAccessTokenData, CreatePersonalAccessTokenErrors, CreatePersonalAccessTokenResponses, CreateProjectData, CreateProjectErrors, CreateProjectResponses, CreateUserData, CreateUserErrors, CreateUserResponses, CreateWebhookData, CreateWebhookErrors, CreateWebhookResponses, DedupeAddressData, DedupeAddressErrors, DedupeAddressResponses, DedupeCustomerData, DedupeCustomerErrors, DedupeCustomerResponses, DeleteCustomRuleData, DeleteCustomRuleErrors, DeleteCustomRuleResponses, DeleteLogData, DeleteLogErrors, DeleteLogResponses, DeleteProjectData, DeleteProjectErrors, DeleteProjectResponses, DeleteWebhookData, DeleteWebhookErrors, DeleteWebhookResponses, EraseDataData, EraseDataErrors, EraseDataResponses, EstimateRoiData, EstimateRoiErrors, EstimateRoiResponses, EvaluateOrderData, EvaluateOrderErrors, EvaluateOrderResponses, GetAvailablePlansData, GetAvailablePlansErrors, GetAvailablePlansResponses, GetAvailableRulesData, GetAvailableRulesErrors, GetAvailableRulesResponses, GetBuiltInRulesData, GetBuiltInRulesErrors, GetBuiltInRulesResponses, GetErrorCodeCatalogData, GetErrorCodeCatalogErrors, GetErrorCodeCatalogResponses, GetJobStatusByIdData, GetJobStatusByIdErrors, GetJobStatusByIdResponses, GetLogsData, GetLogsErrors, GetLogsResponses, GetReasonCodeCatalogData, GetReasonCodeCatalogErrors, GetReasonCodeCatalogResponses, GetSettingsData, GetSettingsErrors, GetSettingsResponses, GetUsageData, GetUsageErrors, GetUsageResponses, GetUserPlanData, GetUserPlanErrors, GetUserPlanResponses, GetUserProjectsData, GetUserProjectsErrors, GetUserProjectsResponses, ListApiKeysData, ListApiKeysErrors, ListApiKeysResponses, ListPersonalAccessTokensData, ListPersonalAccessTokensErrors, ListPersonalAccessTokensResponses, ListUsersData, ListUsersErrors, ListUsersResponses, ListWebhooksData, ListWebhooksErrors, ListWebhooksResponses, LoginUserData, LoginUserErrors, LoginUserResponses, LogoutUserData, LogoutUserErrors, LogoutUserResponses, MergeDeduplicatedData, MergeDeduplicatedErrors, MergeDeduplicatedResponses, NormalizeAddressData, NormalizeAddressErrors, NormalizeAddressResponses, RegisterCustomRulesData, RegisterCustomRulesErrors, RegisterCustomRulesResponses, RegisterUserData, RegisterUserErrors, RegisterUserResponses, RevokeApiKeyData, RevokeApiKeyErrors, RevokeApiKeyResponses, RevokePersonalAccessTokenData, RevokePersonalAccessTokenErrors, RevokePersonalAccessTokenResponses, TestRulesAgainstPayloadData, TestRulesAgainstPayloadErrors, TestRulesAgainstPayloadResponses, TestWebhookData, TestWebhookErrors, TestWebhookResponses, UpdateSettingsData, UpdateSettingsErrors, UpdateSettingsResponses, UpdateUserPlanData, UpdateUserPlanErrors, UpdateUserPlanResponses, ValidateAddressData, ValidateAddressErrors, ValidateAddressResponses, ValidateEmailData, ValidateEmailErrors, ValidateEmailResponses, ValidateNameData, ValidateNameErrors, ValidateNameResponses, ValidatePhoneData, ValidatePhoneErrors, ValidatePhoneResponses, ValidateTaxIdData, ValidateTaxIdErrors, ValidateTaxIdResponses, VerifyPhoneOtpData, VerifyPhoneOtpErrors, VerifyPhoneOtpResponses } from './types.gen';
+import type { BatchDedupeData, BatchDedupeErrors, BatchDedupeResponses, BatchEvaluateOrdersData, BatchEvaluateOrdersErrors, BatchEvaluateOrdersResponses, BatchValidateData, BatchValidateErrors, BatchValidateResponses, CheckValidationLimitsData, CheckValidationLimitsErrors, CheckValidationLimitsResponses, CreateApiKeyData, CreateApiKeyErrors, CreateApiKeyResponses, CreateCheckoutSessionData, CreateCheckoutSessionErrors, CreateCheckoutSessionResponses, CreateCustomerPortalSessionData, CreateCustomerPortalSessionErrors, CreateCustomerPortalSessionResponses, CreatePersonalAccessTokenData, CreatePersonalAccessTokenErrors, CreatePersonalAccessTokenResponses, CreateProjectData, CreateProjectErrors, CreateProjectResponses, CreateUserData, CreateUserErrors, CreateUserResponses, CreateWebhookData, CreateWebhookErrors, CreateWebhookResponses, DedupeAddressData, DedupeAddressErrors, DedupeAddressResponses, DedupeCustomerData, DedupeCustomerErrors, DedupeCustomerResponses, DeleteCustomRuleData, DeleteCustomRuleErrors, DeleteCustomRuleResponses, DeleteLogData, DeleteLogErrors, DeleteLogResponses, DeleteProjectData, DeleteProjectErrors, DeleteProjectResponses, DeleteWebhookData, DeleteWebhookErrors, DeleteWebhookResponses, EraseDataData, EraseDataErrors, EraseDataResponses, EstimateRoiData, EstimateRoiErrors, EstimateRoiResponses, EvaluateOrderData, EvaluateOrderErrors, EvaluateOrderResponses, GetAvailablePlansData, GetAvailablePlansErrors, GetAvailablePlansResponses, GetAvailableRulesData, GetAvailableRulesErrors, GetAvailableRulesResponses, GetBuiltInRulesData, GetBuiltInRulesErrors, GetBuiltInRulesResponses, GetErrorCodeCatalogData, GetErrorCodeCatalogErrors, GetErrorCodeCatalogResponses, GetJobStatusByIdData, GetJobStatusByIdErrors, GetJobStatusByIdResponses, GetLogsData, GetLogsErrors, GetLogsResponses, GetReasonCodeCatalogData, GetReasonCodeCatalogErrors, GetReasonCodeCatalogResponses, GetSettingsData, GetSettingsErrors, GetSettingsResponses, GetShopifyAccessScopesData, GetShopifyAccessScopesErrors, GetShopifyAccessScopesResponses, GetShopifyShopSettingsData, GetShopifyShopSettingsErrors, GetShopifyShopSettingsResponses, GetUsageData, GetUsageErrors, GetUsageResponses, GetUserPlanData, GetUserPlanErrors, GetUserPlanResponses, GetUserProjectsData, GetUserProjectsErrors, GetUserProjectsResponses, ListApiKeysData, ListApiKeysErrors, ListApiKeysResponses, ListPersonalAccessTokensData, ListPersonalAccessTokensErrors, ListPersonalAccessTokensResponses, ListUsersData, ListUsersErrors, ListUsersResponses, ListWebhooksData, ListWebhooksErrors, ListWebhooksResponses, LoginUserData, LoginUserErrors, LoginUserResponses, LogoutUserData, LogoutUserErrors, LogoutUserResponses, MergeDeduplicatedData, MergeDeduplicatedErrors, MergeDeduplicatedResponses, NormalizeAddressData, NormalizeAddressErrors, NormalizeAddressResponses, RegisterCustomRulesData, RegisterCustomRulesErrors, RegisterCustomRulesResponses, RegisterUserData, RegisterUserErrors, RegisterUserResponses, RevokeApiKeyData, RevokeApiKeyErrors, RevokeApiKeyResponses, RevokePersonalAccessTokenData, RevokePersonalAccessTokenErrors, RevokePersonalAccessTokenResponses, ShopifyAppUninstalledWebhookData, ShopifyAppUninstalledWebhookErrors, ShopifyAppUninstalledWebhookResponses, ShopifyCallbackData, ShopifyCallbackErrors, ShopifyCallbackResponses, ShopifyGdprCustomersDataRequestWebhookData, ShopifyGdprCustomersDataRequestWebhookErrors, ShopifyGdprCustomersDataRequestWebhookResponses, ShopifyGdprCustomersRedactWebhookData, ShopifyGdprCustomersRedactWebhookErrors, ShopifyGdprCustomersRedactWebhookResponses, ShopifyGdprShopRedactWebhookData, ShopifyGdprShopRedactWebhookErrors, ShopifyGdprShopRedactWebhookResponses, ShopifyInstallData, ShopifyInstallErrors, ShopifyInstallResponses, ShopifyOrdersCreateWebhookData, ShopifyOrdersCreateWebhookErrors, ShopifyOrdersCreateWebhookResponses, TestRulesAgainstPayloadData, TestRulesAgainstPayloadErrors, TestRulesAgainstPayloadResponses, TestWebhookData, TestWebhookErrors, TestWebhookResponses, UpdateSettingsData, UpdateSettingsErrors, UpdateSettingsResponses, UpdateShopifyShopSettingsData, UpdateShopifyShopSettingsErrors, UpdateShopifyShopSettingsResponses, UpdateUserPlanData, UpdateUserPlanErrors, UpdateUserPlanResponses, ValidateAddressData, ValidateAddressErrors, ValidateAddressResponses, ValidateEmailData, ValidateEmailErrors, ValidateEmailResponses, ValidateNameData, ValidateNameErrors, ValidateNameResponses, ValidatePhoneData, ValidatePhoneErrors, ValidatePhoneResponses, ValidateTaxIdData, ValidateTaxIdErrors, ValidateTaxIdResponses, VerifyPhoneOtpData, VerifyPhoneOtpErrors, VerifyPhoneOtpResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean> = Options2<TData, ThrowOnError> & {
     /**
@@ -1018,6 +1018,163 @@ export const normalizeAddress = <ThrowOnError extends boolean = false>(options: 
             'Content-Type': 'application/json',
             ...options.headers
         }
+    });
+};
+
+/**
+ * Install Shopify app
+ *
+ * Redirects user to Shopify OAuth installation flow
+ */
+export const shopifyInstall = <ThrowOnError extends boolean = false>(options: Options<ShopifyInstallData, ThrowOnError>) => {
+    return (options.client ?? client).get<ShopifyInstallResponses, ShopifyInstallErrors, ThrowOnError>({
+        url: '/integrations/shopify/auth/install',
+        ...options
+    });
+};
+
+/**
+ * Shopify OAuth callback
+ *
+ * Handles Shopify OAuth callback and completes app installation
+ */
+export const shopifyCallback = <ThrowOnError extends boolean = false>(options: Options<ShopifyCallbackData, ThrowOnError>) => {
+    return (options.client ?? client).get<ShopifyCallbackResponses, ShopifyCallbackErrors, ThrowOnError>({
+        url: '/integrations/shopify/auth/callback',
+        ...options
+    });
+};
+
+/**
+ * Get Shopify shop settings
+ *
+ * Retrieves the current Shopify shop mode setting
+ */
+export const getShopifyShopSettings = <ThrowOnError extends boolean = false>(options?: Options<GetShopifyShopSettingsData, ThrowOnError>) => {
+    return (options?.client ?? client).get<GetShopifyShopSettingsResponses, GetShopifyShopSettingsErrors, ThrowOnError>({
+        security: [
+            {
+                scheme: 'bearer',
+                type: 'http'
+            },
+            {
+                in: 'cookie',
+                name: 'sid',
+                type: 'apiKey'
+            }
+        ],
+        url: '/integrations/shopify/api/shop-settings',
+        ...options
+    });
+};
+
+/**
+ * Update Shopify shop settings
+ *
+ * Updates the Shopify shop mode setting
+ */
+export const updateShopifyShopSettings = <ThrowOnError extends boolean = false>(options: Options<UpdateShopifyShopSettingsData, ThrowOnError>) => {
+    return (options.client ?? client).post<UpdateShopifyShopSettingsResponses, UpdateShopifyShopSettingsErrors, ThrowOnError>({
+        security: [
+            {
+                scheme: 'bearer',
+                type: 'http'
+            },
+            {
+                in: 'cookie',
+                name: 'sid',
+                type: 'apiKey'
+            }
+        ],
+        url: '/integrations/shopify/api/shop-settings',
+        ...options,
+        headers: {
+            'Content-Type': 'application/json',
+            ...options.headers
+        }
+    });
+};
+
+/**
+ * Get Shopify access scopes
+ *
+ * Retrieves the current Shopify access scopes for the authenticated shop
+ */
+export const getShopifyAccessScopes = <ThrowOnError extends boolean = false>(options?: Options<GetShopifyAccessScopesData, ThrowOnError>) => {
+    return (options?.client ?? client).get<GetShopifyAccessScopesResponses, GetShopifyAccessScopesErrors, ThrowOnError>({
+        security: [
+            {
+                scheme: 'bearer',
+                type: 'http'
+            },
+            {
+                in: 'cookie',
+                name: 'sid',
+                type: 'apiKey'
+            }
+        ],
+        url: '/integrations/shopify/api/access-scopes',
+        ...options
+    });
+};
+
+/**
+ * Shopify orders/create webhook
+ *
+ * Handles Shopify orders/create webhook events
+ */
+export const shopifyOrdersCreateWebhook = <ThrowOnError extends boolean = false>(options?: Options<ShopifyOrdersCreateWebhookData, ThrowOnError>) => {
+    return (options?.client ?? client).post<ShopifyOrdersCreateWebhookResponses, ShopifyOrdersCreateWebhookErrors, ThrowOnError>({
+        url: '/integrations/shopify/webhooks/orders-create',
+        ...options
+    });
+};
+
+/**
+ * Shopify app/uninstalled webhook
+ *
+ * Handles Shopify app/uninstalled webhook events
+ */
+export const shopifyAppUninstalledWebhook = <ThrowOnError extends boolean = false>(options?: Options<ShopifyAppUninstalledWebhookData, ThrowOnError>) => {
+    return (options?.client ?? client).post<ShopifyAppUninstalledWebhookResponses, ShopifyAppUninstalledWebhookErrors, ThrowOnError>({
+        url: '/integrations/shopify/webhooks/app-uninstalled',
+        ...options
+    });
+};
+
+/**
+ * Shopify GDPR customers/data_request webhook
+ *
+ * Handles Shopify GDPR customers/data_request webhook events
+ */
+export const shopifyGdprCustomersDataRequestWebhook = <ThrowOnError extends boolean = false>(options?: Options<ShopifyGdprCustomersDataRequestWebhookData, ThrowOnError>) => {
+    return (options?.client ?? client).post<ShopifyGdprCustomersDataRequestWebhookResponses, ShopifyGdprCustomersDataRequestWebhookErrors, ThrowOnError>({
+        url: '/integrations/shopify/webhooks/gdpr/customers-data-request',
+        ...options
+    });
+};
+
+/**
+ * Shopify GDPR customers/redact webhook
+ *
+ * Handles Shopify GDPR customers/redact webhook events
+ */
+export const shopifyGdprCustomersRedactWebhook = <ThrowOnError extends boolean = false>(options?: Options<ShopifyGdprCustomersRedactWebhookData, ThrowOnError>) => {
+    return (options?.client ?? client).post<ShopifyGdprCustomersRedactWebhookResponses, ShopifyGdprCustomersRedactWebhookErrors, ThrowOnError>({
+        url: '/integrations/shopify/webhooks/gdpr/customers-redact',
+        ...options
+    });
+};
+
+/**
+ * Shopify GDPR shop/redact webhook
+ *
+ * Handles Shopify GDPR shop/redact webhook events
+ */
+export const shopifyGdprShopRedactWebhook = <ThrowOnError extends boolean = false>(options?: Options<ShopifyGdprShopRedactWebhookData, ThrowOnError>) => {
+    return (options?.client ?? client).post<ShopifyGdprShopRedactWebhookResponses, ShopifyGdprShopRedactWebhookErrors, ThrowOnError>({
+        url: '/integrations/shopify/webhooks/gdpr/shop-redact',
+        ...options
     });
 };
 

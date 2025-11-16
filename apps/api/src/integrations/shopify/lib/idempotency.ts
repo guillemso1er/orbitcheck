@@ -1,17 +1,25 @@
 import { FastifyReply, FastifyRequest } from 'fastify';
+import { Redis } from 'ioredis';
 
-const processedIds = new Map<string, number>();
-
-export function preventDuplicates() {
+export function preventDuplicates(redis: Redis) {
     return async (request: FastifyRequest, reply: FastifyReply) => {
         const id = request.headers['x-shopify-webhook-id'] as string;
         if (!id) return reply.code(400).send('Missing webhook ID');
-        const now = Date.now();
-        if (processedIds.has(id)) {
+
+        // Use Redis SETEX with atomic check-and-set to prevent race conditions
+        const key = `shopify:webhook:${id}`;
+
+        // First check if key exists
+        const exists = await redis.exists(key);
+        if (exists) {
+            // Key already exists, webhook already processed
             return reply.code(200).send(); // Already processed
         }
-        processedIds.set(id, now);
-        // Remove after 24h
-        setTimeout(() => processedIds.delete(id), 24 * 60 * 60 * 1000);
+
+        // Set key with expiration (5 minutes TTL)
+        await redis.setex(key, 300, '1');
+
+        // Key was set successfully, webhook is new
+        return undefined; // Continue with the webhook processing
     };
 }

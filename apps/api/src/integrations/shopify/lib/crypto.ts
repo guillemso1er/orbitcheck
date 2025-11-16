@@ -1,4 +1,4 @@
-import crypto from 'node:crypto';
+import * as crypto from 'node:crypto';
 import { CRYPTO_IV_BYTES } from '../../../config.js';
 import { environment } from '../../../environment.js';
 

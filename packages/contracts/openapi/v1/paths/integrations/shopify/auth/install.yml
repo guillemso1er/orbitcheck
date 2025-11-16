@@ -1,0 +1,30 @@
+tags:
+  - Integrations
+summary: Install Shopify app
+description: Redirects user to Shopify OAuth installation flow
+operationId: shopifyInstall
+security: []
+parameters:
+  - name: shop
+    in: query
+    required: true
+    schema:
+      type: string
+    description: Shopify shop domain (e.g., my-store.myshopify.com)
+responses:
+  '302':
+    description: Redirect to Shopify OAuth installation
+    headers:
+      Location:
+        description: Shopify OAuth authorization URL
+        schema:
+          type: string
+          format: uri
+  '400':
+    description: Missing shop parameter
+    content:
+      application/json:
+        schema:
+          $ref: '../../../../components/schemas/Error.yml'
+  '200':
+    description: Success response for validation

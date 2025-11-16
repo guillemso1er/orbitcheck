@@ -24,3 +24,9 @@ IMPORTANT: Check package.json for commands/scripts to run
 - Safety: No network calls except via approved tools; no secrets writing to logs; no destructive commands without confirmation.
 
 - Done criteria: All tasks complete; tests pass locally; lint/typecheck clean; migration notes (if any) included. No Cursor/Copilot rules found.
+
+
+Project Information:
+- Services/Apps: apps/api, apps/dashboard, apps/site
+- Contract first project, specs on packages/contracts/openapi, after aditions/edits/removals of endpoints run at the root pnpm generate command.
+- Monorepo structure

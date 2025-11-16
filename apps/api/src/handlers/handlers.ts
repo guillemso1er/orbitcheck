@@ -1,8 +1,15 @@
 import { FastifyInstance, RawServerBase } from "fastify";
 import type { Redis as IORedisType } from "ioredis";
-import crypto from 'node:crypto';
+import * as crypto from 'node:crypto';
 import { Pool } from "pg";
 import { RouteHandlers } from "../generated/fastify/fastify.gen.js";
+import { getAccessScopes } from "../integrations/shopify/api/access-scopes.js";
+import { getShopSettings, updateShopSettings } from "../integrations/shopify/api/shop-settings.js";
+import { callback } from "../integrations/shopify/auth/callback.js";
+import { install } from "../integrations/shopify/auth/install.js";
+import { appUninstalled } from "../integrations/shopify/webhooks/app-uninstalled.js";
+import { customersDataRequest, customersRedact, shopRedact } from "../integrations/shopify/webhooks/gdpr.js";
+import { ordersCreate } from "../integrations/shopify/webhooks/orders-create.js";
 import { createApiKey, listApiKeys, revokeApiKey } from "../services/api-keys.js";
 import { loginUser, logoutUser, registerUser } from "../services/auth.js";
 import { batchDeduplicateData, batchEvaluateOrders, batchValidateData } from "../services/batch.js";
@@ -10,16 +17,15 @@ import { createStripeCheckoutSession, createStripeCustomerPortalSession } from "
 import { deleteLogEntry, eraseUserData, getEventLogs, getUsageStatistics } from "../services/data.js";
 import { dedupeAddress, dedupeCustomer, mergeDeduplicatedRecords } from "../services/dedupe/dedupe.js";
 import { getJobStatus } from "../services/jobs.js";
+import { normalizeAddressCheap } from "../services/normalize.js";
 import { evaluateOrderForRiskAndRules } from "../services/orders.js";
 import { createPersonalAccessToken, listPersonalAccessTokens, revokePersonalAccessToken } from "../services/pats.js";
-import { PlansService } from "../services/plans.js";
 import { createProject, deleteProject, getUserProjects } from "../services/projects.js";
 import { computeRoiEstimate } from "../services/roi.js";
 import { deleteCustomRule, getAvailableRules, getBuiltInRules, getErrorCodeCatalog, getReasonCodeCatalog, registerCustomRules, testRulesAgainstPayload } from "../services/rules/rules.js";
 import { getTenantSettings, updateTenantSettings } from "../services/settings.js";
 import { validateAddress, validateEmailAddress, validateName, validatePhoneNumber, validateTaxId, verifyPhoneOtp } from "../services/validation.js";
 import { createWebhook, deleteWebhook, listWebhooks, testWebhook } from "../services/webhook.js";
-import { normalizeAddressCheap } from "../services/normalize.js";
 
 export const serviceHandlers = <TServer extends RawServerBase = RawServerBase>(pool: Pool, redis: IORedisType, app: FastifyInstance<TServer>): RouteHandlers => ({
     // Auth handlers
@@ -143,55 +149,33 @@ export const serviceHandlers = <TServer extends RawServerBase = RawServerBase>(p
 
     // Plan handlers
     getUserPlan: async (request, reply) => {
-        const plansService = new PlansService(pool);
-        const userPlan = await plansService.getUserPlan((request as any).user_id);
-        const response = {
-            id: userPlan.id,
-            email: userPlan.email,
-            monthlyValidationsUsed: userPlan.monthlyValidationsUsed,
-            subscriptionStatus: userPlan.subscriptionStatus,
-            trialEndDate: userPlan.trialEndDate,
-            projectsCount: userPlan.projectsCount,
-            plan: { ...userPlan.plan }
-        };
-        return reply.status(200).send(response);
+        const { getUserPlanHandler } = await import('../services/plans.js');
+        return getUserPlanHandler(request, reply, pool);
     },
     updateUserPlan: async (request, reply) => {
-        const plansService = new PlansService(pool);
-        const { planSlug, trialDays } = request.body as any; // Align with generated types
-        if (!planSlug || typeof planSlug !== 'string') {
-            return reply.status(400).send({ error: { code: 'INVALID_INPUT', message: 'planSlug is required' } });
-        }
-        const userPlan = await plansService.updateUserPlan((request as any).user_id, planSlug, trialDays);
-        const response = {
-            id: userPlan.id,
-            email: userPlan.email,
-            monthlyValidationsUsed: userPlan.monthlyValidationsUsed,
-            subscriptionStatus: userPlan.subscriptionStatus,
-            trialEndDate: userPlan.trialEndDate,
-            projectsCount: userPlan.projectsCount,
-            plan: { ...userPlan.plan }
-        };
-        return reply.status(200).send(response);
+        const { updateUserPlanHandler } = await import('../services/plans.js');
+        return updateUserPlanHandler(request, reply, pool);
     },
-    getAvailablePlans: async (_request, reply) => {
-        const plansService = new PlansService(pool);
-        // Temporary: return only the free plan as array, shape matching spec
-        const free = await plansService.getPlanBySlug('free');
-        const arr = free ? [{ id: free.id, name: free.name, slug: free.slug, price: free.price, validationsLimit: free.validationsLimit, projectsLimit: free.projectsLimit, features: free.features }] : [];
-        return reply.status(200).send(arr);
+    getAvailablePlans: async (request, reply) => {
+        const { getAvailablePlansHandler } = await import('../services/plans.js');
+        return getAvailablePlansHandler(request, reply, pool);
     },
     checkValidationLimits: async (request, reply) => {
-        const plansService = new PlansService(pool);
-        const { count = 1 } = request.body as any;
-        const usage = await plansService.checkValidationLimit((request as any).user_id, count);
-        const response = {
-            canProceed: usage.remainingValidations > 0 || usage.overageAllowed,
-            remainingValidations: usage.remainingValidations,
-            overageAllowed: usage.overageAllowed,
-            monthlyValidationsUsed: usage.monthlyValidationsUsed,
-            planValidationsLimit: usage.planValidationsLimit
-        };
-        return reply.status(200).send(response);
-    }
+        const { checkValidationLimitsHandler } = await import('../services/plans.js');
+        return checkValidationLimitsHandler(request, reply, pool);
+    },
+    //shopify integration handlers will go here in the future
+    shopifyInstall: async (request, reply) => install(request, reply),
+    shopifyCallback: async (request, reply) => callback(request, reply),
+
+    getShopifyShopSettings: async (request, reply) => getShopSettings(request, reply),
+    updateShopifyShopSettings: async (request, reply) => updateShopSettings(request, reply),
+    getShopifyAccessScopes: async (request, reply) => getAccessScopes(request, reply),
+
+    shopifyOrdersCreateWebhook: async (request, reply) => ordersCreate(request, reply),
+    shopifyAppUninstalledWebhook: async (request, reply) => appUninstalled(request, reply),
+    shopifyGdprCustomersDataRequestWebhook: async (request, reply) => customersDataRequest(request, reply),
+    shopifyGdprCustomersRedactWebhook: async (request, reply) => customersRedact(request, reply),
+    shopifyGdprShopRedactWebhook: async (request, reply) => shopRedact(request, reply),
+
 })

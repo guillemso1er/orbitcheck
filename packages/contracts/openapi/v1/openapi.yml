@@ -29,6 +29,8 @@ tags:
     description: Authentication endpoints.
   - name: Users
     description: User management endpoints.
+  - name: Integrations
+    description: Third-party integration endpoints for connecting external services.
 paths:
   # Authentication paths
   /auth/login:
@@ -165,7 +167,37 @@ paths:
     post:
       $ref: './paths/normalize/address.yml'
 
-  
+  # Integrations - Shopify paths
+  /integrations/shopify/auth/install:
+    get:
+      $ref: './paths/integrations/shopify/auth/install.yml'
+  /integrations/shopify/auth/callback:
+    get:
+      $ref: './paths/integrations/shopify/auth/callback.yml'
+  /integrations/shopify/api/shop-settings:
+    get:
+      $ref: './paths/integrations/shopify/api/shop-settings.yml'
+    post:
+      $ref: './paths/integrations/shopify/api/shop-settings-update.yml'
+  /integrations/shopify/api/access-scopes:
+    get:
+      $ref: './paths/integrations/shopify/api/access-scopes.yml'
+  /integrations/shopify/webhooks/orders-create:
+    post:
+      $ref: './paths/integrations/shopify/webhooks/orders-create.yml'
+  /integrations/shopify/webhooks/app-uninstalled:
+    post:
+      $ref: './paths/integrations/shopify/webhooks/app-uninstalled.yml'
+  /integrations/shopify/webhooks/gdpr/customers-data-request:
+    post:
+      $ref: './paths/integrations/shopify/webhooks/gdpr-customers-data-request.yml'
+  /integrations/shopify/webhooks/gdpr/customers-redact:
+    post:
+      $ref: './paths/integrations/shopify/webhooks/gdpr-customers-redact.yml'
+  /integrations/shopify/webhooks/gdpr/shop-redact:
+    post:
+      $ref: './paths/integrations/shopify/webhooks/gdpr-shop-redact.yml'
+
   # Dedupe paths
   /v1/dedupe/customer:
     post:
@@ -314,3 +346,5 @@ components:
       $ref: './components/schemas/User.yml'
     Pagination:
       $ref: './components/schemas/Pagination.yml'
+    ShopifyOrder:
+      $ref: './components/schemas/ShopifyOrder.yml'

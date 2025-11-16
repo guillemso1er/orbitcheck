@@ -1,0 +1,48 @@
+tags:
+  - Integrations
+summary: Update Shopify shop settings
+description: Updates the Shopify shop mode setting
+operationId: updateShopifyShopSettings
+security:
+  - patAuth: []
+  - cookieAuth: []
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        required:
+          - mode
+        properties:
+          mode:
+            type: string
+            enum: [disabled, notify, activated]
+            description: New shop mode
+responses:
+  '200':
+    description: Shop settings updated successfully
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            mode:
+              type: string
+              enum: [disabled, notify, activated]
+              description: Updated shop mode
+            request_id:
+              type: string
+              description: Request identifier
+  '400':
+    description: Invalid request body
+    content:
+      application/json:
+        schema:
+          $ref: '../../../../components/schemas/Error.yml'
+  '401':
+    description: Unauthorized
+    content:
+      application/json:
+        schema:
+          $ref: '../../../../components/schemas/Error.yml'

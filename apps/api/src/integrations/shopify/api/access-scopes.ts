@@ -1,4 +1,5 @@
 import { FastifyReply, FastifyRequest } from 'fastify';
+import * as crypto from 'node:crypto';
 import { createShopifyService } from '../../../services/shopify.js';
 import { missingScopes, parseScopes } from '../lib/scopes.js';
 
@@ -33,5 +34,9 @@ export async function getAccessScopes(request: FastifyRequest, reply: FastifyRep
         request.log.info({ shop }, 'Shop granted all required Shopify scopes');
     }
 
-    return { access_scopes: granted, missing_scopes: missing };
+    return reply.status(200).send({
+        access_scopes: granted,
+        missing_scopes: missing,
+        request_id: crypto.randomUUID?.() ?? 'unknown'
+    });
 }

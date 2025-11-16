@@ -8,10 +8,10 @@ import { ROUTES } from "./config.js";
 import { HTTP_STATUS } from "./errors.js";
 import { serviceHandlers } from "./handlers/handlers.js";
 import { idempotency, rateLimit } from "./hooks.js";
+import shopifyPlugin from './integrations/shopify.js';
 import openapiSecurity from "./plugins/auth.js";
 import { managementRoutes, runtimeRoutes } from "./routes/routes.js";
 import { createPlansService } from './services/plans.js';
-
 /**
  * Applies validation limits for users on validation endpoints.
  * Checks and increments usage for authenticated users only.
@@ -122,14 +122,17 @@ export function registerRoutes<TServer extends RawServerBase = RawServerBase>(ap
         return;
     });
 
-
+    app.register(shopifyPlugin, {
+        appKey: process.env.SHOPIFY_API_KEY!,
+        appSecret: process.env.SHOPIFY_API_SECRET!,
+        redis,
+    });
 
     app.register(openapiGlue, {
         serviceHandlers: serviceHandlers(pool, redis, app),
         specification: openapiSpec,
     });
 
-    // Register Shopify integration
-    app.register(import('./integrations/shopify.js'));
+
 
 }

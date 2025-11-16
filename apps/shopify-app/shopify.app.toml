@@ -1,28 +1,28 @@
-application_url = "https://shopify.orbitcheck.io/"
+# Learn more about configuring your app at https://shopify.dev/docs/apps/tools/cli/configuration
+
+client_id = "9187bfe60ff17fe44eecfc3bc574c7d4"
+name = "orbitcheck"
+application_url = "https://example.com"
 embedded = true
 
-[access_scopes]
-scopes = "read_orders,write_orders,read_customers,write_customers"
+[build]
+automatically_update_urls_on_dev = true
+include_config_on_deploy = true
 
 [webhooks]
-api_version = "2025-10"
+api_version = "2026-01"
 
-[[webhooks.subscriptions]]
-topics = ["app/uninstalled"]
-uri = "https://api.orbitcheck.io/integrations/shopify/webhooks/app-uninstalled"
+  [[webhooks.subscriptions]]
+  topics = [ "app/uninstalled" ]
+  uri = "/webhooks/app/uninstalled"
 
-[[webhooks.subscriptions]]
-topics = ["orders/create"]
-uri = "https://api.orbitcheck.io/integrations/shopify/webhooks/orders-create"
+  [[webhooks.subscriptions]]
+  topics = [ "app/scopes_update" ]
+  uri = "/webhooks/app/scopes_update"
 
-[[webhooks.subscriptions]]
-topics = ["customers/data_request"]
-uri = "https://api.orbitcheck.io/integrations/shopify/webhooks/gdpr/customers-data-request"
+[access_scopes]
+# Learn more at https://shopify.dev/docs/apps/tools/cli/configuration#access_scopes
+scopes = "write_products"
 
-[[webhooks.subscriptions]]
-topics = ["customers/redact"]
-uri = "https://api.orbitcheck.io/integrations/shopify/webhooks/gdpr/customers-redact"
-
-[[webhooks.subscriptions]]
-topics = ["shop/redact"]
-uri = "https://api.orbitcheck.io/integrations/shopify/webhooks/gdpr/shop-redact"
+[auth]
+redirect_urls = [ "https://example.com/api/auth" ]

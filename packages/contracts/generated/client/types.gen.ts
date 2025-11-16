@@ -702,6 +702,91 @@ export type Pagination = {
     total_pages: number;
 };
 
+export type ShopifyOrder = {
+    /**
+     * Shopify order ID
+     */
+    id: string;
+    /**
+     * Shopify GraphQL API ID
+     */
+    admin_graphql_api_id: string;
+    /**
+     * Customer contact email
+     */
+    contact_email?: string | null;
+    /**
+     * Customer email
+     */
+    email?: string | null;
+    /**
+     * Customer phone number
+     */
+    phone?: string | null;
+    shipping_address?: {
+        /**
+         * Shipping address line 1
+         */
+        address1?: string | null;
+        /**
+         * Shipping address line 2
+         */
+        address2?: string | null;
+        /**
+         * Shipping city
+         */
+        city?: string | null;
+        /**
+         * Shipping province/state
+         */
+        province?: string | null;
+        /**
+         * Shipping postal code
+         */
+        zip?: string | null;
+        /**
+         * Shipping country code
+         */
+        country_code?: string | null;
+        /**
+         * Shipping address latitude
+         */
+        latitude?: number | null;
+        /**
+         * Shipping address longitude
+         */
+        longitude?: number | null;
+        /**
+         * Shipping first name
+         */
+        first_name?: string | null;
+        /**
+         * Shipping last name
+         */
+        last_name?: string | null;
+        /**
+         * Shipping phone number
+         */
+        phone?: string | null;
+    };
+    /**
+     * Order total price
+     */
+    total_price?: string | null;
+    /**
+     * Current order total price
+     */
+    current_total_price?: string | null;
+    /**
+     * Currency code
+     */
+    currency: string;
+    /**
+     * Payment gateway
+     */
+    gateway?: string | null;
+};
+
 export type LoginUserData = {
     body: {
         /**
@@ -4063,6 +4148,541 @@ export type NormalizeAddressResponses = {
 };
 
 export type NormalizeAddressResponse = NormalizeAddressResponses[keyof NormalizeAddressResponses];
+
+export type ShopifyInstallData = {
+    body?: never;
+    path?: never;
+    query: {
+        /**
+         * Shopify shop domain (e.g., my-store.myshopify.com)
+         */
+        shop: string;
+    };
+    url: '/integrations/shopify/auth/install';
+};
+
+export type ShopifyInstallErrors = {
+    /**
+     * Missing shop parameter
+     */
+    400: {
+        error?: {
+            /**
+             * Error code
+             */
+            code?: string;
+            /**
+             * Error message
+             */
+            message?: string;
+        };
+        /**
+         * Request identifier
+         */
+        request_id?: string;
+    };
+};
+
+export type ShopifyInstallError = ShopifyInstallErrors[keyof ShopifyInstallErrors];
+
+export type ShopifyInstallResponses = {
+    /**
+     * Success response for validation
+     */
+    200: unknown;
+};
+
+export type ShopifyCallbackData = {
+    body?: never;
+    path?: never;
+    query: {
+        /**
+         * OAuth authorization code
+         */
+        code: string;
+        /**
+         * Shopify shop domain
+         */
+        shop: string;
+        /**
+         * State parameter for CSRF protection
+         */
+        state: string;
+    };
+    url: '/integrations/shopify/auth/callback';
+};
+
+export type ShopifyCallbackErrors = {
+    /**
+     * Invalid parameters or missing required scopes
+     */
+    400: {
+        error?: {
+            /**
+             * Error code
+             */
+            code?: string;
+            /**
+             * Error message
+             */
+            message?: string;
+        };
+        /**
+         * Request identifier
+         */
+        request_id?: string;
+    };
+    /**
+     * Failed to exchange OAuth code
+     */
+    500: {
+        error?: {
+            /**
+             * Error code
+             */
+            code?: string;
+            /**
+             * Error message
+             */
+            message?: string;
+        };
+        /**
+         * Request identifier
+         */
+        request_id?: string;
+    };
+};
+
+export type ShopifyCallbackError = ShopifyCallbackErrors[keyof ShopifyCallbackErrors];
+
+export type ShopifyCallbackResponses = {
+    /**
+     * Success response for validation
+     */
+    200: unknown;
+};
+
+export type GetShopifyShopSettingsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/integrations/shopify/api/shop-settings';
+};
+
+export type GetShopifyShopSettingsErrors = {
+    /**
+     * Unauthorized
+     */
+    401: {
+        error?: {
+            /**
+             * Error code
+             */
+            code?: string;
+            /**
+             * Error message
+             */
+            message?: string;
+        };
+        /**
+         * Request identifier
+         */
+        request_id?: string;
+    };
+};
+
+export type GetShopifyShopSettingsError = GetShopifyShopSettingsErrors[keyof GetShopifyShopSettingsErrors];
+
+export type GetShopifyShopSettingsResponses = {
+    /**
+     * Shop settings retrieved successfully
+     */
+    200: {
+        /**
+         * Current shop mode
+         */
+        mode?: 'disabled' | 'notify' | 'activated';
+        /**
+         * Request identifier
+         */
+        request_id?: string;
+    };
+};
+
+export type GetShopifyShopSettingsResponse = GetShopifyShopSettingsResponses[keyof GetShopifyShopSettingsResponses];
+
+export type UpdateShopifyShopSettingsData = {
+    body: {
+        /**
+         * New shop mode
+         */
+        mode: 'disabled' | 'notify' | 'activated';
+    };
+    path?: never;
+    query?: never;
+    url: '/integrations/shopify/api/shop-settings';
+};
+
+export type UpdateShopifyShopSettingsErrors = {
+    /**
+     * Invalid request body
+     */
+    400: {
+        error?: {
+            /**
+             * Error code
+             */
+            code?: string;
+            /**
+             * Error message
+             */
+            message?: string;
+        };
+        /**
+         * Request identifier
+         */
+        request_id?: string;
+    };
+    /**
+     * Unauthorized
+     */
+    401: {
+        error?: {
+            /**
+             * Error code
+             */
+            code?: string;
+            /**
+             * Error message
+             */
+            message?: string;
+        };
+        /**
+         * Request identifier
+         */
+        request_id?: string;
+    };
+};
+
+export type UpdateShopifyShopSettingsError = UpdateShopifyShopSettingsErrors[keyof UpdateShopifyShopSettingsErrors];
+
+export type UpdateShopifyShopSettingsResponses = {
+    /**
+     * Shop settings updated successfully
+     */
+    200: {
+        /**
+         * Updated shop mode
+         */
+        mode?: 'disabled' | 'notify' | 'activated';
+        /**
+         * Request identifier
+         */
+        request_id?: string;
+    };
+};
+
+export type UpdateShopifyShopSettingsResponse = UpdateShopifyShopSettingsResponses[keyof UpdateShopifyShopSettingsResponses];
+
+export type GetShopifyAccessScopesData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/integrations/shopify/api/access-scopes';
+};
+
+export type GetShopifyAccessScopesErrors = {
+    /**
+     * Missing shop domain
+     */
+    400: {
+        error?: {
+            /**
+             * Error code
+             */
+            code?: string;
+            /**
+             * Error message
+             */
+            message?: string;
+        };
+        /**
+         * Request identifier
+         */
+        request_id?: string;
+    };
+    /**
+     * Unauthorized
+     */
+    401: {
+        error?: {
+            /**
+             * Error code
+             */
+            code?: string;
+            /**
+             * Error message
+             */
+            message?: string;
+        };
+        /**
+         * Request identifier
+         */
+        request_id?: string;
+    };
+    /**
+     * Shop not registered
+     */
+    404: {
+        error?: {
+            /**
+             * Error code
+             */
+            code?: string;
+            /**
+             * Error message
+             */
+            message?: string;
+        };
+        /**
+         * Request identifier
+         */
+        request_id?: string;
+    };
+    /**
+     * Unable to verify scopes with Shopify
+     */
+    502: {
+        error?: {
+            /**
+             * Error code
+             */
+            code?: string;
+            /**
+             * Error message
+             */
+            message?: string;
+        };
+        /**
+         * Request identifier
+         */
+        request_id?: string;
+    };
+};
+
+export type GetShopifyAccessScopesError = GetShopifyAccessScopesErrors[keyof GetShopifyAccessScopesErrors];
+
+export type GetShopifyAccessScopesResponses = {
+    /**
+     * Access scopes retrieved successfully
+     */
+    200: {
+        /**
+         * Currently granted scopes
+         */
+        access_scopes?: Array<string>;
+        /**
+         * Required scopes that are missing
+         */
+        missing_scopes?: Array<string>;
+        /**
+         * Request identifier
+         */
+        request_id?: string;
+    };
+};
+
+export type GetShopifyAccessScopesResponse = GetShopifyAccessScopesResponses[keyof GetShopifyAccessScopesResponses];
+
+export type ShopifyOrdersCreateWebhookData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/integrations/shopify/webhooks/orders-create';
+};
+
+export type ShopifyOrdersCreateWebhookErrors = {
+    /**
+     * Invalid webhook data
+     */
+    400: {
+        error?: {
+            /**
+             * Error code
+             */
+            code?: string;
+            /**
+             * Error message
+             */
+            message?: string;
+        };
+        /**
+         * Request identifier
+         */
+        request_id?: string;
+    };
+};
+
+export type ShopifyOrdersCreateWebhookError = ShopifyOrdersCreateWebhookErrors[keyof ShopifyOrdersCreateWebhookErrors];
+
+export type ShopifyOrdersCreateWebhookResponses = {
+    /**
+     * Webhook processed successfully
+     */
+    200: unknown;
+};
+
+export type ShopifyAppUninstalledWebhookData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/integrations/shopify/webhooks/app-uninstalled';
+};
+
+export type ShopifyAppUninstalledWebhookErrors = {
+    /**
+     * Invalid webhook data
+     */
+    400: {
+        error?: {
+            /**
+             * Error code
+             */
+            code?: string;
+            /**
+             * Error message
+             */
+            message?: string;
+        };
+        /**
+         * Request identifier
+         */
+        request_id?: string;
+    };
+};
+
+export type ShopifyAppUninstalledWebhookError = ShopifyAppUninstalledWebhookErrors[keyof ShopifyAppUninstalledWebhookErrors];
+
+export type ShopifyAppUninstalledWebhookResponses = {
+    /**
+     * Webhook processed successfully
+     */
+    200: unknown;
+};
+
+export type ShopifyGdprCustomersDataRequestWebhookData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/integrations/shopify/webhooks/gdpr/customers-data-request';
+};
+
+export type ShopifyGdprCustomersDataRequestWebhookErrors = {
+    /**
+     * Invalid webhook data
+     */
+    400: {
+        error?: {
+            /**
+             * Error code
+             */
+            code?: string;
+            /**
+             * Error message
+             */
+            message?: string;
+        };
+        /**
+         * Request identifier
+         */
+        request_id?: string;
+    };
+};
+
+export type ShopifyGdprCustomersDataRequestWebhookError = ShopifyGdprCustomersDataRequestWebhookErrors[keyof ShopifyGdprCustomersDataRequestWebhookErrors];
+
+export type ShopifyGdprCustomersDataRequestWebhookResponses = {
+    /**
+     * Webhook processed successfully
+     */
+    200: unknown;
+};
+
+export type ShopifyGdprCustomersRedactWebhookData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/integrations/shopify/webhooks/gdpr/customers-redact';
+};
+
+export type ShopifyGdprCustomersRedactWebhookErrors = {
+    /**
+     * Invalid webhook data
+     */
+    400: {
+        error?: {
+            /**
+             * Error code
+             */
+            code?: string;
+            /**
+             * Error message
+             */
+            message?: string;
+        };
+        /**
+         * Request identifier
+         */
+        request_id?: string;
+    };
+};
+
+export type ShopifyGdprCustomersRedactWebhookError = ShopifyGdprCustomersRedactWebhookErrors[keyof ShopifyGdprCustomersRedactWebhookErrors];
+
+export type ShopifyGdprCustomersRedactWebhookResponses = {
+    /**
+     * Webhook processed successfully
+     */
+    200: unknown;
+};
+
+export type ShopifyGdprShopRedactWebhookData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/integrations/shopify/webhooks/gdpr/shop-redact';
+};
+
+export type ShopifyGdprShopRedactWebhookErrors = {
+    /**
+     * Invalid webhook data
+     */
+    400: {
+        error?: {
+            /**
+             * Error code
+             */
+            code?: string;
+            /**
+             * Error message
+             */
+            message?: string;
+        };
+        /**
+         * Request identifier
+         */
+        request_id?: string;
+    };
+};
+
+export type ShopifyGdprShopRedactWebhookError = ShopifyGdprShopRedactWebhookErrors[keyof ShopifyGdprShopRedactWebhookErrors];
+
+export type ShopifyGdprShopRedactWebhookResponses = {
+    /**
+     * Webhook processed successfully
+     */
+    200: unknown;
+};
 
 export type DedupeCustomerData = {
     body: {
