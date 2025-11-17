@@ -1,0 +1,81 @@
+type: object
+properties:
+  id:
+    type: string
+    format: uuid
+    description: Unique session ID
+  shop_domain:
+    type: string
+    description: Shopify shop domain
+  order_id:
+    type: string
+    description: Shopify order ID
+  order_gid:
+    type: string
+    description: Shopify GraphQL ID for the order
+  customer_email:
+    type: string
+    description: Customer email address
+  original_address:
+    type: object
+    description: Original shipping address from the order
+    properties:
+      address1:
+        type: string
+      address2:
+        type: [string, "null"]
+      city:
+        type: string
+      province:
+        type: string
+      zip:
+        type: string
+      country_code:
+        type: string
+      first_name:
+        type: [string, "null"]
+      last_name:
+        type: [string, "null"]
+  normalized_address:
+    type: object
+    description: Normalized/corrected shipping address
+    properties:
+      address1:
+        type: string
+      address2:
+        type: [string, "null"]
+      city:
+        type: string
+      province:
+        type: string
+      zip:
+        type: string
+      country_code:
+        type: string
+      first_name:
+        type: [string, "null"]
+      last_name:
+        type: [string, "null"]
+  fix_status:
+    type: string
+    enum: [pending, confirmed, cancelled]
+    description: Current status of the address fix
+  token_expires_at:
+    type: string
+    format: date-time
+    description: When the fix token expires
+  created_at:
+    type: string
+    format: date-time
+    description: When the session was created
+required:
+  - id
+  - shop_domain
+  - order_id
+  - order_gid
+  - customer_email
+  - original_address
+  - normalized_address
+  - fix_status
+  - token_expires_at
+  - created_at

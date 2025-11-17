@@ -1,5 +1,8 @@
+import { Queue } from 'bullmq';
 import { FastifyReply, FastifyRequest } from 'fastify';
 import { createShopifyService } from '../../../services/shopify.js';
+import { validateAddress as validateAddressUtil } from '../../../validators/address.js';
+import { createAddressFixService } from '../address-fix/service.js';
 import { MUT_TAGS_ADD, shopifyGraphql } from '../lib/graphql.js';
 import { captureShopifyEvent } from '../lib/telemetry.js';
 import { OrderEvaluatePayload, OrderEvaluateResponse, ShopifyOrder } from '../lib/types.js';
@@ -108,7 +111,117 @@ export async function ordersCreate(request: FastifyRequest, reply: FastifyReply)
         request.log.debug({ shop: shopDomain, order: payload.order_id, action: result?.action }, 'No new order tags returned');
     }
 
+    // Address fix workflow - run asynchronously after main processing
+    queueMicrotask(async () => {
+        try {
+            await handleOrderAddressFix(request, shopDomain, o);
+        } catch (error) {
+            request.log.error(
+                { err: error, shop: shopDomain, orderId: o.id },
+                'Failed to process address fix workflow'
+            );
+        }
+    });
+
     return reply.code(200).send();
+}
+
+/**
+ * Handle address validation and fix workflow for Shopify order
+ */
+async function handleOrderAddressFix(
+    request: FastifyRequest,
+    shopDomain: string,
+    order: ShopifyOrder
+): Promise<void> {
+    const shippingAddr = order.shipping_address;
+    if (!shippingAddr || !shippingAddr.address1 || !shippingAddr.city || !shippingAddr.zip) {
+        request.log.debug({ shop: shopDomain, orderId: order.id }, 'Skipping address fix - insufficient address data');
+        return;
+    }
+
+    // Validate the shipping address
+    const pool = (request as any).server.pg.pool;
+    const redis = (request as any).server.redis;
+
+    const validationResult = await validateAddressUtil(
+        {
+            line1: shippingAddr.address1,
+            line2: shippingAddr.address2 || undefined,
+            city: shippingAddr.city,
+            state: shippingAddr.province || undefined,
+            postal_code: shippingAddr.zip,
+            country: shippingAddr.country_code || 'US',
+        },
+        pool,
+        redis
+    );
+
+    // If address is valid and deliverable, no fix needed
+    if (validationResult.valid && !validationResult.reason_codes.includes('undeliverable')) {
+        request.log.debug({ shop: shopDomain, orderId: order.id }, 'Address is valid - no fix needed');
+        return;
+    }
+
+    // Create address fix session
+    const shopifyService = createShopifyService(pool);
+    const tokenData = await shopifyService.getShopToken(shopDomain);
+    if (!tokenData) {
+        request.log.warn({ shop: shopDomain }, 'No Shopify token for address fix');
+        return;
+    }
+
+    const addressFixService = createAddressFixService(pool, request.log);
+    const { session, token } = await addressFixService.upsertSession({
+        shopDomain,
+        orderId: String(order.id),
+        orderGid: order.admin_graphql_api_id,
+        customerEmail: order.contact_email || order.email || null,
+        originalAddress: {
+            address1: shippingAddr.address1,
+            address2: shippingAddr.address2,
+            city: shippingAddr.city,
+            province: shippingAddr.province,
+            zip: shippingAddr.zip,
+            country_code: shippingAddr.country_code,
+            first_name: shippingAddr.first_name,
+            last_name: shippingAddr.last_name,
+        },
+        normalizedAddress: validationResult.normalized || {
+            address1: shippingAddr.address1,
+            city: shippingAddr.city,
+            province: shippingAddr.province,
+            zip: shippingAddr.zip,
+            country_code: shippingAddr.country_code,
+        },
+    });
+
+    // Generate fix URL (will be used in Shopify Flow)
+    const fixUrl = `${process.env.APP_URL || 'https://orbitcheck.io'}/apps/address-fix?token=${token}`;
+
+    // Tag order and add metafield
+    await addressFixService.tagOrderForAddressFix(
+        shopDomain,
+        tokenData.access_token,
+        order.admin_graphql_api_id,
+        fixUrl
+    );
+
+    // Queue job to poll and hold fulfillment orders
+    const addressFixQueue = new Queue('address_fix', { connection: redis });
+    await addressFixQueue.add('hold-fulfillment', {
+        shopDomain,
+        orderId: String(order.id),
+        orderGid: order.admin_graphql_api_id,
+        sessionId: session.id,
+        pool,
+        logger: request.log,
+    });
+
+    request.log.info(
+        { shop: shopDomain, orderId: order.id, sessionId: session.id },
+        'Created address fix session and queued hold job'
+    );
 }
 
 function derivePaymentMethod(o: ShopifyOrder): string | undefined {

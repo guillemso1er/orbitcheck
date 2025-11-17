@@ -1,0 +1,32 @@
+tags:
+  - Integrations
+summary: Get address fix session by token
+description: Retrieves an address fix session for customer review via App Proxy
+operationId: shopifyAddressFixGet
+security: []
+parameters:
+  - name: token
+    in: path
+    required: true
+    description: Fix session token
+    schema:
+      type: string
+responses:
+  '200':
+    description: Address fix session retrieved successfully
+    content:
+      application/json:
+        schema:
+          $ref: '../../../components/schemas/ShopifyAddressFixSession.yml'
+  '404':
+    description: Session not found or expired
+    content:
+      application/json:
+        schema:
+          $ref: '../../../components/schemas/NotFoundError.yml'
+  '400':
+    description: Invalid token
+    content:
+      application/json:
+        schema:
+          $ref: '../../../components/schemas/Error.yml'

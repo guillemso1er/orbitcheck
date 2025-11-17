@@ -1,8 +1,8 @@
 tags:
   - Integrations
-summary: Shopify orders/create webhook
-description: Handles Shopify orders/create webhook events
-operationId: shopifyOrdersCreateWebhook
+summary: Shopify customers/update webhook
+description: Handles Shopify customers/update webhook events to refresh normalized customer addresses
+operationId: shopifyCustomersUpdateWebhook
 security: []
 requestBody:
   required: true
@@ -10,7 +10,7 @@ requestBody:
     application/json:
       schema:
         type: object
-        description: Shopify order webhook payload
+        description: Shopify customer webhook payload
 responses:
   '200':
     description: Webhook processed successfully

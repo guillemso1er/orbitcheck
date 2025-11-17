@@ -787,6 +787,78 @@ export type ShopifyOrder = {
     gateway?: string | null;
 };
 
+export type ShopifyAddressFixSession = {
+    /**
+     * Unique session ID
+     */
+    id: string;
+    /**
+     * Shopify shop domain
+     */
+    shop_domain: string;
+    /**
+     * Shopify order ID
+     */
+    order_id: string;
+    /**
+     * Shopify GraphQL ID for the order
+     */
+    order_gid: string;
+    /**
+     * Customer email address
+     */
+    customer_email: string;
+    /**
+     * Original shipping address from the order
+     */
+    original_address: {
+        address1?: string;
+        address2?: string | null;
+        city?: string;
+        province?: string;
+        zip?: string;
+        country_code?: string;
+        first_name?: string | null;
+        last_name?: string | null;
+    };
+    /**
+     * Normalized/corrected shipping address
+     */
+    normalized_address: {
+        address1?: string;
+        address2?: string | null;
+        city?: string;
+        province?: string;
+        zip?: string;
+        country_code?: string;
+        first_name?: string | null;
+        last_name?: string | null;
+    };
+    /**
+     * Current status of the address fix
+     */
+    fix_status: 'pending' | 'confirmed' | 'cancelled';
+    /**
+     * When the fix token expires
+     */
+    token_expires_at: string;
+    /**
+     * When the session was created
+     */
+    created_at: string;
+};
+
+export type ShopifyAddressFixConfirmRequest = {
+    /**
+     * Whether to use the corrected address (true) or keep original (false)
+     */
+    use_corrected: boolean;
+    /**
+     * Shopify shop domain for verification
+     */
+    shop_domain: string;
+};
+
 export type LoginUserData = {
     body: {
         /**
@@ -4546,7 +4618,12 @@ export type ShopifyAppInstalledEventResponses = {
 };
 
 export type ShopifyOrdersCreateWebhookData = {
-    body?: never;
+    /**
+     * Shopify order webhook payload
+     */
+    body: {
+        [key: string]: unknown;
+    };
     path?: never;
     query?: never;
     url: '/integrations/shopify/webhooks/orders-create';
@@ -4582,6 +4659,277 @@ export type ShopifyOrdersCreateWebhookResponses = {
      */
     200: unknown;
 };
+
+export type ShopifyCustomersCreateWebhookData = {
+    /**
+     * Shopify customer webhook payload
+     */
+    body: {
+        [key: string]: unknown;
+    };
+    path?: never;
+    query?: never;
+    url: '/integrations/shopify/webhooks/customers-create';
+};
+
+export type ShopifyCustomersCreateWebhookErrors = {
+    /**
+     * Invalid webhook data
+     */
+    400: {
+        error?: {
+            /**
+             * Error code
+             */
+            code?: string;
+            /**
+             * Error message
+             */
+            message?: string;
+        };
+        /**
+         * Request identifier
+         */
+        request_id?: string;
+    };
+};
+
+export type ShopifyCustomersCreateWebhookError = ShopifyCustomersCreateWebhookErrors[keyof ShopifyCustomersCreateWebhookErrors];
+
+export type ShopifyCustomersCreateWebhookResponses = {
+    /**
+     * Webhook processed successfully
+     */
+    200: unknown;
+};
+
+export type ShopifyCustomersUpdateWebhookData = {
+    /**
+     * Shopify customer webhook payload
+     */
+    body: {
+        [key: string]: unknown;
+    };
+    path?: never;
+    query?: never;
+    url: '/integrations/shopify/webhooks/customers-update';
+};
+
+export type ShopifyCustomersUpdateWebhookErrors = {
+    /**
+     * Invalid webhook data
+     */
+    400: {
+        error?: {
+            /**
+             * Error code
+             */
+            code?: string;
+            /**
+             * Error message
+             */
+            message?: string;
+        };
+        /**
+         * Request identifier
+         */
+        request_id?: string;
+    };
+};
+
+export type ShopifyCustomersUpdateWebhookError = ShopifyCustomersUpdateWebhookErrors[keyof ShopifyCustomersUpdateWebhookErrors];
+
+export type ShopifyCustomersUpdateWebhookResponses = {
+    /**
+     * Webhook processed successfully
+     */
+    200: unknown;
+};
+
+export type ShopifyAddressFixGetData = {
+    body?: never;
+    path: {
+        /**
+         * Fix session token
+         */
+        token: string;
+    };
+    query?: never;
+    url: '/integrations/shopify/address-fix/{token}';
+};
+
+export type ShopifyAddressFixGetErrors = {
+    /**
+     * Invalid token
+     */
+    400: {
+        error?: {
+            /**
+             * Error code
+             */
+            code?: string;
+            /**
+             * Error message
+             */
+            message?: string;
+        };
+        /**
+         * Request identifier
+         */
+        request_id?: string;
+    };
+    /**
+     * Session not found or expired
+     */
+    404: {
+        error?: {
+            code?: 'NOT_FOUND';
+            /**
+             * Error message
+             */
+            message?: string;
+        };
+    };
+};
+
+export type ShopifyAddressFixGetError = ShopifyAddressFixGetErrors[keyof ShopifyAddressFixGetErrors];
+
+export type ShopifyAddressFixGetResponses = {
+    /**
+     * Address fix session retrieved successfully
+     */
+    200: {
+        /**
+         * Unique session ID
+         */
+        id: string;
+        /**
+         * Shopify shop domain
+         */
+        shop_domain: string;
+        /**
+         * Shopify order ID
+         */
+        order_id: string;
+        /**
+         * Shopify GraphQL ID for the order
+         */
+        order_gid: string;
+        /**
+         * Customer email address
+         */
+        customer_email: string;
+        /**
+         * Original shipping address from the order
+         */
+        original_address: {
+            address1?: string;
+            address2?: string | null;
+            city?: string;
+            province?: string;
+            zip?: string;
+            country_code?: string;
+            first_name?: string | null;
+            last_name?: string | null;
+        };
+        /**
+         * Normalized/corrected shipping address
+         */
+        normalized_address: {
+            address1?: string;
+            address2?: string | null;
+            city?: string;
+            province?: string;
+            zip?: string;
+            country_code?: string;
+            first_name?: string | null;
+            last_name?: string | null;
+        };
+        /**
+         * Current status of the address fix
+         */
+        fix_status: 'pending' | 'confirmed' | 'cancelled';
+        /**
+         * When the fix token expires
+         */
+        token_expires_at: string;
+        /**
+         * When the session was created
+         */
+        created_at: string;
+    };
+};
+
+export type ShopifyAddressFixGetResponse = ShopifyAddressFixGetResponses[keyof ShopifyAddressFixGetResponses];
+
+export type ShopifyAddressFixConfirmData = {
+    body: {
+        /**
+         * Whether to use the corrected address (true) or keep original (false)
+         */
+        use_corrected: boolean;
+        /**
+         * Shopify shop domain for verification
+         */
+        shop_domain: string;
+    };
+    path: {
+        /**
+         * Fix session token
+         */
+        token: string;
+    };
+    query?: never;
+    url: '/integrations/shopify/address-fix/{token}';
+};
+
+export type ShopifyAddressFixConfirmErrors = {
+    /**
+     * Invalid request
+     */
+    400: {
+        error?: {
+            /**
+             * Error code
+             */
+            code?: string;
+            /**
+             * Error message
+             */
+            message?: string;
+        };
+        /**
+         * Request identifier
+         */
+        request_id?: string;
+    };
+    /**
+     * Session not found or expired
+     */
+    404: {
+        error?: {
+            code?: 'NOT_FOUND';
+            /**
+             * Error message
+             */
+            message?: string;
+        };
+    };
+};
+
+export type ShopifyAddressFixConfirmError = ShopifyAddressFixConfirmErrors[keyof ShopifyAddressFixConfirmErrors];
+
+export type ShopifyAddressFixConfirmResponses = {
+    /**
+     * Address fix confirmed and order updated successfully
+     */
+    200: {
+        success?: boolean;
+        message?: string;
+    };
+};
+
+export type ShopifyAddressFixConfirmResponse = ShopifyAddressFixConfirmResponses[keyof ShopifyAddressFixConfirmResponses];
 
 export type ShopifyAppUninstalledWebhookData = {
     body: {

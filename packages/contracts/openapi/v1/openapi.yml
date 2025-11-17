@@ -188,6 +188,17 @@ paths:
   /integrations/shopify/webhooks/orders-create:
     post:
       $ref: './paths/integrations/shopify/webhooks/orders-create.yml'
+  /integrations/shopify/webhooks/customers-create:
+    post:
+      $ref: './paths/integrations/shopify/webhooks/customers-create.yml'
+  /integrations/shopify/webhooks/customers-update:
+    post:
+      $ref: './paths/integrations/shopify/webhooks/customers-update.yml'
+  /integrations/shopify/address-fix/{token}:
+    get:
+      $ref: './paths/integrations/shopify/address-fix-get.yml'
+    post:
+      $ref: './paths/integrations/shopify/address-fix-confirm.yml'
   /integrations/shopify/webhooks/app-uninstalled:
     post:
       $ref: './paths/integrations/shopify/webhooks/app-uninstalled.yml'
@@ -357,3 +368,7 @@ components:
       $ref: './components/schemas/Pagination.yml'
     ShopifyOrder:
       $ref: './components/schemas/ShopifyOrder.yml'
+    ShopifyAddressFixSession:
+      $ref: './components/schemas/ShopifyAddressFixSession.yml'
+    ShopifyAddressFixConfirmRequest:
+      $ref: './components/schemas/ShopifyAddressFixConfirmRequest.yml'

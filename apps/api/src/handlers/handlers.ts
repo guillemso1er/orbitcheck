@@ -9,6 +9,7 @@ import { callback } from "../integrations/shopify/auth/callback.js";
 import { install } from "../integrations/shopify/auth/install.js";
 import { appInstalled } from "../integrations/shopify/events/app-installed.js";
 import { appUninstalled } from "../integrations/shopify/webhooks/app-uninstalled.js";
+import { customersCreate, customersUpdate } from "../integrations/shopify/webhooks/customers.js";
 import { customersDataRequest, customersRedact, shopRedact } from "../integrations/shopify/webhooks/gdpr.js";
 import { ordersCreate } from "../integrations/shopify/webhooks/orders-create.js";
 import { createApiKey, listApiKeys, revokeApiKey } from "../services/api-keys.js";
@@ -27,6 +28,7 @@ import { deleteCustomRule, getAvailableRules, getBuiltInRules, getErrorCodeCatal
 import { getTenantSettings, updateTenantSettings } from "../services/settings.js";
 import { validateAddress, validateEmailAddress, validateName, validatePhoneNumber, validateTaxId, verifyPhoneOtp } from "../services/validation.js";
 import { createWebhook, deleteWebhook, listWebhooks, testWebhook } from "../services/webhook.js";
+import { confirmAddressFixSession, getAddressFixSession } from "./shopify-address-fix.js";
 
 export const serviceHandlers = <TServer extends RawServerBase = RawServerBase>(pool: Pool, redis: IORedisType, app: FastifyInstance<TServer>): RouteHandlers => ({
     // Auth handlers
@@ -175,9 +177,15 @@ export const serviceHandlers = <TServer extends RawServerBase = RawServerBase>(p
 
     shopifyAppInstalledEvent: async (request, reply) => appInstalled(request, reply, pool),
     shopifyOrdersCreateWebhook: async (request, reply) => ordersCreate(request, reply),
+    shopifyCustomersCreateWebhook: async (request, reply) => customersCreate(request, reply),
+    shopifyCustomersUpdateWebhook: async (request, reply) => customersUpdate(request, reply),
     shopifyAppUninstalledWebhook: async (request, reply) => appUninstalled(request, reply, pool),
     shopifyGdprCustomersDataRequestWebhook: async (request, reply) => customersDataRequest(request, reply),
     shopifyGdprCustomersRedactWebhook: async (request, reply) => customersRedact(request, reply),
     shopifyGdprShopRedactWebhook: async (request, reply) => shopRedact(request, reply),
+
+    // Shopify address fix handlers
+    shopifyAddressFixGet: async (request, reply) => getAddressFixSession(request, reply),
+    shopifyAddressFixConfirm: async (request, reply) => confirmAddressFixSession(request, reply),
 
 })
