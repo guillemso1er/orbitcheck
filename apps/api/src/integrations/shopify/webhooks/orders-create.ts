@@ -2,12 +2,13 @@ import { Queue } from 'bullmq';
 import { FastifyReply, FastifyRequest } from 'fastify';
 import { type Redis as IORedisType } from 'ioredis';
 import type { Pool } from 'pg';
+import { evaluateOrderForRiskAndRulesDirect } from '../../../services/orders.js';
 import { createShopifyService } from '../../../services/shopify.js';
 import { validateAddress as validateAddressUtil } from '../../../validators/address.js';
 import { createAddressFixService } from '../address-fix/service.js';
 import { MUT_TAGS_ADD, shopifyGraphql } from '../lib/graphql.js';
 import { captureShopifyEvent } from '../lib/telemetry.js';
-import { OrderEvaluatePayload, OrderEvaluateResponse, ShopifyOrder } from '../lib/types.js';
+import { OrderEvaluatePayload, ShopifyOrder } from '../lib/types.js';
 
 export async function ordersCreate(request: FastifyRequest, reply: FastifyReply, pool: Pool, redis: IORedisType) {
     const o: ShopifyOrder = request.body as any;
@@ -40,39 +41,31 @@ export async function ordersCreate(request: FastifyRequest, reply: FastifyReply,
         payment_method: derivePaymentMethod(o),
     };
 
-    let result: OrderEvaluateResponse | null = null;
+    let result: any = null;
     try {
-        request.log.debug({ shop: shopDomain, orderId: payload.order_id }, 'Calling OrbitCheck order evaluation API');
-        const response = await fetch('https://api.orbitcheck.io/v1/orders/evaluate', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload),
-        });
+        request.log.debug({ shop: shopDomain, orderId: payload.order_id }, 'Calling local order evaluation function');
 
-        if (!response.ok) {
-            request.log.warn({
-                shop: shopDomain,
-                orderId: payload.order_id,
-                status: response.status,
-                statusText: response.statusText
-            }, 'OrbitCheck API returned error status');
-            return reply.code(200).send(); // Return 200 to avoid webhook retries
-        }
+        // For Shopify webhooks, we need to provide a project_id
+        // For now, we'll use a default project_id - in a real implementation
+        // this would be retrieved from the shop settings or user association
+        const project_id = 'default';
 
-        result = await response.json();
+        // Call the direct evaluation function instead of making HTTP request
+        result = await evaluateOrderForRiskAndRulesDirect(payload, project_id, pool, redis);
+
         request.log.info({
             shop: shopDomain,
             orderId: payload.order_id,
             action: result?.action,
             riskScore: result?.risk_score,
             tagCount: result?.tags?.length || 0
-        }, 'OrbitCheck evaluation completed');
+        }, 'Local order evaluation completed');
     } catch (error) {
         request.log.error({
             shop: shopDomain,
             orderId: payload.order_id,
             error: error instanceof Error ? error.message : 'Unknown error'
-        }, 'Failed to call OrbitCheck API');
+        }, 'Failed to call local order evaluation function');
         return reply.code(200).send(); // Return 200 to avoid webhook retries
     }
 

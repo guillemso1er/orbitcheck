@@ -30,7 +30,7 @@ import { validateAddress, validateEmailAddress, validateName, validatePhoneNumbe
 import { createWebhook, deleteWebhook, listWebhooks, testWebhook } from "../services/webhook.js";
 import { confirmAddressFixSession, getAddressFixSession } from "./shopify-address-fix.js";
 
-const makeAuthHandlers = <TServer extends RawServerBase = RawServerBase>(pool: Pool, redis: IORedisType, app: FastifyInstance<TServer>): Partial<RouteHandlers> => ({
+const makeAuthHandlers = <TServer extends RawServerBase = RawServerBase>(pool: Pool, _redis: IORedisType, _app: FastifyInstance<TServer>): Partial<RouteHandlers> => ({
     loginUser: async (request, reply) => loginUser(request, reply, pool),
     registerUser: async (request, reply) => registerUser(request, reply, pool),
     logoutUser: async (request, reply) => logoutUser(request, reply),
