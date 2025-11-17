@@ -1,7 +1,7 @@
 import { createShopifyDashboardSession } from "@orbitcheck/contracts";
 import type { ActionFunctionArgs } from "react-router";
 import { authenticate } from "../shopify.server.js";
-import { getOrbitcheckClient } from "../utils/orbitcheck.server.js";
+import { generateShopifySessionToken, getOrbitcheckClient } from "../utils/orbitcheck.server.js";
 
 const orbitcheckClient = getOrbitcheckClient();
 
@@ -15,7 +15,7 @@ const orbitcheckClient = getOrbitcheckClient();
 export const action = async ({ request }: ActionFunctionArgs) => {
     try {
         // Authenticate the Shopify admin session to get session token
-        const { session, sessionToken } = await authenticate.admin(request);
+        const { session } = await authenticate.admin(request);
 
         if (!session?.shop) {
             return new Response(
@@ -24,18 +24,14 @@ export const action = async ({ request }: ActionFunctionArgs) => {
             );
         }
 
-        if (!sessionToken) {
-            return new Response(
-                JSON.stringify({ error: "Missing session token" }),
-                { status: 401, headers: { "Content-Type": "application/json" } }
-            );
-        }
+        // Generate OrbitCheck session JWT
+        const orbitcheckSessionToken = generateShopifySessionToken(session.shop);
 
         // Call OrbitCheck API to create dashboard session
         const response = await createShopifyDashboardSession({
             client: orbitcheckClient,
             headers: {
-                'Authorization': `Bearer ${sessionToken}`,
+                'Authorization': `Bearer ${orbitcheckSessionToken}`,
             },
         });
 
@@ -47,10 +43,36 @@ export const action = async ({ request }: ActionFunctionArgs) => {
             );
         }
 
-        // Return the dashboard URL and session info
+        // Extract Set-Cookie headers from API response
+        // Use getSetCookie() if available, otherwise fall back to manual extraction
+        let rawSetCookies: string[] = [];
+        if (typeof response.response.headers.getSetCookie === 'function') {
+            rawSetCookies = response.response.headers.getSetCookie();
+        } else {
+            // Fallback: manually extract all Set-Cookie headers
+            const setCookieHeader = response.response.headers.get('set-cookie');
+            if (setCookieHeader) {
+                rawSetCookies = [setCookieHeader];
+            }
+        }
+
+        // Check if cookies are present
+        if (rawSetCookies.length === 0) {
+            console.error('OrbitCheck API response missing Set-Cookie header');
+            return new Response(
+                JSON.stringify({ error: 'Session cookie missing' }),
+                { status: 502, headers: { "Content-Type": "application/json" } }
+            );
+        }
+
+        // Forward cookies to the browser
+        const headers = new Headers({ "Content-Type": "application/json" });
+        rawSetCookies.forEach((value) => headers.append("Set-Cookie", value));
+
+        // Return the dashboard URL and session info with cookies
         return new Response(
             JSON.stringify(response.data),
-            { status: 200, headers: { "Content-Type": "application/json" } }
+            { status: 200, headers }
         );
     } catch (error) {
         console.error('Failed to create dashboard session:', error);

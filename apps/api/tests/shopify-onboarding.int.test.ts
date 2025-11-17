@@ -4,6 +4,7 @@
  */
 
 import { Redis } from 'ioredis';
+import jwt from 'jsonwebtoken';
 import type { Pool } from 'pg';
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 import { build } from '../src/server.js';
@@ -164,25 +165,121 @@ describe('Shopify Onboarding Integration', () => {
     });
 
     describe('Dashboard session creation', () => {
-        test.skip('should create dashboard session for onboarded shop', async () => {
-            // TODO: Mock Shopify session token JWT
-            // TODO: Call dashboard-session endpoint with valid token
-            // TODO: Assert session cookies are set
-            // TODO: Assert user_id in session matches shop's user_id
-            expect(true).toBe(true); // Placeholder
+        const generateShopifyToken = (shopDomain: string) => {
+            const appKey = 'test-shopify-api-key';
+            const appSecret = 'test-shopify-api-secret';
+
+            // Set env vars for the API's shopifySessionToken guard
+            process.env.SHOPIFY_API_KEY = appKey;
+            process.env.SHOPIFY_API_SECRET = appSecret;
+
+            const payload = {
+                aud: appKey,
+                dest: `https://${shopDomain}`,
+            };
+
+            return jwt.sign(payload, appSecret, { algorithm: 'HS256' });
+        };
+
+        test('should create dashboard session for onboarded shop', async () => {
+            // Ensure shop has completed onboarding (create user, account, project manually)
+            const userResult = await pool.query(
+                `INSERT INTO users (email, password_hash) 
+                 VALUES ($1, $2) 
+                 RETURNING id`,
+                ['dashboard-session-test@example.com', 'hash123']
+            );
+            const userId = userResult.rows[0].id;
+
+            const accountResult = await pool.query(
+                `INSERT INTO accounts (user_id, plan_tier) 
+                 VALUES ($1, $2) 
+                 RETURNING id`,
+                [userId, 'startup']
+            );
+            const accountId = accountResult.rows[0].id;
+
+            const projectResult = await pool.query(
+                `INSERT INTO projects (user_id, project_name) 
+                 VALUES ($1, $2) 
+                 RETURNING id`,
+                [userId, 'Test Project']
+            );
+            const projectId = projectResult.rows[0].id;
+
+            const sessionTestShop = 'session-test.myshopify.com';
+            await pool.query(
+                `INSERT INTO shopify_shops (shop_domain, access_token, scopes, user_id, account_id, project_id, onboarding_status) 
+                 VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+                [sessionTestShop, 'shpat_test123', ['read_orders', 'write_orders'], userId, accountId, projectId, 'completed']
+            );
+
+            const token = generateShopifyToken(sessionTestShop);
+
+            const response = await app.inject({
+                method: 'POST',
+                url: '/integrations/shopify/events/dashboard-session',
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+            });
+
+            expect(response.statusCode).toBe(200);
+            const body = response.json();
+            expect(body.success).toBe(true);
+            expect(body.user.id).toBe(userId);
+            expect(body.project_id).toBe(projectId);
+            expect(body.dashboard_url).toBeTruthy();
+
+            // Verify cookies are set
+            const cookies = response.headers['set-cookie'];
+            expect(cookies).toBeDefined();
+            if (Array.isArray(cookies)) {
+                const cookieNames = cookies.map((c) => c.split('=')[0]);
+                expect(cookieNames).toContain('orbitcheck_session');
+                expect(cookieNames).toContain('csrf_token');
+                expect(cookieNames).toContain('csrf_token_client');
+            } else if (typeof cookies === 'string') {
+                expect(cookies).toContain('orbitcheck_session');
+            }
         });
 
-        test.skip('should return 503 for shop with incomplete onboarding', async () => {
-            // TODO: Create shop without user_id
-            // TODO: Call dashboard-session endpoint
-            // TODO: Assert 503 response with ONBOARDING_INCOMPLETE error
-            expect(true).toBe(true); // Placeholder
+        test('should return 503 for shop with incomplete onboarding', async () => {
+            const incompleteShop = 'incomplete-shop.myshopify.com';
+            await pool.query(
+                `INSERT INTO shopify_shops (shop_domain, access_token, scopes, onboarding_status) 
+                 VALUES ($1, $2, $3, $4)`,
+                [incompleteShop, 'shpat_test456', ['read_orders'], 'pending']
+            );
+
+            const token = generateShopifyToken(incompleteShop);
+
+            const response = await app.inject({
+                method: 'POST',
+                url: '/integrations/shopify/events/dashboard-session',
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+            });
+
+            expect(response.statusCode).toBe(503);
+            expect(response.json().error.code).toBe('ONBOARDING_INCOMPLETE');
         });
 
-        test.skip('should return 404 for unknown shop', async () => {
-            // TODO: Call dashboard-session with token for non-existent shop
-            // TODO: Assert 404 response with SHOP_NOT_FOUND error
-            expect(true).toBe(true); // Placeholder
+        test('should return 404 for unknown shop', async () => {
+            const unknownShop = 'unknown-shop.myshopify.com';
+            const token = generateShopifyToken(unknownShop);
+
+            const response = await app.inject({
+                method: 'POST',
+                url: '/integrations/shopify/events/dashboard-session',
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+            });
+
+            expect(response.statusCode).toBe(404);
+            expect(response.json().error.code).toBe('SHOP_NOT_FOUND');
         });
     });
 

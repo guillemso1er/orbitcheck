@@ -1,4 +1,5 @@
 import { createClient } from "@orbitcheck/contracts";
+import jwt from "jsonwebtoken";
 
 const DEFAULT_API_BASE = "http://localhost:8080";
 
@@ -27,4 +28,24 @@ export const getOrbitcheckClient = () => {
         });
     }
     return cachedClient;
+};
+
+/**
+ * Generate a Shopify session JWT for OrbitCheck API authentication.
+ * This creates a JWT signed with the app secret containing the required claims.
+ */
+export const generateShopifySessionToken = (shopDomain: string): string => {
+    const appKey = process.env.SHOPIFY_API_KEY;
+    const appSecret = process.env.SHOPIFY_API_SECRET;
+
+    if (!appKey || !appSecret) {
+        throw new Error("Missing SHOPIFY_API_KEY or SHOPIFY_API_SECRET environment variables");
+    }
+
+    const payload = {
+        aud: appKey,
+        dest: `https://${shopDomain}`,
+    };
+
+    return jwt.sign(payload, appSecret, { algorithm: 'HS256' });
 };

@@ -92,8 +92,4 @@ scripts/.orbitcheck-reader.ua.env
 apps/setup/.orbitcheck-reader.ua.env
 infra/ansible/vars/secrets.txt
 .turbo/daemon/*
-tasks/PLAN.md
-tasks/REFERENCE.md
-tasks/PLAN.MD
-tasks/old/old2.PLAN.MD
-tasks/old/old2.REFERENCE.md
+tasks/

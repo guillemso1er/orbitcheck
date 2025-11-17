@@ -31,6 +31,8 @@ import { registerRoutes } from "./web.js";
 
 if (process.env.NODE_ENV !== 'production' && process.env.NODE_ENV !== 'test') {
     dotenv.config();
+    //also load .env.local to override
+    dotenv.config({ path: '.env.local', override: true });
 }
 
 // Store active workers and cron tasks for cleanup
