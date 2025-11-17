@@ -1,5 +1,7 @@
 import { Queue } from 'bullmq';
 import { FastifyReply, FastifyRequest } from 'fastify';
+import { type Redis as IORedisType } from 'ioredis';
+import type { Pool } from 'pg';
 import { createShopifyService } from '../../../services/shopify.js';
 import { validateAddress as validateAddressUtil } from '../../../validators/address.js';
 import { createAddressFixService } from '../address-fix/service.js';
@@ -7,11 +9,11 @@ import { MUT_TAGS_ADD, shopifyGraphql } from '../lib/graphql.js';
 import { captureShopifyEvent } from '../lib/telemetry.js';
 import { OrderEvaluatePayload, OrderEvaluateResponse, ShopifyOrder } from '../lib/types.js';
 
-export async function ordersCreate(request: FastifyRequest, reply: FastifyReply) {
+export async function ordersCreate(request: FastifyRequest, reply: FastifyReply, pool: Pool, redis: IORedisType) {
     const o: ShopifyOrder = request.body as any;
     const shopDomain = (request as any).shopDomain || (request.headers['x-shopify-shop-domain'] as string);
     request.log.info({ shop: shopDomain, orderId: o.id, topic: request.headers['x-shopify-topic'] }, 'Processing orders/create webhook');
-    const shopifyService = createShopifyService((request as any).server.pg.pool);
+    const shopifyService = createShopifyService(pool);
     const mode = await shopifyService.getShopMode(shopDomain);
     if (mode === 'disabled') return reply.code(200).send();
 
@@ -114,7 +116,7 @@ export async function ordersCreate(request: FastifyRequest, reply: FastifyReply)
     // Address fix workflow - run asynchronously after main processing
     queueMicrotask(async () => {
         try {
-            await handleOrderAddressFix(request, shopDomain, o);
+            await handleOrderAddressFix(request, shopDomain, o, pool, redis);
         } catch (error) {
             request.log.error(
                 { err: error, shop: shopDomain, orderId: o.id },
@@ -132,7 +134,9 @@ export async function ordersCreate(request: FastifyRequest, reply: FastifyReply)
 async function handleOrderAddressFix(
     request: FastifyRequest,
     shopDomain: string,
-    order: ShopifyOrder
+    order: ShopifyOrder,
+    pool: Pool,
+    redis: IORedisType
 ): Promise<void> {
     const shippingAddr = order.shipping_address;
     if (!shippingAddr || !shippingAddr.address1 || !shippingAddr.city || !shippingAddr.zip) {
@@ -141,9 +145,6 @@ async function handleOrderAddressFix(
     }
 
     // Validate the shipping address
-    const pool = (request as any).server.pg.pool;
-    const redis = (request as any).server.redis;
-
     const validationResult = await validateAddressUtil(
         {
             line1: shippingAddr.address1,
