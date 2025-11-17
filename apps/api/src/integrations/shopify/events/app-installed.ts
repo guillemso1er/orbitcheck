@@ -1,4 +1,5 @@
 import { FastifyReply, FastifyRequest } from 'fastify';
+import type { Pool } from 'pg';
 import { createShopifyService } from '../../../services/shopify.js';
 import { missingScopes, parseScopes } from '../lib/scopes.js';
 import { captureShopifyEvent } from '../lib/telemetry.js';
@@ -9,7 +10,7 @@ type AppInstalledPayload = {
     grantedScopes: string[] | string;
 };
 
-export async function appInstalled(request: FastifyRequest, reply: FastifyReply) {
+export async function appInstalled(request: FastifyRequest, reply: FastifyReply, pool: Pool) {
     const { shop, accessToken, grantedScopes } = request.body as AppInstalledPayload;
 
     if (!shop || typeof shop !== 'string' || !accessToken || typeof accessToken !== 'string') {
@@ -34,7 +35,9 @@ export async function appInstalled(request: FastifyRequest, reply: FastifyReply)
         });
     }
 
-    const shopifyService = createShopifyService((request as any).server.pg.pool);
+    request.log.debug({ shop, scopes: normalizedScopes }, 'Persisting Shopify installation token');
+
+    const shopifyService = createShopifyService(pool);
     await shopifyService.storeShopToken(shop, accessToken, normalizedScopes);
     captureShopifyEvent(shop, 'signup', { scopes: normalizedScopes });
 

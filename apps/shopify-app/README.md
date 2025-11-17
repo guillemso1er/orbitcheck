@@ -201,6 +201,10 @@ Check the Fastify API logs for detailed error information:
 - Customer data is handled according to GDPR requirements
 - API keys and secrets should be stored securely
 
+## Important Notes
+
+- To trigger afterAuth hook you need to delete prisma/dev.sqlite file
+
 ## Support
 
 For issues related to:

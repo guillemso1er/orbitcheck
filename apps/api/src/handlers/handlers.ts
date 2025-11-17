@@ -173,9 +173,9 @@ export const serviceHandlers = <TServer extends RawServerBase = RawServerBase>(p
     updateShopifyShopSettings: async (request, reply) => updateShopSettings(request, reply, pool),
     getShopifyAccessScopes: async (request, reply) => getAccessScopes(request, reply, pool),
 
-    shopifyAppInstalledEvent: async (request, reply) => appInstalled(request, reply),
+    shopifyAppInstalledEvent: async (request, reply) => appInstalled(request, reply, pool),
     shopifyOrdersCreateWebhook: async (request, reply) => ordersCreate(request, reply),
-    shopifyAppUninstalledWebhook: async (request, reply) => appUninstalled(request, reply),
+    shopifyAppUninstalledWebhook: async (request, reply) => appUninstalled(request, reply, pool),
     shopifyGdprCustomersDataRequestWebhook: async (request, reply) => customersDataRequest(request, reply),
     shopifyGdprCustomersRedactWebhook: async (request, reply) => customersRedact(request, reply),
     shopifyGdprShopRedactWebhook: async (request, reply) => shopRedact(request, reply),

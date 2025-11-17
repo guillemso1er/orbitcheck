@@ -123,20 +123,15 @@ export default function Index() {
                 </select>
               </div>
 
-              <div style={{ marginTop: '16px' }}>
-                <a href="/app/settings" style={{ color: '#2563eb', textDecoration: 'none' }}>
-                  Advanced Settings
-                </a>
-              </div>
+         
             </>
           )}
 
           <hr style={{ margin: '16px 0', border: 'none', borderBottom: '1px solid #e5e7eb' }} />
           <h3 style={{ marginTop: '0', marginBottom: '8px' }}>How it works</h3>
           <ul style={{ margin: '0', paddingLeft: '20px' }}>
-            <li>New orders are automatically validated against OrbitCheck's fraud detection algorithms</li>
+            <li>New orders are automatically validated against OrbitCheck's  data validation algorithms</li>
             <li>High-risk orders are tagged with appropriate risk indicators</li>
-            <li>You can configure validation behavior in the Settings page</li>
           </ul>
         </s-stack>
       </s-section>

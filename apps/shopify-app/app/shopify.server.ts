@@ -9,6 +9,14 @@ import { PrismaSessionStorage } from "@shopify/shopify-app-session-storage-prism
 import prisma from "./db.server";
 import { getOrbitcheckClient } from "./utils/orbitcheck.server.js";
 
+import dotenv from "dotenv";
+
+if (process.env.NODE_ENV !== 'production' && process.env.NODE_ENV !== 'test') {
+  dotenv.config();
+  dotenv.config({ path: '.env.local', override: true });
+}
+
+
 const shopify = shopifyApp({
   apiKey: process.env.SHOPIFY_API_KEY,
   apiSecretKey: process.env.SHOPIFY_API_SECRET || "",
@@ -20,6 +28,8 @@ const shopify = shopifyApp({
   distribution: AppDistribution.AppStore,
   hooks: {
     afterAuth: async ({ session }) => {
+      console.log("Shopify afterAuth hook triggered for shop", { shop: session.shop });
+
       const client = getOrbitcheckClient();
 
       const scopeList = session.scope
@@ -29,6 +39,23 @@ const shopify = shopifyApp({
           .filter(Boolean)
         : [];
 
+      const requiredScopes = process.env.SCOPES
+        ? process.env.SCOPES
+          .split(",")
+          .map((scope) => scope.trim().toLowerCase())
+          .filter(Boolean)
+        : [];
+
+      const missingScopes = requiredScopes.filter((scope) => !scopeList.includes(scope));
+      const grantedScopes = Array.from(new Set([...scopeList, ...requiredScopes]));
+
+      if (missingScopes.length > 0) {
+        console.warn("Shopify session missing required scopes, falling back to configured scopes", {
+          shop: session.shop,
+          missingScopes,
+        });
+      }
+
       if (!session.isOnline) {
         if (!session.accessToken) {
           console.warn("Shopify session missing access token during afterAuth hook", {
@@ -37,12 +64,13 @@ const shopify = shopifyApp({
           return;
         }
         try {
+          console.log(`Notifying OrbitCheck API about Shopify installation for shop ${session.shop} with scopes`, { scopeList: grantedScopes });
           await shopifyAppInstalledEvent<true>({
             client,
             body: {
               shop: session.shop,
               accessToken: session.accessToken,
-              grantedScopes: scopeList,
+              grantedScopes: grantedScopes,
             },
             throwOnError: true,
           });

@@ -97,10 +97,13 @@ export class ShopifyService {
             throw new Error('Invalid shop domain provided to recordGdprEvent: must be a non-empty string');
         }
 
-        await this.pool.query(`
+        const result = await this.pool.query(`
             INSERT INTO shopify_gdpr_events (shop_id, topic, payload)
             SELECT id, $2, $3 FROM shopify_shops WHERE shop_domain = $1
+            RETURNING id
         `, [shopDomain, topic, payload]);
+
+        console.log(`[ShopifyService] Recorded GDPR event ${topic} for ${shopDomain}, inserted: ${result.rowCount} rows`);
     }
 
     async setShopMode(shopDomain: string, mode: Mode): Promise<void> {
@@ -126,20 +129,15 @@ export class ShopifyService {
         try {
             await client.query('BEGIN');
 
-            // Delete settings first (due to foreign key)
-            await client.query(`
-        DELETE FROM shopify_settings
-        WHERE shop_id IN (
-          SELECT id FROM shopify_shops WHERE shop_domain = $1
-        )
-      `, [shopDomain]);
+            // Delete shop - CASCADE will automatically delete settings and GDPR events
+            const result = await client.query('DELETE FROM shopify_shops WHERE shop_domain = $1', [shopDomain]);
 
-            // Delete shop
-            await client.query('DELETE FROM shopify_shops WHERE shop_domain = $1', [shopDomain]);
+            console.log(`[ShopifyService] Deleted shop data for ${shopDomain}, rows affected: ${result.rowCount}`);
 
             await client.query('COMMIT');
         } catch (error) {
             await client.query('ROLLBACK');
+            console.error(`[ShopifyService] Failed to delete shop data for ${shopDomain}:`, error);
             throw error;
         } finally {
             client.release();
