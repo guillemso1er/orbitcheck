@@ -45,12 +45,29 @@ export async function ordersCreate(request: FastifyRequest, reply: FastifyReply,
     try {
         request.log.debug({ shop: shopDomain, orderId: payload.order_id }, 'Calling local order evaluation function');
 
-        // For Shopify webhooks, we need to provide a project_id
-        // For now, we'll use a default project_id - in a real implementation
-        // this would be retrieved from the shop settings or user association
-        const project_id = 'default';
+        // Resolve project_id from shopify_shops instead of hardcoded 'default'
+        const shopResult = await pool.query(
+            'SELECT project_id FROM shopify_shops WHERE shop_domain = $1',
+            [shopDomain]
+        );
 
-        // Call the direct evaluation function instead of making HTTP request
+        if (shopResult.rows.length === 0) {
+            request.log.error({ shop: shopDomain }, 'Shop not found in database for order evaluation');
+            return reply.code(200).send(); // Return 200 to avoid webhook retries
+        }
+
+        const project_id = shopResult.rows[0].project_id;
+
+        if (!project_id) {
+            request.log.warn(
+                { shop: shopDomain, orderId: payload.order_id },
+                'Shop has no project_id - onboarding may be incomplete'
+            );
+            // Use a fallback or skip evaluation
+            return reply.code(200).send();
+        }
+
+        // Call the direct evaluation function with resolved project_id
         result = await evaluateOrderForRiskAndRulesDirect(payload, project_id, pool, redis);
 
         request.log.info({

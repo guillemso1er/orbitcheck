@@ -8,6 +8,7 @@ import { getShopSettings, updateShopSettings } from "../integrations/shopify/api
 import { callback } from "../integrations/shopify/auth/callback.js";
 import { install } from "../integrations/shopify/auth/install.js";
 import { appInstalled } from "../integrations/shopify/events/app-installed.js";
+import { createDashboardSession } from "../integrations/shopify/events/dashboard-session.js";
 import { appUninstalled } from "../integrations/shopify/webhooks/app-uninstalled.js";
 import { customersCreate, customersUpdate } from "../integrations/shopify/webhooks/customers.js";
 import { customersDataRequest, customersRedact, shopRedact } from "../integrations/shopify/webhooks/gdpr.js";
@@ -156,6 +157,7 @@ const makeShopifyHandlers = (pool: Pool, redis: IORedisType): Partial<RouteHandl
     getShopifyAccessScopes: async (request, reply) => getAccessScopes(request, reply, pool),
 
     shopifyAppInstalledEvent: async (request, reply) => appInstalled(request, reply, pool),
+    createShopifyDashboardSession: async (request, reply) => createDashboardSession(request, reply, pool),
     shopifyOrdersCreateWebhook: async (request, reply) => ordersCreate(request, reply, pool, redis),
     shopifyCustomersCreateWebhook: async (request, reply) => customersCreate(request, reply),
     shopifyCustomersUpdateWebhook: async (request, reply) => customersUpdate(request, reply),

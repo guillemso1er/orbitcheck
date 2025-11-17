@@ -4617,6 +4617,107 @@ export type ShopifyAppInstalledEventResponses = {
     200: unknown;
 };
 
+export type CreateShopifyDashboardSessionData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/integrations/shopify/events/dashboard-session';
+};
+
+export type CreateShopifyDashboardSessionErrors = {
+    /**
+     * Unauthorized - Invalid or missing Shopify session token
+     */
+    401: {
+        error?: {
+            /**
+             * Error code
+             */
+            code?: string;
+            /**
+             * Error message
+             */
+            message?: string;
+        };
+        /**
+         * Request identifier
+         */
+        request_id?: string;
+    };
+    /**
+     * Shop not found - Installation not found in database
+     */
+    404: {
+        error?: {
+            /**
+             * Error code
+             */
+            code?: string;
+            /**
+             * Error message
+             */
+            message?: string;
+        };
+        /**
+         * Request identifier
+         */
+        request_id?: string;
+    };
+    /**
+     * Service Unavailable - Onboarding still in progress
+     */
+    503: {
+        error?: {
+            /**
+             * Error code
+             */
+            code?: string;
+            /**
+             * Error message
+             */
+            message?: string;
+        };
+        /**
+         * Request identifier
+         */
+        request_id?: string;
+    };
+};
+
+export type CreateShopifyDashboardSessionError = CreateShopifyDashboardSessionErrors[keyof CreateShopifyDashboardSessionErrors];
+
+export type CreateShopifyDashboardSessionResponses = {
+    /**
+     * Dashboard session created successfully
+     */
+    200: {
+        /**
+         * Whether the session was created successfully
+         */
+        success: boolean;
+        user: {
+            /**
+             * OrbitCheck user ID
+             */
+            id: string;
+            /**
+             * User email address
+             */
+            email: string;
+        };
+        /**
+         * Default project ID for this shop
+         */
+        project_id?: string | null;
+        /**
+         * URL to redirect user to the OrbitCheck dashboard
+         */
+        dashboard_url: string;
+    };
+};
+
+export type CreateShopifyDashboardSessionResponse = CreateShopifyDashboardSessionResponses[keyof CreateShopifyDashboardSessionResponses];
+
 export type ShopifyOrdersCreateWebhookData = {
     /**
      * Shopify order webhook payload

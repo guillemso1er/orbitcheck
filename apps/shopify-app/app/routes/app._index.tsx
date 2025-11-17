@@ -18,6 +18,7 @@ export default function Index() {
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
   const [mode, setMode] = useState<'disabled' | 'notify' | 'activated'>('disabled');
+  const [dashboardLoading, setDashboardLoading] = useState(false);
   const apiClient = useApiClient();
 
   useEffect(() => {
@@ -52,6 +53,33 @@ export default function Index() {
       setMode(newMode);
     } catch (error) {
       console.error('Failed to update mode:', error);
+    }
+  };
+
+  const openDashboard = async () => {
+    setDashboardLoading(true);
+    try {
+      // Call the dashboard session endpoint to establish auth
+      const response = await fetch('/api/shopify/dashboard-session', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to create dashboard session');
+      }
+
+      const data = await response.json();
+
+      // Redirect to the dashboard URL
+      window.open(data.dashboard_url, '_blank');
+    } catch (error) {
+      console.error('Failed to open dashboard:', error);
+      alert('Failed to open OrbitCheck Dashboard. Please try again.');
+    } finally {
+      setDashboardLoading(false);
     }
   };
 
@@ -102,6 +130,48 @@ export default function Index() {
           {!loading && (
             <>
               <hr style={{ margin: '16px 0', border: 'none', borderBottom: '1px solid #e5e7eb' }} />
+
+              {/* Dashboard Access */}
+              <div style={{
+                padding: '16px',
+                backgroundColor: '#f9fafb',
+                borderRadius: '8px',
+                border: '1px solid #e5e7eb'
+              }}>
+                <h3 style={{ marginTop: '0', marginBottom: '8px' }}>OrbitCheck Dashboard</h3>
+                <p style={{ margin: '0 0 12px 0', color: '#6b7280' }}>
+                  Access your full OrbitCheck dashboard to view analytics, manage settings, and configure advanced features.
+                </p>
+                <button
+                  onClick={openDashboard}
+                  disabled={dashboardLoading}
+                  style={{
+                    padding: '10px 16px',
+                    backgroundColor: dashboardLoading ? '#9ca3af' : '#2563eb',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '6px',
+                    fontWeight: '500',
+                    cursor: dashboardLoading ? 'not-allowed' : 'pointer',
+                    transition: 'background-color 0.2s'
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!dashboardLoading) {
+                      e.currentTarget.style.backgroundColor = '#1d4ed8';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!dashboardLoading) {
+                      e.currentTarget.style.backgroundColor = '#2563eb';
+                    }
+                  }}
+                >
+                  {dashboardLoading ? 'Opening...' : 'Open OrbitCheck Dashboard →'}
+                </button>
+              </div>
+
+              <hr style={{ margin: '16px 0', border: 'none', borderBottom: '1px solid #e5e7eb' }} />
+
               <div>
                 <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
                   Order Validation Mode
@@ -123,7 +193,7 @@ export default function Index() {
                 </select>
               </div>
 
-         
+
             </>
           )}
 

@@ -185,6 +185,9 @@ paths:
   /integrations/shopify/events/app-installed:
     post:
       $ref: './paths/integrations/shopify/events/app-installed.yml'
+  /integrations/shopify/events/dashboard-session:
+    post:
+      $ref: './paths/integrations/shopify/events/dashboard-session.yml'
   /integrations/shopify/webhooks/orders-create:
     post:
       $ref: './paths/integrations/shopify/webhooks/orders-create.yml'
