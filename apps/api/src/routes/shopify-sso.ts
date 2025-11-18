@@ -1,4 +1,4 @@
-import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
+import type { FastifyReply, FastifyRequest } from 'fastify';
 import { randomBytes } from 'node:crypto';
 import type { Pool } from 'pg';
 
@@ -124,8 +124,3 @@ export async function shopifySSOHandler(
     return reply.redirect(dashboardUrl);
 }
 
-export async function registerShopifySSORoute(app: FastifyInstance, pool: Pool, redis: any) {
-    app.get('/auth/shopify-sso', async (request: FastifyRequest<{ Querystring: ShopifySSOQuery }>, reply) => {
-        return shopifySSOHandler(request, reply, pool, redis);
-    });
-}

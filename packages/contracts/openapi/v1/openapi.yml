@@ -42,6 +42,9 @@ paths:
   /auth/logout:
     post:
       $ref: './paths/auth/logout.yml'
+  /auth/shopify-sso:
+    get:
+      $ref: './paths/auth/shopify-sso.yml'
   
   # API Keys paths
   /v1/api-keys:

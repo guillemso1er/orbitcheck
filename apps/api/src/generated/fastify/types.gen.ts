@@ -1130,6 +1130,87 @@ export type LogoutUserResponses = {
 
 export type LogoutUserResponse = LogoutUserResponses[keyof LogoutUserResponses];
 
+export type ShopifySsoData = {
+    body?: never;
+    path?: never;
+    query: {
+        /**
+         * One-time token created by the Shopify app for dashboard SSO.
+         */
+        token: string;
+    };
+    url: '/auth/shopify-sso';
+};
+
+export type ShopifySsoErrors = {
+    /**
+     * Missing or malformed token parameter.
+     */
+    400: {
+        error?: {
+            /**
+             * Error code
+             */
+            code?: string;
+            /**
+             * Error message
+             */
+            message?: string;
+        };
+        /**
+         * Request identifier
+         */
+        request_id?: string;
+    };
+    /**
+     * Token invalid or expired.
+     */
+    401: {
+        error?: {
+            /**
+             * Error code
+             */
+            code?: string;
+            /**
+             * Error message
+             */
+            message?: string;
+        };
+        /**
+         * Request identifier
+         */
+        request_id?: string;
+    };
+    /**
+     * Failed to create a session for the Shopify-authenticated user.
+     */
+    500: {
+        error?: {
+            /**
+             * Error code
+             */
+            code?: string;
+            /**
+             * Error message
+             */
+            message?: string;
+        };
+        /**
+         * Request identifier
+         */
+        request_id?: string;
+    };
+};
+
+export type ShopifySsoError = ShopifySsoErrors[keyof ShopifySsoErrors];
+
+export type ShopifySsoResponses = {
+    /**
+     * Operation validated; clients should expect a redirect via the Location header.
+     */
+    200: unknown;
+};
+
 export type ListApiKeysData = {
     body?: never;
     path?: never;

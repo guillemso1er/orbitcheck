@@ -1,7 +1,7 @@
 import { registerUser } from '@orbitcheck/contracts';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useAuth } from '../AuthContext';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../AuthContext';
 import { ERROR_MESSAGES } from '../constants';
 import { useApiClient } from '../utils/api.ts';
 import ThemeToggle from './ThemeToggle';

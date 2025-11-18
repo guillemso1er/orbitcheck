@@ -13,6 +13,7 @@ import { appUninstalled } from "../integrations/shopify/webhooks/app-uninstalled
 import { customersCreate, customersUpdate } from "../integrations/shopify/webhooks/customers.js";
 import { customersDataRequest, customersRedact, shopRedact } from "../integrations/shopify/webhooks/gdpr.js";
 import { ordersCreate } from "../integrations/shopify/webhooks/orders-create.js";
+import { shopifySSOHandler } from "../routes/shopify-sso.js";
 import { createApiKey, listApiKeys, revokeApiKey } from "../services/api-keys.js";
 import { loginUser, logoutUser, registerUser } from "../services/auth.js";
 import { batchDeduplicateData, batchEvaluateOrders, batchValidateData } from "../services/batch.js";
@@ -151,6 +152,7 @@ const makePlanHandlers = (pool: Pool): Partial<RouteHandlers> => ({
 const makeShopifyHandlers = (pool: Pool, redis: IORedisType): Partial<RouteHandlers> => ({
     shopifyInstall: async (request, reply) => install(request, reply),
     shopifyCallback: async (request, reply) => callback(request, reply, pool),
+    shopifySso: async (request, reply) => shopifySSOHandler(request, reply, pool, redis),
 
     getShopifyShopSettings: async (request, reply) => getShopSettings(request, reply, pool),
     updateShopifyShopSettings: async (request, reply) => updateShopSettings(request, reply, pool),

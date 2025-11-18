@@ -149,10 +149,6 @@ export async function registerRoutes<TServer extends RawServerBase = RawServerBa
         redis,
     });
 
-    // Register Shopify SSO route for cross-domain authentication
-    const { registerShopifySSORoute } = await import('./routes/shopify-sso.js');
-    await registerShopifySSORoute(app as any, pool, redis);
-
     app.register(openapiGlue, {
         serviceHandlers: serviceHandlers(pool, redis, app),
         specification: openapiSpec,
