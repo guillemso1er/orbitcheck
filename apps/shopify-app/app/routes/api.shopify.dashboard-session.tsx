@@ -28,6 +28,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         const orbitcheckSessionToken = generateShopifySessionToken(session.shop);
 
         // Call OrbitCheck API to create dashboard session
+        // This returns a one-time SSO URL that the client should redirect to
         const response = await createShopifyDashboardSession({
             client: orbitcheckClient,
             headers: {
@@ -43,36 +44,11 @@ export const action = async ({ request }: ActionFunctionArgs) => {
             );
         }
 
-        // Extract Set-Cookie headers from API response
-        // Use getSetCookie() if available, otherwise fall back to manual extraction
-        let rawSetCookies: string[] = [];
-        if (typeof response.response.headers.getSetCookie === 'function') {
-            rawSetCookies = response.response.headers.getSetCookie();
-        } else {
-            // Fallback: manually extract all Set-Cookie headers
-            const setCookieHeader = response.response.headers.get('set-cookie');
-            if (setCookieHeader) {
-                rawSetCookies = [setCookieHeader];
-            }
-        }
-
-        // Check if cookies are present
-        if (rawSetCookies.length === 0) {
-            console.error('OrbitCheck API response missing Set-Cookie header');
-            return new Response(
-                JSON.stringify({ error: 'Session cookie missing' }),
-                { status: 502, headers: { "Content-Type": "application/json" } }
-            );
-        }
-
-        // Forward cookies to the browser
-        const headers = new Headers({ "Content-Type": "application/json" });
-        rawSetCookies.forEach((value) => headers.append("Set-Cookie", value));
-
-        // Return the dashboard URL and session info with cookies
+        // The API now returns an SSO URL with a one-time token
+        // No need to forward cookies - the token-based flow handles cross-domain auth
         return new Response(
             JSON.stringify(response.data),
-            { status: 200, headers }
+            { status: 200, headers: { "Content-Type": "application/json" } }
         );
     } catch (error) {
         console.error('Failed to create dashboard session:', error);

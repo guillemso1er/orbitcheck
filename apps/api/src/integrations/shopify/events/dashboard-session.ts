@@ -1,4 +1,5 @@
 import { FastifyReply, FastifyRequest } from 'fastify';
+import Redis from 'ioredis';
 import crypto from 'node:crypto';
 import type { Pool } from 'pg';
 
@@ -15,7 +16,8 @@ import type { Pool } from 'pg';
 export async function createDashboardSession(
     request: FastifyRequest,
     reply: FastifyReply,
-    pool: Pool
+    pool: Pool,
+    redis: Redis
 ) {
     // shopDomain is attached by the shopifySessionToken guard
     const shopDomain = (request as any).shopDomain as string | undefined;
@@ -84,47 +86,52 @@ export async function createDashboardSession(
 
     const user = userResult.rows[0];
 
-    // Create OrbitCheck session (using existing session infrastructure)
-    const sessionMaxAge = 2592000000; // 30 days in ms (same as "remember me")
+    // Generate a one-time token for cross-domain session establishment
+    // This token will be exchanged for a session cookie on the dashboard domain
+    const oneTimeToken = crypto.randomBytes(32).toString('base64url');
 
-    if ((request as any).session?.set) {
-        (request as any).session.set('user_id', user.id);
-        (request as any).session.set('maxAge', sessionMaxAge);
+    // Store the user_id associated with this token in Redis (TTL: 60 seconds)
+    if (redis) {
+        const redisKey = `shopify_sso:${oneTimeToken}`;
+        const tokenData = JSON.stringify({ user_id: user.id, shop_domain: shopDomain });
+
+        request.log.info({
+            redisKey,
+            tokenData,
+            redisConnected: redis?.status === 'ready',
+        }, 'Storing SSO token in Redis');
+
+        await redis.setex(
+            redisKey,
+            60, // 60 seconds TTL
+            tokenData
+        );
+
+        // Verify it was stored
+        const verification = await redis.get(redisKey);
+        request.log.info({
+            redisKey,
+            stored: !!verification,
+            ttl: await redis.ttl(redisKey),
+        }, 'Redis storage verification');
     } else {
-        (request as any).session.user_id = user.id;
-        (request as any).session.maxAge = sessionMaxAge;
+        request.log.error('Redis not available for SSO token storage');
     }
 
-    // Generate CSRF token
-    const csrf = crypto.randomBytes(32).toString('base64url');
-
-    // Set cookies (same pattern as loginUser in auth.ts)
-    const isProduction = process.env.NODE_ENV === 'production';
-    const cookieOptions = {
-        httpOnly: true,
-        secure: isProduction,
-        sameSite: 'lax' as const,
-        path: '/',
-        domain: isProduction ? 'orbitcheck.io' : undefined,
-        maxAge: sessionMaxAge / 1000, // Convert to seconds
-    };
-
-    // Set CSRF token as HttpOnly cookie for server-side verification
-    reply.setCookie('csrf_token', csrf, cookieOptions);
-
-    // Set CSRF token as non-HttpOnly cookie for client to read
-    reply.setCookie('csrf_token_client', csrf, {
-        ...cookieOptions,
-        httpOnly: false,
-    });
-
-    // Set session cookie
-    reply.setCookie('orbitcheck_session', (request as any).session.id, cookieOptions);
-
     request.log.info(
-        { shopDomain, userId: user.id, email: user.email },
-        'Created dashboard session for Shopify merchant'
+        {
+            shopDomain,
+            userId: user.id,
+            email: user.email,
+            oneTimeToken: oneTimeToken.substring(0, 8) + '...',
+        },
+        'Created one-time token for Shopify SSO to dashboard'
     );
+
+    // The SSO URL should point to the API's /auth/shopify-sso endpoint
+    // which will validate the token, create the session, and redirect to the dashboard
+    const apiUrl = process.env.API_URL || 'http://localhost:8080';
+    const ssoUrl = `${apiUrl}/auth/shopify-sso?token=${oneTimeToken}`;
 
     return reply.send({
         success: true,
@@ -133,6 +140,6 @@ export async function createDashboardSession(
             email: user.email,
         },
         project_id: shop.project_id,
-        dashboard_url: process.env.DASHBOARD_URL || 'https://dashboard.orbitcheck.io',
+        dashboard_url: ssoUrl, // Return API SSO URL with token
     });
 }

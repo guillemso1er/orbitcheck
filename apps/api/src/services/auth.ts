@@ -123,6 +123,15 @@ export async function loginUser(
                 ; (request as any).session.maxAge = sessionMaxAge
         }
 
+        // Debug: Log session state after setting
+        request.log.info({
+            userId: user.id,
+            sessionId: (request as any).session.id,
+            sessionHasSet: typeof (request as any).session?.set === 'function',
+            sessionUserId: (request as any).session?.user_id,
+            sessionGetUserId: (request as any).session?.get?.('user_id'),
+        }, 'Login - session state after setting user_id');
+
         // Generate CSRF token bound to session
         const csrf = randomBytes(32).toString('base64url')
 
@@ -146,23 +155,16 @@ export async function loginUser(
             maxAge: sessionMaxAge / 1000, // Convert to seconds
         })
 
-        rep.setCookie('orbitcheck_session', (request as any).session.id, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'lax',
-            path: '/',
-            domain: process.env.NODE_ENV === 'production' ? 'orbitcheck.io' : undefined,
-            maxAge: sessionMaxAge / 1000, // Convert to seconds
-        })
+        // Note: @fastify/secure-session automatically manages the session cookie
+        // based on the configuration in server.ts, so we don't need to manually set it
 
         // Debug: Check if session was set and log response headers
-        if (process.env.NODE_ENV === 'production') {
-            request.log.info({
-                sessionSet: !!(request as any).session,
-                hasUserId: !!((request as any).session?.user_id || (request as any).session?.get?.('user_id')),
-                hasCsrfCookie: !!csrf
-            }, 'Session state after setting');
-        }
+        request.log.info({
+            sessionSet: !!(request as any).session,
+            hasUserId: !!((request as any).session?.user_id || (request as any).session?.get?.('user_id')),
+            hasCsrfCookie: !!csrf,
+            sessionId: (request as any).session?.id,
+        }, 'Login - final session state before sending response');
 
 
         const response: LoginUserResponses[200] = {
@@ -213,9 +215,11 @@ export async function logoutUser(
         } catch { }
 
         // Clear cookie explicitly (provided by @fastify/cookie)
+        // Note: While @fastify/secure-session manages the session cookie,
+        // we explicitly clear it on logout to ensure it's removed
         rep.clearCookie('orbitcheck_session', {
             path: '/',
-            sameSite: process.env.NODE_ENV === 'lax',
+            sameSite: 'lax',
             secure: process.env.NODE_ENV === 'production',
             httpOnly: true,
             domain: process.env.NODE_ENV === 'production'
@@ -265,11 +269,31 @@ export async function verifySession<TServer extends RawServerBase = RawServerBas
     request: FastifyRequest<RouteGenericInterface, TServer>,
     pool: Pool
 ): Promise<void> {
+    // For @fastify/secure-session, data must be retrieved using .get()
     const sidUser =
-        (request as any).session?.user_id ??
-        (request as any).session?.get?.('user_id')
+        (request as any).session?.get?.('user_id') ??
+        (request as any).session?.user_id
+
+    // Debug logging for session verification
+    request.log.info({
+        url: request.url,
+        method: request.method,
+        hasSession: !!(request as any).session,
+        sessionUserId: (request as any).session?.user_id,
+        sessionGetUserId: (request as any).session?.get?.('user_id'),
+        sidUser,
+        sessionId: (request as any).session?.id,
+        cookies: request.cookies,
+        hasCsrfToken: !!(request.cookies?.csrf_token),
+        hasSessionCookie: !!(request.cookies?.orbitcheck_session),
+    }, 'verifySession - checking session state');
 
     if (!sidUser) {
+        request.log.info({
+            url: request.url,
+            hasSession: !!(request as any).session,
+            sessionKeys: (request as any).session ? Object.keys((request as any).session) : [],
+        }, 'verifySession failed - no user_id in session');
         throw { status: HTTP_STATUS.UNAUTHORIZED, error: { code: ERROR_CODES.UNAUTHORIZED, message: ERROR_MESSAGES[ERROR_CODES.UNAUTHORIZED] } }
     }
 

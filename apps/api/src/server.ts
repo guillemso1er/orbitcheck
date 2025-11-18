@@ -116,7 +116,7 @@ export async function build(pool: Pool, redis: IORedisType): Promise<FastifyInst
     });
 
     // Register all API routes
-    registerRoutes(app, pool, redis);
+    await registerRoutes(app, pool, redis);
 
     // Enable metrics collection (skip in tests)
     if (!isTestEnvironment) {

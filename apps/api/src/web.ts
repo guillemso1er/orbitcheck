@@ -112,7 +112,7 @@ export async function applyRateLimitingAndIdempotency<TServer extends RawServerB
  * @param pool - Shared PostgreSQL pool for all route database access.
  * @param redis - Shared Redis client for caching, rate limiting, and idempotency in routes.
  */
-export function registerRoutes<TServer extends RawServerBase = RawServerBase>(app: FastifyInstance<TServer>, pool: Pool, redis: IORedisType): void {
+export async function registerRoutes<TServer extends RawServerBase = RawServerBase>(app: FastifyInstance<TServer>, pool: Pool, redis: IORedisType): Promise<void> {
 
     // Register OpenAPI routes with integrated security
     const shopifyAppKey = process.env.SHOPIFY_API_KEY;
@@ -148,6 +148,10 @@ export function registerRoutes<TServer extends RawServerBase = RawServerBase>(ap
         appSecret: process.env.SHOPIFY_API_SECRET!,
         redis,
     });
+
+    // Register Shopify SSO route for cross-domain authentication
+    const { registerShopifySSORoute } = await import('./routes/shopify-sso.js');
+    await registerShopifySSORoute(app as any, pool, redis);
 
     app.register(openapiGlue, {
         serviceHandlers: serviceHandlers(pool, redis, app),

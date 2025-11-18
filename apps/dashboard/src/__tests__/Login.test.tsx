@@ -201,10 +201,7 @@ describe('Login Component', () => {
     fireEvent.click(screen.getByRole('button', { name: /sign in/i }));
 
     await waitFor(() => {
-      expect(mockLogin).toHaveBeenCalledWith({
-        id: 'user-id',
-        email: 'test@example.com',
-      }, 'test-csrf-token');
+      expect(mockLogin).toHaveBeenCalledWith('test@example.com', 'password123');
       expect(mockNavigate).toHaveBeenCalledWith('/api-keys');
     });
   });

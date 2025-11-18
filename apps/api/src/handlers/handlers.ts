@@ -157,7 +157,7 @@ const makeShopifyHandlers = (pool: Pool, redis: IORedisType): Partial<RouteHandl
     getShopifyAccessScopes: async (request, reply) => getAccessScopes(request, reply, pool),
 
     shopifyAppInstalledEvent: async (request, reply) => appInstalled(request, reply, pool),
-    createShopifyDashboardSession: async (request, reply) => createDashboardSession(request, reply, pool),
+    createShopifyDashboardSession: async (request, reply) => createDashboardSession(request, reply, pool, redis),
     shopifyOrdersCreateWebhook: async (request, reply) => ordersCreate(request, reply, pool, redis),
     shopifyCustomersCreateWebhook: async (request, reply) => customersCreate(request, reply),
     shopifyCustomersUpdateWebhook: async (request, reply) => customersUpdate(request, reply),

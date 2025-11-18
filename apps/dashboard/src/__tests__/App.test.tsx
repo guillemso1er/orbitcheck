@@ -204,7 +204,7 @@ const createMockAuthContext = (isAuthenticated: boolean, isLoading = false) => {
     token: isAuthenticated ? 'test-token' : null,
     csrfToken: null,
     login: jest.fn(),
-    logout: jest.fn((callback?: () => void) => {
+    logout: jest.fn(async (callback?: () => void) => {
       // When logout is called, update the current auth state
       currentAuthState = {
         ...currentAuthState,
