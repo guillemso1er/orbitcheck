@@ -16,7 +16,7 @@
     "k6:all": "k6 run -e KEY=ok_test_a450e23f007460bc2a01e5ec715a12a76952  tests/k6/main.js",
     "generate": "pnpm --filter @orbitcheck/contracts run build && pnpm --filter @orbitcheck/api run gen",
     "infra": "podman compose -f infra/compose/local.compose.yml up -d",
-    "shopify": "pnpm infra && concurrently \"pnpm api\" \"pnpm --filter @orbitcheck/orbitcheck-shopify-app dev\"",
+    "shopify": "pnpm --filter @orbitcheck/orbitcheck-shopify-app dev",
     "all": "pnpm infra && concurrently \"pnpm api\" \"pnpm dashboard\"",
     "podman": "podman compose -f  infra/compose/dev.compose.yml up --build -d",
     "typecheck": "pnpm -r typecheck",

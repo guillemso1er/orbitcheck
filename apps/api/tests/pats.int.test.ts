@@ -11,7 +11,7 @@ function extractTokenId(pat: string): string {
   // The env is either 'live' or 'test', and tokenId is generated as b64url(9)
   // The secret is generated as b64url(24) and can contain underscores/hyphens
   // The format is: oc_pat_{env}:{tokenId}:{secret}
-  
+
   if (!pat.startsWith('oc_pat_')) {
     throw new Error(`Invalid PAT prefix: ${pat}`);
   }
@@ -23,7 +23,7 @@ function extractTokenId(pat: string): string {
   }
 
   const env = parts[0];
-  
+
   // The format is env:tokenId:secret
   // We can safely split on ':' since it's not in base64url alphabet
   const tokenId = parts[1];
@@ -74,8 +74,8 @@ beforeEach(async () => {
     url: '/auth/register',
     payload: {
       email: 'test@example.com',
-      password: 'password123',
-      confirm_password: 'password123'
+      password: 'Password123*',
+      confirm_password: 'Password123*'
     }
   });
 
@@ -85,7 +85,7 @@ beforeEach(async () => {
     url: '/auth/login',
     payload: {
       email: 'test@example.com',
-      password: 'password123'
+      password: 'Password123*'
     }
   });
 

@@ -120,7 +120,7 @@ describe('Login Component', () => {
     const passwordInput = screen.getByLabelText(/password/i);
     const submitButton = screen.getByRole('button', { name: /sign in/i });
 
-    fireEvent.change(passwordInput, { target: { value: 'password123' } });
+    fireEvent.change(passwordInput, { target: { value: 'Password123*' } });
 
     fireEvent.change(emailInput, { target: { value: 'invalid-email' } });
     fireEvent.click(submitButton);
@@ -195,13 +195,13 @@ describe('Login Component', () => {
       target: { value: 'test@example.com' },
     });
     fireEvent.change(screen.getByLabelText(/password/i), {
-      target: { value: 'password123' },
+      target: { value: 'Password123*' },
     });
 
     fireEvent.click(screen.getByRole('button', { name: /sign in/i }));
 
     await waitFor(() => {
-      expect(mockLogin).toHaveBeenCalledWith('test@example.com', 'password123');
+      expect(mockLogin).toHaveBeenCalledWith('test@example.com', 'Password123*');
       expect(mockNavigate).toHaveBeenCalledWith('/api-keys');
     });
   });
@@ -234,7 +234,7 @@ describe('Login Component', () => {
       target: { value: 'test@example.com' },
     });
     fireEvent.change(screen.getByLabelText(/password/i), {
-      target: { value: 'password123' },
+      target: { value: 'Password123*' },
     });
 
     fireEvent.click(screen.getByRole('button', { name: /sign in/i }));
@@ -270,7 +270,7 @@ describe('Login Component', () => {
       target: { value: 'test@example.com' },
     });
     fireEvent.change(screen.getByLabelText(/password/i), {
-      target: { value: 'password123' },
+      target: { value: 'Password123*' },
     });
 
     fireEvent.click(screen.getByRole('button', { name: /sign in/i }));

@@ -67,7 +67,7 @@ describe('Authentication Integration Tests', () => {
       const res = await app.inject({
         method: 'POST',
         url: '/auth/register',
-        payload: { password: 'password123', confirm_password: 'password123' }
+        payload: { password: 'Password123*', confirm_password: 'Password123*' }
       })
       expect(res.statusCode).toBe(400)
       const body = res.json()
@@ -78,7 +78,7 @@ describe('Authentication Integration Tests', () => {
       const res = await app.inject({
         method: 'POST',
         url: '/auth/register',
-        payload: { email: 'test@example.com', confirm_password: 'password123' }
+        payload: { email: 'test@example.com', confirm_password: 'Password123*' }
       })
       expect(res.statusCode).toBe(400)
       const body = res.json()
@@ -91,7 +91,7 @@ describe('Authentication Integration Tests', () => {
         url: '/auth/register',
         payload: {
           email: 'test@example.com',
-          password: 'password123',
+          password: 'Password123*',
           confirm_password: 'different'
         }
       })
@@ -106,8 +106,8 @@ describe('Authentication Integration Tests', () => {
         url: '/auth/register',
         payload: {
           email: 'invalid-email',
-          password: 'password123',
-          confirm_password: 'password123'
+          password: 'Password123*',
+          confirm_password: 'Password123*'
         }
       })
       expect(res.statusCode).toBe(400)
@@ -135,8 +135,8 @@ describe('Authentication Integration Tests', () => {
         url: '/auth/register',
         payload: {
           email: 'test@example.com',
-          password: 'password123',
-          confirm_password: 'password123'
+          password: 'Password123*',
+          confirm_password: 'Password123*'
         }
       })
       expect(res1.statusCode).toBe(201)
@@ -164,8 +164,8 @@ describe('Authentication Integration Tests', () => {
         url: '/auth/register',
         payload: {
           email: 'test@example.com',
-          password: 'password123',
-          confirm_password: 'password123'
+          password: 'Password123*',
+          confirm_password: 'Password123*'
         }
       })
       expect(res.statusCode).toBe(201)
@@ -184,7 +184,7 @@ describe('Authentication Integration Tests', () => {
         url: '/auth/login',
         payload: {
           email: 'nonexistent@example.com',
-          password: 'password123'
+          password: 'Password123*'
         }
       })
       expect(res.statusCode).toBe(401)
@@ -199,8 +199,8 @@ describe('Authentication Integration Tests', () => {
         url: '/auth/register',
         payload: {
           email: 'test@example.com',
-          password: 'password123',
-          confirm_password: 'password123'
+          password: 'Password123*',
+          confirm_password: 'Password123*'
         }
       })
 
@@ -227,8 +227,8 @@ describe('Authentication Integration Tests', () => {
         url: '/auth/register',
         payload: {
           email: 'test@example.com',
-          password: 'password123',
-          confirm_password: 'password123'
+          password: 'Password123*',
+          confirm_password: 'Password123*'
         }
       })
 
@@ -238,7 +238,7 @@ describe('Authentication Integration Tests', () => {
         url: '/auth/login',
         payload: {
           email: 'test@example.com',
-          password: 'password123'
+          password: 'Password123*'
         }
       })
       expect(res.statusCode).toBe(200)
@@ -271,8 +271,8 @@ describe('Authentication Integration Tests', () => {
         url: '/auth/register',
         payload: {
           email: 'test@example.com',
-          password: 'password123',
-          confirm_password: 'password123'
+          password: 'Password123*',
+          confirm_password: 'Password123*'
         }
       })
 
@@ -281,7 +281,7 @@ describe('Authentication Integration Tests', () => {
         url: '/auth/login',
         payload: {
           email: 'test@example.com',
-          password: 'password123'
+          password: 'Password123*'
         }
       })
 
@@ -337,8 +337,8 @@ describe('Authentication Integration Tests', () => {
         url: '/auth/register',
         payload: {
           email: 'apitest@example.com',
-          password: 'password123',
-          confirm_password: 'password123'
+          password: 'Password123*',
+          confirm_password: 'Password123*'
         }
       })
       expect(registerRes.statusCode).toBe(201)
@@ -348,7 +348,7 @@ describe('Authentication Integration Tests', () => {
         url: '/auth/login',
         payload: {
           email: 'apitest@example.com',
-          password: 'password123'
+          password: 'Password123*'
         }
       })
       expect(loginRes.statusCode).toBe(200)
@@ -490,8 +490,8 @@ describe('Authentication Integration Tests', () => {
         url: '/auth/register',
         payload: {
           email: 'test@example.com',
-          password: 'password123',
-          confirm_password: 'password123'
+          password: 'Password123*',
+          confirm_password: 'Password123*'
         }
       })
 
@@ -501,7 +501,7 @@ describe('Authentication Integration Tests', () => {
         url: '/auth/login',
         payload: {
           email: 'test@example.com',
-          password: 'password123'
+          password: 'Password123*'
         }
       })
 

@@ -42,7 +42,7 @@ const TestComponent: React.FC = () => {
       <div data-testid="user">{user ? user.email : 'No user'}</div>
       <div data-testid="csrf-token">{csrfToken || 'No token'}</div>
       <div data-testid="is-authenticated">{isAuthenticated.toString()}</div>
-      <button data-testid="login-btn" onClick={() => login('test@example.com', 'password123')}>
+      <button data-testid="login-btn" onClick={() => login('test@example.com', 'Password123*')}>
         Login
       </button>
       <button data-testid="logout-btn" onClick={logout}>

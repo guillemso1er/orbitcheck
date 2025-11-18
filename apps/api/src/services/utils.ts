@@ -129,8 +129,17 @@ export async function getDefaultProjectId(pool: Pool, userId: string): Promise<s
         'SELECT p.id as project_id FROM projects p WHERE p.user_id = $1 AND p.name = $2',
         [userId, PROJECT_NAMES.DEFAULT]
     );
-    if (rows.length === 0) {
+    if (rows.length > 0) {
+        return rows[0].project_id;
+    }
+
+    const { rows: fallbackRows } = await pool.query(
+        'SELECT p.id as project_id FROM projects p WHERE p.user_id = $1 ORDER BY p.created_at ASC LIMIT 1',
+        [userId]
+    );
+
+    if (fallbackRows.length === 0) {
         throw new Error('No default project found');
     }
-    return rows[0].project_id;
+    return fallbackRows[0].project_id;
 }

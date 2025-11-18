@@ -54,7 +54,7 @@
                                 "method": "POST",
                                 "body": {
                                     "mode": "raw",
-                                    "raw": "{\n  \"email\": \"user@example.com\",\n  \"password\": \"securepassword123\"\n}"
+                                    "raw": "{\n  \"email\": \"user@example.com\",\n  \"password\": \"securePassword123*\"\n}"
                                 }
                             },
                             "response": []
@@ -94,7 +94,7 @@
                                 "method": "POST",
                                 "body": {
                                     "mode": "raw",
-                                    "raw": "{\n  \"email\": \"user@example.com\",\n  \"password\": \"securepassword123\"\n}"
+                                    "raw": "{\n  \"email\": \"user@example.com\",\n  \"password\": \"securePassword123*\"\n}"
                                 }
                             },
                             "response": []

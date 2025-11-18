@@ -36,6 +36,19 @@ export async function registerUser(
         if (password.length < 8) {
             return sendError(rep, HTTP_STATUS.BAD_REQUEST, ERROR_CODES.INVALID_INPUT, 'Password must be at least 8 characters', request_id);
         }
+        // Enforce additional complexity rules to match dashboard validations
+        if (!/[a-z]/.test(password)) {
+            return sendError(rep, HTTP_STATUS.BAD_REQUEST, ERROR_CODES.INVALID_INPUT, 'Password must contain at least one lowercase letter', request_id);
+        }
+        if (!/[A-Z]/.test(password)) {
+            return sendError(rep, HTTP_STATUS.BAD_REQUEST, ERROR_CODES.INVALID_INPUT, 'Password must contain at least one uppercase letter', request_id);
+        }
+        if (!/[0-9]/.test(password)) {
+            return sendError(rep, HTTP_STATUS.BAD_REQUEST, ERROR_CODES.INVALID_INPUT, 'Password must contain at least one number', request_id);
+        }
+        if (!/[^a-zA-Z0-9]/.test(password)) {
+            return sendError(rep, HTTP_STATUS.BAD_REQUEST, ERROR_CODES.INVALID_INPUT, 'Password must contain at least one special character', request_id);
+        }
         if (!confirm_password || typeof confirm_password !== 'string') {
             return sendError(rep, HTTP_STATUS.BAD_REQUEST, ERROR_CODES.INVALID_INPUT, 'Valid confirm_password is required', request_id);
         }

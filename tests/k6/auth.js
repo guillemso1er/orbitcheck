@@ -22,8 +22,8 @@ export function testRegister(check) {
     const email = `k6test${Date.now()}@example.com`;
     const payload = JSON.stringify({
         email: email,
-        password: 'password123',
-        confirm_password: 'password123'
+        password: 'Password123*',
+        confirm_password: 'Password123*'
     });
     const res = http.post(`${BASE_URL}/auth/register`, payload, { headers: HEADERS });
 
@@ -47,7 +47,7 @@ export function testLogin(email, check) {
     const loginEmail = email || 'test@example.com';
     const payload = JSON.stringify({
         email: loginEmail,
-        password: 'password123'
+        password: 'Password123*'
     });
     const res = http.post(`${BASE_URL}/auth/login`, payload, { headers: HEADERS });
 

@@ -67,8 +67,8 @@ beforeEach(async () => {
     url: '/auth/register',
     payload: {
       email: 'test@example.com',
-      password: 'password123',
-      confirm_password: 'password123'
+      password: 'Password123*',
+      confirm_password: 'Password123*'
     }
   })
   // Login and get fresh session cookie for each test
@@ -77,7 +77,7 @@ beforeEach(async () => {
     url: '/auth/login',
     payload: {
       email: 'test@example.com',
-      password: 'password123'
+      password: 'Password123*'
     }
   })
 
@@ -130,8 +130,8 @@ describe('API Keys Integration Tests', () => {
         url: '/auth/register',
         payload: {
           email: 'test2@example.com',
-          password: 'password123',
-          confirm_password: 'password123'
+          password: 'Password123*',
+          confirm_password: 'Password123*'
         }
       })
       expect(userRes.statusCode).toBe(201)
@@ -141,7 +141,7 @@ describe('API Keys Integration Tests', () => {
         url: '/auth/login',
         payload: {
           email: 'test2@example.com',
-          password: 'password123'
+          password: 'Password123*'
         }
       })
       expect(loginRes.statusCode).toBe(200)
@@ -176,8 +176,8 @@ describe('API Keys Integration Tests', () => {
         url: '/auth/register',
         payload: {
           email: 'test@example.com',
-          password: 'password123',
-          confirm_password: 'password123'
+          password: 'Password123*',
+          confirm_password: 'Password123*'
         }
       })
 
@@ -186,7 +186,7 @@ describe('API Keys Integration Tests', () => {
         url: '/auth/login',
         payload: {
           email: 'test@example.com',
-          password: 'password123'
+          password: 'Password123*'
         }
       })
 
@@ -231,8 +231,8 @@ describe('API Keys Integration Tests', () => {
         url: '/auth/register',
         payload: {
           email: 'test@example.com',
-          password: 'password123',
-          confirm_password: 'password123'
+          password: 'Password123*',
+          confirm_password: 'Password123*'
         }
       })
 
@@ -241,7 +241,7 @@ describe('API Keys Integration Tests', () => {
         url: '/auth/login',
         payload: {
           email: 'test@example.com',
-          password: 'password123'
+          password: 'Password123*'
         }
       })
 
@@ -272,8 +272,8 @@ describe('API Keys Integration Tests', () => {
         url: '/auth/register',
         payload: {
           email: 'test@example.com',
-          password: 'password123',
-          confirm_password: 'password123'
+          password: 'Password123*',
+          confirm_password: 'Password123*'
         }
       })
 
@@ -282,7 +282,7 @@ describe('API Keys Integration Tests', () => {
         url: '/auth/login',
         payload: {
           email: 'test@example.com',
-          password: 'password123'
+          password: 'Password123*'
         }
       })
 
@@ -316,8 +316,8 @@ describe('API Keys Integration Tests', () => {
         url: '/auth/register',
         payload: {
           email: 'user1@example.com',
-          password: 'password123',
-          confirm_password: 'password123'
+          password: 'Password123*',
+          confirm_password: 'Password123*'
         }
       })
       expect(user1Res.statusCode).toBe(201)
@@ -327,7 +327,7 @@ describe('API Keys Integration Tests', () => {
         url: '/auth/login',
         payload: {
           email: 'user1@example.com',
-          password: 'password123'
+          password: 'Password123*'
         }
       })
       expect(login1Res.statusCode).toBe(200)
@@ -347,8 +347,8 @@ describe('API Keys Integration Tests', () => {
         url: '/auth/register',
         payload: {
           email: 'user2@example.com',
-          password: 'password123',
-          confirm_password: 'password123'
+          password: 'Password123*',
+          confirm_password: 'Password123*'
         }
       })
       expect(user2Res.statusCode).toBe(201)
@@ -358,7 +358,7 @@ describe('API Keys Integration Tests', () => {
         url: '/auth/login',
         payload: {
           email: 'user2@example.com',
-          password: 'password123'
+          password: 'Password123*'
         }
       })
       expect(login2Res.statusCode).toBe(200)
@@ -401,8 +401,8 @@ describe('API Keys Integration Tests', () => {
         url: '/auth/register',
         payload: {
           email: 'test@example.com',
-          password: 'password123',
-          confirm_password: 'password123'
+          password: 'Password123*',
+          confirm_password: 'Password123*'
         }
       })
 
@@ -411,7 +411,7 @@ describe('API Keys Integration Tests', () => {
         url: '/auth/login',
         payload: {
           email: 'test@example.com',
-          password: 'password123'
+          password: 'Password123*'
         }
       })
 
@@ -452,8 +452,8 @@ describe('API Keys Integration Tests', () => {
         url: '/auth/register',
         payload: {
           email: 'test@example.com',
-          password: 'password123',
-          confirm_password: 'password123'
+          password: 'Password123*',
+          confirm_password: 'Password123*'
         }
       })
 
@@ -462,7 +462,7 @@ describe('API Keys Integration Tests', () => {
         url: '/auth/login',
         payload: {
           email: 'test@example.com',
-          password: 'password123'
+          password: 'Password123*'
         }
       })
 
@@ -483,8 +483,8 @@ describe('API Keys Integration Tests', () => {
         url: '/auth/register',
         payload: {
           email: 'test@example.com',
-          password: 'password123',
-          confirm_password: 'password123'
+          password: 'Password123*',
+          confirm_password: 'Password123*'
         }
       })
 
@@ -493,7 +493,7 @@ describe('API Keys Integration Tests', () => {
         url: '/auth/login',
         payload: {
           email: 'test@example.com',
-          password: 'password123'
+          password: 'Password123*'
         }
       })
 
@@ -531,8 +531,8 @@ describe('API Keys Integration Tests', () => {
         url: '/auth/register',
         payload: {
           email: 'test@example.com',
-          password: 'password123',
-          confirm_password: 'password123'
+          password: 'Password123*',
+          confirm_password: 'Password123*'
         }
       })
 
@@ -541,7 +541,7 @@ describe('API Keys Integration Tests', () => {
         url: '/auth/login',
         payload: {
           email: 'test@example.com',
-          password: 'password123'
+          password: 'Password123*'
         }
       })
 

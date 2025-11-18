@@ -556,6 +556,11 @@ const Login: React.FC<{ isSignup?: boolean }> = ({ isSignup = false }) => {
               <button
                 type="button"
                 onClick={toggleAuthMode}
+                // Prevent the input from losing focus on pointer down so onBlur validation
+                // doesn't re-render and block the click event (causes needing a 2nd click)
+                onPointerDown={(e) => e.preventDefault()}
+                onMouseDown={(e) => e.preventDefault()}
+                onTouchStart={(e) => e.preventDefault()}
                 disabled={loading}
                 className="ml-1 font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-400 dark:hover:text-indigo-300 transition-colors disabled:opacity-50"
               >

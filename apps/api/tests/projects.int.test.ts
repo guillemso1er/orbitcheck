@@ -12,15 +12,15 @@ beforeAll(async () => {
   try {
     // Start environment first
     await startTestEnv()
-    
+
     // Get connections
     pool = getPool()
     redis = getRedis()
-    
+
     // Build app
     app = await build(pool, redis)
     await app.ready()
-    
+
     // Give the app a moment to fully initialize
     await new Promise(resolve => setTimeout(resolve, 100))
   } catch (error) {
@@ -38,7 +38,7 @@ afterAll(async () => {
   } catch (error) {
     // Ignore closing errors in tests
   }
-  
+
   try {
     if (redis) {
       redis.disconnect()
@@ -46,7 +46,7 @@ afterAll(async () => {
   } catch (error) {
     // Ignore
   }
-  
+
   try {
     await stopTestEnv()
   } catch (error) {
@@ -63,18 +63,18 @@ beforeEach(async () => {
     url: '/auth/register',
     payload: {
       email: 'test@example.com',
-      password: 'password123',
-      confirm_password: 'password123'
+      password: 'Password123*',
+      confirm_password: 'Password123*'
     }
   })
-  
+
   // Login and get fresh session cookie for each test
   const loginRes = await app.inject({
     method: 'POST',
     url: '/auth/login',
     payload: {
       email: 'test@example.com',
-      password: 'password123'
+      password: 'Password123*'
     }
   })
 
@@ -132,8 +132,8 @@ describe('Projects Integration Tests', () => {
         url: '/auth/register',
         payload: {
           email: 'test@example.com',
-          password: 'password123',
-          confirm_password: 'password123'
+          password: 'Password123*',
+          confirm_password: 'Password123*'
         }
       })
       expect(userRes.statusCode).toBe(201)
@@ -143,7 +143,7 @@ describe('Projects Integration Tests', () => {
         url: '/auth/login',
         payload: {
           email: 'test@example.com',
-          password: 'password123'
+          password: 'Password123*'
         }
       })
       expect(loginRes.statusCode).toBe(200)
@@ -170,8 +170,8 @@ describe('Projects Integration Tests', () => {
         url: '/auth/register',
         payload: {
           email: 'test@example.com',
-          password: 'password123',
-          confirm_password: 'password123'
+          password: 'Password123*',
+          confirm_password: 'Password123*'
         }
       })
 
@@ -180,7 +180,7 @@ describe('Projects Integration Tests', () => {
         url: '/auth/login',
         payload: {
           email: 'test@example.com',
-          password: 'password123'
+          password: 'Password123*'
         }
       })
 
@@ -224,8 +224,8 @@ describe('Projects Integration Tests', () => {
         url: '/auth/register',
         payload: {
           email: 'test@example.com',
-          password: 'password123',
-          confirm_password: 'password123'
+          password: 'Password123*',
+          confirm_password: 'Password123*'
         }
       })
 
@@ -234,7 +234,7 @@ describe('Projects Integration Tests', () => {
         url: '/auth/login',
         payload: {
           email: 'test@example.com',
-          password: 'password123'
+          password: 'Password123*'
         }
       })
 
@@ -245,7 +245,7 @@ describe('Projects Integration Tests', () => {
         payload: { name: 'First Project' },
         cookies: cookieJar
       })
-      
+
       await new Promise(resolve => setTimeout(resolve, 10))
 
       const project2Res = await app.inject({
@@ -276,8 +276,8 @@ describe('Projects Integration Tests', () => {
         url: '/auth/register',
         payload: {
           email: 'test@example.com',
-          password: 'password123',
-          confirm_password: 'password123'
+          password: 'Password123*',
+          confirm_password: 'Password123*'
         }
       })
 
@@ -286,7 +286,7 @@ describe('Projects Integration Tests', () => {
         url: '/auth/login',
         payload: {
           email: 'test@example.com',
-          password: 'password123'
+          password: 'Password123*'
         }
       })
 
@@ -311,8 +311,8 @@ describe('Projects Integration Tests', () => {
         url: '/auth/register',
         payload: {
           email: 'test@example.com',
-          password: 'password123',
-          confirm_password: 'password123'
+          password: 'Password123*',
+          confirm_password: 'Password123*'
         }
       })
 
@@ -321,7 +321,7 @@ describe('Projects Integration Tests', () => {
         url: '/auth/login',
         payload: {
           email: 'test@example.com',
-          password: 'password123'
+          password: 'Password123*'
         }
       })
 
@@ -344,8 +344,8 @@ describe('Projects Integration Tests', () => {
         url: '/auth/register',
         payload: {
           email: 'test@example.com',
-          password: 'password123',
-          confirm_password: 'password123'
+          password: 'Password123*',
+          confirm_password: 'Password123*'
         }
       })
 
@@ -354,7 +354,7 @@ describe('Projects Integration Tests', () => {
         url: '/auth/login',
         payload: {
           email: 'test@example.com',
-          password: 'password123'
+          password: 'Password123*'
         }
       })
 
@@ -377,8 +377,8 @@ describe('Projects Integration Tests', () => {
         url: '/auth/register',
         payload: {
           email: 'test@example.com',
-          password: 'password123',
-          confirm_password: 'password123'
+          password: 'Password123*',
+          confirm_password: 'Password123*'
         }
       })
 
@@ -387,7 +387,7 @@ describe('Projects Integration Tests', () => {
         url: '/auth/login',
         payload: {
           email: 'test@example.com',
-          password: 'password123'
+          password: 'Password123*'
         }
       })
 
@@ -410,8 +410,8 @@ describe('Projects Integration Tests', () => {
         url: '/auth/register',
         payload: {
           email: 'test@example.com',
-          password: 'password123',
-          confirm_password: 'password123'
+          password: 'Password123*',
+          confirm_password: 'Password123*'
         }
       })
 
@@ -420,7 +420,7 @@ describe('Projects Integration Tests', () => {
         url: '/auth/login',
         payload: {
           email: 'test@example.com',
-          password: 'password123'
+          password: 'Password123*'
         }
       })
 
@@ -443,8 +443,8 @@ describe('Projects Integration Tests', () => {
         url: '/auth/register',
         payload: {
           email: 'test@example.com',
-          password: 'password123',
-          confirm_password: 'password123'
+          password: 'Password123*',
+          confirm_password: 'Password123*'
         }
       })
 
@@ -453,7 +453,7 @@ describe('Projects Integration Tests', () => {
         url: '/auth/login',
         payload: {
           email: 'test@example.com',
-          password: 'password123'
+          password: 'Password123*'
         }
       })
 
@@ -481,7 +481,7 @@ describe('Projects Integration Tests', () => {
         payload: { name: 'Project 3' },
         cookies: cookieJar
       })
-      
+
       if (project3Res.statusCode === 402) {
         const body = project3Res.json()
         expect(body.error.code).toBe('LIMIT_EXCEEDED')
@@ -498,8 +498,8 @@ describe('Projects Integration Tests', () => {
         url: '/auth/register',
         payload: {
           email: 'test@example.com',
-          password: 'password123',
-          confirm_password: 'password123'
+          password: 'Password123*',
+          confirm_password: 'Password123*'
         }
       })
 
@@ -508,7 +508,7 @@ describe('Projects Integration Tests', () => {
         url: '/auth/login',
         payload: {
           email: 'test@example.com',
-          password: 'password123'
+          password: 'Password123*'
         }
       })
 
@@ -542,8 +542,8 @@ describe('Projects Integration Tests', () => {
         url: '/auth/register',
         payload: {
           email: 'test@example.com',
-          password: 'password123',
-          confirm_password: 'password123'
+          password: 'Password123*',
+          confirm_password: 'Password123*'
         }
       })
 
@@ -552,7 +552,7 @@ describe('Projects Integration Tests', () => {
         url: '/auth/login',
         payload: {
           email: 'test@example.com',
-          password: 'password123'
+          password: 'Password123*'
         }
       })
 
@@ -593,8 +593,8 @@ describe('Projects Integration Tests', () => {
         url: '/auth/register',
         payload: {
           email: 'test@example.com',
-          password: 'password123',
-          confirm_password: 'password123'
+          password: 'Password123*',
+          confirm_password: 'Password123*'
         }
       })
 
@@ -603,7 +603,7 @@ describe('Projects Integration Tests', () => {
         url: '/auth/login',
         payload: {
           email: 'test@example.com',
-          password: 'password123'
+          password: 'Password123*'
         }
       })
 
@@ -625,8 +625,8 @@ describe('Projects Integration Tests', () => {
         url: '/auth/register',
         payload: {
           email: 'user1@example.com',
-          password: 'password123',
-          confirm_password: 'password123'
+          password: 'Password123*',
+          confirm_password: 'Password123*'
         }
       })
 
@@ -635,8 +635,8 @@ describe('Projects Integration Tests', () => {
         url: '/auth/register',
         payload: {
           email: 'user2@example.com',
-          password: 'password123',
-          confirm_password: 'password123'
+          password: 'Password123*',
+          confirm_password: 'Password123*'
         }
       })
 
@@ -645,7 +645,7 @@ describe('Projects Integration Tests', () => {
         url: '/auth/login',
         payload: {
           email: 'user1@example.com',
-          password: 'password123'
+          password: 'Password123*'
         }
       })
 
@@ -654,7 +654,7 @@ describe('Projects Integration Tests', () => {
         url: '/auth/login',
         payload: {
           email: 'user2@example.com',
-          password: 'password123'
+          password: 'Password123*'
         }
       })
 
@@ -694,8 +694,8 @@ describe('Projects Integration Tests', () => {
         url: '/auth/register',
         payload: {
           email: 'test@example.com',
-          password: 'password123',
-          confirm_password: 'password123'
+          password: 'Password123*',
+          confirm_password: 'Password123*'
         }
       })
 
@@ -704,7 +704,7 @@ describe('Projects Integration Tests', () => {
         url: '/auth/login',
         payload: {
           email: 'test@example.com',
-          password: 'password123'
+          password: 'Password123*'
         }
       })
 
@@ -758,8 +758,8 @@ describe('Projects Integration Tests', () => {
         url: '/auth/register',
         payload: {
           email: 'user1@example.com',
-          password: 'password123',
-          confirm_password: 'password123'
+          password: 'Password123*',
+          confirm_password: 'Password123*'
         }
       })
 
@@ -768,8 +768,8 @@ describe('Projects Integration Tests', () => {
         url: '/auth/register',
         payload: {
           email: 'user2@example.com',
-          password: 'password123',
-          confirm_password: 'password123'
+          password: 'Password123*',
+          confirm_password: 'Password123*'
         }
       })
 
@@ -778,7 +778,7 @@ describe('Projects Integration Tests', () => {
         url: '/auth/login',
         payload: {
           email: 'user1@example.com',
-          password: 'password123'
+          password: 'Password123*'
         }
       })
 
@@ -787,7 +787,7 @@ describe('Projects Integration Tests', () => {
         url: '/auth/login',
         payload: {
           email: 'user2@example.com',
-          password: 'password123'
+          password: 'Password123*'
         }
       })
 
@@ -846,8 +846,8 @@ describe('Projects Integration Tests', () => {
         url: '/auth/register',
         payload: {
           email: 'test@example.com',
-          password: 'password123',
-          confirm_password: 'password123'
+          password: 'Password123*',
+          confirm_password: 'Password123*'
         }
       })
 
@@ -856,7 +856,7 @@ describe('Projects Integration Tests', () => {
         url: '/auth/login',
         payload: {
           email: 'test@example.com',
-          password: 'password123'
+          password: 'Password123*'
         }
       })
 
