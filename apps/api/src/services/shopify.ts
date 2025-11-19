@@ -1,6 +1,7 @@
 import type { Pool } from "pg";
 import { decryptShopifyToken, encryptShopifyToken } from "../integrations/shopify/lib/crypto.js";
 import { Mode } from "../integrations/shopify/lib/types.js";
+import console from "console";
 
 export interface ShopifyShop {
     id: string;
@@ -97,13 +98,12 @@ export class ShopifyService {
             throw new Error('Invalid shop domain provided to recordGdprEvent: must be a non-empty string');
         }
 
-        const result = await this.pool.query(`
+        await this.pool.query(`
             INSERT INTO shopify_gdpr_events (shop_id, topic, payload)
             SELECT id, $2, $3 FROM shopify_shops WHERE shop_domain = $1
-            RETURNING id
         `, [shopDomain, topic, payload]);
 
-        console.log(`[ShopifyService] Recorded GDPR event ${topic} for ${shopDomain}, inserted: ${result.rowCount} rows`);
+
     }
 
     async setShopMode(shopDomain: string, mode: Mode): Promise<void> {
@@ -115,9 +115,9 @@ export class ShopifyService {
       UPDATE shopify_settings
       SET mode = $2, updated_at = now()
       WHERE shop_id = (
-        SELECT id FROM shopify_shops WHERE shop_domain = $1
+            SELECT id FROM shopify_shops WHERE shop_domain = $1
       )
-    `, [shopDomain, mode]);
+        `, [shopDomain, mode]);
     }
 
     async deleteShopData(shopDomain: string): Promise<void> {
@@ -130,14 +130,14 @@ export class ShopifyService {
             await client.query('BEGIN');
 
             // Delete shop - CASCADE will automatically delete settings and GDPR events
-            const result = await client.query('DELETE FROM shopify_shops WHERE shop_domain = $1', [shopDomain]);
+            await client.query('DELETE FROM shopify_shops WHERE shop_domain = $1', [shopDomain]);
 
-            console.log(`[ShopifyService] Deleted shop data for ${shopDomain}, rows affected: ${result.rowCount}`);
+
 
             await client.query('COMMIT');
         } catch (error) {
             await client.query('ROLLBACK');
-            console.error(`[ShopifyService] Failed to delete shop data for ${shopDomain}:`, error);
+            console.error(`[ShopifyService] Failed to delete shop data for ${shopDomain}: `, error);
             throw error;
         } finally {
             client.release();
@@ -150,23 +150,23 @@ export class ShopifyService {
         }
 
         const result = await this.pool.query(`
-            SELECT
-                ss.id as shop_id,
-                ss.shop_domain,
-                ss.scopes,
-                ss.installed_at,
-                ss.updated_at,
-                sgs.mode,
-                sgs.created_at as settings_created_at,
-                sgs.updated_at as settings_updated_at,
-                sge.topic,
-                sge.payload,
-                sge.received_at
+        SELECT
+        ss.id as shop_id,
+            ss.shop_domain,
+            ss.scopes,
+            ss.installed_at,
+            ss.updated_at,
+            sgs.mode,
+            sgs.created_at as settings_created_at,
+            sgs.updated_at as settings_updated_at,
+            sge.topic,
+            sge.payload,
+            sge.received_at
             FROM shopify_shops ss
             JOIN shopify_settings sgs ON ss.id = sgs.shop_id
             LEFT JOIN shopify_gdpr_events sge ON ss.id = sge.shop_id
             WHERE ss.shop_domain = $1
-            AND sge.topic IN ('customers/data_request', 'customers/redact', 'shop/redact', 'app/uninstalled')
+            AND sge.topic IN('customers/data_request', 'customers/redact', 'shop/redact', 'app/uninstalled')
             ORDER BY sge.received_at DESC
         `, [shopDomain]);
 
@@ -205,7 +205,7 @@ export class ShopifyService {
         };
     }
 
-    async sendCustomerDataToShopify(shopDomain: string, customerId: string, data: Record<string, unknown>): Promise<boolean> {
+    async sendCustomerDataToShopify(shopDomain: string, _customerId: string, _data: Record<string, unknown>): Promise<boolean> {
         if (!shopDomain || typeof shopDomain !== 'string') {
             throw new Error('Invalid shop domain provided to sendCustomerDataToShopify: must be a non-empty string');
         }
@@ -225,15 +225,11 @@ export class ShopifyService {
             // For now, we'll log the data that would be sent and return success
             // This simulates the data preparation step without making external calls
 
-            console.log(`[Shopify GDPR] Would send data for customer ${customerId} from shop ${shopDomain}:`, {
-                dataKeys: Object.keys(data),
-                dataSize: JSON.stringify(data).length,
-                timestamp: new Date().toISOString()
-            });
+
 
             return true;
         } catch (error) {
-            throw new Error(`Failed to prepare customer data for Shopify: ${error instanceof Error ? error.message : 'Unknown error'}`);
+            throw new Error(`Failed to prepare customer data for Shopify: ${error instanceof Error ? error.message : 'Unknown error'} `);
         }
     }
 }

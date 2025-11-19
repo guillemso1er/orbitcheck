@@ -538,7 +538,7 @@ const PersonalAccessTokens: React.FC<PersonalAccessTokensProps> = () => {
         client: apiClient,
         body: {
           name: formData.name,
-          scopes: formData.scopes as any, // TODO: Fix type mismatch
+          scopes: formData.scopes as any,
           env: formData.env,
           expires_at: formData.expires_at,
           ip_allowlist: formData.ip_allowlist,
@@ -622,7 +622,7 @@ const PersonalAccessTokens: React.FC<PersonalAccessTokensProps> = () => {
             client: apiClient,
             body: {
               name: newTokenData.name,
-              scopes: newTokenData.scopes as any, // TODO: Fix type mismatch
+              scopes: newTokenData.scopes as any,
               env: newTokenData.env,
               ip_allowlist: newTokenData.ip_allowlist,
               project_id: newTokenData.project_id
