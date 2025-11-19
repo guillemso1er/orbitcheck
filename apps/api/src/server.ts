@@ -15,7 +15,7 @@ import { MESSAGES, REQUEST_TIMEOUT_MS, ROUTES, SESSION_MAX_AGE_MS, STARTUP_SMOKE
 import { runLogRetention } from './cron/retention.js';
 import { environment } from "./environment.js";
 import { shutdownShopifyTelemetry } from './integrations/shopify/lib/telemetry.js';
-import { addressFixProcessor } from './jobs/addressFix.js';
+import { createAddressFixProcessor } from './jobs/addressFix.js';
 import { batchDedupeProcessor } from './jobs/batchDedupe.js';
 import { batchValidationProcessor } from './jobs/batchValidation.js';
 import { disposableProcessor } from './jobs/refreshDisposable.js';
@@ -302,9 +302,7 @@ export async function start(): Promise<void> {
             }, { connection: appRedis! });
             activeWorkers.push(batchDedupeWorker);
 
-            const addressFixWorker = new Worker('address_fix', async (job) => {
-                return addressFixProcessor(job as any);
-            }, { connection: appRedis! });
+            const addressFixWorker = new Worker('address_fix', createAddressFixProcessor(pool!, app.log), { connection: appRedis! });
             activeWorkers.push(addressFixWorker);
 
             // Schedule recurring job

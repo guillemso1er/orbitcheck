@@ -11,6 +11,11 @@ export async function inputSanitizationHook(request: FastifyRequest, _reply: Fas
         return;
     }
 
+    // Skip sanitization for Shopify webhooks - they have their own signature verification and complex payloads
+    if (request.url.includes('/integrations/shopify/webhooks')) {
+        return;
+    }
+
     // Check content-type for POST requests to validation endpoints
     if (request.method === 'POST' && request.url.includes('/v1/validate/')) {
         const contentType = request.headers['content-type'];

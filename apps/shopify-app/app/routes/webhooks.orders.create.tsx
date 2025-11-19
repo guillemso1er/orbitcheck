@@ -6,6 +6,12 @@ import { getOrbitcheckClient } from "../utils/orbitcheck.server.js";
 const orbitcheckClient = getOrbitcheckClient();
 
 export const action = async ({ request }: ActionFunctionArgs) => {
+    console.log("Incoming webhook request", {
+        method: request.method,
+        url: request.url,
+        headers: Object.fromEntries(request.headers.entries())
+    });
+
     const { shop, topic, payload, apiVersion, webhookId } = await authenticate.webhook(request);
 
     console.log(`Received ${topic} webhook for ${shop}`);

@@ -11,6 +11,7 @@ requestBody:
       schema:
         type: object
         description: Shopify order webhook payload
+        additionalProperties: true
 responses:
   '200':
     description: Webhook processed successfully

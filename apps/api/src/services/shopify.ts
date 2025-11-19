@@ -74,7 +74,7 @@ export class ShopifyService {
                 scopes: result.rows[0].scopes
             };
         } catch (error) {
-            throw new Error('Failed to decrypt Shopify access token');
+            throw new Error(`Failed to decrypt Shopify access token. This usually happens when the ENCRYPTION_KEY environment variable has changed or was not set (causing a random key to be used). Details: ${error instanceof Error ? error.message : String(error)}`);
         }
     }
 

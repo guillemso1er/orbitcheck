@@ -2,6 +2,7 @@ import { Queue } from 'bullmq';
 import { FastifyReply, FastifyRequest } from 'fastify';
 import { type Redis as IORedisType } from 'ioredis';
 import type { Pool } from 'pg';
+import { CompositeEmailService, KlaviyoEmailService, ShopifyFlowEmailService } from '../../../services/email/email-service.js';
 import { evaluateOrderForRiskAndRulesDirect } from '../../../services/orders.js';
 import { createShopifyService } from '../../../services/shopify.js';
 import { validateAddress as validateAddressUtil } from '../../../validators/address.js';
@@ -88,7 +89,17 @@ export async function ordersCreate(request: FastifyRequest, reply: FastifyReply,
 
     const tags = Array.isArray(result?.tags) ? result.tags : [];
     if (tags.length) {
-        const orderGid = o.admin_graphql_api_id;
+        let orderGid = o.admin_graphql_api_id;
+        if (!orderGid && o.id) {
+            request.log.warn({ shop: shopDomain, orderId: o.id }, 'Missing admin_graphql_api_id, constructing from ID');
+            orderGid = `gid://shopify/Order/${o.id}`;
+        }
+
+        if (!orderGid) {
+            request.log.error({ shop: shopDomain, order: o }, 'Cannot tag order: Missing both admin_graphql_api_id and id');
+            return reply.code(200).send();
+        }
+
         const tokenData = await shopifyService.getShopToken(shopDomain);
         if (!tokenData) {
             request.log.warn({ shop: shopDomain }, 'Missing Shopify token when trying to tag order');
@@ -225,14 +236,27 @@ async function handleOrderAddressFix(
         orderId: String(order.id),
         orderGid: order.admin_graphql_api_id,
         sessionId: session.id,
-        pool,
-        logger: request.log,
     });
 
     request.log.info(
         { shop: shopDomain, orderId: order.id, sessionId: session.id },
         'Created address fix session and queued hold job'
     );
+
+    // Send email notification
+    const emailService = new CompositeEmailService([
+        new KlaviyoEmailService(request.log),
+        new ShopifyFlowEmailService(request.log)
+    ]);
+
+    await emailService.sendAddressFixEmail({
+        shopDomain,
+        customerEmail: order.contact_email || order.email || '',
+        customerName: [shippingAddr.first_name, shippingAddr.last_name].filter(Boolean).join(' '),
+        fixUrl,
+        orderId: String(order.id),
+        orderGid: order.admin_graphql_api_id
+    });
 }
 
 function derivePaymentMethod(o: ShopifyOrder): string | undefined {
