@@ -7,7 +7,7 @@ import { evaluateOrderForRiskAndRulesDirect } from '../../../services/orders.js'
 import { createShopifyService } from '../../../services/shopify.js';
 import { validateAddress as validateAddressUtil } from '../../../validators/address.js';
 import { createAddressFixService } from '../address-fix/service.js';
-import { MUT_TAGS_ADD, shopifyGraphql } from '../lib/graphql.js';
+import { MUT_TAGS_ADD, QUERY_SHOP_NAME, shopifyGraphql } from '../lib/graphql.js';
 import { captureShopifyEvent } from '../lib/telemetry.js';
 import { OrderEvaluatePayload, ShopifyOrder } from '../lib/types.js';
 
@@ -18,6 +18,9 @@ export async function ordersCreate(request: FastifyRequest, reply: FastifyReply,
     const shopifyService = createShopifyService(pool);
     const mode = await shopifyService.getShopMode(shopDomain);
     if (mode === 'disabled') return reply.code(200).send();
+
+    // In 'notify' mode, we evaluate and log but do not tag or fix
+    const isActivated = mode === 'activated';
 
     const payload: OrderEvaluatePayload = {
         order_id: String(o.id),
@@ -88,7 +91,7 @@ export async function ordersCreate(request: FastifyRequest, reply: FastifyReply,
     }
 
     const tags = Array.isArray(result?.tags) ? result.tags : [];
-    if (tags.length) {
+    if (tags.length && isActivated) {
         let orderGid = o.admin_graphql_api_id;
         if (!orderGid && o.id) {
             request.log.warn({ shop: shopDomain, orderId: o.id }, 'Missing admin_graphql_api_id, constructing from ID');
@@ -135,16 +138,18 @@ export async function ordersCreate(request: FastifyRequest, reply: FastifyReply,
     }
 
     // Address fix workflow - run asynchronously after main processing
-    queueMicrotask(async () => {
-        try {
-            await handleOrderAddressFix(request, shopDomain, o, pool, redis);
-        } catch (error) {
-            request.log.error(
-                { err: error, shop: shopDomain, orderId: o.id },
-                'Failed to process address fix workflow'
-            );
-        }
-    });
+    if (isActivated) {
+        queueMicrotask(async () => {
+            try {
+                await handleOrderAddressFix(request, shopDomain, o, pool, redis);
+            } catch (error) {
+                request.log.error(
+                    { err: error, shop: shopDomain, orderId: o.id },
+                    'Failed to process address fix workflow'
+                );
+            }
+        });
+    }
 
     return reply.code(200).send();
 }
@@ -243,6 +248,16 @@ async function handleOrderAddressFix(
         'Created address fix session and queued hold job'
     );
 
+    // Fetch shop name if not available
+    let shopName: string | undefined;
+    try {
+        const client = await shopifyGraphql(shopDomain, tokenData.access_token, process.env.SHOPIFY_API_VERSION!);
+        const shopData = await client.query(QUERY_SHOP_NAME, {});
+        shopName = shopData.data?.shop?.name;
+    } catch (error) {
+        request.log.warn({ shop: shopDomain, err: error }, 'Failed to fetch shop name');
+    }
+
     // Send email notification
     const emailService = new CompositeEmailService([
         new KlaviyoEmailService(request.log),
@@ -251,11 +266,19 @@ async function handleOrderAddressFix(
 
     await emailService.sendAddressFixEmail({
         shopDomain,
+        shopName,
         customerEmail: order.contact_email || order.email || '',
         customerName: [shippingAddr.first_name, shippingAddr.last_name].filter(Boolean).join(' '),
         fixUrl,
         orderId: String(order.id),
-        orderGid: order.admin_graphql_api_id
+        orderGid: order.admin_graphql_api_id,
+        orderName: order.name,
+        address1: shippingAddr.address1,
+        address2: shippingAddr.address2,
+        city: shippingAddr.city,
+        province: shippingAddr.province || '',
+        zip: shippingAddr.zip,
+        country: shippingAddr.country_code || ''
     });
 }
 

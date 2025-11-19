@@ -32,3 +32,10 @@ export const MUT_TAGS_ADD = `
   mutation addTags($id: ID!, $tags: [String!]!) {
     tagsAdd(id: $id, tags: $tags) { userErrors { message } }
   }`;
+
+export const QUERY_SHOP_NAME = `
+  query {
+    shop {
+      name
+    }
+  }`;

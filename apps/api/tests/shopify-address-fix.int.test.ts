@@ -5,7 +5,7 @@
 
 import { Redis } from 'ioredis';
 import type { Pool } from 'pg';
-import { afterAll, beforeAll, describe, expect, test, vi } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, test, vi } from 'vitest';
 import { build } from '../src/server.js';
 import { getPool, getRedis, startTestEnv, stopTestEnv } from './setup.js';
 
@@ -32,7 +32,7 @@ beforeAll(async () => {
 
         await pool.query(`
             INSERT INTO shopify_settings (shop_id, mode)
-            SELECT id, 'active' FROM shopify_shops WHERE shop_domain = $1
+            SELECT id, 'activated' FROM shopify_shops WHERE shop_domain = $1
         `, [SHOP_DOMAIN]);
 
         await new Promise(resolve => setTimeout(resolve, 100));
@@ -110,7 +110,7 @@ describe('Shopify Address Fix Integration', () => {
 
             // Assert session created in DB
             const sessionResult = await pool.query(
-                'SELECT * FROM shopify_address_fix_sessions WHERE order_id = $1',
+                'SELECT * FROM shopify_order_address_fixes WHERE order_id = $1',
                 [orderId]
             );
             expect(sessionResult.rows.length).toBe(1);
@@ -183,6 +183,74 @@ describe('Shopify Address Fix Integration', () => {
         });
     });
 
+
+    describe('Order webhook in notify mode', () => {
+        test('should evaluate but NOT tag order or create session', async () => {
+            // Set shop mode to 'notify'
+            await pool.query(`
+                UPDATE shopify_settings 
+                SET mode = 'notify' 
+                WHERE shop_id = (SELECT id FROM shopify_shops WHERE shop_domain = $1)
+            `, [SHOP_DOMAIN]);
+
+            const orderId = '99999';
+            const payload = {
+                id: 99999,
+                admin_graphql_api_id: `gid://shopify/Order/${orderId}`,
+                email: 'notify@example.com',
+                customer: {
+                    first_name: 'Notify',
+                    last_name: 'User',
+                    email: 'notify@example.com'
+                },
+                shipping_address: {
+                    address1: '123 Invalid St',
+                    city: 'Nowhere',
+                    zip: '00000',
+                    country_code: 'US'
+                },
+                tags: ''
+            };
+
+            const response = await app.inject({
+                method: 'POST',
+                url: '/integrations/shopify/webhooks/orders/create',
+                headers: {
+                    'x-shopify-topic': 'orders/create',
+                    'x-shopify-shop-domain': SHOP_DOMAIN,
+                    'x-shopify-hmac-sha256': 'dummy-hmac',
+                    'x-internal-request': 'shopify-app'
+                },
+                payload
+            });
+
+            expect(response.statusCode).toBe(200);
+
+            // Assert NO session created
+            const sessionResult = await pool.query(
+                'SELECT * FROM shopify_order_address_fixes WHERE order_id = $1',
+                [orderId]
+            );
+            expect(sessionResult.rows.length).toBe(0);
+
+            // Assert NO tag added
+            expect(fetchSpy).not.toHaveBeenCalledWith(
+                expect.stringContaining(SHOP_DOMAIN),
+                expect.objectContaining({
+                    method: 'POST',
+                    body: expect.stringContaining('tagsAdd')
+                })
+            );
+
+            // Reset mode to active for other tests (though tests should be isolated, better safe)
+            await pool.query(`
+                UPDATE shopify_settings 
+                SET mode = 'activated' 
+                WHERE shop_id = (SELECT id FROM shopify_shops WHERE shop_domain = $1)
+            `, [SHOP_DOMAIN]);
+        });
+    });
+
     describe('Address fix confirmation endpoint', () => {
         test('should update order and release holds when corrected address selected', async () => {
             // Create a pending session
@@ -191,7 +259,7 @@ describe('Shopify Address Fix Integration', () => {
 
             // Insert session manually
             await pool.query(`
-                INSERT INTO shopify_address_fix_sessions 
+                INSERT INTO shopify_order_address_fixes 
                 (id, shop_id, order_id, token, status, original_address, suggested_address, expires_at)
                 VALUES ($1, (SELECT id FROM shopify_shops WHERE shop_domain = $2), $3, $4, 'pending', '{}', '{}', NOW() + INTERVAL '1 day')
             `, [crypto.randomUUID(), SHOP_DOMAIN, orderId, token]);
@@ -218,7 +286,7 @@ describe('Shopify Address Fix Integration', () => {
 
             // Assert session marked confirmed
             const sessionResult = await pool.query(
-                'SELECT * FROM shopify_address_fix_sessions WHERE order_id = $1',
+                'SELECT * FROM shopify_order_address_fixes WHERE order_id = $1',
                 [orderId]
             );
             expect(sessionResult.rows[0].status).toBe('confirmed');
@@ -229,7 +297,7 @@ describe('Shopify Address Fix Integration', () => {
             const token = 'valid-token-456';
 
             await pool.query(`
-                INSERT INTO shopify_address_fix_sessions 
+                INSERT INTO shopify_order_address_fixes 
                 (id, shop_id, order_id, token, status, original_address, suggested_address, expires_at)
                 VALUES ($1, (SELECT id FROM shopify_shops WHERE shop_domain = $2), $3, $4, 'pending', '{}', '{}', NOW() + INTERVAL '1 day')
             `, [crypto.randomUUID(), SHOP_DOMAIN, orderId, token]);
@@ -258,7 +326,7 @@ describe('Shopify Address Fix Integration', () => {
 
             // Assert session marked confirmed
             const sessionResult = await pool.query(
-                'SELECT * FROM shopify_address_fix_sessions WHERE order_id = $1',
+                'SELECT * FROM shopify_order_address_fixes WHERE order_id = $1',
                 [orderId]
             );
             expect(sessionResult.rows[0].status).toBe('confirmed');
@@ -284,7 +352,7 @@ describe('Shopify Address Fix Integration', () => {
             const token = 'get-token-123';
 
             await pool.query(`
-                INSERT INTO shopify_address_fix_sessions 
+                INSERT INTO shopify_order_address_fixes 
                 (id, shop_id, order_id, token, status, original_address, suggested_address, expires_at)
                 VALUES ($1, (SELECT id FROM shopify_shops WHERE shop_domain = $2), $3, $4, 'pending', 
                 '{"address1": "Old St"}', '{"address1": "New St"}', NOW() + INTERVAL '1 day')
@@ -306,7 +374,7 @@ describe('Shopify Address Fix Integration', () => {
             const token = 'expired-token';
 
             await pool.query(`
-                INSERT INTO shopify_address_fix_sessions 
+                INSERT INTO shopify_order_address_fixes 
                 (id, shop_id, order_id, token, status, original_address, suggested_address, expires_at)
                 VALUES ($1, (SELECT id FROM shopify_shops WHERE shop_domain = $2), $3, $4, 'pending', '{}', '{}', NOW() - INTERVAL '1 day')
             `, [crypto.randomUUID(), SHOP_DOMAIN, orderId, token]);

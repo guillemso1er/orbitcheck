@@ -7,6 +7,7 @@ export interface ShopSettings {
 export interface ShopifyOrder {
     id: string;
     admin_graphql_api_id: string;
+    name?: string;
     contact_email?: string;
     email?: string;
     phone?: string;

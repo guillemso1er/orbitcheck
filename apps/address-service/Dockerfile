@@ -1,5 +1,5 @@
 # apps/address-service/Dockerfile
-FROM my-org/libpostal-base:latest AS base
+FROM ghcr.io/guillemso1er/orbitcheck/libpostal-base:latest AS base
 
 FROM node:20-bookworm-slim
 # 1. Copy the artifacts from your base image

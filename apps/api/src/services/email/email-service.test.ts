@@ -28,7 +28,13 @@ describe('EmailService', () => {
                 customerName: 'John Doe',
                 fixUrl: 'https://orbitcheck.io/fix',
                 orderId: '123',
-                orderGid: 'gid://shopify/Order/123'
+                orderGid: 'gid://shopify/Order/123',
+                orderName: '#123',
+                address1: '123 Main St',
+                city: 'New York',
+                province: 'NY',
+                zip: '10001',
+                country: 'US'
             };
 
             mockFetch.mockResolvedValueOnce({
@@ -58,7 +64,13 @@ describe('EmailService', () => {
                 customerEmail: 'customer@example.com',
                 fixUrl: 'https://orbitcheck.io/fix',
                 orderId: '123',
-                orderGid: 'gid://shopify/Order/123'
+                orderGid: 'gid://shopify/Order/123',
+                orderName: '#123',
+                address1: '123 Main St',
+                city: 'New York',
+                province: 'NY',
+                zip: '10001',
+                country: 'US'
             };
 
             await service.sendAddressFixEmail(params);
@@ -76,7 +88,13 @@ describe('EmailService', () => {
                 customerEmail: 'customer@example.com',
                 fixUrl: 'https://orbitcheck.io/fix',
                 orderId: '123',
-                orderGid: 'gid://shopify/Order/123'
+                orderGid: 'gid://shopify/Order/123',
+                orderName: '#123',
+                address1: '123 Main St',
+                city: 'New York',
+                province: 'NY',
+                zip: '10001',
+                country: 'US'
             };
 
             await service.sendAddressFixEmail(params);
@@ -97,9 +115,16 @@ describe('EmailService', () => {
             const params: AddressFixEmailParams = {
                 shopDomain: 'test.myshopify.com',
                 customerEmail: 'customer@example.com',
+                customerName: 'John Doe',
                 fixUrl: 'https://orbitcheck.io/fix',
                 orderId: '123',
-                orderGid: 'gid://shopify/Order/123'
+                orderGid: 'gid://shopify/Order/123',
+                orderName: '#123',
+                address1: '123 Main St',
+                city: 'New York',
+                province: 'NY',
+                zip: '10001',
+                country: 'US'
             };
 
             await composite.sendAddressFixEmail(params);

@@ -6,11 +6,19 @@ export interface EmailService {
 
 export interface AddressFixEmailParams {
     shopDomain: string;
+    shopName?: string;
     customerEmail: string;
     customerName?: string;
     fixUrl: string;
     orderId: string;
     orderGid: string;
+    orderName?: string;
+    address1: string;
+    address2?: string;
+    city: string;
+    province: string;
+    zip: string;
+    country: string;
 }
 
 export class KlaviyoEmailService implements EmailService {
@@ -36,6 +44,9 @@ export class KlaviyoEmailService implements EmailService {
             // Using fetch to avoid adding a new dependency if possible, or we could use 'klaviyo-api' package
             // For now, let's assume a direct API call to Klaviyo's v3 API
 
+            const metricName = `OrbitCheck Address Fix Needed`;
+
+            // Inside your try/catch block
             const response = await fetch('https://a.klaviyo.com/api/events', {
                 method: 'POST',
                 headers: {
@@ -51,7 +62,7 @@ export class KlaviyoEmailService implements EmailService {
                                 data: {
                                     type: 'metric',
                                     attributes: {
-                                        name: 'OrbitCheck Address Fix Needed'
+                                        name: metricName
                                     }
                                 }
                             },
@@ -66,9 +77,26 @@ export class KlaviyoEmailService implements EmailService {
                                 }
                             },
                             properties: {
+                                // URLs
                                 fix_url: params.fixUrl,
+
+                                // Order Details
                                 order_id: params.orderId,
-                                shop_domain: params.shopDomain
+                                order_name: params.orderName || `#${params.orderId}`, // Pass the actual name (e.g. #1024) if you have it
+
+                                // Shop Details
+                                shop_domain: params.shopDomain,
+                                shop_name: params.shopName || params.shopDomain, // Pass the clean name (e.g. "Snowboard Shop")
+
+                                // Address Details (You must add these to your params to display them!)
+                                shipping_address: {
+                                    address1: params.address1,
+                                    address2: params.address2 || '',
+                                    city: params.city,
+                                    province: params.province,
+                                    zip: params.zip,
+                                    country: params.country
+                                }
                             }
                         }
                     }

@@ -49,6 +49,7 @@ export const env = cleanEnv(process.env, {
   APP_DATABASE_URL: url({ default: '' }),
   REDIS_URL: isProd ? url() : url({ default: 'redis://localhost:6379' }),
   BASE_URL: url({ default: isProd ? '' : 'http://localhost:8080' }),
+  ADDRESS_SERVICE_URL: url({ default: 'http://localhost:8081' }),
 
   // Logging/observability
   LOG_LEVEL: str({ choices: ['trace', 'debug', 'info', 'warn', 'error', 'fatal', 'silent'], default: 'info' }),

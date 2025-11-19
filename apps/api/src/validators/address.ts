@@ -1,39 +1,16 @@
-
-import crypto from "node:crypto";
-import { parseAddressCLI } from '../lib/libpostal-cli.js'; // adjust path as needed
-
-
 import type { Redis } from "ioredis";
+import crypto from "node:crypto";
 import type { Pool } from "pg";
 
+// Adjust these import paths to match your project structure
 import { environment } from "../environment.js";
 import { ADDRESS_VALIDATION_TTL_DAYS, REASON_CODES } from "../validation.js";
 
-// Cache TTL in seconds (7 days)
+// --- Configuration ---
 const CACHE_TTL_SECONDS = ADDRESS_VALIDATION_TTL_DAYS * 24 * 3600;
 
-// Simple PO Box detector for multiple locales
-/**
- * Detects if an address line contains a P.O. Box or equivalent in multiple languages/locales.
- * Uses regex to match common patterns like "PO Box", "Apartado Postal", etc.
- *
- * @param line - The address line to check (e.g., street address).
- * @returns {boolean} True if a P.O. Box is detected, false otherwise.
- */
-export function detectPoBox(line: string | null | undefined): boolean {
-    const s = (line || "").toLowerCase();
-    return /\b(?:p\.?o\.?\s*box|apartado(?:\s+postal)?|caixa\s+postal|casilla|cas\.\s*b|box)\b/i.test(s);
-}
+// --- Interfaces ---
 
-// Use libpostal CLI (installed in image) to normalize; simple wrapper to avoid native bindings complexity
-/**
- * Normalizes an address using libpostal CLI for parsing and standardization.
- * Joins address components and parses them into structured fields.
- * Falls back to input if parsing fails.
- *
- * @param addr - Input address object with line1, line2 (optional), city, state (optional), postal_code, country.
- * @returns {Promise<Object>} Normalized address object with structured fields.
- */
 interface NormalizedAddress {
     line1: string;
     line2: string;
@@ -43,92 +20,14 @@ interface NormalizedAddress {
     country: string;
 }
 
-export async function normalizeAddress(addr: { line1: string; line2?: string; city: string; state?: string; postal_code: string; country: string; }): Promise<NormalizedAddress> {
-    // If it's a PO Box, don't normalize to avoid changing the line1
-    if (detectPoBox(addr.line1) || detectPoBox(addr.line2 || "")) {
-        return {
-            line1: (addr.line1 || "").trim(),
-            line2: (addr.line2 || "").trim(),
-            city: (addr.city || "").trim(),
-            state: (addr.state || "").trim(),
-            postal_code: (addr.postal_code || "").trim(),
-            country: (addr.country || "").toUpperCase().trim()
-        } as NormalizedAddress;
-    }
-
-    // Build address string, filtering out empty components
-    const components = [
-        addr.line1?.trim(),
-        addr.line2?.trim(),
-        addr.city?.trim(),
-        addr.state?.trim(),
-        addr.postal_code?.trim(),
-        addr.country?.trim()
-    ].filter(Boolean);
-    const joined = components.join(", ");
-
-    try {
-        const parts = await parseAddressCLI(joined);
-
-        return {
-            line1: (parts.house_number && parts.road) ? `${parts.house_number} ${parts.road}` : (addr.line1 || "").trim(),
-            line2: (parts.unit || addr.line2 || "").trim(),
-            city: (parts.city || addr.city || "").trim(),
-            state: (parts.state || addr.state || "").trim(),
-            postal_code: (parts.postcode || addr.postal_code || "").trim(),
-            country: ((parts.country || addr.country || "").toUpperCase()).trim()
-        } as NormalizedAddress;
-    } catch {
-        return {
-            line1: (addr.line1 || "").trim(),
-            line2: (addr.line2 || "").trim(),
-            city: (addr.city || "").trim(),
-            state: (addr.state || "").trim(),
-            postal_code: (addr.postal_code || "").trim(),
-            country: (addr.country || "").toUpperCase().trim()
-        } as NormalizedAddress;
-    }
-}
-
-/**
- * Validates an address comprehensively: normalizes, checks for P.O. Box, verifies postal-city match via GeoNames,
- * and attempts geocoding (LocationIQ/Nominatim primary, Google fallback).
- * Caches results in Redis (7 days TTL) using SHA-1 hash of input.
- *
- * @param addr - Input address object.
- * @param pool - PostgreSQL pool for GeoNames lookup.
- * @param redis - Optional Redis client for caching.
- * @returns {Promise<Object>} Validation result with normalized address, validity, geo coords, reason codes, etc.
- */
 interface GeoLocation {
     lat: number;
     lng: number;
-    confidence: number;
-    source: string;
+    confidence: number; // 0 to 1
+    source: "locationiq" | "nominatim" | "google";
 }
 
-interface LocationResponse {
-    lat: string;
-    lon: string;
-}
-
-interface GoogleGeocodeResponse {
-    status: string;
-    results: Array<{
-        geometry: {
-            location: {
-                lat: number;
-                lng: number;
-            };
-        };
-    }>;
-}
-
-export async function validateAddress(
-    addr: { line1: string; line2?: string; city: string; state?: string; postal_code: string; country: string; },
-    pool: Pool,
-    redis?: Redis
-): Promise<{
+interface ValidationResult {
     valid: boolean;
     normalized: NormalizedAddress;
     po_box: boolean;
@@ -138,163 +37,320 @@ export async function validateAddress(
     reason_codes: string[];
     request_id: string;
     ttl_seconds: number;
-    deliverable: boolean; // New field to indicate if address is suitable for physical delivery
-}> {
-    const input = JSON.stringify(addr);
-    const hash = crypto.createHash('sha1').update(input).digest('hex');
-    const cacheKey = `validator:address:${hash}`;
+    deliverable: boolean;
+}
 
-    if (redis) {
-        const cached = await redis.get(cacheKey);
-        if (cached) {
-            return JSON.parse(cached);
-        }
+// Geocoding API Response Interfaces
+interface NominatimResponse {
+    lat: string;
+    lon: string;
+    importance?: number;
+}
+
+interface GoogleGeocodeResponse {
+    status: string;
+    results: Array<{
+        geometry: {
+            location: { lat: number; lng: number };
+        };
+        types: string[];
+    }>;
+}
+
+// --- Helper Functions ---
+
+/**
+ * Detects if an address line contains a P.O. Box.
+ */
+export function detectPoBox(line: string | null | undefined): boolean {
+    const s = (line || "").toLowerCase();
+    return /\b(?:p\.?o\.?\s*box|apartado(?:\s+postal)?|caixa\s+postal|casilla|cas\.\s*b|box)\b/i.test(s);
+}
+
+/**
+ * Normalizes an address using native libpostal bindings.
+ */
+export async function normalizeAddress(addr: {
+    line1: string;
+    line2?: string;
+    city: string;
+    state?: string;
+    postal_code: string;
+    country: string;
+}): Promise<NormalizedAddress> {
+    // 1. Don't normalize PO Boxes to prevent data loss
+    if (detectPoBox(addr.line1) || detectPoBox(addr.line2)) {
+        return {
+            line1: (addr.line1 || "").trim(),
+            line2: (addr.line2 || "").trim(),
+            city: (addr.city || "").trim(),
+            state: (addr.state || "").trim(),
+            postal_code: (addr.postal_code || "").trim(),
+            country: (addr.country || "").toUpperCase().trim(),
+        };
     }
 
-    // Check for required fields - if any are missing, null, undefined, or empty, the address is invalid
-    if (!addr.line1 || !addr.city || !addr.postal_code || !addr.country ||
-        addr.line1.trim() === '' || addr.city.trim() === '' || addr.postal_code.trim() === '' || addr.country.trim() === '') {
-        const norm = await normalizeAddress(addr);
-        const result = {
-            valid: false,
-            normalized: norm,
-            po_box: false,
-            postal_city_match: false,
-            in_bounds: true,
-            geo: null,
-            reason_codes: [REASON_CODES.ADDRESS_POSTAL_CITY_MISMATCH],
-            request_id: crypto.randomUUID(),
-            ttl_seconds: CACHE_TTL_SECONDS,
-            deliverable: false
+    // 2. Construct the full string for the parser
+    const inputString = [
+        addr.line1,
+        addr.line2,
+        addr.city,
+        addr.state,
+        addr.postal_code,
+        addr.country
+    ].filter(Boolean).join(", ");
+
+    try {
+        const response = await fetch(`${environment.ADDRESS_SERVICE_URL}/parse`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ address: inputString })
+        });
+
+        if (!response.ok) throw new Error("Parser service failed");
+
+        const parts = await response.json();
+
+
+
+        // Reconstruct
+        // Note: libpostal returns lowercase. We capitalize only Country usually.
+        const house = parts.house_number ? `${parts.house_number} ` : "";
+        const road = parts.road || "";
+        const newLine1 = (house + road).trim() || addr.line1; // Fallback to original if parser completely failed
+
+        return {
+            line1: newLine1,
+            line2: (parts.unit || addr.line2 || "").trim(),
+            city: (parts.city || parts.suburb || addr.city || "").trim(),
+            state: (parts.state || addr.state || "").trim(),
+            postal_code: (parts.postcode || addr.postal_code || "").trim(),
+            country: (parts.country || addr.country || "").toUpperCase().trim(),
         };
+    } catch (e) {
+        // Fallback if native binding fails (rare)
+        console.error("Libpostal parse error:", e);
+        return {
+            line1: (addr.line1 || "").trim(),
+            line2: (addr.line2 || "").trim(),
+            city: (addr.city || "").trim(),
+            state: (addr.state || "").trim(),
+            postal_code: (addr.postal_code || "").trim(),
+            country: (addr.country || "").toUpperCase().trim(),
+        };
+    }
+}
 
-        if (redis) {
-            await redis.set(cacheKey, JSON.stringify(result), 'EX', CACHE_TTL_SECONDS);
-        }
+// --- Main Validator ---
 
-        return result;
+export async function validateAddress(
+    addr: { line1: string; line2?: string; city: string; state?: string; postal_code: string; country: string },
+    pool: Pool,
+    redis?: Redis
+): Promise<ValidationResult> {
+    // 1. Input Sanitization & Hashing
+    const input = JSON.stringify(addr);
+    const hash = crypto.createHash("sha1").update(input).digest("hex");
+    const cacheKey = `validator:address:${hash}`;
+
+    // 2. Check Cache
+    if (redis) {
+        const cached = await redis.get(cacheKey);
+        if (cached) return JSON.parse(cached);
+    }
+
+    // 3. Fail Fast on Missing Data
+    if (!addr.line1?.trim() || !addr.city?.trim() || !addr.postal_code?.trim() || !addr.country?.trim()) {
+        const norm = await normalizeAddress(addr);
+        return formatAndCacheResult(
+            {
+                valid: false,
+                normalized: norm,
+                po_box: false,
+                postal_city_match: false,
+                in_bounds: true,
+                geo: null,
+                reason_codes: [REASON_CODES.ADDRESS_POSTAL_CITY_MISMATCH], // Generic error for missing data
+                deliverable: false
+            },
+            cacheKey,
+            redis
+        );
     }
 
     const reason_codes: string[] = [];
-    const norm = await normalizeAddress(addr);
-    const po_box = detectPoBox(norm.line1) || detectPoBox(norm.line2 || "");
-    if (po_box) {
-        reason_codes.push(REASON_CODES.ADDRESS_PO_BOX);
-    }
 
+    // 4. Normalize
+    const norm = await normalizeAddress(addr);
+
+    // 5. Check PO Box
+    const po_box = detectPoBox(norm.line1) || detectPoBox(norm.line2);
+    if (po_box) reason_codes.push(REASON_CODES.ADDRESS_PO_BOX);
+
+    // 6. Database Check (GeoNames)
+    // We check city, admin1 (state), and admin2 (county/district) for the postal code
     const { rows } = await pool.query(
-        "select 1 from geonames_postal where country_code=$1 and postal_code=$2 and (lower(place_name)=lower($3) or lower(admin_name1)=lower($3)) limit 1",
-        [norm.country.toUpperCase(), norm.postal_code, norm.city]
+        `SELECT 1 FROM geonames_postal 
+         WHERE country_code = $1 
+         AND postal_code = $2 
+         AND (
+             lower(place_name) = lower($3) 
+             OR lower(admin_name1) = lower($3) 
+             OR lower(admin_name2) = lower($3)
+         ) LIMIT 1`,
+        [norm.country, norm.postal_code, norm.city]
     );
+
     const postal_city_match = rows.length > 0;
     if (!postal_city_match) {
         reason_codes.push(REASON_CODES.ADDRESS_POSTAL_CITY_MISMATCH);
     }
 
+    // 7. Geocoding
     let geo: GeoLocation | null = null;
     let in_bounds = true;
+
     try {
-        // Build query string, filtering empty components
-        const queryComponents = [
-            norm.line1,
-            norm.city,
-            norm.state,
-            norm.postal_code,
-            norm.country
-        ].filter(Boolean);
-        const q = encodeURIComponent(queryComponents.join(" "));
+        const queryParts = [norm.line1, norm.city, norm.state, norm.postal_code, norm.country].filter(Boolean);
+        const q = encodeURIComponent(queryParts.join(" "));
+        const headers = { "User-Agent": "Orbitcheck/1.0 (Foundry)" };
 
         let primarySuccess = false;
 
+        // A) LocationIQ
         if (environment.LOCATIONIQ_KEY) {
-            const url = `https://us1.locationiq.com/search.php?key=${environment.LOCATIONIQ_KEY}&q=${q}&format=json&addressdetails=1`;
-            const r = await fetch(url, { headers: { "User-Agent": "Orbitcheck/0.1" } });
+            const r = await fetch(
+                `https://us1.locationiq.com/search.php?key=${environment.LOCATIONIQ_KEY}&q=${q}&format=json&addressdetails=1`,
+                { headers }
+            );
             if (r.ok) {
-                const data = await r.json();
-                if (Array.isArray(data) && data[0]) {
-                    const index = data as LocationResponse[];
-                    geo = { lat: Number.parseFloat(index[0].lat), lng: Number.parseFloat(index[0].lon), confidence: 0.9, source: 'locationiq' as const };
+                const data = await r.json() as NominatimResponse[];
+                if (data[0]) {
+                    geo = {
+                        lat: Number(data[0].lat),
+                        lng: Number(data[0].lon),
+                        confidence: 0.9,
+                        source: "locationiq",
+                    };
                     primarySuccess = true;
                 }
             }
-        } else {
-            const url = `${environment.NOMINATIM_URL}/search?format=json&limit=1&q=${q}`;
-            const r = await fetch(url, { headers: { "User-Agent": "Orbitcheck/0.1" } });
+        }
+        // B) Nominatim (Fallback 1)
+        else {
+            const r = await fetch(`${environment.NOMINATIM_URL}/search?format=json&limit=1&q=${q}`, { headers });
             if (r.ok) {
-                const data = await r.json();
-                if (Array.isArray(data) && data[0]) {
-                    const index = data as LocationResponse[];
-                    geo = { lat: Number.parseFloat(index[0].lat), lng: Number.parseFloat(index[0].lon), confidence: 0.7, source: 'nominatim' as const };
+                const data = await r.json() as NominatimResponse[];
+                if (data[0]) {
+                    geo = {
+                        lat: Number(data[0].lat),
+                        lng: Number(data[0].lon),
+                        confidence: 0.7, // Nominatim is usually less precise than paid APIs
+                        source: "nominatim",
+                    };
                     primarySuccess = true;
                 }
             }
         }
 
-        // Google fallback if primary failed and enabled
+        // C) Google (Fallback 2)
         if (!primarySuccess && environment.USE_GOOGLE_FALLBACK && environment.GOOGLE_GEOCODING_KEY) {
-            const googleUrl = `https://maps.googleapis.com/maps/api/geocode/json?address=${q}&key=${environment.GOOGLE_GEOCODING_KEY}`;
-            const gr = await fetch(googleUrl, { headers: { "User-Agent": "Orbitcheck/0.1" } });
+            const gr = await fetch(
+                `https://maps.googleapis.com/maps/api/geocode/json?address=${q}&key=${environment.GOOGLE_GEOCODING_KEY}`,
+                { headers }
+            );
             if (gr.ok) {
-                const gj: GoogleGeocodeResponse = await gr.json();
-                if (gj.status === 'OK' && gj.results && gj.results[0]) {
+                const gj = await gr.json() as GoogleGeocodeResponse;
+                if (gj.status === "OK" && gj.results?.[0]) {
                     const loc = gj.results[0].geometry.location;
-                    geo = { lat: loc.lat, lng: loc.lng, confidence: 0.8, source: 'google' as const };
+                    const type = gj.results[0].types[0];
+                    // "rooftop" or "street_address" implies high confidence
+                    const isHighPrecision = type === "rooftop" || type === "street_address" || type === "premise";
+
+                    geo = {
+                        lat: loc.lat,
+                        lng: loc.lng,
+                        confidence: isHighPrecision ? 0.95 : 0.8,
+                        source: "google",
+                    };
                 }
             }
         }
-
-        // Geo-validation: check if lat/lng in country bounding box
-        if (geo) {
-            const inBoundsSql = `
-                    SELECT 1
-                    FROM countries_bounding_boxes
-                    WHERE country_code = $1
-                    AND $2 BETWEEN min_lat AND max_lat
-                    AND (
-                            (wraps_dateline = false AND $3 BETWEEN min_lng AND max_lng)
-                        OR (wraps_dateline = true  AND ($3 >= min_lng OR $3 <= max_lng))
-                        )
-                    LIMIT 1;`;
-
-            const { rows: bboxRows } = await pool.query(inBoundsSql, [
-                norm.country.toUpperCase(),
-                geo.lat,
-                geo.lng
-            ]);
-            in_bounds = bboxRows.length > 0;
-            if (!in_bounds) {
-                reason_codes.push(REASON_CODES.ADDRESS_GEO_OUT_OF_BOUNDS);
-            }
-        } else {
-            reason_codes.push(REASON_CODES.ADDRESS_GEOCODE_FAILED);
-        }
-    } catch {
-        // ignore geocoding errors but log them
+    } catch (err) {
+        console.error("Geocoding failed:", err);
         reason_codes.push(REASON_CODES.ADDRESS_GEOCODE_FAILED);
     }
 
-    // An address is valid if postal code matches city
-    // PO Boxes are valid addresses but not deliverable for physical goods
-    const valid = postal_city_match;
-    const deliverable = valid && !po_box && in_bounds;
+    // 8. Bounds Checking
+    if (geo) {
+        const inBoundsSql = `
+            SELECT 1 FROM countries_bounding_boxes
+            WHERE country_code = $1
+            AND $2 BETWEEN min_lat AND max_lat
+            AND (
+                (wraps_dateline = false AND $3 BETWEEN min_lng AND max_lng)
+                OR 
+                (wraps_dateline = true  AND ($3 >= min_lng OR $3 <= max_lng))
+            ) LIMIT 1;`;
 
-    const result = {
-        valid,
-        normalized: norm,
-        po_box,
-        postal_city_match,
-        in_bounds,
-        geo,
-        reason_codes,
+        const { rows: bboxRows } = await pool.query(inBoundsSql, [norm.country, geo.lat, geo.lng]);
+        in_bounds = bboxRows.length > 0;
+
+        if (!in_bounds) {
+            reason_codes.push(REASON_CODES.ADDRESS_GEO_OUT_OF_BOUNDS);
+        }
+    } else {
+        // If no geocode result found at all, we flag it but don't necessarily invalidate if the DB check passed
+        reason_codes.push(REASON_CODES.ADDRESS_GEOCODE_FAILED);
+    }
+
+    // 9. Decision Matrix
+
+    // If we have a high confidence Geocode (e.g. found the roof), we accept the address 
+    // even if the City/Zip combo isn't in our local GeoNames SQL (which is often outdated).
+    const isHighConfidenceGeo = geo !== null && geo.confidence >= 0.85;
+
+    // Valid = (Database Says Yes OR Geocoder Says "Definitely Here") AND (Inside Country)
+    const valid = (postal_city_match || isHighConfidenceGeo) && in_bounds;
+
+    // Deliverable = Valid AND Not a PO Box (assuming physical goods)
+    const deliverable = valid && !po_box;
+
+    return formatAndCacheResult(
+        {
+            valid,
+            normalized: norm,
+            po_box,
+            postal_city_match,
+            in_bounds,
+            geo,
+            reason_codes,
+            deliverable
+        },
+        cacheKey,
+        redis
+    );
+}
+
+/**
+ * Helper to format response, generate IDs, and save to Redis
+ */
+async function formatAndCacheResult(
+    partial: Omit<ValidationResult, "request_id" | "ttl_seconds">,
+    key: string,
+    redis?: Redis
+): Promise<ValidationResult> {
+    const result: ValidationResult = {
+        ...partial,
         request_id: crypto.randomUUID(),
         ttl_seconds: CACHE_TTL_SECONDS,
-        deliverable
     };
 
     if (redis) {
-        await redis.set(cacheKey, JSON.stringify(result), 'EX', CACHE_TTL_SECONDS);
+        // Fire and forget the cache set
+        redis.set(key, JSON.stringify(result), "EX", CACHE_TTL_SECONDS).catch(err =>
+            console.warn("Redis cache set failed", err)
+        );
     }
-
     return result;
 }
-
