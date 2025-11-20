@@ -1,7 +1,8 @@
 import { Queue } from 'bullmq';
-import { FastifyReply, FastifyRequest } from 'fastify';
+import type { FastifyReply, FastifyRequest } from 'fastify';
 import { type Redis as IORedisType } from 'ioredis';
 import type { Pool } from 'pg';
+
 import { CompositeEmailService, KlaviyoEmailService, ShopifyFlowEmailService } from '../../../services/email/email-service.js';
 import { evaluateOrderForRiskAndRulesDirect } from '../../../services/orders.js';
 import { createShopifyService } from '../../../services/shopify.js';
@@ -9,9 +10,9 @@ import { validateAddress as validateAddressUtil } from '../../../validators/addr
 import { createAddressFixService } from '../address-fix/service.js';
 import { MUT_TAGS_ADD, QUERY_SHOP_NAME, shopifyGraphql } from '../lib/graphql.js';
 import { captureShopifyEvent } from '../lib/telemetry.js';
-import { OrderEvaluatePayload, ShopifyOrder } from '../lib/types.js';
+import type { OrderEvaluatePayload, ShopifyOrder } from '../lib/types.js';
 
-export async function ordersCreate(request: FastifyRequest, reply: FastifyReply, pool: Pool, redis: IORedisType) {
+export async function ordersCreate(request: FastifyRequest, reply: FastifyReply, pool: Pool, redis: IORedisType): Promise<any> {
     const o: ShopifyOrder = request.body as any;
     const shopDomain = (request as any).shopDomain || (request.headers['x-shopify-shop-domain'] as string);
     request.log.info({ shop: shopDomain, orderId: o.id, topic: request.headers['x-shopify-topic'] }, 'Processing orders/create webhook');
@@ -139,15 +140,18 @@ export async function ordersCreate(request: FastifyRequest, reply: FastifyReply,
 
     // Address fix workflow - run asynchronously after main processing
     if (isActivated) {
-        queueMicrotask(async () => {
-            try {
-                await handleOrderAddressFix(request, shopDomain, o, pool, redis);
-            } catch (error) {
-                request.log.error(
-                    { err: error, shop: shopDomain, orderId: o.id },
-                    'Failed to process address fix workflow'
-                );
-            }
+        queueMicrotask(() => {
+            // eslint-disable-next-line @typescript-eslint/no-floating-promises
+            (async () => {
+                try {
+                    await handleOrderAddressFix(request, shopDomain, o, pool, redis);
+                } catch (error) {
+                    request.log.error(
+                        { err: error, shop: shopDomain, orderId: o.id },
+                        'Failed to process address fix workflow'
+                    );
+                }
+            })();
         });
     }
 

@@ -1,5 +1,5 @@
-import { FastifyReply, FastifyRequest } from 'fastify';
-import { Redis } from 'ioredis';
+import type { FastifyReply, FastifyRequest } from 'fastify';
+import type { Redis } from 'ioredis';
 
 export function preventDuplicates(redis: Redis) {
     return async (request: FastifyRequest, reply: FastifyReply) => {

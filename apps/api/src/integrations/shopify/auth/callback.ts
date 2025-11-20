@@ -1,4 +1,5 @@
-import { FastifyReply, FastifyRequest } from 'fastify';
+import type { FastifyReply, FastifyRequest } from 'fastify';
+
 import { createShopifyService } from '../../../services/shopify.js';
 import { missingScopes, parseScopes } from '../lib/scopes.js';
 import { captureShopifyEvent } from '../lib/telemetry.js';

@@ -1,5 +1,6 @@
-import type { FastifyInstance, FastifyReply, FastifyRequest, RawServerBase, RouteGenericInterface } from "fastify";
 import crypto from "node:crypto";
+
+import type { FastifyInstance, FastifyReply, FastifyRequest, RawServerBase, RouteGenericInterface } from "fastify";
 
 import { ErrorHandler } from "../utils/errorHandler.js";
 

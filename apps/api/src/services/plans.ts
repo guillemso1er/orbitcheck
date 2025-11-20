@@ -1,4 +1,5 @@
 import type { Pool } from 'pg';
+
 import { HTTP_STATUS } from '../errors.js';
 import type { Plan, Usage, UserPlan } from '../types/plans.js';
 
@@ -249,7 +250,7 @@ export class PlansService {
   }
 }
 
-export const createPlansService = (pool: Pool) => new PlansService(pool);
+export const createPlansService = (pool: Pool): PlansService => new PlansService(pool);
 
 // Middleware to attach plans service to request
 // export function attachPlansService(request: FastifyRequest, pool: Pool) {

@@ -1,5 +1,7 @@
-import jwt from 'jsonwebtoken';
 import nodeCrypto from 'node:crypto';
+
+import jwt from 'jsonwebtoken';
+
 import { decryptShopifyToken, encryptShopifyToken } from '../integrations/shopify/lib/crypto.js';
 import { verifyHmac } from '../integrations/shopify/lib/hmac.js';
 import { verifyShopifySessionToken } from '../integrations/shopify/lib/jwt.js';
@@ -20,9 +22,9 @@ describe('Shopify scope helpers', () => {
 });
 
 describe('Shopify crypto helpers', () => {
-    it('encrypts and decrypts Shopify tokens', () => {
+    it('encrypts and decrypts Shopify tokens', async () => {
         const secret = 'final_secret';
-        const encrypted = encryptShopifyToken(secret);
+        const encrypted = await encryptShopifyToken(secret);
         expect(decryptShopifyToken(encrypted)).toBe(secret);
     });
 

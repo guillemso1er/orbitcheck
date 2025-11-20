@@ -1,4 +1,5 @@
-import { FastifyReply, FastifyRequest } from 'fastify';
+import type { FastifyReply, FastifyRequest } from 'fastify';
+
 import { createAddressFixService } from '../integrations/shopify/address-fix/service.js';
 import { createShopifyService } from '../services/shopify.js';
 

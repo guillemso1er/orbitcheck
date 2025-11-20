@@ -1,7 +1,8 @@
-import type { Pool } from "pg";
-import { decryptShopifyToken, encryptShopifyToken } from "../integrations/shopify/lib/crypto.js";
-import { Mode } from "../integrations/shopify/lib/types.js";
 import console from "console";
+import type { Pool } from "pg";
+
+import { decryptShopifyToken, encryptShopifyToken } from "../integrations/shopify/lib/crypto.js";
+import type { Mode } from "../integrations/shopify/lib/types.js";
 
 export interface ShopifyShop {
     id: string;
@@ -29,7 +30,7 @@ export class ShopifyService {
             await client.query('BEGIN');
 
             // Insert or update shop
-            const encryptedToken = encryptShopifyToken(accessToken);
+            const encryptedToken = await encryptShopifyToken(accessToken);
             const shopResult = await client.query(`
         INSERT INTO shopify_shops (shop_domain, access_token, scopes)
         VALUES ($1, $2, $3)

@@ -1,4 +1,6 @@
-import { FastifyReply, FastifyRequest } from 'fastify';
+import type { FastifyReply, FastifyRequest } from 'fastify';
+
+
 import { normalizeAddress } from '../../../validators/address.js';
 
 interface ShopifyCustomer {
@@ -20,7 +22,7 @@ interface ShopifyCustomer {
  * Handle Shopify customers/create webhook
  * Validates and normalizes customer default address for future order processing
  */
-export async function customersCreate(request: FastifyRequest, reply: FastifyReply) {
+export async function customersCreate(request: FastifyRequest, reply: FastifyReply): Promise<any> {
     const customer: ShopifyCustomer = request.body as any;
     const shopDomain = (request as any).shopDomain || (request.headers['x-shopify-shop-domain'] as string);
 
@@ -30,16 +32,20 @@ export async function customersCreate(request: FastifyRequest, reply: FastifyRep
     );
 
     // Process customer address profiling asynchronously
-    if (customer.default_address && hasRequiredAddressFields(customer.default_address)) {
-        queueMicrotask(async () => {
-            try {
-                await processCustomerAddress(request, shopDomain, customer);
-            } catch (error) {
-                request.log.error(
-                    { err: error, shop: shopDomain, customerId: customer.id },
-                    'Failed to process customer address profiling'
-                );
-            }
+    const isActivated = customer.default_address && hasRequiredAddressFields(customer.default_address);
+    if (isActivated) {
+        queueMicrotask(() => {
+            // eslint-disable-next-line @typescript-eslint/no-floating-promises
+            (async () => {
+                try {
+                    await processCustomerAddress(request, shopDomain, customer);
+                } catch (error) {
+                    request.log.error(
+                        { err: error, shop: shopDomain, customerId: customer.id },
+                        'Failed to process address fix workflow for customer'
+                    );
+                }
+            })();
         });
     } else {
         request.log.debug(
@@ -55,7 +61,7 @@ export async function customersCreate(request: FastifyRequest, reply: FastifyRep
  * Handle Shopify customers/update webhook
  * Refreshes customer address profile when default address changes
  */
-export async function customersUpdate(request: FastifyRequest, reply: FastifyReply) {
+export async function customersUpdate(request: FastifyRequest, reply: FastifyReply): Promise<any> {
     const customer: ShopifyCustomer = request.body as any;
     const shopDomain = (request as any).shopDomain || (request.headers['x-shopify-shop-domain'] as string);
 

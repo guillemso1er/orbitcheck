@@ -1,5 +1,7 @@
-import { FastifyBaseLogger } from 'fastify';
-import { AddressFixEmailParams, CompositeEmailService, KlaviyoEmailService, ShopifyFlowEmailService } from './email-service.js';
+import type { FastifyBaseLogger } from 'fastify';
+
+import type { AddressFixEmailParams} from './email-service.js';
+import { CompositeEmailService, KlaviyoEmailService, ShopifyFlowEmailService } from './email-service.js';
 
 // Mock fetch
 const mockFetch = jest.fn();

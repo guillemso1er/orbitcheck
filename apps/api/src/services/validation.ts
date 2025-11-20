@@ -2,6 +2,7 @@ import type { FastifyReply, FastifyRequest } from "fastify";
 import type { Redis as IORedisType } from "ioredis";
 import type { Pool } from "pg";
 import twilio from 'twilio';
+
 import { TWILIO_CHANNEL_SMS } from "../config.js";
 import { environment } from "../environment.js";
 import { HTTP_STATUS } from "../errors.js";
@@ -37,7 +38,7 @@ export async function validateEmailAddress(
         let out;
         try {
             out = await validateEmail(email, redis);
-        } catch (error) {
+        } catch {
             out = {
                 valid: false,
                 normalized: email.toLowerCase().trim(),
@@ -177,7 +178,7 @@ export async function validateTaxId(
         const request_id = generateRequestId();
         const body = request.body as ValidateTaxIdData['body'];
         const { type, value, country } = body;
-        const out = await validateTaxIdLogic({ type, value: value, country: country || "", redis });
+        const out = await validateTaxIdLogic({ type, value, country: country || "", redis });
         if (rep.saveIdem) {
             await rep.saveIdem(out);
         }

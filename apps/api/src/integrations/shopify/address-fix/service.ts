@@ -1,6 +1,8 @@
 import crypto from 'crypto';
 import type { FastifyBaseLogger } from 'fastify';
 import type { Pool } from 'pg';
+import { promisify } from 'util';
+
 import { MUT_TAGS_ADD, shopifyGraphql } from '../lib/graphql.js';
 import {
     MUT_FULFILLMENT_ORDER_HOLD,
@@ -47,7 +49,7 @@ export class AddressFixService {
      * Create or update an address fix session for an order
      */
     async upsertSession(params: CreateSessionParams): Promise<{ session: AddressFixSession; token: string }> {
-        const token = this.generateToken();
+        const token = await this.generateToken();
         const tokenHash = this.hashToken(token);
         const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
 
@@ -290,8 +292,10 @@ export class AddressFixService {
     /**
      * Generate a secure random token
      */
-    private generateToken(): string {
-        return crypto.randomBytes(32).toString('base64url');
+    private async generateToken(): Promise<string> {
+        const randomBytesAsync = promisify(crypto.randomBytes);
+        const buffer = await randomBytesAsync(32);
+        return buffer.toString('base64url');
     }
 
     /**

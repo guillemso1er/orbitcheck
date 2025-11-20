@@ -1,4 +1,5 @@
 import { PostHog } from 'posthog-node';
+
 import { environment } from '../../../environment.js';
 
 const telemetryClient = environment.POSTHOG_KEY ? new PostHog(environment.POSTHOG_KEY, { host: environment.POSTHOG_HOST }) : null;

@@ -78,7 +78,7 @@ export function sendServerError(request: FastifyRequest, rep: FastifyReply, erro
     return rep.status(500).send(response);
 }
 
-export function buildValidationResult(result: { valid: boolean; reason_codes: string[] }, additionalFields: Record<string, any> = {}) {
+export function buildValidationResult(result: { valid: boolean; reason_codes: string[] }, additionalFields: Record<string, any> = {}): { valid: boolean; reason_codes: string[] } & Record<string, any> {
     return {
         valid: result.valid,
         reason_codes: result.reason_codes,
@@ -87,7 +87,7 @@ export function buildValidationResult(result: { valid: boolean; reason_codes: st
 }
 
 // Deprecated: Use buildValidationResult instead
-export function buildEmailValidationResult(result: { valid: boolean; reason_codes: string[]; normalized: string; disposable: boolean }) {
+export function buildEmailValidationResult(result: { valid: boolean; reason_codes: string[]; normalized: string; disposable: boolean }): ReturnType<typeof buildValidationResult> {
     return buildValidationResult(result, {
         normalized: result.normalized,
         disposable: result.disposable,
@@ -95,7 +95,7 @@ export function buildEmailValidationResult(result: { valid: boolean; reason_code
 }
 
 // Deprecated: Use buildValidationResult instead
-export function buildPhoneValidationResult(result: { valid: boolean; reason_codes: string[]; e164: string; country: string | null }) {
+export function buildPhoneValidationResult(result: { valid: boolean; reason_codes: string[]; e164: string; country: string | null }): ReturnType<typeof buildValidationResult> {
     return buildValidationResult(result, {
         e164: result.e164,
         country: result.country,
@@ -103,7 +103,7 @@ export function buildPhoneValidationResult(result: { valid: boolean; reason_code
 }
 
 // Deprecated: Use buildValidationResult instead
-export function buildAddressValidationResult(result: { valid: boolean; reason_codes: string[]; normalized: any; po_box: boolean }) {
+export function buildAddressValidationResult(result: { valid: boolean; reason_codes: string[]; normalized: any; po_box: boolean }): ReturnType<typeof buildValidationResult> {
     return buildValidationResult(result, {
         normalized: result.normalized,
         po_box: result.po_box,
@@ -111,7 +111,7 @@ export function buildAddressValidationResult(result: { valid: boolean; reason_co
 }
 
 // Deprecated: Use buildValidationResult instead
-export function buildNameValidationResult(result: { valid: boolean; reason_codes: string[]; normalized: string }) {
+export function buildNameValidationResult(result: { valid: boolean; reason_codes: string[]; normalized: string }): ReturnType<typeof buildValidationResult> {
     return buildValidationResult(result, {
         normalized: result.normalized,
     });

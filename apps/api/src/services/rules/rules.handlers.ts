@@ -2,6 +2,7 @@
 
 import type { FastifyReply, FastifyRequest } from "fastify";
 import type { Pool } from "pg";
+
 import type {
     DeleteCustomRuleData,
     DeleteCustomRuleResponse,
@@ -11,7 +12,7 @@ import type {
 } from "../../generated/fastify/types.gen.js";
 import { generateRequestId } from "../utils.js";
 import { convertConditionsToLogic, getBuiltInRules, inferActionFromConditions, registerBuiltInRuleOverride } from "./rules.constants.js";
-import { RuleEvaluationResult, ValidationPayload } from "./rules.types.js";
+import type { RuleEvaluationResult, ValidationPayload } from "./rules.types.js";
 import { validatePayload } from "./rules.validation.js";
 import { RiskScoreCalculator, RuleEvaluator } from "./test-rules.js";
 
@@ -23,12 +24,12 @@ export async function handleTestRules(
     reply: FastifyReply,
     pool: Pool,
     redis?: any
-) {
+): Promise<any> {
     const startTime = performance.now();
     const request_id = generateRequestId();
     const project_id = (request as any).project_id;
 
-    console.log(`[DEBUG] handleTestRules - Starting request ${request_id} for project ${project_id}`);
+    request.log.info(`[DEBUG] handleTestRules - Starting request ${request_id} for project ${project_id}`);
 
     const metrics = {
         cache_hits: 0,
@@ -59,13 +60,13 @@ export async function handleTestRules(
         if (typeof requestBody !== 'object' || Array.isArray(requestBody)) {
             return reply.status(400).send({ error: 'Invalid payload: must be a JSON object', request_id });
         }
-        
+
         // Extract the nested payload object
         body = requestBody.payload;
         if (!body || typeof body !== 'object' || Array.isArray(body)) {
             return reply.status(400).send({ error: 'Invalid payload: payload must be a JSON object', request_id });
         }
-        
+
         if (body.email && typeof body.email !== 'string') return reply.status(400).send({ error: 'Invalid payload: email must be a string', request_id });
         if (body.phone && typeof body.phone !== 'string') return reply.status(400).send({ error: 'Invalid payload: phone must be a string', request_id });
         if (body.name && typeof body.name !== 'string') return reply.status(400).send({ error: 'Invalid payload: name must be a string', request_id });
@@ -78,8 +79,8 @@ export async function handleTestRules(
         return reply.status(400).send({ error: 'Invalid JSON payload', request_id });
     }
 
-    console.log(`[DEBUG] handleTestRules - Validating payload for ${request_id}`);
-    console.log(`[DEBUG] handleTestRules - Payload: ${JSON.stringify(requestBody)}`);
+    request.log.info(`[DEBUG] handleTestRules - Validating payload for ${request_id}`);
+    request.log.info(`[DEBUG] handleTestRules - Payload: ${JSON.stringify(requestBody)}`);
 
     const { results: orchestratorResults, metrics: orchestratorMetrics, debug_info: orchestratorDebugInfo } =
         await validatePayload(body, redis, pool, {
@@ -90,7 +91,7 @@ export async function handleTestRules(
             projectId: project_id
         });
 
-    console.log(`[DEBUG] handleTestRules - Validation results: ${JSON.stringify(orchestratorResults)}`);
+    request.log.info(`[DEBUG] handleTestRules - Validation results: ${JSON.stringify(orchestratorResults)}`);
 
     Object.assign(results, orchestratorResults);
     metrics.cache_hits += orchestratorMetrics.cache_hits;
@@ -102,22 +103,23 @@ export async function handleTestRules(
     debug_info.warnings.push(...orchestratorDebugInfo.warnings);
 
     const riskAnalysis = RiskScoreCalculator.calculate(results);
-    console.log(`[DEBUG] handleTestRules - Risk analysis: ${JSON.stringify(riskAnalysis)}`);
+    request.log.info(`[DEBUG] handleTestRules - Risk analysis: ${JSON.stringify(riskAnalysis)}`);
 
     metrics.rule_eval_start = performance.now();
 
-    console.log(`[DEBUG] handleTestRules - Querying database for rules for project ${project_id}`);
+    request.log.info(`[DEBUG] handleTestRules - Querying database for rules for project ${project_id}`);
     const rulesQuery = await pool.query(
         `SELECT * FROM rules WHERE project_id = $1 AND enabled = true ORDER BY priority DESC, created_at ASC`,
         [project_id]
     );
-    console.log(`[DEBUG] handleTestRules - Found ${rulesQuery.rows.length} database rules`);
+    request.log.info(`[DEBUG] handleTestRules - Found ${rulesQuery.rows.length} database rules`);
     const dbRules = rulesQuery.rows;
     const builtInRules = getBuiltInRules();
-    console.log(`[DEBUG] handleTestRules - Found ${builtInRules.length} built-in rules`);
+    request.log.info(`[DEBUG] handleTestRules - Found ${builtInRules.length} built-in rules`);
     const allRules = [...builtInRules, ...dbRules];
+    // eslint-disable-next-line require-atomic-updates
     debug_info.rules_evaluated = allRules.length;
-    console.log(`[DEBUG] handleTestRules - Total rules to evaluate: ${allRules.length}`);
+    request.log.info(`[DEBUG] handleTestRules - Total rules to evaluate: ${allRules.length}`);
 
     // Heuristic phone validity (evaluation context only)
     const basePhone =
@@ -206,16 +208,16 @@ export async function handleTestRules(
         session_id: (body as any).session_id,
     };
 
-    console.log(`[DEBUG] handleTestRules - Evaluation context: ${JSON.stringify(Object.keys(evaluationContext))}`);
-    console.log(`[DEBUG] handleTestRules - Starting rule evaluation loop`);
+    request.log.info(`[DEBUG] handleTestRules - Evaluation context: ${JSON.stringify(Object.keys(evaluationContext))}`);
+    request.log.info(`[DEBUG] handleTestRules - Starting rule evaluation loop`);
 
-    for (const rule of allRules) {
+    await Promise.all(allRules.map(async (rule) => {
         const evalStart = performance.now();
-        console.log(`[DEBUG] handleTestRules - Evaluating rule: ${rule.id} (${rule.name})`);
+        request.log.info(`[DEBUG] handleTestRules - Evaluating rule: ${rule.id} (${rule.name})`);
 
         try {
             const evaluation = await RuleEvaluator.evaluate(rule, evaluationContext, { timeout: 100, debug: false });
-            console.log(`[DEBUG] handleTestRules - Rule ${rule.id} evaluation result: triggered=${evaluation.triggered}, confidence=${evaluation.confidence}`);
+            request.log.info(`[DEBUG] handleTestRules - Rule ${rule.id} evaluation result: triggered=${evaluation.triggered}, confidence=${evaluation.confidence}`);
 
             const evaluationResult = {
                 rule_id: rule.id,
@@ -234,11 +236,10 @@ export async function handleTestRules(
 
             ruleEvaluations.push(evaluationResult);
             if (evaluation.triggered) {
-                debug_info.rules_triggered++;
-                console.log(`[DEBUG] handleTestRules - Rule ${rule.id} TRIGGERED!`);
+                request.log.info(`[DEBUG] handleTestRules - Rule ${rule.id} TRIGGERED!`);
             }
         } catch (error) {
-            console.log(`[DEBUG] handleTestRules - Rule ${rule.id} evaluation error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+            request.log.info(`[DEBUG] handleTestRules - Rule ${rule.id} evaluation error: ${error instanceof Error ? error.message : 'Unknown error'}`);
 
             const evaluationResult = {
                 rule_id: rule.id,
@@ -258,9 +259,11 @@ export async function handleTestRules(
                 error: error instanceof Error ? error.message : 'Unknown error',
             });
         }
-    }
+    }));
 
-    console.log(`[DEBUG] handleTestRules - Rule evaluation complete. Total evaluated: ${ruleEvaluations.length}, Triggered: ${debug_info.rules_triggered}`);
+    // eslint-disable-next-line require-atomic-updates
+    debug_info.rules_triggered = ruleEvaluations.filter(r => r.triggered).length;
+    request.log.info(`[DEBUG] handleTestRules - Rule evaluation complete. Total evaluated: ${ruleEvaluations.length}, Triggered: ${debug_info.rules_triggered}`);
 
     metrics.rule_eval_end = performance.now();
     const triggeredRules = ruleEvaluations.filter((r) => r.triggered);
@@ -268,12 +271,12 @@ export async function handleTestRules(
     const holdRules = triggeredRules.filter((r) => r.action === 'hold');
     const approveRules = triggeredRules.filter((r) => r.action === 'approve');
 
-    console.log(`[DEBUG] handleTestRules - Decision logic:`);
-    console.log(`[DEBUG] handleTestRules - Triggered rules: ${triggeredRules.length}`);
-    console.log(`[DEBUG] handleTestRules - Blocked rules: ${blockedRules.length} (${blockedRules.map((r) => r.rule_id).join(', ')})`);
-    console.log(`[DEBUG] handleTestRules - Hold rules: ${holdRules.length} (${holdRules.map((r) => r.rule_id).join(', ')})`);
-    console.log(`[DEBUG] handleTestRules - Approve rules: ${approveRules.length} (${approveRules.map((r) => r.rule_id).join(', ')})`);
-    console.log(`[DEBUG] handleTestRules - Risk score: ${riskAnalysis.score}, Level: ${riskAnalysis.level}`);
+    request.log.info(`[DEBUG] handleTestRules - Decision logic:`);
+    request.log.info(`[DEBUG] handleTestRules - Triggered rules: ${triggeredRules.length}`);
+    request.log.info(`[DEBUG] handleTestRules - Blocked rules: ${blockedRules.length} (${blockedRules.map((r) => r.rule_id).join(', ')})`);
+    request.log.info(`[DEBUG] handleTestRules - Hold rules: ${holdRules.length} (${holdRules.map((r) => r.rule_id).join(', ')})`);
+    request.log.info(`[DEBUG] handleTestRules - Approve rules: ${approveRules.length} (${approveRules.map((r) => r.rule_id).join(', ')})`);
+    request.log.info(`[DEBUG] handleTestRules - Risk score: ${riskAnalysis.score}, Level: ${riskAnalysis.level}`);
 
     let finalAction: 'approve' | 'hold' | 'block' | 'review';
     const finalReasons: string[] = [];
@@ -281,39 +284,39 @@ export async function handleTestRules(
     if (approveRules.length > 0) {
         finalAction = 'approve';
         finalReasons.push(`Approved by rule: ${approveRules[0].rule_name}`);
-        console.log(`[DEBUG] handleTestRules - Final action: APPROVE (approve rule takes precedence)`);
+        request.log.info(`[DEBUG] handleTestRules - Final action: APPROVE (approve rule takes precedence)`);
     } else if (blockedRules.length > 0) {
         finalAction = 'block';
         finalReasons.push(`Blocked by ${blockedRules.length} rule(s): ${blockedRules.map((r) => r.rule_name).join(', ')}`);
-        console.log(`[DEBUG] handleTestRules - Final action: BLOCK (from blocked rules)`);
+        request.log.info(`[DEBUG] handleTestRules - Final action: BLOCK (from blocked rules)`);
     } else if (holdRules.length > 0) {
         if (riskAnalysis.score >= 80 || riskAnalysis.level === 'critical') {
             finalAction = 'review';
             finalReasons.push(
                 `Manual review due to critical risk (${riskAnalysis.score}) with ${holdRules.length} hold rule(s): ${holdRules.map((r) => r.rule_name).join(', ')}`
             );
-            console.log(`[DEBUG] handleTestRules - Final action: REVIEW (critical risk with hold rules)`);
+            request.log.info(`[DEBUG] handleTestRules - Final action: REVIEW (critical risk with hold rules)`);
         } else {
             finalAction = 'hold';
             finalReasons.push(`Held by ${holdRules.length} rule(s): ${holdRules.map((r) => r.rule_name).join(', ')}`);
-            console.log(`[DEBUG] handleTestRules - Final action: HOLD (from hold rules)`);
+            request.log.info(`[DEBUG] handleTestRules - Final action: HOLD (from hold rules)`);
         }
     } else if (riskAnalysis.score >= 80) {
         finalAction = 'block';
         finalReasons.push('Critical risk score requires blocking');
-        console.log(`[DEBUG] handleTestRules - Final action: BLOCK (critical risk score)`);
+        request.log.info(`[DEBUG] handleTestRules - Final action: BLOCK (critical risk score)`);
     } else if (riskAnalysis.score >= 60) {
         finalAction = 'review';
         finalReasons.push('High risk score requires manual review');
-        console.log(`[DEBUG] handleTestRules - Final action: REVIEW (high risk score)`);
+        request.log.info(`[DEBUG] handleTestRules - Final action: REVIEW (high risk score)`);
     } else if (riskAnalysis.score >= 35) {
         finalAction = 'hold';
         finalReasons.push('Medium-high risk score');
-        console.log(`[DEBUG] handleTestRules - Final action: HOLD (medium-high risk score)`);
+        request.log.info(`[DEBUG] handleTestRules - Final action: HOLD (medium-high risk score)`);
     } else {
         finalAction = 'approve';
         finalReasons.push('Low risk score');
-        console.log(`[DEBUG] handleTestRules - Final action: APPROVE (low risk score)`);
+        request.log.info(`[DEBUG] handleTestRules - Final action: APPROVE (low risk score)`);
     }
 
     finalReasons.push(...riskAnalysis.factors);
@@ -331,10 +334,10 @@ export async function handleTestRules(
 
     const endTime = performance.now();
 
-    console.log(`[DEBUG] handleTestRules - Final response structure:`);
-    console.log(`[DEBUG] handleTestRules - rule_evaluations length: ${ruleEvaluations.length}`);
-    console.log(`[DEBUG] handleTestRules - first few rule_evaluations: ${JSON.stringify(ruleEvaluations.slice(0, 3))}`);
-    console.log(`[DEBUG] handleTestRules - email_format in evaluations: ${ruleEvaluations.find((r) => r.rule_id === 'email_format') ? 'FOUND' : 'NOT FOUND'}`);
+    request.log.info(`[DEBUG] handleTestRules - Final response structure:`);
+    request.log.info(`[DEBUG] handleTestRules - rule_evaluations length: ${ruleEvaluations.length}`);
+    request.log.info(`[DEBUG] handleTestRules - first few rule_evaluations: ${JSON.stringify(ruleEvaluations.slice(0, 3))}`);
+    request.log.info(`[DEBUG] handleTestRules - email_format in evaluations: ${ruleEvaluations.find((r) => r.rule_id === 'email_format') ? 'FOUND' : 'NOT FOUND'}`);
 
     const response: TestRulesAgainstPayloadResponse = {
         results: {
@@ -399,7 +402,7 @@ export async function handleRegisterCustomRules(
     request: FastifyRequest,
     reply: FastifyReply,
     pool: Pool
-) {
+): Promise<any> {
     const project_id = (request as any).project_id;
     const { rules } = request.body as RegisterCustomRulesData['body'];
     const request_id = generateRequestId();
@@ -454,7 +457,7 @@ export async function handleRegisterCustomRules(
     const existingRuleNames: string[] = [];
     const newRules: any[] = [];
 
-    for (const rule of rules) {
+    await Promise.all(rules.map(async (rule) => {
         if (rule.id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(rule.id)) {
             // Check if rule with this ID exists
             const idResult = await pool.query(
@@ -478,7 +481,7 @@ export async function handleRegisterCustomRules(
                 newRules.push(rule);
             }
         }
-    }
+    }));
 
     // If any rule names already exist in the database, return 409 conflict error
     if (existingRuleNames.length > 0) {
@@ -493,7 +496,8 @@ export async function handleRegisterCustomRules(
     const processedRules: any[] = [];
 
     // Update existing rules
-    for (const rule of rulesToProcess) {
+    // Update existing rules
+    await Promise.all(rulesToProcess.map(async (rule) => {
         const logic = rule.logic || rule.condition || convertConditionsToLogic(rule.conditions) || '';
         const action = rule.action || (inferActionFromConditions(rule.conditions) || 'hold');
 
@@ -515,7 +519,7 @@ export async function handleRegisterCustomRules(
         }
 
         processedRules.push({ ...rule.existing, ...rule });
-    }
+    }));
 
     // helper to resolve action from 'action' or 'actions' or infer
     const resolveAction = (r: any): 'block' | 'hold' | 'approve' => {
@@ -559,7 +563,8 @@ export async function handleRegisterCustomRules(
 
     // Create new rules
     const insertedRules: any[] = [];
-    for (const rule of mappedNewRules) {
+    // Create new rules
+    await Promise.all(mappedNewRules.map(async (rule) => {
         let query: string;
         let params: any[];
         if (rule.shouldIncludeId) {
@@ -571,7 +576,7 @@ export async function handleRegisterCustomRules(
         }
         const result = await pool.query(query, params);
         insertedRules.push({ ...rule, id: result.rows[0].id });
-    }
+    }));
 
     const response: RegisterCustomRulesResponse = {
         message: `Rules processed successfully. ${existingById.length} updated, ${insertedRules.length} created.`,
@@ -589,7 +594,7 @@ export async function handleDeleteCustomRule(
     request: FastifyRequest,
     reply: FastifyReply,
     pool: Pool
-) {
+): Promise<any> {
     const project_id = (request as any).project_id;
     const ruleId = (request.params as DeleteCustomRuleData['path']).id;
     const request_id = generateRequestId();
@@ -601,7 +606,7 @@ export async function handleDeleteCustomRule(
     try {
         // Get built-in rule IDs to check against
         const builtInRuleIds = getBuiltInRules().map(rule => rule.id);
-        
+
         // Check if the rule is a built-in rule (cannot be deleted)
         if (builtInRuleIds.includes(ruleId)) {
             return reply.status(400).send({
@@ -648,7 +653,7 @@ export async function handleDeleteCustomRule(
         return reply.status(200).send(response);
 
     } catch (error) {
-        console.error('Error deleting rule:', error);
+        request.log.error({ err: error }, 'Error deleting rule');
         return reply.status(500).send({
             error: 'Internal server error',
             request_id

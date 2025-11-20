@@ -1,5 +1,6 @@
 import Redis from 'ioredis';
 import { Pool } from 'pg';
+
 import { environment } from '../../environment.js';
 import { detectPoBox, normalizeAddress, validateAddress } from '../address.js';
 

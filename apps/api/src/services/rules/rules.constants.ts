@@ -142,11 +142,11 @@ type BuiltInOverride = Partial<{
 
 let BUILTIN_RULE_OVERRIDES: Record<string, BuiltInOverride> = {};
 
-export function registerBuiltInRuleOverride(id: string, override: BuiltInOverride) {
+export function registerBuiltInRuleOverride(id: string, override: BuiltInOverride): void {
     BUILTIN_RULE_OVERRIDES[id] = { ...(BUILTIN_RULE_OVERRIDES[id] || {}), ...override };
 }
 
-export function clearBuiltInRuleOverrides(id?: string) {
+export function clearBuiltInRuleOverrides(id?: string): void {
     if (!id) {
         BUILTIN_RULE_OVERRIDES = {};
         return;
@@ -156,7 +156,7 @@ export function clearBuiltInRuleOverrides(id?: string) {
 /**
  * Returns a list of hardcoded, built-in validation rules.
  */
-export function getBuiltInRules() {
+export function getBuiltInRules(): any[] {
     const rules = [
         { id: 'email_format', name: 'Email Format Validation', description: 'Validates the basic format of email addresses using RFC standards.', category: 'email', enabled: true, condition: '(email && email.valid === false) || (emailString && !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(emailString))', action: 'hold', priority: 10 },
         { id: 'email_mx', name: 'Email MX Record Check', description: 'Verifies that the domain has valid MX records for email delivery.', category: 'email', enabled: true, condition: 'email && email.mx_records === false', action: 'hold', priority: 8 },

@@ -1,7 +1,9 @@
 // src/config/environment.ts
-import { randomBytes } from 'crypto';
 import 'dotenv/config'; // harmless in prod; useful for local dev
+
+import { randomBytes } from 'crypto';
 import { bool, cleanEnv, makeValidator, num, port, str, url } from 'envalid';
+
 import { CRYPTO_KEY_BYTES } from './config.js'; // must match your crypto key size (bytes)
 
 const NODE_ENV = process.env.NODE_ENV || 'production';
@@ -109,6 +111,10 @@ export const env = cleanEnv(process.env, {
   STRIPE_BASE_PLAN_PRICE_ID: str({ default: '' }),
   STRIPE_USAGE_PRICE_ID: str({ default: '' }),
   STRIPE_STORE_ADDON_PRICE_ID: str({ default: '' }),
+
+  // Shopify
+  SHOPIFY_API_KEY: str({ default: '' }),
+  SHOPIFY_API_SECRET: str({ default: '' }),
 
   // CORS / frontend
   FRONTEND_URL: isProd ? url() : url({ default: 'http://localhost:5173' }),

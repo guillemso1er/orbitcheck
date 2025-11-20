@@ -1,7 +1,10 @@
+import crypto from 'node:crypto';
+import { promisify } from 'node:util';
+
 import bcrypt from 'bcryptjs';
 import type { FastifyBaseLogger } from 'fastify';
-import crypto from 'node:crypto';
 import type { Pool, PoolClient } from 'pg';
+
 import { BCRYPT_ROUNDS } from '../config.js';
 
 export interface ShopMetadata {
@@ -146,7 +149,8 @@ export class ShopifyOnboardingService {
         }
 
         // Generate random password for new user
-        const randomPassword = crypto.randomBytes(32).toString('hex');
+        const randomBytesAsync = promisify(crypto.randomBytes);
+        const randomPassword = (await randomBytesAsync(32)).toString('hex');
         const hashedPassword = await bcrypt.hash(randomPassword, BCRYPT_ROUNDS);
 
         // Extract first/last name from shop name (fallback)

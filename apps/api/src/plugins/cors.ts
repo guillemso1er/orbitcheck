@@ -1,5 +1,6 @@
 import cors from "@fastify/cors";
-import type { FastifyInstance, RawServerBase } from "fastify";
+import type { FastifyPluginAsync } from "fastify";
+import fp from "fastify-plugin";
 
 import { environment } from "../environment.js";
 
@@ -8,9 +9,9 @@ import { environment } from "../environment.js";
  * Handles both development and production origins, with support for server-to-server requests.
  * In production, CORS is handled by the reverse proxy (Caddy), so we skip registration here.
  */
-export async function setupCors<TServer extends RawServerBase = RawServerBase>(app: FastifyInstance<TServer>): Promise<void> {
+const setupCors: FastifyPluginAsync = async (app) => {
     // In production, CORS is handled by Caddy reverse proxy, so skip Fastify CORS to avoid duplicate headers
-    if (process.env.NODE_ENV === 'production') {
+    if (environment.isProd) {
         return;
     }
 
@@ -21,7 +22,7 @@ export async function setupCors<TServer extends RawServerBase = RawServerBase>(a
     ]);
 
     // Add production origins from environment variable or defaults
-    if (process.env.NODE_ENV === 'production') {
+    if (environment.isProd) {
         // Allow origins from environment variable or use defaults
         const corsOrigins = environment.CORS_ORIGINS && environment.CORS_ORIGINS.length > 0 ? environment.CORS_ORIGINS : [
             'https://dashboard.orbitcheck.io',
@@ -69,4 +70,7 @@ export async function setupCors<TServer extends RawServerBase = RawServerBase>(a
         ],
         exposedHeaders: ['X-Request-Id', 'Correlation-Id', 'X-RateLimit-Remaining', 'X-RateLimit-Reset'],
     });
-}
+};
+
+export default fp(setupCors, { name: 'orbitcheck-cors' });
+export { setupCors };

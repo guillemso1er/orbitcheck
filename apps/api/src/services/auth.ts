@@ -1,17 +1,18 @@
+import * as crypto from "node:crypto";
+import { randomBytes } from "node:crypto";
+
+import argon2 from 'argon2';
 import bcrypt from 'bcryptjs';
 import type { FastifyReply, FastifyRequest, RawServerBase, RouteGenericInterface } from "fastify";
-import * as crypto from "node:crypto";
 import type { Pool } from "pg";
+
 import { BCRYPT_ROUNDS, PG_UNIQUE_VIOLATION, PROJECT_NAMES } from "../config.js";
 import { ERROR_CODES, ERROR_MESSAGES, HTTP_STATUS } from "../errors.js";
 import type { LoginUserData, LoginUserResponses, LogoutUserResponses, RegisterUserData, RegisterUserResponses } from "../generated/fastify/types.gen.js";
-import { createPlansService } from "./plans.js";
-import { getDefaultProjectId, sendError, sendServerError } from "./utils.js";
-
-import argon2 from 'argon2';
-import { randomBytes } from "node:crypto";
 import { routes } from '../routes/routes.js';
 import { parsePat } from "./pats.js";
+import { createPlansService } from "./plans.js";
+import { getDefaultProjectId, sendError, sendServerError } from "./utils.js";
 
 
 // PAT pepper constant (same as in pats.ts)
@@ -79,6 +80,7 @@ export async function registerUser(
         );
 
         // Set session cookie for dashboard access
+        // eslint-disable-next-line require-atomic-updates
         request.session.user_id = user.id;
 
         const response: RegisterUserResponses[201] = { user, request_id };
@@ -216,9 +218,12 @@ export async function logoutUser(
         // CSRF is enforced by the csrfHeader guard; here we just destroy session
         try {
             if (typeof (request as any).destroySession === 'function') {
-                await new Promise<void>((resolve, reject) =>
-                    (request as any).destroySession((err: any) => err ? reject(err) : resolve())
-                )
+                await new Promise<void>((resolve, reject) => {
+                    (request as any).destroySession((err: any) => {
+                        if (err) reject(err);
+                        else resolve();
+                    })
+                })
             } else if ((request as any).session) {
                 // Fallback clear
                 (request as any).session.user_id = undefined
@@ -315,7 +320,12 @@ export async function verifySession<TServer extends RawServerBase = RawServerBas
         // invalid session — destroy if possible
         try {
             if (typeof (request as any).destroySession === 'function') {
-                await new Promise((res, rej) => (request as any).destroySession((err: any) => err ? rej(err) : res(null)))
+                await new Promise((res, rej) => {
+                    (request as any).destroySession((err: any) => {
+                        if (err) rej(err);
+                        else res(null);
+                    })
+                })
             } else if ((request as any).session) {
                 (request as any).session.user_id = undefined;
                 (request as any).session.set?.('user_id', undefined);
@@ -494,7 +504,7 @@ export async function verifyHttpMessageSignature(request: FastifyRequest, pool: 
  * @param pool - PostgreSQL connection pool
  * @returns {Promise<void>} Resolves on success, sends 401 on failure
  */
-export async function verifyPAT<TServer extends RawServerBase = RawServerBase>(req: FastifyRequest<RouteGenericInterface, TServer>, pool: Pool) {
+export async function verifyPAT<TServer extends RawServerBase = RawServerBase>(req: FastifyRequest<RouteGenericInterface, TServer>, pool: Pool): Promise<any | null> {
     // Node lowercases header names
     const authHeader = req.headers['authorization'] as string | undefined;
     const parsed = parsePat(authHeader);
@@ -559,10 +569,13 @@ export async function verifyPAT<TServer extends RawServerBase = RawServerBase>(r
     }
 
     // Update last_used_at and last_used_ip asynchronously
+    // eslint-disable-next-line promise/prefer-await-to-then
     pool.query(
         "UPDATE personal_access_tokens SET last_used_at = now(), last_used_ip = $1 WHERE id = $2",
         [req.ip, pat.id]
-    ).catch(() => { }); // Non-blocking
+    )
+        // eslint-disable-next-line promise/prefer-await-to-then
+        .catch(() => { }); // Non-blocking
 
     // Decorate request object with PAT information for downstream handlers
     (req as any).user_id = pat.user_id;

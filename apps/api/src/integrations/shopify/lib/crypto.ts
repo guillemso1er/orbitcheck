@@ -1,4 +1,6 @@
 import * as crypto from 'node:crypto';
+import { promisify } from 'node:util';
+
 import { CRYPTO_IV_BYTES } from '../../../config.js';
 import { environment } from '../../../environment.js';
 
@@ -9,8 +11,9 @@ if (KEY.length !== 32) {
     throw new Error('ENCRYPTION_KEY must be exactly 32 bytes long');
 }
 
-export function encryptShopifyToken(secret: string): string {
-    const iv = crypto.randomBytes(CRYPTO_IV_BYTES);
+export async function encryptShopifyToken(secret: string): Promise<string> {
+    const randomBytesAsync = promisify(crypto.randomBytes);
+    const iv = await randomBytesAsync(CRYPTO_IV_BYTES);
     const cipher = crypto.createCipheriv(ALGORITHM, KEY, iv);
     const encrypted = Buffer.concat([cipher.update(secret, 'utf8'), cipher.final()]);
     return `${iv.toString('hex')}:${encrypted.toString('hex')}`;

@@ -1,4 +1,4 @@
-import { FastifyBaseLogger } from 'fastify';
+import type { FastifyBaseLogger } from 'fastify';
 
 export interface EmailService {
     sendAddressFixEmail(params: AddressFixEmailParams): Promise<void>;

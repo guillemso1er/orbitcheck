@@ -44,7 +44,7 @@ describe('Web Module', () => {
       });
 
       const { registerRoutes } = await import('../web.js');
-      registerRoutes(app, mockPool as any, mockRedisInstance as any);
+      await registerRoutes(app, mockPool as any, mockRedisInstance as any);
 
       app.get("/health", async (): Promise<{ ok: true; timestamp: string; environment: string }> => ({
         ok: true,
@@ -111,7 +111,7 @@ describe('Web Module', () => {
       expect(result).toBeDefined();
       expect(result.user_id).toBe('user123');
       expect(result.scopes).toEqual(['*']);
-      
+
       // Also check that the request object gets decorated
       expect(mockRequest.user_id).toBe('user123');
       expect(mockRequest.pat_scopes).toEqual(['*']);
@@ -208,7 +208,7 @@ describe('Web Module', () => {
       });
 
       const { registerRoutes } = await import('../web.js');
-      registerRoutes(app, mockPool as any, mockRedisInstance as any);
+      await registerRoutes(app, mockPool as any, mockRedisInstance as any);
 
       app.get("/health", async (): Promise<{ ok: true; timestamp: string; environment: string }> => ({
         ok: true,
@@ -312,7 +312,7 @@ describe('Web Module', () => {
       });
 
       const { registerRoutes } = await import('../web.js');
-      registerRoutes(app, mockPool as any, mockRedisInstance as any);
+      await registerRoutes(app, mockPool as any, mockRedisInstance as any);
 
       // Verify hooks are registered
       expect(app.ready).toBeDefined();
@@ -357,7 +357,7 @@ describe('Web Module', () => {
       }));
 
       const { registerRoutes } = await import('../web.js');
-      registerRoutes(app, mockPool as any, mockRedisInstance as any);
+      await registerRoutes(app, mockPool as any, mockRedisInstance as any);
 
       app.get("/health", async (): Promise<{ ok: true; timestamp: string; environment: string }> => ({
         ok: true,

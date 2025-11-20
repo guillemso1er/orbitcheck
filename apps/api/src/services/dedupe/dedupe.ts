@@ -1,5 +1,6 @@
 import type { FastifyReply, FastifyRequest } from "fastify";
 import type { Pool } from "pg";
+
 import { HTTP_STATUS } from "../../errors.js";
 import type { DedupeAddressData, DedupeAddressResponses, DedupeCustomerData, DedupeCustomerResponses, MergeDeduplicatedData, MergeDeduplicatedResponses } from "../../generated/fastify/types.gen.js";
 import { logEvent } from "../../hooks.js";

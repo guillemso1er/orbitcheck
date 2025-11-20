@@ -1,7 +1,9 @@
-import type { Redis } from "ioredis";
 import console from "node:console";
 import crypto from "node:crypto";
+
+import type { Redis } from "ioredis";
 import type { Pool } from "pg";
+
 import { environment } from "../environment.js"; // Ensure RADAR_KEY and GEOAPIFY_KEY are here
 import { ADDRESS_VALIDATION_TTL_DAYS, REASON_CODES } from "../validation.js";
 
@@ -10,7 +12,7 @@ const CACHE_TTL_SECONDS = ADDRESS_VALIDATION_TTL_DAYS * 24 * 3600;
 const FUZZY_MATCH_THRESHOLD = 0.75; // 0.0 to 1.0 (75% similarity required)
 
 // --- Interfaces ---
-interface NormalizedAddress {
+export interface NormalizedAddress {
     line1: string;
     line2: string;
     city: string;
@@ -39,6 +41,12 @@ interface ValidationResult {
     reason_codes: string[];
     request_id: string;
     source_used: string;
+    po_box: boolean;
+    postal_city_match: boolean;
+    in_bounds: boolean;
+    deliverable: boolean;
+    debug_log: string[];
+    ttl_seconds: number;
 }
 
 // --- Helper Functions ---
@@ -84,6 +92,44 @@ function normalizeForSearch(text: string): string {
         "n": "north", "s": "south", "e": "east", "w": "west"
     };
     return text.toLowerCase().replace(/[.,]/g, "").split(" ").map(w => replacements[w] || w).join(" ");
+}
+
+type RawAddressInput = {
+    line1: string;
+    line2?: string;
+    city: string;
+    state?: string;
+    postal_code: string;
+    country: string;
+};
+
+export async function normalizeAddress(rawAddr: RawAddressInput): Promise<NormalizedAddress> {
+    const cleaned: NormalizedAddress = {
+        line1: (rawAddr.line1 || "").trim().replace(/\s+/g, " "),
+        line2: (rawAddr.line2 || "").trim(),
+        city: (rawAddr.city || "").trim(),
+        state: (rawAddr.state || "").trim(),
+        postal_code: (rawAddr.postal_code || "").trim(),
+        country: (rawAddr.country || "").toUpperCase().trim(),
+    };
+
+    if (!cleaned.line1 || !cleaned.city || !cleaned.postal_code || !cleaned.country) {
+        return cleaned;
+    }
+
+    const radarResult = await validateWithRadar(cleaned);
+    if (radarResult?.normalized) {
+        return {
+            line1: radarResult.normalized.line1 || cleaned.line1,
+            line2: radarResult.normalized.line2 ?? cleaned.line2,
+            city: radarResult.normalized.city || cleaned.city,
+            state: radarResult.normalized.state || cleaned.state,
+            postal_code: radarResult.normalized.postal_code || cleaned.postal_code,
+            country: radarResult.normalized.country || cleaned.country,
+        };
+    }
+
+    return cleaned;
 }
 
 export function detectPoBox(line: string | null | undefined): boolean {
@@ -217,7 +263,7 @@ async function validateWithGeoapify(addr: NormalizedAddress): Promise<Partial<Va
  */
 async function validateWithNominatim(addr: NormalizedAddress): Promise<Partial<ValidationResult> | null> {
     try {
-        await new Promise(r => setTimeout(r, 500)); // Throttle slightly
+        await new Promise(r => { setTimeout(r, 500); }); // Throttle slightly
         const q = encodeURIComponent(`${addr.line1}, ${addr.city}, ${addr.state}, ${addr.postal_code}, ${addr.country}`);
 
         const res = await fetch(`${environment.NOMINATIM_URL}/search?format=json&addressdetails=1&limit=1&q=${q}`, {
@@ -264,7 +310,7 @@ async function validateWithNominatim(addr: NormalizedAddress): Promise<Partial<V
 // --- Main Logic ---
 
 export async function validateAddress(
-    rawAddr: { line1: string; line2?: string; city: string; state?: string; postal_code: string; country: string },
+    rawAddr: RawAddressInput,
     pool: Pool,
     redis?: Redis
 ): Promise<ValidationResult> {
@@ -294,7 +340,7 @@ export async function validateAddress(
             valid: false, score: 0, normalized: input,
             metadata: { is_residential: null, is_po_box: false, format_matched: false },
             geo: null, reason_codes: [REASON_CODES.MISSING_REQUIRED_FIELDS], source_used: "logic"
-        }, cacheKey, redis);
+        }, cacheKey, input, redis);
     }
 
     let result: Partial<ValidationResult> | null = null;
@@ -374,11 +420,46 @@ export async function validateAddress(
         };
     }
 
-    return formatResult(result as ValidationResult, cacheKey, redis);
+    return formatResult(result!, cacheKey, input, redis);
 }
 
-async function formatResult(data: Omit<ValidationResult, "request_id">, key: string, redis?: Redis) {
-    const final: ValidationResult = { ...data, request_id: crypto.randomUUID() };
+async function formatResult(data: Partial<ValidationResult>, key: string, input: NormalizedAddress, redis?: Redis): Promise<ValidationResult> {
+    const normalized = data.normalized ?? input;
+    const metadata = data.metadata ?? {
+        is_residential: null,
+        is_po_box: detectPoBox(normalized.line1),
+        format_matched: false
+    };
+    const reasonCodes = data.reason_codes ?? [];
+    const poBox = data.po_box ?? metadata.is_po_box ?? detectPoBox(normalized.line1);
+    const hasPostalMismatch = reasonCodes.includes(REASON_CODES.ADDRESS_POSTAL_CITY_MISMATCH);
+    const postalCityMatch = data.postal_city_match ?? !hasPostalMismatch;
+    const isOutOfBounds = reasonCodes.includes(REASON_CODES.ADDRESS_GEO_OUT_OF_BOUNDS);
+    const inBounds = data.in_bounds ?? !isOutOfBounds;
+    const finalReasonCodes = poBox && !reasonCodes.includes(REASON_CODES.ADDRESS_PO_BOX)
+        ? [...reasonCodes, REASON_CODES.ADDRESS_PO_BOX]
+        : reasonCodes;
+    const deliverable = data.deliverable ?? (!!data.valid && !poBox && postalCityMatch);
+    const ttlSeconds = data.ttl_seconds ?? CACHE_TTL_SECONDS;
+    const debugLog = data.debug_log ?? [];
+
+    const final: ValidationResult = {
+        valid: data.valid ?? false,
+        score: data.score ?? 0,
+        normalized,
+        metadata: { ...metadata, is_po_box: poBox },
+        geo: data.geo ?? null,
+        reason_codes: finalReasonCodes,
+        request_id: crypto.randomUUID(),
+        source_used: data.source_used ?? "logic",
+        po_box: poBox,
+        postal_city_match: postalCityMatch,
+        in_bounds: inBounds,
+        deliverable,
+        debug_log: debugLog,
+        ttl_seconds: ttlSeconds
+    };
+
     if (redis) await redis.set(key, JSON.stringify(final), "EX", CACHE_TTL_SECONDS);
     return final;
 }

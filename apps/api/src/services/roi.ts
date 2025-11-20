@@ -1,4 +1,5 @@
 import type { FastifyReply, FastifyRequest } from "fastify";
+
 import { generateRequestId, sendServerError } from "./utils.js";
 
 export interface RoiInputs {

@@ -1,5 +1,6 @@
-import { FastifyReply, FastifyRequest } from 'fastify';
-import type { Redis as IORedisType } from 'ioredis';
+import type { FastifyReply, FastifyRequest } from 'fastify';
+import { type Redis as IORedisType } from 'ioredis';
+
 import { createShopifyService } from '../../../services/shopify.js';
 import { captureShopifyEvent } from '../lib/telemetry.js';
 
@@ -154,30 +155,30 @@ async function clearCustomerCacheData(
     }
 }
 
-export async function customersDataRequest(_request: FastifyRequest, reply: FastifyReply) {
-    const shop = (_request.headers['x-shopify-shop-domain'] as string) || ((_request as any).shopDomain as string);
-    const payload = _request.body as Record<string, unknown>;
+export async function customersDataRequest(request: FastifyRequest, reply: FastifyReply): Promise<any> {
+    const shop = (request.headers['x-shopify-shop-domain'] as string) || ((request as any).shopDomain as string);
+    const payload = request.body as Record<string, unknown>;
     const customerId = extractCustomerId(payload);
 
     if (!shop) {
-        _request.log.warn('Missing shop header for customers/data_request webhook');
+        request.log.warn('Missing shop header for customers/data_request webhook');
         return reply.code(400).send('Missing shop');
     }
 
-    _request.log.info({
+    request.log.info({
         shop,
         customerId,
         requestType: 'data_request'
     }, 'Processing Shopify customers/data_request webhook');
 
-    const shopifyService = createShopifyService((_request as any).server.pg.pool);
+    const shopifyService = createShopifyService((request as any).server.pg.pool);
 
     try {
         await shopifyService.recordGdprEvent(shop, 'customers/data_request', payload);
         captureShopifyEvent(shop, 'gdpr_customers_data_request', { customerId });
 
         // Retrieve customer data from database
-        _request.log.info({
+        request.log.info({
             shop,
             customerId
         }, 'Starting customer data retrieval for GDPR request');
@@ -185,13 +186,13 @@ export async function customersDataRequest(_request: FastifyRequest, reply: Fast
         const customerData = await shopifyService.getCustomerData(shop, customerId || 'unknown');
 
         if (!customerData) {
-            _request.log.warn({
+            request.log.warn({
                 shop,
                 customerId,
                 event: 'customers/data_request'
             }, 'No customer data found for GDPR request');
         } else {
-            _request.log.info({
+            request.log.info({
                 shop,
                 customerId,
                 data_keys: Object.keys(customerData),
@@ -199,65 +200,68 @@ export async function customersDataRequest(_request: FastifyRequest, reply: Fast
             }, 'Customer data retrieved for GDPR request');
 
             // Send data back to Shopify asynchronously to avoid webhook timeout
-            setImmediate(async () => {
-                try {
-                    _request.log.info({
-                        shop,
-                        customerId
-                    }, 'Sending customer data to Shopify via GraphQL');
-
-                    const success = await shopifyService.sendCustomerDataToShopify(shop, customerId || 'unknown', customerData);
-
-                    if (success) {
-                        _request.log.info({
+            queueMicrotask(() => {
+                // eslint-disable-next-line @typescript-eslint/no-floating-promises
+                (async () => {
+                    try {
+                        request.log.info({
                             shop,
                             customerId
-                        }, 'Successfully sent customer data to Shopify');
+                        }, 'Sending customer data to Shopify via GraphQL');
 
-                        // Record successful data delivery
-                        await shopifyService.recordGdprEvent(shop, 'customers/data_request_sent', {
-                            customer_id: customerId,
-                            data_sent: true,
-                            sent_at: new Date().toISOString(),
-                            data_summary: {
-                                shop_data: !!customerData.shop,
-                                settings_data: !!customerData.settings,
-                                gdpr_events_count: Array.isArray(customerData.gdpr_events) ? customerData.gdpr_events.length : 0
-                            }
-                        });
-                    } else {
-                        _request.log.error({
+                        const success = await shopifyService.sendCustomerDataToShopify(shop, customerId || 'unknown', customerData);
+
+                        if (success) {
+                            request.log.info({
+                                shop,
+                                customerId
+                            }, 'Successfully sent customer data to Shopify');
+
+                            // Record successful data delivery
+                            await shopifyService.recordGdprEvent(shop, 'customers/data_request_sent', {
+                                customer_id: customerId,
+                                data_sent: true,
+                                sent_at: new Date().toISOString(),
+                                data_summary: {
+                                    shop_data: !!customerData.shop,
+                                    settings_data: !!customerData.settings,
+                                    gdpr_events_count: Array.isArray(customerData.gdpr_events) ? customerData.gdpr_events.length : 0
+                                }
+                            });
+                        } else {
+                            request.log.error({
+                                shop,
+                                customerId
+                            }, 'Failed to send customer data to Shopify');
+
+                            // Record failed data delivery
+                            await shopifyService.recordGdprEvent(shop, 'customers/data_request_failed', {
+                                customer_id: customerId,
+                                data_sent: false,
+                                error: 'Failed to send data to Shopify',
+                                failed_at: new Date().toISOString()
+                            });
+                        }
+                    } catch (dataError) {
+                        request.log.error({
                             shop,
-                            customerId
-                        }, 'Failed to send customer data to Shopify');
+                            customerId,
+                            error: dataError instanceof Error ? dataError.message : 'Unknown error'
+                        }, 'Error while sending customer data to Shopify');
 
-                        // Record failed data delivery
-                        await shopifyService.recordGdprEvent(shop, 'customers/data_request_failed', {
+                        // Record failed data delivery with error details
+                        await shopifyService.recordGdprEvent(shop, 'customers/data_request_error', {
                             customer_id: customerId,
                             data_sent: false,
-                            error: 'Failed to send data to Shopify',
-                            failed_at: new Date().toISOString()
+                            error: dataError instanceof Error ? dataError.message : 'Unknown error',
+                            error_at: new Date().toISOString()
                         });
                     }
-                } catch (dataError) {
-                    _request.log.error({
-                        shop,
-                        customerId,
-                        error: dataError instanceof Error ? dataError.message : 'Unknown error'
-                    }, 'Error while sending customer data to Shopify');
-
-                    // Record failed data delivery with error details
-                    await shopifyService.recordGdprEvent(shop, 'customers/data_request_error', {
-                        customer_id: customerId,
-                        data_sent: false,
-                        error: dataError instanceof Error ? dataError.message : 'Unknown error',
-                        error_at: new Date().toISOString()
-                    });
-                }
+                })();
             });
         }
 
-        _request.log.info({
+        request.log.info({
             shop,
             customerId,
             event: 'customers/data_request'
@@ -265,7 +269,7 @@ export async function customersDataRequest(_request: FastifyRequest, reply: Fast
 
         return reply.code(200).send();
     } catch (error) {
-        _request.log.error({
+        request.log.error({
             shop,
             customerId,
             error: error instanceof Error ? error.message : 'Unknown error'
@@ -274,112 +278,115 @@ export async function customersDataRequest(_request: FastifyRequest, reply: Fast
     }
 }
 
-export async function customersRedact(_request: FastifyRequest, reply: FastifyReply) {
-    const shop = (_request.headers['x-shopify-shop-domain'] as string) || ((_request as any).shopDomain as string);
-    const payload = _request.body as Record<string, unknown>;
+export async function customersRedact(request: FastifyRequest, reply: FastifyReply): Promise<any> {
+    const shop = (request.headers['x-shopify-shop-domain'] as string) || ((request as any).shopDomain as string);
+    const payload = request.body as Record<string, unknown>;
     const customerId = extractCustomerId(payload);
 
     if (!shop) {
-        _request.log.warn('Missing shop header for customers/redact webhook');
+        request.log.warn('Missing shop header for customers/redact webhook');
         return reply.code(400).send('Missing shop');
     }
 
-    _request.log.info({
+    request.log.info({
         shop,
         customerId,
         requestType: 'redact'
     }, 'Processing Shopify customers/redact webhook');
 
-    const shopifyService = createShopifyService((_request as any).server.pg.pool);
+    const shopifyService = createShopifyService((request as any).server.pg.pool);
 
     try {
         await shopifyService.recordGdprEvent(shop, 'customers/redact', payload);
         captureShopifyEvent(shop, 'gdpr_customers_redact', { customerId });
 
         // Delete all PII related to this specific customer
-        _request.log.info({
+        request.log.info({
             shop,
             customerId
         }, 'Starting customer data redaction for GDPR request');
 
         // Perform data redaction asynchronously to avoid webhook timeout
-        setImmediate(async () => {
-            try {
-                _request.log.info({
-                    shop,
-                    customerId
-                }, 'Redacting customer data from database');
-
-                // Record the redaction request for audit purposes
-                await shopifyService.recordGdprEvent(shop, 'customers/redact_started', {
-                    customer_id: customerId,
-                    redaction_started_at: new Date().toISOString(),
-                    payload: payload
-                });
-
-                // Start data redaction process
+        queueMicrotask(() => {
+            // eslint-disable-next-line @typescript-eslint/no-floating-promises
+            (async () => {
                 try {
-                    // 1. Delete or anonymize customer-specific data from logs
-                    await redactCustomerLogsFromDatabase(shop, customerId, shopifyService);
-
-                    // 2. Remove any PII from validation records
-                    await redactCustomerValidationData(shop, customerId, shopifyService);
-
-                    // 3. Clear any cached data related to this customer
-                    await clearCustomerCacheData(shop, customerId, (_request as any).server.redis);
-
-                    _request.log.info({
+                    request.log.info({
                         shop,
-                        customerId,
-                        step: 'redaction_completed'
-                    }, 'Customer data redaction completed successfully');
+                        customerId
+                    }, 'Redacting customer data from database');
 
-                } catch (redactionError) {
-                    _request.log.error({
-                        shop,
-                        customerId,
-                        error: redactionError instanceof Error ? redactionError.message : 'Unknown error',
-                        step: 'redaction_failed'
-                    }, 'Error during customer data redaction');
-
-                    // Record failed redaction with error details
-                    await shopifyService.recordGdprEvent(shop, 'customers/redact_error', {
+                    // Record the redaction request for audit purposes
+                    await shopifyService.recordGdprEvent(shop, 'customers/redact_started', {
                         customer_id: customerId,
-                        error: redactionError instanceof Error ? redactionError.message : 'Unknown error',
-                        error_at: new Date().toISOString()
+                        redaction_started_at: new Date().toISOString(),
+                        payload
                     });
 
-                    throw redactionError;
+                    // Start data redaction process
+                    try {
+                        // 1. Delete or anonymize customer-specific data from logs
+                        await redactCustomerLogsFromDatabase(shop, customerId, shopifyService);
+
+                        // 2. Remove any PII from validation records
+                        await redactCustomerValidationData(shop, customerId, shopifyService);
+
+                        // 3. Clear any cached data related to this customer
+                        await clearCustomerCacheData(shop, customerId, (request as any).server.redis);
+
+                        request.log.info({
+                            shop,
+                            customerId,
+                            step: 'redaction_completed'
+                        }, 'Customer data redaction completed successfully');
+
+                    } catch (redactionError) {
+                        request.log.error({
+                            shop,
+                            customerId,
+                            error: redactionError instanceof Error ? redactionError.message : 'Unknown error',
+                            step: 'redaction_failed'
+                        }, 'Error during customer data redaction');
+
+                        // Record failed redaction with error details
+                        await shopifyService.recordGdprEvent(shop, 'customers/redact_error', {
+                            customer_id: customerId,
+                            error: redactionError instanceof Error ? redactionError.message : 'Unknown error',
+                            error_at: new Date().toISOString()
+                        });
+
+                        throw redactionError;
+                    }
+
+                    request.log.info({
+                        shop,
+                        customerId
+                    }, 'Customer data redaction completed');
+
+                    // Record successful redaction
+                    await shopifyService.recordGdprEvent(shop, 'customers/redact_completed', {
+                        customer_id: customerId,
+                        redaction_completed_at: new Date().toISOString()
+                    });
+
+                } catch (redactionError) {
+                    request.log.error({
+                        shop,
+                        customerId,
+                        error: redactionError instanceof Error ? redactionError.message : 'Unknown error'
+                    }, 'Error during customer data redaction');
+
+                    // Record failed redaction
+                    await shopifyService.recordGdprEvent(shop, 'customers/redact_failed', {
+                        customer_id: customerId,
+                        error: redactionError instanceof Error ? redactionError.message : 'Unknown error',
+                        failed_at: new Date().toISOString()
+                    });
                 }
-
-                _request.log.info({
-                    shop,
-                    customerId
-                }, 'Customer data redaction completed');
-
-                // Record successful redaction
-                await shopifyService.recordGdprEvent(shop, 'customers/redact_completed', {
-                    customer_id: customerId,
-                    redaction_completed_at: new Date().toISOString()
-                });
-
-            } catch (redactionError) {
-                _request.log.error({
-                    shop,
-                    customerId,
-                    error: redactionError instanceof Error ? redactionError.message : 'Unknown error'
-                }, 'Error during customer data redaction');
-
-                // Record failed redaction
-                await shopifyService.recordGdprEvent(shop, 'customers/redact_failed', {
-                    customer_id: customerId,
-                    error: redactionError instanceof Error ? redactionError.message : 'Unknown error',
-                    failed_at: new Date().toISOString()
-                });
-            }
+            })();
         });
 
-        _request.log.info({
+        request.log.info({
             shop,
             customerId,
             event: 'customers/redact'
@@ -387,7 +394,7 @@ export async function customersRedact(_request: FastifyRequest, reply: FastifyRe
 
         return reply.code(200).send();
     } catch (error) {
-        _request.log.error({
+        request.log.error({
             shop,
             customerId,
             error: error instanceof Error ? error.message : 'Unknown error'
@@ -396,7 +403,7 @@ export async function customersRedact(_request: FastifyRequest, reply: FastifyRe
     }
 }
 
-export async function shopRedact(request: FastifyRequest, reply: FastifyReply) {
+export async function shopRedact(request: FastifyRequest, reply: FastifyReply): Promise<any> {
     const shop = request.headers['x-shopify-shop-domain'] as string;
     const payload = request.body as Record<string, unknown>;
 

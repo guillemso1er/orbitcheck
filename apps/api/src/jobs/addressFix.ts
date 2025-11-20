@@ -1,6 +1,7 @@
 import type { Job } from 'bullmq';
 import type { FastifyBaseLogger } from 'fastify';
 import type { Pool } from 'pg';
+
 import { createAddressFixService } from '../integrations/shopify/address-fix/service.js';
 import { createShopifyService } from '../services/shopify.js';
 

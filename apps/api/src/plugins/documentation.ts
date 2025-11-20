@@ -1,7 +1,8 @@
 import fastifySwagger from '@fastify/swagger'
 import fastifySwaggerUi from '@fastify/swagger-ui'
 import ScalarApiReference from '@scalar/fastify-api-reference'
-import type { FastifyInstance, RawServerBase } from 'fastify'
+import type { FastifyPluginAsync, FastifySchema } from 'fastify'
+import fp from 'fastify-plugin'
 
 import { API_VERSION, ROUTES } from '../config.js'
 import { environment } from '../environment.js'
@@ -42,7 +43,7 @@ const apiFaviconSvg = `<?xml version="1.0" encoding="utf-8"?>
 
 const faviconDataUrl = `data:image/svg+xml;base64,${Buffer.from(apiFaviconSvg).toString('base64')}`
 
-export async function setupDocumentation<TServer extends RawServerBase = RawServerBase>(app: FastifyInstance<TServer>): Promise<void> {
+const documentationPlugin: FastifyPluginAsync = async (app) => {
 
     app.addHook('onRoute', (routeOptions) => {
         const url = routeOptions.url || ''
@@ -78,11 +79,11 @@ export async function setupDocumentation<TServer extends RawServerBase = RawServ
             },
             servers: [{ url: environment.BASE_URL, description: `Environment: ${environment.NODE_ENV}` }],
         },
-        transform: ({ schema, url }: { schema: any; url: string }) => {
+        transform: ({ schema, url }: { schema: FastifySchema; url: string }) => {
             if (
                 shouldHideRoute(url)
             ) {
-                return { schema: null as any, url }
+                return { schema: { hide: true } as FastifySchema, url }
             }
 
             return { schema, url }
@@ -147,3 +148,6 @@ export async function setupDocumentation<TServer extends RawServerBase = RawServ
         // configuration: { ... } // optional UI tweaks
     })
 }
+
+export default fp(documentationPlugin, { name: 'orbitcheck-documentation' })
+export { documentationPlugin as setupDocumentation }

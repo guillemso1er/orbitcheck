@@ -1,5 +1,6 @@
-import { FastifyReply, FastifyRequest } from 'fastify';
+import type { FastifyReply, FastifyRequest } from 'fastify';
 import type { Pool } from 'pg';
+
 import { createShopifyService } from '../../../services/shopify.js';
 import { captureShopifyEvent } from '../lib/telemetry.js';
 

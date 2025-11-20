@@ -1,7 +1,9 @@
-import { FastifyReply, FastifyRequest } from 'fastify';
 import * as crypto from 'node:crypto';
+
+import type { FastifyReply, FastifyRequest } from 'fastify';
+
 import { createShopifyService } from '../../../services/shopify.js';
-import { Mode } from '../lib/types.js';
+import type { Mode } from '../lib/types.js';
 
 export async function getShopSettings(request: FastifyRequest, reply: FastifyReply, pool: any) {
     const shop = (request as any).shopDomain || ((request as any).shopHost as string | undefined)?.replace(/^https?:\/\//, '');

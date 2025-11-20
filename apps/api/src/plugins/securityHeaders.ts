@@ -1,4 +1,5 @@
 import type { FastifyInstance, FastifyRequest, RawServerBase, RouteGenericInterface } from "fastify";
+
 import { dashboardRoutes } from "../routes/routes.js";
 
 

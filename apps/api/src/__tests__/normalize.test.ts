@@ -32,7 +32,7 @@ describe('Normalize Routes', () => {
 
         // Register routes using the unified registerRoutes from web.ts
         const { registerRoutes } = await import('../web.js');
-        registerRoutes(app, mockPool as any, mockRedisInstance as any);
+        await registerRoutes(app, mockPool as any, mockRedisInstance as any);
 
         // Add input sanitization middleware to match production setup
         const { inputSanitizationHook } = await import('../middleware/inputSanitization.js');

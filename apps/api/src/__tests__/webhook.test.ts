@@ -470,7 +470,7 @@ describe('Webhook Event Sending', () => {
         await hooks.logEvent('test_project', 'validation', '/v1/validate/email', [], 200, { domain: 'example.com' }, mockPool as any);
 
         // Wait for async operations
-        await new Promise(resolve => setImmediate(resolve));
+        await new Promise(resolve => { setImmediate(resolve); });
 
         expect(fetchMock).toHaveBeenCalledTimes(1);
         const call = fetchMock.mock.calls[0];
@@ -495,7 +495,7 @@ describe('Webhook Event Sending', () => {
     it('should not send webhook for unsupported event types', async () => {
         await hooks.logEvent('test_project', 'verification', '/v1/verify/phone', [], 200, {}, mockPool as any);
 
-        await new Promise(resolve => setImmediate(resolve));
+        await new Promise(resolve => { setImmediate(resolve); });
 
         expect(fetchMock).not.toHaveBeenCalled();
     });

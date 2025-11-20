@@ -1,12 +1,13 @@
 
 // Import the actual validation functions from the validators
 import crypto from 'crypto';
+
 import { validateAddress } from '../../validators/address.js';
 import { validateEmail } from '../../validators/email.js';
 import { validateName } from '../../validators/name.js';
 import { validatePhone } from '../../validators/phone.js';
-import { ValidationMetrics, ValidationOrchestratorOptions, ValidationPayload } from './rules.types.js';
-import { ValidationCacheManager, buildEnhancedAddressValidationResult, buildEnhancedEmailValidationResult, buildEnhancedNameValidationResult, buildEnhancedPhoneValidationResult } from './test-rules.js';
+import type { ValidationMetrics, ValidationOrchestratorOptions, ValidationPayload } from './rules.types.js';
+import { buildEnhancedAddressValidationResult, buildEnhancedEmailValidationResult, buildEnhancedNameValidationResult, buildEnhancedPhoneValidationResult, ValidationCacheManager } from './test-rules.js';
 
 
 
@@ -301,7 +302,7 @@ export async function validateIP(ip: string, redis?: any): Promise<any> {
             if (cached) {
                 return JSON.parse(cached);
             }
-        } catch (error) {
+        } catch {
             // Continue with validation if cache fails
         }
     }
@@ -333,7 +334,7 @@ export async function validateIP(ip: string, redis?: any): Promise<any> {
         try {
             const cacheKey = `ip_validation:${ip}`;
             await redis.setex(cacheKey, 3600, JSON.stringify(result)); // Cache for 1 hour
-        } catch (error) {
+        } catch {
             // Don't fail if caching fails
         }
     }
@@ -351,7 +352,7 @@ export async function validateDevice(userAgent: string, redis?: any): Promise<an
             if (cached) {
                 return JSON.parse(cached);
             }
-        } catch (error) {
+        } catch {
             // Continue with validation if cache fails
         }
     }
@@ -380,7 +381,7 @@ export async function validateDevice(userAgent: string, redis?: any): Promise<an
         try {
             const cacheKey = `device_validation:${fingerprint}`;
             await redis.setex(cacheKey, 3600, JSON.stringify(result)); // Cache for 1 hour
-        } catch (error) {
+        } catch {
             // Don't fail if caching fails
         }
     }

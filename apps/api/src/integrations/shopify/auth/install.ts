@@ -1,4 +1,5 @@
-import { FastifyReply, FastifyRequest } from 'fastify';
+import type { FastifyReply, FastifyRequest } from 'fastify';
+
 import { SHOPIFY_SCOPE_STRING } from '../lib/scopes.js';
 
 export async function install(request: FastifyRequest, reply: FastifyReply) {

@@ -1,5 +1,6 @@
-import type { FastifyReply, FastifyRequest } from 'fastify';
 import { randomBytes } from 'node:crypto';
+
+import type { FastifyReply, FastifyRequest } from 'fastify';
 import type { Pool } from 'pg';
 
 interface ShopifySSOQuery {

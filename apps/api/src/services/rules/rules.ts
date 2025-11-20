@@ -1,7 +1,8 @@
 import { type FastifyReply, type FastifyRequest } from "fastify";
 import type { Redis as IORedisType } from "ioredis";
 import type { Pool } from "pg";
-import { DeleteCustomRuleData, DeleteCustomRuleResponses, GetAvailableRulesResponses, GetBuiltInRulesResponses, GetErrorCodeCatalogResponses, GetReasonCodeCatalogResponses, RegisterCustomRulesData, RegisterCustomRulesResponses, TestRulesAgainstPayloadData, TestRulesAgainstPayloadResponses } from "../../generated/fastify/types.gen.js";
+
+import type { DeleteCustomRuleData, DeleteCustomRuleResponses, GetAvailableRulesResponses, GetBuiltInRulesResponses, GetErrorCodeCatalogResponses, GetReasonCodeCatalogResponses, RegisterCustomRulesData, RegisterCustomRulesResponses, TestRulesAgainstPayloadData, TestRulesAgainstPayloadResponses } from "../../generated/fastify/types.gen.js";
 import { generateRequestId, sendServerError } from "../utils.js";
 import { getBuiltInRules as getBuiltInRulesConstants, reasonCodes } from "./rules.constants.js";
 import { handleDeleteCustomRule, handleRegisterCustomRules, handleTestRules } from "./rules.handlers.js";
@@ -12,15 +13,15 @@ export async function getBuiltInRules(
 ): Promise<FastifyReply<{ Body: GetBuiltInRulesResponses }>> {
     try {
         const request_id = generateRequestId();
-        
+
         // Debug logging to track issues
-        console.log(`[DEBUG] getBuiltInRules called with request_id: ${request_id}`);
-        console.log(`[DEBUG] Request auth:`, request.auth);
-        
+        // console.log(`[DEBUG] getBuiltInRules called with request_id: ${request_id}`);
+        // console.log(`[DEBUG] Request auth:`, request.auth);
+
         // Return only built-in rules
         const builtInRules = getBuiltInRulesConstants();
-        
-        console.log(`[DEBUG] getBuiltInRules - Returning ${builtInRules.length} built-in rules`);
+
+        // console.log(`[DEBUG] getBuiltInRules - Returning ${builtInRules.length} built-in rules`);
 
         const response = {
             rules: builtInRules,

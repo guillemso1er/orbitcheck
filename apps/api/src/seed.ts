@@ -2,7 +2,6 @@ import { createHash } from "node:crypto";
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 
-
 import AdmZip from 'adm-zip';
 import { Pool } from "pg";
 
@@ -281,5 +280,6 @@ export async function main(endPool: boolean = true): Promise<void> {
 }
 
 if (process.argv[1] === import.meta.url.slice(7)) {
+    // eslint-disable-next-line promise/prefer-await-to-then
     void main().catch(console.error);
 }

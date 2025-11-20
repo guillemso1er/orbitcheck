@@ -1,6 +1,8 @@
-import { FastifyReply, FastifyRequest } from 'fastify';
-import Redis from 'ioredis';
 import crypto from 'node:crypto';
+import { promisify } from 'node:util';
+
+import type { FastifyReply, FastifyRequest } from 'fastify';
+import type Redis from 'ioredis';
 import type { Pool } from 'pg';
 
 /**
@@ -88,7 +90,9 @@ export async function createDashboardSession(
 
     // Generate a one-time token for cross-domain session establishment
     // This token will be exchanged for a session cookie on the dashboard domain
-    const oneTimeToken = crypto.randomBytes(32).toString('base64url');
+    const randomBytesAsync = promisify(crypto.randomBytes);
+    const buffer = await randomBytesAsync(32);
+    const oneTimeToken = buffer.toString('base64url');
 
     // Store the user_id associated with this token in Redis (TTL: 60 seconds)
     if (redis) {

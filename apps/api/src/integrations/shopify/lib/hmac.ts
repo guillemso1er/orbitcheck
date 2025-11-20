@@ -1,5 +1,5 @@
 import crypto from 'crypto';
-import { FastifyReply, FastifyRequest } from 'fastify';
+import type { FastifyReply, FastifyRequest } from 'fastify';
 
 export function rawBody() {
     return async (request: FastifyRequest, reply: FastifyReply) => {

@@ -1,3 +1,5 @@
+import { once } from 'node:events';
+
 import cookie from "@fastify/cookie";
 import secureSession from '@fastify/secure-session';
 import metrics from "@immobiliarelabs/fastify-metrics";
@@ -9,8 +11,8 @@ import Fastify from "fastify";
 import { type Redis as IORedisType, Redis } from 'ioredis';
 import type { ScheduledTask } from 'node-cron';
 import cron from 'node-cron';
-import { once } from 'node:events';
 import { Pool } from "pg";
+
 import { MESSAGES, REQUEST_TIMEOUT_MS, ROUTES, SESSION_MAX_AGE_MS, STARTUP_SMOKE_TEST_TIMEOUT_MS } from "./config.js";
 import { runLogRetention } from './cron/retention.js';
 import { environment } from "./environment.js";
@@ -20,8 +22,8 @@ import { batchDedupeProcessor } from './jobs/batchDedupe.js';
 import { batchValidationProcessor } from './jobs/batchValidation.js';
 import { disposableProcessor } from './jobs/refreshDisposable.js';
 import { inputSanitizationHook } from "./middleware/inputSanitization.js";
-import { setupCors } from "./plugins/cors.js";
-import { setupDocumentation } from "./plugins/documentation.js";
+import corsPlugin from "./plugins/cors.js";
+import documentationPlugin from "./plugins/documentation.js";
 import { setupErrorHandler } from "./plugins/errorHandler.js";
 import { setupSecurityHeaders } from "./plugins/securityHeaders.js";
 import { registerHealthRoutes } from "./routes/health.js";
@@ -65,7 +67,7 @@ export async function build(pool: Pool, redis: IORedisType): Promise<FastifyInst
     }) as any;
 
     // Setup API documentation
-    await setupDocumentation(app);
+    await app.register(documentationPlugin);
 
     // Add input sanitization hook - use preValidation to catch content-type errors early
     app.addHook('preValidation', async (request: any, reply: any) => {
@@ -89,7 +91,7 @@ export async function build(pool: Pool, redis: IORedisType): Promise<FastifyInst
     await setupErrorHandler(app);
 
     // Setup CORS
-    await setupCors(app);
+    await app.register(corsPlugin);
 
     // Register cookie support
     await app.register(cookie);
@@ -154,7 +156,7 @@ async function closeResources(
     const isTestEnvironment = process.env.NODE_ENV === 'test';
 
     if (!isTestEnvironment) {
-        console.log('Closing application resources...');
+        // console.log('Closing application resources...');
     }
 
     await shutdownShopifyTelemetry();
@@ -170,11 +172,13 @@ async function closeResources(
             })
         );
     }
+    // eslint-disable-next-line require-atomic-updates
     activeWorkers = [];
 
     // Stop all cron tasks
     activeCronTasks.forEach(task => {
         if (task && typeof task.stop === 'function') {
+            // eslint-disable-next-line @typescript-eslint/no-floating-promises
             task.stop();
         }
     });
@@ -188,7 +192,7 @@ async function closeResources(
     ]);
 
     if (!isTestEnvironment) {
-        console.log('All resources closed.');
+        // console.log('All resources closed.');
     }
 }
 
@@ -215,11 +219,11 @@ export async function start(): Promise<void> {
         if (process.env.NODE_ENV !== 'production' && process.env.NODE_ENV !== 'test') {
             try {
                 if (!isTestEnvironment) {
-                    console.log('Running database seed...');
+                    // console.log('Running database seed...');
                 }
                 await seedDatabase(false);
                 if (!isTestEnvironment) {
-                    console.log('Database seed completed.');
+                    // console.log('Database seed completed.');
                 }
             } catch (error) {
                 if (!isTestEnvironment) {
@@ -340,6 +344,7 @@ export async function start(): Promise<void> {
 
             // Run initial refresh job in background
             const disposableQueue = new Queue('disposable', { connection: appRedis });
+            // eslint-disable-next-line promise/prefer-await-to-then, promise/prefer-await-to-callbacks
             void disposableQueue.add('refresh', {}).catch(error => {
                 app?.log.error({ err: error }, 'Failed to add initial refresh job');
             });
@@ -363,7 +368,7 @@ export async function start(): Promise<void> {
         if (!isTestEnvironment) {
             setTimeout(() => {
                 console.error('Process did not exit cleanly, forcing shutdown now.');
-                process.exit(1);
+                process.exitCode = 1;
             }, 1000).unref();
         }
 

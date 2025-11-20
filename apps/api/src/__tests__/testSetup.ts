@@ -378,7 +378,7 @@ export const createApp = async (): Promise<FastifyInstance> => {
 
   // Use the unified registerRoutes from web.ts which uses fastify-openapi-glue
   const { registerRoutes } = await import('../web.js');
-  registerRoutes(app, mockPool as any, mockRedisInstance as any);
+  await registerRoutes(app, mockPool as any, mockRedisInstance as any);
 
   // Add security headers hook like in server.ts
   app.addHook('onSend', async (request, reply, payload) => {

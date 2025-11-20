@@ -1,6 +1,8 @@
-import type { FastifyReply, FastifyRequest } from "fastify";
 import crypto, { webcrypto as nodeWebCrypto } from "node:crypto";
+
+import type { FastifyReply, FastifyRequest } from "fastify";
 import type { Pool } from "pg";
+
 import { API_KEY_PREFIX, CRYPTO_IV_BYTES, CRYPTO_KEY_BYTES, ENCODING_HEX, ENCODING_UTF8, ENCRYPTION_ALGORITHM, HASH_ALGORITHM, STATUS } from "../config.js";
 import { environment } from "../environment.js";
 import { HTTP_STATUS } from "../errors.js";

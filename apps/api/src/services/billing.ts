@@ -1,6 +1,7 @@
 import type { FastifyReply, FastifyRequest } from "fastify";
 import type { Pool } from "pg";
 import Stripe from 'stripe';
+
 import { STRIPE_API_VERSION, STRIPE_DEFAULT_SECRET_KEY } from "../config.js";
 import { HTTP_STATUS } from "../errors.js";
 import type { CreateCheckoutSessionResponses, CreateCustomerPortalSessionResponses } from "../generated/fastify/types.gen.js";

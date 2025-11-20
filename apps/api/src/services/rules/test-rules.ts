@@ -29,9 +29,9 @@ export class RuleEvaluator {
 
         try {
             // Set up timeout promise
-            const timeoutPromise = new Promise((_, reject) =>
-                setTimeout(() => reject(new Error('Rule evaluation timeout')), timeout)
-            );
+            const timeoutPromise = new Promise((_, reject) => {
+                setTimeout(() => reject(new Error('Rule evaluation timeout')), timeout);
+            });
 
             // Set up evaluation promise
             const evaluationPromise = this.evaluateCondition(rule.condition || rule.logic, context);
@@ -178,7 +178,7 @@ export class RuleEvaluator {
                 if (typeof value === 'object') return Object.keys(value).length === 0;
                 return false;
             },
-            isEmail: (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value),
+            isEmail: (value: string) => /^[^\s@]+@[^\s@][^\s.@]*\.[^\s@]+$/.test(value),
             isPhone: (value: string) => /^\+?[1-9]\d{1,14}$/.test(value),
             isPostalCode: (value: string, country: string = 'US') => {
                 const patterns: Record<string, RegExp> = {
@@ -199,7 +199,7 @@ export class RuleEvaluator {
             emailFormatInvalid: (value: any) => {
                 if (!value) return false;
                 if (typeof value === 'string') {
-                    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                    const emailPattern = /^[^\s@]+@[^\s@][^\s.@]*\.[^\s@]+$/;
                     return !emailPattern.test(value);
                 }
                 return value.valid === false && value.reason_codes &&
@@ -208,7 +208,7 @@ export class RuleEvaluator {
             emailHasFormatIssue: (value: any) => {
                 if (!value) return false;
                 if (typeof value === 'string') {
-                    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                    const emailPattern = /^[^\s@]+@[^\s@][^\s.@]*\.[^\s@]+$/;
                     return !emailPattern.test(value);
                 }
                 return value && value.valid === false;

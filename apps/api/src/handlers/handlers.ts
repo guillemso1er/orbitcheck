@@ -1,8 +1,10 @@
-import { FastifyInstance, RawServerBase } from "fastify";
-import type { Redis as IORedisType } from "ioredis";
 import * as crypto from 'node:crypto';
-import { Pool } from "pg";
-import { RouteHandlers } from "../generated/fastify/fastify.gen.js";
+
+import type { FastifyInstance, RawServerBase } from "fastify";
+import type { Redis as IORedisType } from "ioredis";
+import type { Pool } from "pg";
+
+import type { RouteHandlers } from "../generated/fastify/fastify.gen.js";
 import { getAccessScopes } from "../integrations/shopify/api/access-scopes.js";
 import { getShopSettings, updateShopSettings } from "../integrations/shopify/api/shop-settings.js";
 import { callback } from "../integrations/shopify/auth/callback.js";

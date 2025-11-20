@@ -1,7 +1,8 @@
-import { FastifyReply, FastifyRequest } from 'fastify';
+import type { FastifyReply, FastifyRequest } from 'fastify';
 import type { Pool } from 'pg';
-import { createShopifyOnboardingService } from '../../../services/shopify-onboarding.js';
+
 import { createShopifyService } from '../../../services/shopify.js';
+import { createShopifyOnboardingService } from '../../../services/shopify-onboarding.js';
 import { shopifyGraphql } from '../lib/graphql.js';
 import { missingScopes, parseScopes } from '../lib/scopes.js';
 import { captureShopifyEvent } from '../lib/telemetry.js';

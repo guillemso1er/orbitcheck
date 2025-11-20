@@ -1,7 +1,9 @@
+import crypto from "node:crypto";
+
 import type { FastifyInstance, FastifyReply, FastifyRequest, RawServerBase } from "fastify";
 import type { Redis } from "ioredis";
-import crypto from "node:crypto";
 import type { Pool } from "pg";
+
 import { HTTP_STATUS } from "../errors.js";
 import type { EvaluateOrderData, EvaluateOrderResponses } from "../generated/fastify/types.gen.js";
 import { logEvent } from "../hooks.js";
@@ -11,27 +13,26 @@ import { validateEmail } from "../validators/email.js";
 import { validatePhone } from "../validators/phone.js";
 import { dedupeAddress, dedupeCustomer } from "./dedupe/dedupe-logic.js";
 import { getBuiltInRules } from "./rules/rules.constants.js";
+import type { ValidationPayload } from "./rules/rules.types.js";
 import { validatePayload } from "./rules/rules.validation.js";
 import { RiskScoreCalculator, RuleEvaluator } from "./rules/test-rules.js";
 import { generateRequestId, sendServerError } from "./utils.js";
 
-function mapOrderToValidationPayload(body: any) {
+function mapOrderToValidationPayload(body: any): ValidationPayload {
     return {
         email: body.customer?.email,
         phone: body.customer?.phone,
-        first_name: body.customer?.first_name,
-        last_name: body.customer?.last_name,
-        customer: body.customer,
         name: body.customer?.first_name && body.customer?.last_name
             ? `${body.customer.first_name} ${body.customer.last_name}`
             : undefined,
         address: body.shipping_address,
         transaction_amount: body.total_amount,
         currency: body.currency,
-        payment_method: body.payment_method,
         session_id: body.session_id,
         metadata: {
             order_id: body.order_id,
+            payment_method: body.payment_method,
+            customer_id: body.customer?.id,
             ...body.metadata
         }
     };
@@ -255,8 +256,8 @@ export async function evaluateOrderForRiskAndRulesDirect(
                 session_id: validationPayload.session_id,
             };
 
-            // Evaluate each rule
-            for (const rule of allRules) {
+            // Evaluate each rule in parallel
+            await Promise.all(allRules.map(async (rule) => {
                 try {
                     const evaluation = await RuleEvaluator.evaluate(rule, evaluationContext, { timeout: 50, debug: false });
 
@@ -275,10 +276,11 @@ export async function evaluateOrderForRiskAndRulesDirect(
                             reason_codes.push(evaluation.reason);
                         }
                     }
-                } catch (error) {
-                    // Log error but continue with other rules
+                } catch {
+                    // Ignore errors in metrics collection
                 }
             }
+            ));
 
             // Get final decision from rules evaluation
             const blockedRules = triggeredRules.filter(r => r.action === 'block');
@@ -359,7 +361,7 @@ export async function evaluateOrderForRiskAndRulesDirect(
             // Add risk analysis factors to reason codes
             reason_codes.push(...riskAnalysis.factors);
         }
-    } catch (error) {
+    } catch {
         // Continue with existing risk assessment if rules evaluation fails - this is expected in test environment
     }
 
@@ -495,9 +497,9 @@ export async function evaluateOrderForRiskAndRules<TServer extends RawServerBase
                 if (rows.length > 0) {
                     project_id = rows[0].project_id;
                 }
-            } catch (error) {
+            } catch {
                 // If we still can't get project_id, return error
-                request.log.error({ error }, 'Failed to resolve project_id for order evaluation');
+                request.log.error({ error: 'Failed to resolve project_id' }, 'Failed to resolve project_id for order evaluation');
                 return rep.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).send({
                     error: {
                         code: 'PROJECT_ID_REQUIRED',
@@ -728,8 +730,8 @@ export async function evaluateOrderForRiskAndRules<TServer extends RawServerBase
                     session_id: validationPayload.session_id,
                 };
 
-                // Evaluate each rule
-                for (const rule of allRules) {
+                // Evaluate each rule in parallel
+                await Promise.all(allRules.map(async (rule) => {
                     try {
                         const evaluation = await RuleEvaluator.evaluate(rule, evaluationContext, { timeout: 50, debug: false });
 
@@ -751,7 +753,7 @@ export async function evaluateOrderForRiskAndRules<TServer extends RawServerBase
                     } catch (error) {
                         app.log.warn({ err: error, rule_id: rule.id }, "Rule evaluation failed");
                     }
-                }
+                }));
 
                 // Get final decision from rules evaluation
                 const blockedRules = triggeredRules.filter(r => r.action === 'block');

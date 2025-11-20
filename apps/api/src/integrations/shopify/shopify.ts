@@ -1,7 +1,9 @@
 // plugins/shopify.ts
+import { Readable } from 'node:stream';
+
 import fp from 'fastify-plugin';
 import type { Redis as IORedisType } from 'ioredis';
-import { Readable } from 'node:stream';
+
 import { setCsp } from './lib/csp.js';
 import { rawBody, verifyHmac } from './lib/hmac.js';
 import { preventDuplicates } from './lib/idempotency.js';
