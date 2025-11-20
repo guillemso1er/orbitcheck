@@ -60,6 +60,7 @@ export const env = cleanEnv(process.env, {
   LOCATIONIQ_KEY: str({ default: '' }),
   DISPOSABLE_LIST_URL: url({ default: 'https://raw.githubusercontent.com/disposable/disposable-email-domains/master/domains.json' }),
   VIES_WSDL_URL: url({ default: 'https://ec.europa.eu/taxation_customs/vies/checkVatService.wsdl' }),
+  GEOAPIFY_KEY: str({ default: '' }),
 
   POSTHOG_KEY: str({ default: '' }),
   POSTHOG_HOST: url({ default: 'https://us.i.posthog.com' }),
@@ -85,6 +86,8 @@ export const env = cleanEnv(process.env, {
   // Geocoding
   GOOGLE_GEOCODING_KEY: str({ default: '' }),
   USE_GOOGLE_FALLBACK: bool({ default: false }),
+  RADAR_KEY: str({ default: '' }),
+  RADAR_API_URL: url({ default: 'https://api.radar.io/v1' }),
 
   // Auth/secrets
   JWT_SECRET: isProd ? str() : str({ default: `dev_jwt_${randomHex(16)}` }),

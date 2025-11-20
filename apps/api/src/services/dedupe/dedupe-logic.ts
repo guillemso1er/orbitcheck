@@ -10,7 +10,7 @@ import {
   SIMILARITY_EXACT,
   SIMILARITY_FUZZY_THRESHOLD
 } from "../../validation.js";
-import { normalizeAddress } from "../../validators/address.js";
+import { validateAddress } from "../../validators/address.js";
 
 export interface DedupeMatch {
   id: string;
@@ -111,8 +111,8 @@ export async function dedupeAddress(
   const matches: DedupeMatch[] = [];
 
   // Normalize the input address
-  const normAddr = await normalizeAddress({ line1, line2: line2 || '', city, state: state || '', postal_code, country });
-  const addrHash = crypto.createHash('sha256').update(JSON.stringify(normAddr)).digest('hex');
+  const normAddr = await validateAddress({ line1, line2: line2 || '', city, state: state || '', postal_code, country }, pool);
+  const addrHash = crypto.createHash('sha256').update(JSON.stringify(normAddr.normalized)).digest('hex');
 
   // Deterministic match: exact address_hash
   const { rows: hashMatches } = await pool.query(
@@ -134,7 +134,7 @@ export async function dedupeAddress(
   if (matches.length === 0) {
     const { rows: exactMatches } = await pool.query(
       'SELECT id, line1, line2, city, state, postal_code, country, lat, lng FROM addresses WHERE project_id = $1 AND postal_code = $2 AND lower(city) = lower($3) AND country = $4',
-      [project_id, normAddr.postal_code, normAddr.city, normAddr.country]
+      [project_id, normAddr.normalized.postal_code, normAddr.normalized.city, normAddr.normalized.country]
     );
     for (const row of exactMatches) {
       if (row.id && !matches.some(m => m.id === row.id)) {
@@ -156,7 +156,7 @@ export async function dedupeAddress(
       WHERE project_id = $1
       AND (similarity(line1, $2) > $4 OR similarity(city, $3) > $4)
       ORDER BY score DESC LIMIT $5`,
-    [project_id, normAddr.line1, normAddr.city, SIMILARITY_FUZZY_THRESHOLD, DEDUPE_FUZZY_LIMIT]
+    [project_id, normAddr.normalized.line1, normAddr.normalized.city, SIMILARITY_FUZZY_THRESHOLD, DEDUPE_FUZZY_LIMIT]
   );
   for (const row of fuzzyMatches) {
     if (row.id && !matches.some(m => m.id === row.id)) {

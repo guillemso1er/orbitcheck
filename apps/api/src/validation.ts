@@ -4,6 +4,8 @@ export const REASON_CODES = {
   ADDRESS_POSTAL_CITY_MISMATCH: 'address.postal_city_mismatch',
   ADDRESS_GEO_OUT_OF_BOUNDS: 'address.geo_out_of_bounds',
   ADDRESS_GEOCODE_FAILED: 'address.geocode_failed',
+  ADDRESS_NOT_FOUND: 'address.not_found',
+  MISSING_REQUIRED_FIELDS: 'missing_required_fields',
 
   // Email
   EMAIL_INVALID_FORMAT: 'email.invalid_format',

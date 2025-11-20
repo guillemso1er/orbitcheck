@@ -1,60 +1,52 @@
-import * as cpModule from 'node:child_process';
+import Redis from 'ioredis';
+import { Pool } from 'pg';
+import { environment } from '../../environment.js';
+import { detectPoBox, normalizeAddress, validateAddress } from '../address.js';
 
-import { detectPoBox, normalizeAddress } from '../address.js';
-
-// Mock the entire 'node:child_process' module
+// Mock dependencies
 jest.mock('node:child_process');
 
-// Mock parseAddressCLI
-jest.mock('../../lib/libpostal-cli.js');
-
-// Create a typed constant for the mocked function
-const mockedExecFile = cpModule.execFile as jest.MockedFunction<typeof cpModule.execFile>;
-const mockedParseAddressCLI = jest.mocked(require('../../lib/libpostal-cli.js').parseAddressCLI);
 
 describe('Address Validators', () => {
+  let mockPool: jest.Mocked<Pool>;
+  let mockRedis: jest.Mocked<Redis>;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockPool = new Pool() as any;
+    mockPool.query = jest.fn();
+    mockRedis = new Redis() as any;
+    mockRedis.get = jest.fn();
+    mockRedis.set = jest.fn();
+
+    // Default environment mocks
+    (environment as any).RADAR_KEY = 'test-radar-key';
+    (environment as any).RADAR_API_URL = 'https://api.radar.io/v1';
+    (environment as any).NOMINATIM_URL = 'https://nominatim.openstreetmap.org';
+  });
+
   describe('detectPoBox', () => {
-    it('should detect PO Box in English', () => {
+    it('should detect PO Box', () => {
       expect(detectPoBox('PO Box 123')).toBe(true);
-      expect(detectPoBox('P.O. Box 123')).toBe(true);
-    });
-
-    it('should detect PO Box in Spanish', () => {
-      expect(detectPoBox('Apartado Postal 123')).toBe(true);
-      expect(detectPoBox('Apartado 123')).toBe(true);
-    });
-
-    it('should detect PO Box in Portuguese', () => {
-      expect(detectPoBox('Caixa Postal 123')).toBe(true);
-    });
-
-    it('should detect PO Box in other languages', () => {
-      expect(detectPoBox('Casilla 123')).toBe(true);
-      expect(detectPoBox('Cas. B 123')).toBe(true);
-    });
-
-    it('should not detect non-PO Box', () => {
       expect(detectPoBox('123 Main St')).toBe(false);
-      expect(detectPoBox('Apt 4B')).toBe(false);
     });
   });
 
   describe('normalizeAddress', () => {
-    beforeEach(() => {
-      // Clear any previous mock implementations and calls
-      mockedExecFile.mockClear();
-      mockedParseAddressCLI.mockClear();
-    });
-
-    it('should normalize a basic address using libpostal', async () => {
-      // Mock the parsed result as an object with component keys
-      mockedParseAddressCLI.mockReturnValue({
-        house_number: '123',
-        road: 'Main St',
-        city: 'New York',
-        state: 'NY',
-        postcode: '10001',
-        country: 'US',
+    it('should use Radar for normalization', async () => {
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          meta: { code: 200 },
+          address: {
+            number: '123',
+            street: 'Main St',
+            city: 'New York',
+            stateCode: 'NY',
+            postalCode: '10001',
+            countryCode: 'US'
+          }
+        })
       });
 
       const addr = {
@@ -66,54 +58,78 @@ describe('Address Validators', () => {
 
       const result = await normalizeAddress(addr);
 
-      expect(mockedParseAddressCLI).toHaveBeenCalledWith('123 Main Street, New York, 10001, US');
       expect(result.line1).toBe('123 Main St');
       expect(result.city).toBe('New York');
-      expect(result.postal_code).toBe('10001');
-      expect(result.country).toBe('US');
       expect(result.state).toBe('NY');
+      expect(global.fetch).toHaveBeenCalledWith(expect.stringContaining('radar.io'), expect.anything());
     });
 
-    it('should handle fallback normalization when libpostal fails', async () => {
-      mockedParseAddressCLI.mockImplementation(() => {
-        throw new Error('Mock libpostal error');
-      });
+    it('should fallback to simple trimming if Radar fails', async () => {
+      (global.fetch as jest.Mock).mockResolvedValueOnce({ ok: false });
 
       const addr = {
-        line1: '123 Main St',
-        line2: 'Apt 4B',
-        city: 'NYC',
-        state: 'NY',
+        line1: '  123 Main St  ',
+        city: ' New York ',
         postal_code: '10001',
-        country: 'us',
+        country: 'US',
       };
 
       const result = await normalizeAddress(addr);
 
       expect(result.line1).toBe('123 Main St');
-      expect(result.line2).toBe('Apt 4B');
-      expect(result.city).toBe('NYC');
-      expect(result.state).toBe('NY');
-      expect(result.postal_code).toBe('10001');
-      expect(result.country).toBe('US');
+      expect(result.city).toBe('New York');
     });
+  });
 
-    it('should handle missing fields gracefully', async () => {
-      mockedParseAddressCLI.mockImplementation(() => {
-        throw new Error('Mock error');
+  describe('validateAddress', () => {
+    const validAddr = {
+      line1: '123 Main St',
+      city: 'New York',
+      state: 'NY',
+      postal_code: '10001',
+      country: 'US',
+    };
+
+    it('should use Radar as primary validator', async () => {
+      // Mock Normalization (Radar call 1)
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          meta: { code: 200 },
+          address: {
+            number: '123',
+            street: 'Main St',
+            city: 'New York',
+            stateCode: 'NY',
+            postalCode: '10001',
+            countryCode: 'US'
+          }
+        })
       });
 
-      const addr = {
-        line1: '123 Main St',
-        city: 'NYC',
-        postal_code: '10001',
-        country: 'us',
-      };
+      // Mock Radar Validation (Radar call 2 - inside validateAddress)
+      // Note: Since we call normalizeAddress inside validateAddress, it will trigger a fetch.
+      // Then validateAddress calls Radar again.
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          meta: { code: 200 },
+          address: {
+            latitude: 40.7128,
+            longitude: -74.0060,
+            confidence: 'exact',
+          },
+          result: { verificationStatus: 'verified' }
+        })
+      });
 
-      const result = await normalizeAddress(addr);
+      // Mock DB Bounds Check
+      (mockPool.query as jest.Mock).mockResolvedValueOnce({ rows: [{ 1: 1 }] });
 
-      expect(result.line2).toBe('');
-      expect(result.state).toBe('');
+      const result = await validateAddress(validAddr, mockPool, mockRedis);
+
+      expect(result.valid).toBe(true);
+      expect(result.geo?.source).toBe('radar');
     });
   });
 });

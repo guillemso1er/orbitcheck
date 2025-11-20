@@ -1,16 +1,15 @@
 import type { Redis } from "ioredis";
+import console from "node:console";
 import crypto from "node:crypto";
 import type { Pool } from "pg";
-
-// Adjust these import paths to match your project structure
-import { environment } from "../environment.js";
+import { environment } from "../environment.js"; // Ensure RADAR_KEY and GEOAPIFY_KEY are here
 import { ADDRESS_VALIDATION_TTL_DAYS, REASON_CODES } from "../validation.js";
 
 // --- Configuration ---
 const CACHE_TTL_SECONDS = ADDRESS_VALIDATION_TTL_DAYS * 24 * 3600;
+const FUZZY_MATCH_THRESHOLD = 0.75; // 0.0 to 1.0 (75% similarity required)
 
 // --- Interfaces ---
-
 interface NormalizedAddress {
     line1: string;
     line2: string;
@@ -24,134 +23,264 @@ interface GeoLocation {
     lat: number;
     lng: number;
     confidence: number; // 0 to 1
-    source: "locationiq" | "nominatim" | "google";
+    source: "radar" | "geoapify" | "nominatim" | "local_db";
 }
 
 interface ValidationResult {
     valid: boolean;
+    score: number; // 0-100 Confidence Score
     normalized: NormalizedAddress;
-    po_box: boolean;
-    postal_city_match: boolean;
-    in_bounds: boolean;
+    metadata: {
+        is_residential: boolean | null;
+        is_po_box: boolean;
+        format_matched: boolean;
+    };
     geo: GeoLocation | null;
     reason_codes: string[];
     request_id: string;
-    ttl_seconds: number;
-    deliverable: boolean;
-}
-
-// Geocoding API Response Interfaces
-interface NominatimResponse {
-    lat: string;
-    lon: string;
-    importance?: number;
-}
-
-interface GoogleGeocodeResponse {
-    status: string;
-    results: Array<{
-        geometry: {
-            location: { lat: number; lng: number };
-        };
-        types: string[];
-    }>;
+    source_used: string;
 }
 
 // --- Helper Functions ---
 
 /**
- * Detects if an address line contains a P.O. Box.
+ * Calculates string similarity (Levenshtein Distance).
+ * Returns 0.0 (completely different) to 1.0 (exact match).
  */
-export function detectPoBox(line: string | null | undefined): boolean {
-    const s = (line || "").toLowerCase();
-    return /\b(?:p\.?o\.?\s*box|apartado(?:\s+postal)?|caixa\s+postal|casilla|cas\.\s*b|box)\b/i.test(s);
+function getSimilarity(s1: string, s2: string): number {
+    const longer = s1.length > s2.length ? s1 : s2;
+    const shorter = s1.length > s2.length ? s2 : s1;
+    if (longer.length === 0) return 1.0;
+
+    const costs = new Array();
+    for (let i = 0; i <= shorter.length; i++) {
+        let lastValue = i;
+        for (let j = 0; j <= longer.length; j++) {
+            if (i === 0) costs[j] = j;
+            else {
+                if (j > 0) {
+                    let newValue = costs[j - 1];
+                    if (s1.charAt(i - 1) !== s2.charAt(j - 1))
+                        newValue = Math.min(Math.min(newValue, lastValue), costs[j]) + 1;
+                    costs[j - 1] = lastValue;
+                    lastValue = newValue;
+                }
+            }
+        }
+        if (i > 0) costs[longer.length] = lastValue;
+    }
+    return (longer.length - costs[longer.length]) / longer.length;
 }
 
 /**
- * Normalizes an address using native libpostal bindings.
+ * Expands common abbreviations for better DB matching.
+ * e.g. "St" -> "Street", "NY" -> "New York" (basic)
  */
-export async function normalizeAddress(addr: {
-    line1: string;
-    line2?: string;
-    city: string;
-    state?: string;
-    postal_code: string;
-    country: string;
-}): Promise<NormalizedAddress> {
-    // 1. Don't normalize PO Boxes to prevent data loss
-    if (detectPoBox(addr.line1) || detectPoBox(addr.line2)) {
-        return {
-            line1: (addr.line1 || "").trim(),
-            line2: (addr.line2 || "").trim(),
-            city: (addr.city || "").trim(),
-            state: (addr.state || "").trim(),
-            postal_code: (addr.postal_code || "").trim(),
-            country: (addr.country || "").toUpperCase().trim(),
-        };
-    }
-
-    // 2. Construct the full string for the parser
-    const inputString = [
-        addr.line1,
-        addr.line2,
-        addr.city,
-        addr.state,
-        addr.postal_code,
-        addr.country
-    ].filter(Boolean).join(", ");
-
-    try {
-        const response = await fetch(`${environment.ADDRESS_SERVICE_URL}/parse`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ address: inputString })
-        });
-
-        if (!response.ok) throw new Error("Parser service failed");
-
-        const parts = await response.json();
-
-
-
-        // Reconstruct
-        // Note: libpostal returns lowercase. We capitalize only Country usually.
-        const house = parts.house_number ? `${parts.house_number} ` : "";
-        const road = parts.road || "";
-        const newLine1 = (house + road).trim() || addr.line1; // Fallback to original if parser completely failed
-
-        return {
-            line1: newLine1,
-            line2: (parts.unit || addr.line2 || "").trim(),
-            city: (parts.city || parts.suburb || addr.city || "").trim(),
-            state: (parts.state || addr.state || "").trim(),
-            postal_code: (parts.postcode || addr.postal_code || "").trim(),
-            country: (parts.country || addr.country || "").toUpperCase().trim(),
-        };
-    } catch (e) {
-        // Fallback if native binding fails (rare)
-        console.error("Libpostal parse error:", e);
-        return {
-            line1: (addr.line1 || "").trim(),
-            line2: (addr.line2 || "").trim(),
-            city: (addr.city || "").trim(),
-            state: (addr.state || "").trim(),
-            postal_code: (addr.postal_code || "").trim(),
-            country: (addr.country || "").toUpperCase().trim(),
-        };
-    }
+function normalizeForSearch(text: string): string {
+    if (!text) return "";
+    const replacements: Record<string, string> = {
+        "st": "street", "ave": "avenue", "rd": "road", "blvd": "boulevard",
+        "ln": "lane", "dr": "drive", "ct": "court", "apt": "apartment",
+        "n": "north", "s": "south", "e": "east", "w": "west"
+    };
+    return text.toLowerCase().replace(/[.,]/g, "").split(" ").map(w => replacements[w] || w).join(" ");
 }
 
-// --- Main Validator ---
+export function detectPoBox(line: string | null | undefined): boolean {
+    const s = (line || "").toLowerCase().replace(/[.]/g, "");
+    return /\b(?:po box|apartado|box|pob|post office box)\b/i.test(s);
+}
+
+// --- Validator Providers ---
+
+/**
+ * TIER 1: Radar (Best Free Commercial Grade)
+ * Limit: 100,000 requests / month free.
+ */
+async function validateWithRadar(addr: NormalizedAddress): Promise<Partial<ValidationResult> | null> {
+    if (!environment.RADAR_KEY) return null;
+
+    try {
+        const params = new URLSearchParams({
+            country: addr.country,
+            state: addr.state,
+            city: addr.city,
+            postalCode: addr.postal_code,
+            number: addr.line1.split(' ')[0],
+            street: addr.line1
+        });
+
+        const res = await fetch(`${environment.RADAR_API_URL}/addresses/validate?${params}`, {
+            headers: { "Authorization": environment.RADAR_KEY }
+        });
+
+        if (!res.ok) return null;
+        const data = await res.json() as any;
+
+        if (data.meta.code === 200 && data.address) {
+            const a = data.address;
+            const status = data.result.verificationStatus; // verified, partially verified, ambiguous, unverified
+
+            const isValid = status === "verified" || status === "partially verified";
+            const confidenceMap: any = { exact: 1.0, high: 0.9, medium: 0.7, low: 0.5 };
+            const conf = confidenceMap[a.confidence] || 0.5;
+
+            return {
+                valid: isValid,
+                score: isValid ? conf * 100 : 20,
+                normalized: {
+                    line1: `${a.number || ''} ${a.street || ''}`.trim() || addr.line1,
+                    line2: addr.line2, // Radar doesn't handle secondary units well in free tier
+                    city: a.city || addr.city,
+                    state: a.stateCode || a.state || addr.state,
+                    postal_code: a.postalCode || addr.postal_code,
+                    country: a.countryCode || addr.country
+                },
+                metadata: {
+                    is_residential: null,
+                    is_po_box: detectPoBox(addr.line1),
+                    format_matched: true
+                },
+                geo: {
+                    lat: a.latitude,
+                    lng: a.longitude,
+                    confidence: conf,
+                    source: "radar"
+                },
+                source_used: "radar",
+                reason_codes: isValid ? [] : [REASON_CODES.ADDRESS_GEOCODE_FAILED]
+            };
+        }
+    } catch (e) {
+        console.error("Radar validation error:", e);
+    }
+    return null;
+}
+
+/**
+ * TIER 2: Geoapify (Excellent Backup)
+ * Limit: 3,000 requests / day free.
+ */
+async function validateWithGeoapify(addr: NormalizedAddress): Promise<Partial<ValidationResult> | null> {
+    if (!environment.GEOAPIFY_KEY) return null;
+
+    try {
+        const text = `${addr.line1}, ${addr.city}, ${addr.state} ${addr.postal_code}, ${addr.country}`;
+        const url = `https://api.geoapify.com/v1/geocode/search?text=${encodeURIComponent(text)}&apiKey=${environment.GEOAPIFY_KEY}&limit=1`;
+
+        const res = await fetch(url);
+        if (!res.ok) return null;
+
+        const data = await res.json() as any;
+        if (data.features && data.features.length > 0) {
+            const f = data.features[0].properties;
+
+            // Geoapify returns a "rank" confidence. We check if it matched the street.
+            const matchType = f.rank.match_type; // full_match, match_by_street, match_by_city, etc.
+            const isValid = ["full_match", "match_by_street"].includes(matchType);
+
+            return {
+                valid: isValid,
+                score: f.rank.confidence * 100,
+                normalized: {
+                    line1: f.address_line1 || addr.line1,
+                    line2: addr.line2,
+                    city: f.city || addr.city,
+                    state: f.state_code || f.state || addr.state,
+                    postal_code: f.postcode || addr.postal_code,
+                    country: f.country_code ? f.country_code.toUpperCase() : addr.country
+                },
+                metadata: {
+                    is_residential: null,
+                    is_po_box: false,
+                    format_matched: true
+                },
+                geo: {
+                    lat: data.features[0].geometry.coordinates[1],
+                    lng: data.features[0].geometry.coordinates[0],
+                    confidence: f.rank.confidence,
+                    source: "geoapify"
+                },
+                source_used: "geoapify",
+                reason_codes: isValid ? [] : ["ADDRESS_PARTIAL_MATCH"]
+            };
+        }
+    } catch (e) {
+        console.error("Geoapify validation error:", e);
+    }
+    return null;
+}
+
+/**
+ * TIER 3: Nominatim (OpenStreetMap)
+ * Limit: Rate limited (1 req/sec), but free.
+ */
+async function validateWithNominatim(addr: NormalizedAddress): Promise<Partial<ValidationResult> | null> {
+    try {
+        await new Promise(r => setTimeout(r, 500)); // Throttle slightly
+        const q = encodeURIComponent(`${addr.line1}, ${addr.city}, ${addr.state}, ${addr.postal_code}, ${addr.country}`);
+
+        const res = await fetch(`${environment.NOMINATIM_URL}/search?format=json&addressdetails=1&limit=1&q=${q}`, {
+            headers: { "User-Agent": "OrbitCheck/2.0 (Internal Tool)" }
+        });
+
+        if (res.ok) {
+            const data = await res.json() as any[];
+            if (data[0]) {
+                const d = data[0];
+                // Check strictness: Did the postal code actually match?
+                const returnedZip = d.address.postcode;
+                const strictMatch = returnedZip && returnedZip.replace(/\s/g, '') === addr.postal_code.replace(/\s/g, '');
+
+                return {
+                    valid: true, // If OSM found it, it's usually physically there
+                    score: strictMatch ? 80 : 50,
+                    normalized: {
+                        line1: addr.line1, // OSM formatting is often too verbose
+                        line2: addr.line2,
+                        city: d.address.city || d.address.town || d.address.village || addr.city,
+                        state: d.address.state || addr.state,
+                        postal_code: d.address.postcode || addr.postal_code,
+                        country: (d.address.country_code || addr.country).toUpperCase()
+                    },
+                    metadata: { is_residential: null, is_po_box: false, format_matched: false },
+                    geo: {
+                        lat: parseFloat(d.lat),
+                        lng: parseFloat(d.lon),
+                        confidence: 0.6,
+                        source: "nominatim"
+                    },
+                    source_used: "nominatim",
+                    reason_codes: strictMatch ? [] : ["ADDRESS_ZIP_MISMATCH_BUT_GEO_FOUND"]
+                };
+            }
+        }
+    } catch (e) {
+        console.error("Nominatim error:", e);
+    }
+    return null;
+}
+
+// --- Main Logic ---
 
 export async function validateAddress(
-    addr: { line1: string; line2?: string; city: string; state?: string; postal_code: string; country: string },
+    rawAddr: { line1: string; line2?: string; city: string; state?: string; postal_code: string; country: string },
     pool: Pool,
     redis?: Redis
 ): Promise<ValidationResult> {
-    // 1. Input Sanitization & Hashing
-    const input = JSON.stringify(addr);
-    const hash = crypto.createHash("sha1").update(input).digest("hex");
-    const cacheKey = `validator:address:${hash}`;
+
+    // 1. Clean Input
+    const input: NormalizedAddress = {
+        line1: (rawAddr.line1 || "").trim(),
+        line2: (rawAddr.line2 || "").trim(),
+        city: (rawAddr.city || "").trim(),
+        state: (rawAddr.state || "").trim(),
+        postal_code: (rawAddr.postal_code || "").trim(),
+        country: (rawAddr.country || "").toUpperCase().trim(),
+    };
+
+    const hash = crypto.createHash("sha1").update(JSON.stringify(input)).digest("hex");
+    const cacheKey = `val:addr:v3:${hash}`;
 
     // 2. Check Cache
     if (redis) {
@@ -159,198 +288,97 @@ export async function validateAddress(
         if (cached) return JSON.parse(cached);
     }
 
-    // 3. Fail Fast on Missing Data
-    if (!addr.line1?.trim() || !addr.city?.trim() || !addr.postal_code?.trim() || !addr.country?.trim()) {
-        const norm = await normalizeAddress(addr);
-        return formatAndCacheResult(
-            {
-                valid: false,
-                normalized: norm,
-                po_box: false,
-                postal_city_match: false,
-                in_bounds: true,
-                geo: null,
-                reason_codes: [REASON_CODES.ADDRESS_POSTAL_CITY_MISMATCH], // Generic error for missing data
-                deliverable: false
-            },
-            cacheKey,
-            redis
+    // 3. Fail Fast
+    if (!input.line1 || !input.city || !input.country) {
+        return formatResult({
+            valid: false, score: 0, normalized: input,
+            metadata: { is_residential: null, is_po_box: false, format_matched: false },
+            geo: null, reason_codes: [REASON_CODES.MISSING_REQUIRED_FIELDS], source_used: "logic"
+        }, cacheKey, redis);
+    }
+
+    let result: Partial<ValidationResult> | null = null;
+
+    // --- PROVIDER CHAIN ---
+
+    // Step A: Radar (High Quality, Free)
+    result = await validateWithRadar(input);
+
+    // Step B: Geoapify (If Radar failed or unverified)
+    if (!result || !result.valid) {
+        const geoRes = await validateWithGeoapify(input);
+        // If Geoapify found a strong match, use it. 
+        if (geoRes && geoRes.valid) {
+            result = geoRes;
+        }
+    }
+
+    // Step C: Nominatim (Last Resort for API)
+    if (!result || (!result.valid && !result.geo)) {
+        const nomRes = await validateWithNominatim(input);
+        if (nomRes) result = nomRes;
+    }
+
+    // Step D: Local DB Fallback (The Failsafe)
+    // If APIs failed, or we just want to cross-reference city/zip validity
+    if (!result || !result.valid) {
+        const { rows } = await pool.query(
+            `SELECT place_name, admin_name1, postal_code, country_code 
+             FROM geonames_postal 
+             WHERE country_code = $1 AND postal_code = $2 
+             LIMIT 10`,
+            [input.country, input.postal_code]
         );
-    }
 
-    const reason_codes: string[] = [];
-
-    // 4. Normalize
-    const norm = await normalizeAddress(addr);
-
-    // 5. Check PO Box
-    const po_box = detectPoBox(norm.line1) || detectPoBox(norm.line2);
-    if (po_box) reason_codes.push(REASON_CODES.ADDRESS_PO_BOX);
-
-    // 6. Database Check (GeoNames)
-    // We check city, admin1 (state), and admin2 (county/district) for the postal code
-    const { rows } = await pool.query(
-        `SELECT 1 FROM geonames_postal 
-         WHERE country_code = $1 
-         AND postal_code = $2 
-         AND (
-             lower(place_name) = lower($3) 
-             OR lower(admin_name1) = lower($3) 
-             OR lower(admin_name2) = lower($3)
-         ) LIMIT 1`,
-        [norm.country, norm.postal_code, norm.city]
-    );
-
-    const postal_city_match = rows.length > 0;
-    if (!postal_city_match) {
-        reason_codes.push(REASON_CODES.ADDRESS_POSTAL_CITY_MISMATCH);
-    }
-
-    // 7. Geocoding
-    let geo: GeoLocation | null = null;
-    let in_bounds = true;
-
-    try {
-        const queryParts = [norm.line1, norm.city, norm.state, norm.postal_code, norm.country].filter(Boolean);
-        const q = encodeURIComponent(queryParts.join(" "));
-        const headers = { "User-Agent": "Orbitcheck/1.0 (Foundry)" };
-
-        let primarySuccess = false;
-
-        // A) LocationIQ
-        if (environment.LOCATIONIQ_KEY) {
-            const r = await fetch(
-                `https://us1.locationiq.com/search.php?key=${environment.LOCATIONIQ_KEY}&q=${q}&format=json&addressdetails=1`,
-                { headers }
+        if (rows.length > 0) {
+            // Fuzzy match the City name
+            const bestMatch = rows.find(r =>
+                getSimilarity(normalizeForSearch(r.place_name), normalizeForSearch(input.city)) > FUZZY_MATCH_THRESHOLD
             );
-            if (r.ok) {
-                const data = await r.json() as NominatimResponse[];
-                if (data[0]) {
-                    geo = {
-                        lat: Number(data[0].lat),
-                        lng: Number(data[0].lon),
-                        confidence: 0.9,
-                        source: "locationiq",
-                    };
-                    primarySuccess = true;
-                }
-            }
-        }
-        // B) Nominatim (Fallback 1)
-        else {
-            const r = await fetch(`${environment.NOMINATIM_URL}/search?format=json&limit=1&q=${q}`, { headers });
-            if (r.ok) {
-                const data = await r.json() as NominatimResponse[];
-                if (data[0]) {
-                    geo = {
-                        lat: Number(data[0].lat),
-                        lng: Number(data[0].lon),
-                        confidence: 0.7, // Nominatim is usually less precise than paid APIs
-                        source: "nominatim",
-                    };
-                    primarySuccess = true;
-                }
-            }
-        }
 
-        // C) Google (Fallback 2)
-        if (!primarySuccess && environment.USE_GOOGLE_FALLBACK && environment.GOOGLE_GEOCODING_KEY) {
-            const gr = await fetch(
-                `https://maps.googleapis.com/maps/api/geocode/json?address=${q}&key=${environment.GOOGLE_GEOCODING_KEY}`,
-                { headers }
-            );
-            if (gr.ok) {
-                const gj = await gr.json() as GoogleGeocodeResponse;
-                if (gj.status === "OK" && gj.results?.[0]) {
-                    const loc = gj.results[0].geometry.location;
-                    const type = gj.results[0].types[0];
-                    // "rooftop" or "street_address" implies high confidence
-                    const isHighPrecision = type === "rooftop" || type === "street_address" || type === "premise";
-
-                    geo = {
-                        lat: loc.lat,
-                        lng: loc.lng,
-                        confidence: isHighPrecision ? 0.95 : 0.8,
-                        source: "google",
-                    };
-                }
+            if (bestMatch) {
+                result = {
+                    valid: true, // "Valid" enough for the DB (Zip/City match)
+                    score: 60,   // Lower score because we didn't verify the street
+                    normalized: {
+                        ...input,
+                        city: bestMatch.place_name, // Auto-correct city spelling
+                        state: bestMatch.admin_name1 || input.state
+                    },
+                    metadata: { is_residential: null, is_po_box: detectPoBox(input.line1), format_matched: true },
+                    geo: { lat: 0, lng: 0, confidence: 0.5, source: "local_db" }, // No coords usually
+                    source_used: "local_db_fuzzy",
+                    reason_codes: ["STREET_NOT_VERIFIED"]
+                };
+            } else {
+                // Zip exists, but city is wrong
+                result = {
+                    valid: false,
+                    score: 30,
+                    normalized: input,
+                    metadata: { is_residential: null, is_po_box: false, format_matched: false },
+                    geo: null,
+                    source_used: "local_db_mismatch",
+                    reason_codes: [REASON_CODES.ADDRESS_POSTAL_CITY_MISMATCH]
+                };
             }
         }
-    } catch (err) {
-        console.error("Geocoding failed:", err);
-        reason_codes.push(REASON_CODES.ADDRESS_GEOCODE_FAILED);
     }
 
-    // 8. Bounds Checking
-    if (geo) {
-        const inBoundsSql = `
-            SELECT 1 FROM countries_bounding_boxes
-            WHERE country_code = $1
-            AND $2 BETWEEN min_lat AND max_lat
-            AND (
-                (wraps_dateline = false AND $3 BETWEEN min_lng AND max_lng)
-                OR 
-                (wraps_dateline = true  AND ($3 >= min_lng OR $3 <= max_lng))
-            ) LIMIT 1;`;
-
-        const { rows: bboxRows } = await pool.query(inBoundsSql, [norm.country, geo.lat, geo.lng]);
-        in_bounds = bboxRows.length > 0;
-
-        if (!in_bounds) {
-            reason_codes.push(REASON_CODES.ADDRESS_GEO_OUT_OF_BOUNDS);
-        }
-    } else {
-        // If no geocode result found at all, we flag it but don't necessarily invalidate if the DB check passed
-        reason_codes.push(REASON_CODES.ADDRESS_GEOCODE_FAILED);
+    // Default failure state
+    if (!result) {
+        result = {
+            valid: false, score: 0, normalized: input,
+            metadata: { is_residential: null, is_po_box: detectPoBox(input.line1), format_matched: false },
+            geo: null, reason_codes: [REASON_CODES.ADDRESS_NOT_FOUND], source_used: "none"
+        };
     }
 
-    // 9. Decision Matrix
-
-    // If we have a high confidence Geocode (e.g. found the roof), we accept the address 
-    // even if the City/Zip combo isn't in our local GeoNames SQL (which is often outdated).
-    const isHighConfidenceGeo = geo !== null && geo.confidence >= 0.85;
-
-    // Valid = (Database Says Yes OR Geocoder Says "Definitely Here") AND (Inside Country)
-    const valid = (postal_city_match || isHighConfidenceGeo) && in_bounds;
-
-    // Deliverable = Valid AND Not a PO Box (assuming physical goods)
-    const deliverable = valid && !po_box;
-
-    return formatAndCacheResult(
-        {
-            valid,
-            normalized: norm,
-            po_box,
-            postal_city_match,
-            in_bounds,
-            geo,
-            reason_codes,
-            deliverable
-        },
-        cacheKey,
-        redis
-    );
+    return formatResult(result as ValidationResult, cacheKey, redis);
 }
 
-/**
- * Helper to format response, generate IDs, and save to Redis
- */
-async function formatAndCacheResult(
-    partial: Omit<ValidationResult, "request_id" | "ttl_seconds">,
-    key: string,
-    redis?: Redis
-): Promise<ValidationResult> {
-    const result: ValidationResult = {
-        ...partial,
-        request_id: crypto.randomUUID(),
-        ttl_seconds: CACHE_TTL_SECONDS,
-    };
-
-    if (redis) {
-        // Fire and forget the cache set
-        redis.set(key, JSON.stringify(result), "EX", CACHE_TTL_SECONDS).catch(err =>
-            console.warn("Redis cache set failed", err)
-        );
-    }
-    return result;
+async function formatResult(data: Omit<ValidationResult, "request_id">, key: string, redis?: Redis) {
+    const final: ValidationResult = { ...data, request_id: crypto.randomUUID() };
+    if (redis) await redis.set(key, JSON.stringify(final), "EX", CACHE_TTL_SECONDS);
+    return final;
 }
