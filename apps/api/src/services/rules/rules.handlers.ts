@@ -24,7 +24,7 @@ export async function handleTestRules(
     reply: FastifyReply,
     pool: Pool,
     redis?: any
-): Promise<any> {
+): Promise<FastifyReply> {
     const startTime = performance.now();
     const request_id = generateRequestId();
     const project_id = (request as any).project_id;
@@ -402,7 +402,7 @@ export async function handleRegisterCustomRules(
     request: FastifyRequest,
     reply: FastifyReply,
     pool: Pool
-): Promise<any> {
+): Promise<FastifyReply> {
     const project_id = (request as any).project_id;
     const { rules } = request.body as RegisterCustomRulesData['body'];
     const request_id = generateRequestId();
@@ -594,7 +594,7 @@ export async function handleDeleteCustomRule(
     request: FastifyRequest,
     reply: FastifyReply,
     pool: Pool
-): Promise<any> {
+): Promise<FastifyReply> {
     const project_id = (request as any).project_id;
     const ruleId = (request.params as DeleteCustomRuleData['path']).id;
     const request_id = generateRequestId();
