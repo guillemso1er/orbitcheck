@@ -1,0 +1,26 @@
+[Unit]
+Description=Address Service
+
+[Container]
+LogDriver=journald
+Image=ghcr.io/guillemso1er/orbitcheck/libpostal:latest
+ContainerName=api
+Pod=orbitcheck.pod
+
+
+# Ensure the pinned digest is pulled if not present
+Pull=missing
+
+NoNewPrivileges=yes
+ReadOnly=true
+Tmpfs=/tmp:size=64M
+
+[Service]
+Restart=always
+RestartSec=3
+
+# Ensure config dir exists
+ExecStartPre=/usr/bin/install -d -m 700 %h/.config/address
+
+[Install]
+WantedBy=default.target

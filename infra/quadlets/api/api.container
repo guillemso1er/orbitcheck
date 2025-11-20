@@ -1,21 +1,53 @@
-# apps/address-service/Dockerfile
-FROM my-org/libpostal-base:latest AS base
+[Unit]
+Description=My API
+After=api-db.service valkey.service
+Wants=api-db.service valkey.service
 
-FROM node:20-bookworm-slim
-# 1. Copy the artifacts from your base image
-COPY --from=base /usr/local/include /usr/local/include
-COPY --from=base /usr/local/lib /usr/local/lib
-COPY --from=base /opt/libpostal/data /opt/libpostal/data
+[Container]
+LogDriver=journald
+# Placeholder only. The deploy script patches this line to an immutable digest (name@sha256:...)
+Image=ghcr.io/guillemso1er/orbitcheck/api:v0.0.0
+ContainerName=api
+Pod=orbitcheck.pod
 
-# 2. Configure environment
-ENV LIBPOSTAL_DATA_DIR=/opt/libpostal/data
-ENV LD_LIBRARY_PATH=/usr/local/lib
+# Config files written by deploy (or ExecStartPre below)
+EnvironmentFile=%h/.config/api/api.env
+EnvironmentFile=%h/.config/api/api.secrets.env
 
-# 3. Install Node dependencies (including node-postal)
-WORKDIR /app
-COPY package.json .
-# The system now has the C libs, so this will compile successfully!
-RUN npm install --build-from-source
+# Ensure the pinned digest is pulled if not present
+Pull=missing
 
-COPY . .
-CMD ["node", "server.js"]
+# We do controlled rollouts; remove auto-update
+# Label="io.containers.autoupdate=image"
+
+NoNewPrivileges=yes
+ReadOnly=true
+Tmpfs=/tmp:size=64M
+
+[Service]
+Restart=always
+RestartSec=3
+
+# Ensure config dir exists
+ExecStartPre=/usr/bin/install -d -m 700 %h/.config/api
+
+# OPTIONAL: keep this if you want JIT secret fetch on every start
+# If you keep it, you can remove the duplicate secret fetch for /api in the deploy script.
+ExecStartPre=/bin/sh -ceu ' \
+  tok="$(cat %h/.secrets/infisical/api.token)"; \
+  export INFISICAL_TOKEN="$tok"; \
+  /bin/infisical export \
+    --domain=https://infisical.bastiat.xyz \
+    --path=/api \
+    --env=prod \
+    --format=dotenv \
+    --silent \
+    --include-imports \
+    | sed "s/'\''//g" \
+  > %h/.config/api/.api.secrets.env.tmp; \
+  chmod 600 %h/.config/api/.api.secrets.env.tmp; \
+  mv %h/.config/api/.api.secrets.env.tmp %h/.config/api/api.secrets.env \
+'
+
+[Install]
+WantedBy=default.target
