@@ -239,11 +239,11 @@ async function validateWithGeoapify(
 
     // Minimal “unique ZIP” hook; replace with USPS dataset lookup in production
     const UNIQUE_ZIPS_US = new Set<string>(["20500"]); // White House
-    function isUniqueZipUS(zip?: string) {
+    function isUniqueZipUS(zip?: string): boolean {
         return !!zip && UNIQUE_ZIPS_US.has(zip);
     }
 
-    function isMilitaryAddress(a: { city?: string; state?: string }) {
+    function isMilitaryAddress(a: { city?: string; state?: string }): boolean {
         const city = (a.city || "").toUpperCase();
         const state = (a.state || "").toUpperCase();
         return ["APO", "FPO", "DPO"].includes(city) && ["AA", "AE", "AP"].includes(state);
@@ -251,13 +251,12 @@ async function validateWithGeoapify(
 
     function parseLine1(line1: string | undefined): { housenumber?: string; street?: string } {
         if (!line1) return {};
-        // Handles "221B Baker Street", "1600 Pennsylvania Ave NW", "10 Downing St"
-        const m = line1.trim().match(/^(\d+\w*)\s+(.+)$/);
+        const m = line1.trim().match(/^(\d+[a-zA-Z]*)\s+(\S.*)$/);
         if (!m) return {};
         return { housenumber: m[1], street: m[2] };
     }
 
-    function startsWithAny(cat: string | undefined, prefixes: string[]) {
+    function startsWithAny(cat: string | undefined, prefixes: string[]): boolean {
         if (!cat) return false;
         return prefixes.some((p) => cat === p || cat.startsWith(p + "."));
     }
@@ -305,7 +304,14 @@ async function validateWithGeoapify(
         })[0];
     }
 
-    function classify(properties: any, inputText: string) {
+    function classify(properties: any, inputText: string): {
+        deliverable: boolean;
+        needsReview: boolean;
+        reasons: string[];
+        buildingConf: number;
+        overallConf: number;
+        category: string | undefined;
+    } {
         const rank = properties?.rank ?? {};
         const resultType = properties?.result_type; // e.g., building, amenity, premise
         const hasHouseNumber = !!properties?.housenumber;
@@ -450,7 +456,7 @@ async function validateWithGeoapify(
 
     // ---------- Fetch candidates (structured first, then text) ----------
     const { housenumber, street } = parseLine1(addr.line1);
-    const qs = (o: Record<string, string | number | undefined>) =>
+    const qs = (o: Record<string, string | number | undefined>): string =>
         Object.entries(o)
             .filter(([, v]) => v !== undefined && v !== "")
             .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(String(v))}`)
@@ -489,12 +495,14 @@ async function validateWithGeoapify(
     try {
         for (const url of urls) {
             try {
+                // eslint-disable-next-line no-await-in-loop
                 const res = await fetch(url);
                 if (!res.ok) {
                     apiError = { status: res.status, statusText: res.statusText };
                     debugLog.push(`Geoapify API error: ${res.status} ${res.statusText}`);
                     continue;
                 }
+                // eslint-disable-next-line no-await-in-loop
                 const data = (await res.json()) as { features?: GeoFeature[] };
                 const feats = Array.isArray(data?.features) ? data.features : [];
 
@@ -645,11 +653,11 @@ async function validateWithNominatim(addr: NormalizedAddress, debugLog: string[]
 
                 return {
                     valid: true,
-                    score: score,
+                    score,
                     normalized: {
                         line1: resultAddr.house_number
                             ? `${resultAddr.house_number} ${resultAddr.road}`
-                            : resultAddr.road || addr.line1,
+                            : (resultAddr.road || addr.line1),
                         line2: addr.line2,
                         city: resultAddr.city || resultAddr.town || resultAddr.village || addr.city,
                         state: resultAddr.state || addr.state,
@@ -710,14 +718,14 @@ export async function validateAddress(
     // 3. Fail Fast: Block Placeholder/Junk Data
     // This prevents Swagger defaults ("string") from passing as valid City/State matches
     const placeholders = ["string", "test", "n/a", "null", "undefined", "sample", "asd", "adg", "qwe", "zxc", "123", "abc"];
-    const isPlaceholder = (val: string) => {
+    const isPlaceholder = (val: string): boolean => {
         const v = val.toLowerCase().trim();
         if (placeholders.includes(v)) return true;
         if (/^(.)\1+$/.test(v)) return true; // Repeating chars like "aaaa"
         return false;
     };
 
-    const isJunk = (val: string) => {
+    const isJunk = (val: string): boolean => {
         const v = val.trim();
         if (v.length < 3) return true; // Too short
         if (!/\d/.test(v) && v.length < 5) return true; // Short and no numbers (suspicious for line1)

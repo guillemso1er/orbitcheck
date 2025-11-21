@@ -1,5 +1,5 @@
+import type { Pool } from 'pg';
 
-import { Pool } from 'pg';
 import { validateAddress } from '../address';
 
 // Mock dependencies

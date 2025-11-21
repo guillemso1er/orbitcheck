@@ -2,7 +2,7 @@
 import { Readable } from 'node:stream';
 
 // 1. Import the type
-import { FastifyPluginAsync } from 'fastify';
+import type { FastifyPluginAsync } from 'fastify';
 import fp from 'fastify-plugin';
 import type { Redis as IORedisType } from 'ioredis';
 
@@ -18,7 +18,7 @@ interface ShopifyPluginOpts {
 
 // 2. Define logic cleanly without forcing a specific type here.
 // Let TS infer 'app' and 'opts' based on usage or generic passed to fp.
-const shopifyPlugin = async (app: any, opts: ShopifyPluginOpts) => {
+const shopifyPlugin = async (app: any, opts: ShopifyPluginOpts): Promise<void> => {
     // Note: app: any (or FastifyInstance) allows us to bypass the specific 
     // version mismatch of 'propfind'/'mkcalendar' methods inside the body.
     // Ideally, use FastifyInstance but don't export that specific shape.

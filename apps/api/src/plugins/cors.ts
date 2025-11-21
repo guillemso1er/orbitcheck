@@ -1,4 +1,5 @@
-import cors, { FastifyCorsOptions } from "@fastify/cors";
+import type { FastifyCorsOptions } from "@fastify/cors";
+import cors from "@fastify/cors";
 import type { FastifyPluginAsync } from "fastify";
 import fp from "fastify-plugin";
 
@@ -45,19 +46,18 @@ const setupCors: FastifyPluginAsync = async (app) => {
     // Enable CORS with proper configuration for different auth methods
     // FIX 1: Cast 'cors' to 'any' to bypass the Fastify v4/v5 mismatch in register()
     await app.register(cors as any, {
-        origin: (origin: string, cb: (err: Error | null, allow: boolean) => void) => {
+        origin: async (origin: string): Promise<boolean> => {
             // Allow requests with no Origin header (e.g., server-to-server, Postman, curl)
             if (!origin) {
-                cb(null, true);
-                return;
+                return true;
             }
 
             // Check if origin is in allowed list
             // Allow Shopify CLI tunnel URLs in development
             if (allowedOrigins.has(origin) || (!environment.isProd && origin.endsWith('.trycloudflare.com'))) {
-                cb(null, true);
+                return true;
             } else {
-                cb(new Error("Not allowed"), false);
+                throw new Error("Not allowed");
             }
         },
         credentials: true,

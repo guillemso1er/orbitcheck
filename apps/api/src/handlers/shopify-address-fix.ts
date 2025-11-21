@@ -9,7 +9,7 @@ export async function getAddressFixSession(
     request: FastifyRequest<{ Params: ShopifyAddressFixGetData['path'] }>,
     reply: FastifyReply,
     pool: Pool
-) {
+): Promise<FastifyReply> {
     const { token } = request.params;
     const service = createAddressFixService(pool, request.log);
     const session = await service.getSessionByToken(token);
@@ -30,7 +30,7 @@ export async function confirmAddressFixSession(
     request: FastifyRequest<{ Params: ShopifyAddressFixConfirmData['path'], Body: ShopifyAddressFixConfirmData['body'] }>,
     reply: FastifyReply,
     pool: Pool
-) {
+): Promise<FastifyReply> {
     const { token } = request.params;
     const { use_corrected, address } = request.body;
     const service = createAddressFixService(pool, request.log);

@@ -149,7 +149,7 @@ export class AddressFixService {
         orderGid: string,
         fixUrl: string
     ): Promise<void> {
-        const client = await shopifyGraphql(shopDomain, accessToken, process.env.SHOPIFY_API_VERSION || '2024-10');
+        const client = await shopifyGraphql(shopDomain, accessToken, process.env.SHOPIFY_API_VERSION || '2025-10');
 
         // Add tag
         await client.mutate(MUT_TAGS_ADD, {
@@ -182,7 +182,7 @@ export class AddressFixService {
         orderGid: string,
         maxRetries = 5
     ): Promise<string[]> {
-        const client = await shopifyGraphql(shopDomain, accessToken, process.env.SHOPIFY_API_VERSION || '2024-10');
+        const client = await shopifyGraphql(shopDomain, accessToken, process.env.SHOPIFY_API_VERSION || '2025-10');
 
         let fulfillmentOrders: any[] = [];
         for (let attempt = 0; attempt < maxRetries; attempt++) {
@@ -240,7 +240,7 @@ export class AddressFixService {
         useCorrected: boolean,
         addressOverride?: Record<string, any>
     ): Promise<void> {
-        const client = await shopifyGraphql(shopDomain, accessToken, process.env.SHOPIFY_API_VERSION || '2024-10');
+        const client = await shopifyGraphql(shopDomain, accessToken, process.env.SHOPIFY_API_VERSION || '2025-10');
 
         // Update order address if using corrected or override provided
         if (useCorrected || addressOverride) {

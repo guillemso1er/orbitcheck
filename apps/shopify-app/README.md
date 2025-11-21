@@ -51,7 +51,7 @@ SHOPIFY_API_SECRET=your_api_secret
 
 # App configuration
 APP_BASE_URL=https://your-domain.com
-SHOPIFY_API_VERSION=2026-01
+SHOPIFY_API_VERSION=2025-10
 
 # PostHog analytics (optional)
 POSTHOG_KEY=phc_your_key

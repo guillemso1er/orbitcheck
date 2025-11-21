@@ -79,7 +79,7 @@ Forked the [shopify-app-template repo](https://github.com/Shopify/shopify-app-te
 
 ## 2024.11.26
 
-- [888](https://github.com/Shopify/shopify-app-template-remix/pull/888) Update restResources version to 2024-10
+- [888](https://github.com/Shopify/shopify-app-template-remix/pull/888) Update restResources version to 2025-10
 
 ## 2024.11.06
 
@@ -91,7 +91,7 @@ Forked the [shopify-app-template repo](https://github.com/Shopify/shopify-app-te
 
 ## 2024.10.02
 
-- [863](https://github.com/Shopify/shopify-app-template-remix/pull/863) Update to Shopify App API v2024-10 and shopify-app-remix v3.3.2
+- [863](https://github.com/Shopify/shopify-app-template-remix/pull/863) Update to Shopify App API v2025-10 and shopify-app-remix v3.3.2
 
 ## 2024.09.18
 

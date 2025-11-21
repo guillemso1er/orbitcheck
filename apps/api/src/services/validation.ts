@@ -161,7 +161,7 @@ export async function validateAddress(
         }
 
         await logEvent((request as any).project_id!, "validation", "/v1/validate/address", out.reason_codes, HTTP_STATUS.OK, { po_box: out.po_box, postal_city_match: out.postal_city_match }, pool);
-        const response: ValidateAddressResponses[200] = { ...out, request_id };
+        const response: ValidateAddressResponses[200] = { ...out, normalized: out.normalized ?? undefined, request_id };
         return rep.send(response);
     } catch (error) {
         return sendServerError(request, rep, error, "/v1/validate/address", generateRequestId());

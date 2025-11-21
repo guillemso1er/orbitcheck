@@ -29,11 +29,13 @@ export async function shopifyGraphql(shop: string, accessToken: string, apiVersi
 }
 
 export const MUT_TAGS_ADD = `
+#graphql
   mutation addTags($id: ID!, $tags: [String!]!) {
     tagsAdd(id: $id, tags: $tags) { userErrors { message } }
   }`;
 
 export const QUERY_SHOP_NAME = `
+#graphql
   query {
     shop {
       name

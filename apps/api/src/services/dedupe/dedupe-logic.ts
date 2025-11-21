@@ -131,7 +131,7 @@ export async function dedupeAddress(
   }
 
   // Fallback deterministic: exact postal_code + city + country
-  if (matches.length === 0) {
+  if (matches.length === 0 && normAddr.normalized) {
     const { rows: exactMatches } = await pool.query(
       'SELECT id, line1, line2, city, state, postal_code, country, lat, lng FROM addresses WHERE project_id = $1 AND postal_code = $2 AND lower(city) = lower($3) AND country = $4',
       [project_id, normAddr.normalized.postal_code, normAddr.normalized.city, normAddr.normalized.country]
@@ -149,26 +149,27 @@ export async function dedupeAddress(
   }
 
   // Fuzzy matches with threshold on line1, city
-  const { rows: fuzzyMatches } = await pool.query(
-    `SELECT id, line1, line2, city, state, postal_code, country, lat, lng,
-      greatest(similarity(line1, $2), similarity(city, $3)) as score
-      FROM addresses
-      WHERE project_id = $1
-      AND (similarity(line1, $2) > $4 OR similarity(city, $3) > $4)
-      ORDER BY score DESC LIMIT $5`,
-    [project_id, normAddr.normalized.line1, normAddr.normalized.city, SIMILARITY_FUZZY_THRESHOLD, DEDUPE_FUZZY_LIMIT]
-  );
-  for (const row of fuzzyMatches) {
-    if (row.id && !matches.some(m => m.id === row.id)) {
-      matches.push({
-        id: row.id,
-        similarity_score: row.score,
-        match_type: MATCH_TYPES.FUZZY_ADDRESS,
-        data: row
-      });
+  if (normAddr.normalized) {
+    const { rows: fuzzyMatches } = await pool.query(
+      `SELECT id, line1, line2, city, state, postal_code, country, lat, lng,
+        greatest(similarity(line1, $2), similarity(city, $3)) as score
+        FROM addresses
+        WHERE project_id = $1
+        AND (similarity(line1, $2) > $4 OR similarity(city, $3) > $4)
+        ORDER BY score DESC LIMIT $5`,
+      [project_id, normAddr.normalized.line1, normAddr.normalized.city, SIMILARITY_FUZZY_THRESHOLD, DEDUPE_FUZZY_LIMIT]
+    );
+    for (const row of fuzzyMatches) {
+      if (row.id && !matches.some(m => m.id === row.id)) {
+        matches.push({
+          id: row.id,
+          similarity_score: row.score,
+          match_type: MATCH_TYPES.FUZZY_ADDRESS,
+          data: row
+        });
+      }
     }
   }
-
   // Sort matches by score descending
   matches.sort((a, b) => b.similarity_score - a.similarity_score);
 

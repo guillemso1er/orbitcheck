@@ -193,7 +193,7 @@ export async function evaluateOrderForRiskAndRulesDirect(
         tags.push(ORDER_TAGS.COD_ORDER);
         reason_codes.push(REASON_CODES.ORDER_COD_RISK);
         const isNewCustomer = customer_matches.length === 0;
-        const hasMismatch = !postal_city_match || (phone_valid.country && phone_valid.country !== normAddr.country);
+        const hasMismatch = !postal_city_match || (phone_valid.country && normAddr && phone_valid.country !== normAddr.country);
         const isThrowaway = email_valid.disposable;
         if (isNewCustomer && hasMismatch && isThrowaway) {
             risk_score += RISK_COD_HIGH;
@@ -667,7 +667,7 @@ export async function evaluateOrderForRiskAndRules<TServer extends RawServerBase
             tags.push(ORDER_TAGS.COD_ORDER);
             reason_codes.push(REASON_CODES.ORDER_COD_RISK);
             const isNewCustomer = customer_matches.length === 0;
-            const hasMismatch = !postal_city_match || (phone_valid.country && phone_valid.country !== normAddr.country);
+            const hasMismatch = !postal_city_match || (phone_valid.country && normAddr && phone_valid.country !== normAddr.country);
             const isThrowaway = email_valid.disposable;
             if (isNewCustomer && hasMismatch && isThrowaway) {
                 risk_score += RISK_COD_HIGH;
