@@ -6,6 +6,8 @@ properties:
   shop_domain:
     type: string
     description: Shopify shop domain for verification
+  address:
+    $ref: './Address.yml'
 required:
   - use_corrected
   - shop_domain

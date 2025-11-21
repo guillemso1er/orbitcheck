@@ -132,7 +132,7 @@ function wrapHandler(name: string, handler: Function, location: string): Functio
                 console.error(`    Duration: ${duration.toFixed(2)}ms`);
                 console.error(`    Location: ${location}`);
                 console.error(`    Stack: ${getStackInfo(5)}`);
-            }, 5000); // Warn after 5 seconds
+            }, 30000); // Warn after 30 seconds
 
             try {
                 const result = await handler.apply(this, args);
@@ -171,7 +171,7 @@ function wrapHandler(name: string, handler: Function, location: string): Functio
                     if (!doneCalled) {
                         console.error(`❌ [startup-guard] done() never called in ${name}:`, location);
                     }
-                }, 5000);
+                }, 30000);
             }
 
             return handler.apply(this, args);

@@ -1,6 +1,7 @@
 import React, { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, Navigate, NavLink, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from './AuthContext';
+import AddressFixPage from './components/AddressFixPage';
 import ApiKeys from './components/ApiKeys';
 import BulkCsvTool from './components/BulkCsvTool';
 import LogExplorer from './components/LogExplorer';
@@ -440,6 +441,7 @@ function App() {
                 <Login isSignup={true} />
               </UnauthenticatedRoute>
             } />
+            <Route path="/apps/address-fix" element={<AddressFixPage />} />
 
             {/* Generate protected routes from NAV_ITEMS */}
             {NAV_ITEMS.map(({ path, label, component: Component }) => (

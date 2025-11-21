@@ -32,7 +32,7 @@ interface GeoLocation {
 interface ValidationResult {
     valid: boolean;
     score: number; // 0-100 Confidence Score
-    normalized: NormalizedAddress;
+    normalized: NormalizedAddress | null;
     metadata: {
         is_residential: boolean | null;
         is_po_box: boolean;
@@ -305,7 +305,7 @@ async function validateWithGeoapify(
         })[0];
     }
 
-function classify(properties: any, inputText: string) {
+    function classify(properties: any, inputText: string) {
         const rank = properties?.rank ?? {};
         const resultType = properties?.result_type; // e.g., building, amenity, premise
         const hasHouseNumber = !!properties?.housenumber;
@@ -341,7 +341,7 @@ function classify(properties: any, inputText: string) {
         if (["match_by_country_or_state", "match_by_postcode", "match_by_city_or_disrict", "match_by_city_or_district"].includes(matchType)) {
             reasons.push("GEO_MATCH_TOO_BROAD");
         }
-        
+
         // 5. Handle Zero Confidence
         if (buildingConf === 0 && !isHighConfidence) reasons.push("GEO_BUILDING_CONFIDENCE_ZERO");
 
@@ -351,7 +351,7 @@ function classify(properties: any, inputText: string) {
             reasons.push("GEO_PARTIAL_MATCH_TYPE");
             needsReview = true;
         }
-        
+
         if (buildingConf < 0.8 && overallConf < 0.8) { // Relaxed slightly
             reasons.push("GEO_BUILDING_CONFIDENCE_LOW");
             needsReview = true;
@@ -699,7 +699,7 @@ export async function validateAddress(
     };
 
     const hash = crypto.createHash("sha1").update(JSON.stringify(input)).digest("hex");
-    const cacheKey = `val:addr:v3:${hash}`;
+    const cacheKey = `val:addr:v4:${hash}`;
 
     // 2. Check Cache
     if (redis) {
@@ -709,14 +709,26 @@ export async function validateAddress(
 
     // 3. Fail Fast: Block Placeholder/Junk Data
     // This prevents Swagger defaults ("string") from passing as valid City/State matches
-    const placeholders = ["string", "test", "n/a", "null", "undefined", "sample"];
-    const isPlaceholder = (val: string) => placeholders.includes(val.toLowerCase());
+    const placeholders = ["string", "test", "n/a", "null", "undefined", "sample", "asd", "adg", "qwe", "zxc", "123", "abc"];
+    const isPlaceholder = (val: string) => {
+        const v = val.toLowerCase().trim();
+        if (placeholders.includes(v)) return true;
+        if (/^(.)\1+$/.test(v)) return true; // Repeating chars like "aaaa"
+        return false;
+    };
 
-    if (isPlaceholder(input.line1) || isPlaceholder(input.city) || isPlaceholder(input.postal_code)) {
+    const isJunk = (val: string) => {
+        const v = val.trim();
+        if (v.length < 3) return true; // Too short
+        if (!/\d/.test(v) && v.length < 5) return true; // Short and no numbers (suspicious for line1)
+        return false;
+    };
+
+    if (isPlaceholder(input.line1) || isPlaceholder(input.city) || isPlaceholder(input.postal_code) || isJunk(input.line1)) {
         return formatResult({
             valid: false,
             score: 0,
-            normalized: input,
+            normalized: null, // Return null instead of input for junk data
             metadata: { is_residential: null, is_po_box: false, format_matched: false },
             geo: null,
             reason_codes: ["INVALID_INPUT_DATA"], // Specific error for junk data

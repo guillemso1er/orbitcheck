@@ -3,6 +3,7 @@ import type { FastifyReply, FastifyRequest } from 'fastify';
 import { type Redis as IORedisType } from 'ioredis';
 import type { Pool } from 'pg';
 
+import { env } from '../../../environment.js';
 import { CompositeEmailService, KlaviyoEmailService, ShopifyFlowEmailService } from '../../../services/email/email-service.js';
 import { evaluateOrderForRiskAndRulesDirect } from '../../../services/orders.js';
 import { createShopifyService } from '../../../services/shopify.js';
@@ -22,6 +23,10 @@ export async function ordersCreate(request: FastifyRequest, reply: FastifyReply,
 
     // In 'notify' mode, we evaluate and log but do not tag or fix
     const isActivated = mode === 'activated';
+    const isNotify = mode === 'notify';
+    const shouldProcess = isActivated || isNotify;
+
+    request.log.info({ shop: shopDomain, mode, isActivated, isNotify, shouldProcess }, 'Shopify app mode resolved');
 
     const payload: OrderEvaluatePayload = {
         order_id: String(o.id),
@@ -92,7 +97,7 @@ export async function ordersCreate(request: FastifyRequest, reply: FastifyReply,
     }
 
     const tags = Array.isArray(result?.tags) ? result.tags : [];
-    if (tags.length && isActivated) {
+    if (tags.length && shouldProcess) {
         let orderGid = o.admin_graphql_api_id;
         if (!orderGid && o.id) {
             request.log.warn({ shop: shopDomain, orderId: o.id }, 'Missing admin_graphql_api_id, constructing from ID');
@@ -139,12 +144,12 @@ export async function ordersCreate(request: FastifyRequest, reply: FastifyReply,
     }
 
     // Address fix workflow - run asynchronously after main processing
-    if (isActivated) {
+    if (shouldProcess) {
         queueMicrotask(() => {
             // eslint-disable-next-line @typescript-eslint/no-floating-promises
             (async () => {
                 try {
-                    await handleOrderAddressFix(request, shopDomain, o, pool, redis);
+                    await handleOrderAddressFix(request, shopDomain, o, pool, redis, mode);
                 } catch (error) {
                     request.log.error(
                         { err: error, shop: shopDomain, orderId: o.id },
@@ -166,13 +171,16 @@ async function handleOrderAddressFix(
     shopDomain: string,
     order: ShopifyOrder,
     pool: Pool,
-    redis: IORedisType
+    redis: IORedisType,
+    mode: string
 ): Promise<void> {
     const shippingAddr = order.shipping_address;
     if (!shippingAddr || !shippingAddr.address1 || !shippingAddr.city || !shippingAddr.zip) {
         request.log.debug({ shop: shopDomain, orderId: order.id }, 'Skipping address fix - insufficient address data');
         return;
     }
+
+    request.log.info({ shop: shopDomain, orderId: order.id }, 'Starting address validation for fix workflow');
 
     // Validate the shipping address
     const validationResult = await validateAddressUtil(
@@ -189,6 +197,7 @@ async function handleOrderAddressFix(
     );
 
     // If address is valid and deliverable, no fix needed
+    request.log.info({ shop: shopDomain, orderId: order.id, valid: validationResult.valid, reason_codes: validationResult.reason_codes }, 'Address validation result');
     if (validationResult.valid && !validationResult.reason_codes.includes('undeliverable')) {
         request.log.debug({ shop: shopDomain, orderId: order.id }, 'Address is valid - no fix needed');
         return;
@@ -218,17 +227,11 @@ async function handleOrderAddressFix(
             first_name: shippingAddr.first_name,
             last_name: shippingAddr.last_name,
         },
-        normalizedAddress: validationResult.normalized || {
-            address1: shippingAddr.address1,
-            city: shippingAddr.city,
-            province: shippingAddr.province,
-            zip: shippingAddr.zip,
-            country_code: shippingAddr.country_code,
-        },
+        normalizedAddress: validationResult.normalized || null,
     });
 
     // Generate fix URL (will be used in Shopify Flow)
-    const fixUrl = `${process.env.APP_URL || 'https://orbitcheck.io'}/apps/address-fix?token=${token}`;
+    const fixUrl = `${env.FRONTEND_URL}/apps/address-fix?token=${token}`;
 
     // Tag order and add metafield
     await addressFixService.tagOrderForAddressFix(
@@ -239,17 +242,29 @@ async function handleOrderAddressFix(
     );
 
     // Queue job to poll and hold fulfillment orders
-    const addressFixQueue = new Queue('address_fix', { connection: redis });
-    await addressFixQueue.add('hold-fulfillment', {
-        shopDomain,
-        orderId: String(order.id),
-        orderGid: order.admin_graphql_api_id,
-        sessionId: session.id,
-    });
+    // Only hold fulfillment if mode is 'activated'
+    if (mode === 'activated') {
+        const addressFixQueue = new Queue('address_fix', { connection: redis });
+        await addressFixQueue.add('hold-fulfillment', {
+            shopDomain,
+            orderId: String(order.id),
+            orderGid: order.admin_graphql_api_id,
+            sessionId: session.id,
+        });
+        request.log.info(
+            { shop: shopDomain, orderId: order.id, sessionId: session.id },
+            'Queued hold-fulfillment job (activated mode)'
+        );
+    } else {
+        request.log.info(
+            { shop: shopDomain, orderId: order.id, sessionId: session.id, mode },
+            'Skipping hold-fulfillment job (notify mode)'
+        );
+    }
 
     request.log.info(
         { shop: shopDomain, orderId: order.id, sessionId: session.id },
-        'Created address fix session and queued hold job'
+        'Created address fix session'
     );
 
     // Fetch shop name if not available

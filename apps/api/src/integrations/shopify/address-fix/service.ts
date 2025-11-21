@@ -20,7 +20,7 @@ export interface AddressFixSession {
     order_gid: string;
     customer_email: string | null;
     original_address: Record<string, any>;
-    normalized_address: Record<string, any>;
+    normalized_address: Record<string, any> | null;
     token_hash: string;
     token_expires_at: Date;
     fix_status: 'pending' | 'confirmed' | 'cancelled';
@@ -36,7 +36,7 @@ export interface CreateSessionParams {
     orderGid: string;
     customerEmail: string | null;
     originalAddress: Record<string, any>;
-    normalizedAddress: Record<string, any>;
+    normalizedAddress: Record<string, any> | null;
 }
 
 export class AddressFixService {
@@ -237,28 +237,41 @@ export class AddressFixService {
         shopDomain: string,
         accessToken: string,
         session: AddressFixSession,
-        useCorrected: boolean
+        useCorrected: boolean,
+        addressOverride?: Record<string, any>
     ): Promise<void> {
         const client = await shopifyGraphql(shopDomain, accessToken, process.env.SHOPIFY_API_VERSION || '2024-10');
 
-        // Update order address if using corrected
-        if (useCorrected) {
-            const addr = session.normalized_address;
-            await client.mutate(MUT_ORDER_UPDATE, {
-                input: {
-                    id: session.order_gid,
-                    shippingAddress: {
-                        address1: addr.address1,
-                        address2: addr.address2 || null,
-                        city: addr.city,
-                        province: addr.province,
-                        zip: addr.zip,
-                        countryCode: addr.country_code,
-                        firstName: addr.first_name || null,
-                        lastName: addr.last_name || null,
+        // Update order address if using corrected or override provided
+        if (useCorrected || addressOverride) {
+            const addr = addressOverride || session.normalized_address;
+            if (!addr) {
+                throw new Error('Cannot confirm address fix: No corrected address available');
+            }
+
+            try {
+                await client.mutate(MUT_ORDER_UPDATE, {
+                    input: {
+                        id: session.order_gid,
+                        shippingAddress: {
+                            address1: addr.address1,
+                            address2: addr.address2 || null,
+                            city: addr.city,
+                            province: addr.province,
+                            zip: addr.zip,
+                            countryCode: addr.country_code,
+                            firstName: addr.first_name || null,
+                            lastName: addr.last_name || null,
+                        },
                     },
-                },
-            });
+                });
+            } catch (error) {
+                this.logger.error(
+                    { err: error, shopDomain, orderGid: session.order_gid },
+                    'Failed to update order with corrected address'
+                );
+                throw new Error('Failed to update order with corrected address');
+            }
             this.logger.info({ shopDomain, orderGid: session.order_gid }, 'Updated order with corrected address');
         }
 

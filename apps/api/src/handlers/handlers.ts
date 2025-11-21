@@ -186,9 +186,9 @@ const makeShopifyHandlers = (pool: Pool, redis: IORedisType): Partial<RouteHandl
     shopifyGdprShopRedactWebhook: async (request, reply) => shopRedact(request, reply),
 
     // eslint-disable-next-line promise/prefer-await-to-callbacks
-    shopifyAddressFixGet: async (request, reply) => getAddressFixSession(request, reply),
+    shopifyAddressFixGet: async (request, reply) => getAddressFixSession(request, reply, pool),
     // eslint-disable-next-line promise/prefer-await-to-callbacks
-    shopifyAddressFixConfirm: async (request, reply) => confirmAddressFixSession(request, reply),
+    shopifyAddressFixConfirm: async (request, reply) => confirmAddressFixSession(request, reply, pool),
 });
 
 export const serviceHandlers = <TServer extends RawServerBase = RawServerBase>(pool: Pool, redis: IORedisType, app: FastifyInstance<TServer>): RouteHandlers => {

@@ -1,0 +1,28 @@
+Hi {{ event.customer_name }},
+
+
+We noticed a potential issue with the shipping address for your recent order {{ event.order_name }}.
+
+
+To ensure your package arrives safely and on time, please verify or correct your address by clicking the button below. Your order is currently on hold until we receive your confirmation.
+
+
+[ Button: "Verify Address" link to: {{ event.fix_url }} ]
+
+
+If the button above doesn't work, copy and paste this URL into your browser:
+{{ event.fix_url }}
+
+
+Original Address:
+{{ event.shipping_address.address1 }}
+{{ event.shipping_address.address2 }}
+{{ event.shipping_address.city }}, {{ event.shipping_address.province }} {{ event.shipping_address.zip }}
+{{ event.shipping_address.country }}
+
+
+Thank you for your help!
+Best regards,
+
+
+The {{ event.shop_name }} Team

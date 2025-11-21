@@ -857,6 +857,40 @@ export type ShopifyAddressFixConfirmRequest = {
      * Shopify shop domain for verification
      */
     shop_domain: string;
+    address?: {
+        /**
+         * Street address line 1
+         */
+        line1?: string;
+        /**
+         * Street address line 2
+         */
+        line2?: string;
+        /**
+         * City
+         */
+        city?: string;
+        /**
+         * State or province
+         */
+        state?: string;
+        /**
+         * Postal code
+         */
+        postal_code?: string;
+        /**
+         * Two-letter country code
+         */
+        country?: string;
+        /**
+         * Latitude
+         */
+        lat?: number | null;
+        /**
+         * Longitude
+         */
+        lng?: number | null;
+    };
 };
 
 export type LoginUserData = {
@@ -5054,6 +5088,40 @@ export type ShopifyAddressFixConfirmData = {
          * Shopify shop domain for verification
          */
         shop_domain: string;
+        address?: {
+            /**
+             * Street address line 1
+             */
+            line1?: string;
+            /**
+             * Street address line 2
+             */
+            line2?: string;
+            /**
+             * City
+             */
+            city?: string;
+            /**
+             * State or province
+             */
+            state?: string;
+            /**
+             * Postal code
+             */
+            postal_code?: string;
+            /**
+             * Two-letter country code
+             */
+            country?: string;
+            /**
+             * Latitude
+             */
+            lat?: number | null;
+            /**
+             * Longitude
+             */
+            lng?: number | null;
+        };
     };
     path: {
         /**

@@ -79,6 +79,7 @@ export class KlaviyoEmailService implements EmailService {
                             properties: {
                                 // URLs
                                 fix_url: params.fixUrl,
+                                customer_name: params.customerName,
 
                                 // Order Details
                                 order_id: params.orderId,
