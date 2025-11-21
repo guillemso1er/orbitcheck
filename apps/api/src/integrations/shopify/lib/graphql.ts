@@ -36,7 +36,7 @@ export const MUT_TAGS_ADD = `
 
 export const QUERY_SHOP_NAME = `
 #graphql
-  query {
+  query getShopName {
     shop {
       name
     }
