@@ -186,13 +186,17 @@ export class AddressFixService {
 
         let fulfillmentOrders: any[] = [];
         for (let attempt = 0; attempt < maxRetries; attempt++) {
+            // eslint-disable-next-line no-await-in-loop
             const response = await client.mutate(QUERY_FULFILLMENT_ORDERS, { orderId: orderGid });
             fulfillmentOrders = response.data?.order?.fulfillmentOrders?.edges || [];
 
             if (fulfillmentOrders.length > 0) break;
 
             // Wait before retry (exponential backoff)
-            await new Promise(resolve => setTimeout(resolve, Math.min(1000 * Math.pow(2, attempt), 10000)));
+            // eslint-disable-next-line no-await-in-loop
+            await new Promise(resolve => {
+                setTimeout(resolve, Math.min(1000 * Math.pow(2, attempt), 10000));
+            });
         }
 
         if (fulfillmentOrders.length === 0) {
@@ -201,7 +205,7 @@ export class AddressFixService {
         }
 
         const holdIds: string[] = [];
-        for (const edge of fulfillmentOrders) {
+        const holdPromises = fulfillmentOrders.map(async (edge) => {
             const foId = edge.node.id;
             try {
                 await client.mutate(MUT_FULFILLMENT_ORDER_HOLD, {
@@ -209,15 +213,19 @@ export class AddressFixService {
                     reason: 'INCORRECT_ADDRESS',
                     reasonNotes: 'Address validation failed - customer confirmation required',
                 });
-                holdIds.push(foId);
                 this.logger.info({ shopDomain, orderGid, fulfillmentOrderId: foId }, 'Applied fulfillment hold');
+                return foId;
             } catch (error) {
                 this.logger.error(
                     { err: error, shopDomain, orderGid, fulfillmentOrderId: foId },
                     'Failed to hold fulfillment order'
                 );
+                return null;
             }
-        }
+        });
+
+        const holdResults = await Promise.all(holdPromises);
+        holdIds.push(...holdResults.filter((id): id is string => id !== null));
 
         return holdIds;
     }
@@ -255,7 +263,7 @@ export class AddressFixService {
         }
 
         // Release fulfillment holds
-        for (const holdId of session.fulfillment_hold_ids) {
+        const releasePromises = session.fulfillment_hold_ids.map(async (holdId) => {
             try {
                 await client.mutate(MUT_FULFILLMENT_ORDER_RELEASE_HOLD, { id: holdId });
                 this.logger.info({ shopDomain, fulfillmentOrderId: holdId }, 'Released fulfillment hold');
@@ -265,7 +273,9 @@ export class AddressFixService {
                     'Failed to release fulfillment hold'
                 );
             }
-        }
+        });
+
+        await Promise.all(releasePromises);
 
         // Remove tag
         await client.mutate(MUT_TAGS_REMOVE, {

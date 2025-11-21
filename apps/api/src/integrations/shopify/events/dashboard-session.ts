@@ -20,7 +20,7 @@ export async function createDashboardSession(
     reply: FastifyReply,
     pool: Pool,
     redis: Redis
-) {
+): Promise<FastifyReply> {
     // shopDomain is attached by the shopifySessionToken guard
     const shopDomain = (request as any).shopDomain as string | undefined;
 

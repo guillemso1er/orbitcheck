@@ -130,12 +130,14 @@ async function clearCustomerCacheData(
         ];
 
         // For each pattern, find and delete matching keys
-        for (const pattern of customerPatterns) {
+        const customerKeyPromises = customerPatterns.map(async (pattern) => {
             const keys = await redis.keys(pattern);
             if (keys.length > 0) {
                 await redis.del(...keys);
             }
-        }
+        });
+
+        await Promise.all(customerKeyPromises);
 
         // Also clear any rate limiting or idempotency keys that might contain customer data
         const rateLimitPatterns = [
@@ -143,12 +145,14 @@ async function clearCustomerCacheData(
             `idem:*:${shop}*`
         ];
 
-        for (const pattern of rateLimitPatterns) {
+        const rateLimitKeyPromises = rateLimitPatterns.map(async (pattern: string) => {
             const keys = await redis.keys(pattern);
             if (keys.length > 0) {
                 await redis.del(...keys);
             }
-        }
+        });
+
+        await Promise.all(rateLimitKeyPromises);
 
     } catch (error) {
         throw new Error(`Failed to clear customer cache data: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -427,6 +431,7 @@ export async function shopRedact(request: FastifyRequest, reply: FastifyReply): 
         request.log.info({ shop }, 'Acknowledged Shopify shop/redact webhook');
 
         // Perform data deletion asynchronously to avoid webhook timeout
+        // eslint-disable-next-line @typescript-eslint/no-misused-promises
         setImmediate(async () => {
             try {
                 request.log.info({ shop }, 'Starting shop data purge due to shop/redact');

@@ -152,25 +152,42 @@ const makePlanHandlers = (pool: Pool): Partial<RouteHandlers> => ({
 });
 
 const makeShopifyHandlers = (pool: Pool, redis: IORedisType): Partial<RouteHandlers> => ({
+    // eslint-disable-next-line promise/prefer-await-to-callbacks
     shopifyInstall: async (request, reply) => install(request, reply),
+    // eslint-disable-next-line promise/prefer-await-to-callbacks
     shopifyCallback: async (request, reply) => callback(request, reply, pool),
+    // eslint-disable-next-line promise/prefer-await-to-callbacks
     shopifySso: async (request, reply) => shopifySSOHandler(request, reply, pool, redis),
 
+    // eslint-disable-next-line promise/prefer-await-to-callbacks
     getShopifyShopSettings: async (request, reply) => getShopSettings(request, reply, pool),
+    // eslint-disable-next-line promise/prefer-await-to-callbacks
     updateShopifyShopSettings: async (request, reply) => updateShopSettings(request, reply, pool),
+    // eslint-disable-next-line promise/prefer-await-to-callbacks
     getShopifyAccessScopes: async (request, reply) => getAccessScopes(request, reply, pool),
 
+    // eslint-disable-next-line promise/prefer-await-to-callbacks
     shopifyAppInstalledEvent: async (request, reply) => appInstalled(request, reply, pool),
+    // eslint-disable-next-line promise/prefer-await-to-callbacks
     createShopifyDashboardSession: async (request, reply) => createDashboardSession(request, reply, pool, redis),
+    // eslint-disable-next-line promise/prefer-await-to-callbacks
     shopifyOrdersCreateWebhook: async (request, reply) => ordersCreate(request, reply, pool, redis),
+    // eslint-disable-next-line promise/prefer-await-to-callbacks
     shopifyCustomersCreateWebhook: async (request, reply) => customersCreate(request, reply),
+    // eslint-disable-next-line promise/prefer-await-to-callbacks
     shopifyCustomersUpdateWebhook: async (request, reply) => customersUpdate(request, reply),
+    // eslint-disable-next-line promise/prefer-await-to-callbacks
     shopifyAppUninstalledWebhook: async (request, reply) => appUninstalled(request, reply, pool),
+    // eslint-disable-next-line promise/prefer-await-to-callbacks
     shopifyGdprCustomersDataRequestWebhook: async (request, reply) => customersDataRequest(request, reply),
+    // eslint-disable-next-line promise/prefer-await-to-callbacks
     shopifyGdprCustomersRedactWebhook: async (request, reply) => customersRedact(request, reply),
+    // eslint-disable-next-line promise/prefer-await-to-callbacks
     shopifyGdprShopRedactWebhook: async (request, reply) => shopRedact(request, reply),
 
+    // eslint-disable-next-line promise/prefer-await-to-callbacks
     shopifyAddressFixGet: async (request, reply) => getAddressFixSession(request, reply),
+    // eslint-disable-next-line promise/prefer-await-to-callbacks
     shopifyAddressFixConfirm: async (request, reply) => confirmAddressFixSession(request, reply),
 });
 

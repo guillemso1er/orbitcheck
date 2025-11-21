@@ -2,7 +2,7 @@ import type { FastifyReply, FastifyRequest } from 'fastify';
 
 import { SHOPIFY_SCOPE_STRING } from '../lib/scopes.js';
 
-export async function install(request: FastifyRequest, reply: FastifyReply) {
+export async function install(request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> {
     const { shop } = request.query as { shop: string };
     if (!shop) {
         return reply.code(400).send('Missing shop parameter');

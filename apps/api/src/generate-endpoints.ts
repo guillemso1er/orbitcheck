@@ -6,13 +6,14 @@ import { build } from './server.js';
 
 config({ path: '../../.env' });
 
-async function generateEndpoints() {
+async function generateEndpoints(): Promise<void> {
   const mockPool = {} as Pool;
   const mockRedis = {} as Redis;
 
   const app = await build(mockPool, mockRedis);
-  
+
   // Print the route tree directly
+  // eslint-disable-next-line no-console
   console.log(app.printRoutes({ commonPrefix: false }));
 
   await app.close();
@@ -20,7 +21,9 @@ async function generateEndpoints() {
   throw new Error('Endpoint generation completed successfully');
 }
 
-generateEndpoints().catch(err => {
+try {
+  await generateEndpoints();
+} catch (err) {
   console.error('Error:', err);
   throw err; // Let the caller handle exit
-});
+}

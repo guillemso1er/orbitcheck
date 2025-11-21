@@ -7,7 +7,7 @@ import { createShopifyService } from '../services/shopify.js';
  * GET /integrations/shopify/address-fix/{token}
  * Retrieve address fix session for customer review
  */
-export async function getAddressFixSession(request: FastifyRequest, reply: FastifyReply) {
+export async function getAddressFixSession(request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> {
     const { token } = (request.params as any);
     const pool = (request as any).server.pg.pool;
 
@@ -40,7 +40,7 @@ export async function getAddressFixSession(request: FastifyRequest, reply: Fasti
  * POST /integrations/shopify/address-fix/{token}/confirm
  * Confirm customer's address selection and update Shopify order
  */
-export async function confirmAddressFixSession(request: FastifyRequest, reply: FastifyReply) {
+export async function confirmAddressFixSession(request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> {
     const { token } = (request.params as any);
     const { use_corrected, shop_domain } = (request.body as any);
     const pool = (request as any).server.pg.pool;

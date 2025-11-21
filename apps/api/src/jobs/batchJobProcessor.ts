@@ -53,6 +53,7 @@ export async function processBatchJob<TInput extends BatchJobInput, TResult exte
     for (let i = 0; i < data.length; i++) {
       const item = data[i];
       try {
+        // eslint-disable-next-line no-await-in-loop
         const result = await itemProcessor(item, project_id, pool, redis);
         results.push({
           index: i,
@@ -70,6 +71,7 @@ export async function processBatchJob<TInput extends BatchJobInput, TResult exte
       }
 
       // Update progress
+      // eslint-disable-next-line no-await-in-loop
       await pool.query(
         'UPDATE jobs SET processed_items = $1 WHERE id = $2',
         [i + 1, job.id]

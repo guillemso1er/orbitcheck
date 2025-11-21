@@ -4,7 +4,7 @@ import { createShopifyService } from '../../../services/shopify.js';
 import { missingScopes, parseScopes } from '../lib/scopes.js';
 import { captureShopifyEvent } from '../lib/telemetry.js';
 
-export async function callback(request: FastifyRequest, reply: FastifyReply, pool: any) {
+export async function callback(request: FastifyRequest, reply: FastifyReply, pool: any): Promise<FastifyReply> {
     const { code, shop, state } = request.query as { code: string; shop: string; state: string };
     if (!code || !shop || state !== shop) {
         return reply.code(400).send('Invalid parameters');

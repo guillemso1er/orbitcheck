@@ -104,16 +104,6 @@ services:
     depends_on:
       - caddy
 
-  address-service:
-    build:
-      context: ../../apps/address-service
-    expose:
-      - "3000"
-    deploy:
-      resources:
-        limits:
-          memory: 2.5G
-
 volumes:
   pg_data: {}
   minio_data: {}

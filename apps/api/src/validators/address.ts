@@ -19,6 +19,7 @@ export interface NormalizedAddress {
     state: string;
     postal_code: string;
     country: string;
+
 }
 
 interface GeoLocation {
@@ -36,6 +37,7 @@ interface ValidationResult {
         is_residential: boolean | null;
         is_po_box: boolean;
         format_matched: boolean;
+        match_type?: string;
     };
     geo: GeoLocation | null;
     reason_codes: string[];
@@ -143,7 +145,7 @@ export function detectPoBox(line: string | null | undefined): boolean {
  * TIER 1: Radar (Best Free Commercial Grade)
  * Limit: 100,000 requests / month free.
  */
-async function validateWithRadar(addr: NormalizedAddress): Promise<Partial<ValidationResult> | null> {
+async function validateWithRadar(addr: NormalizedAddress, debugLog: string[] = []): Promise<Partial<ValidationResult> | null> {
     if (!environment.RADAR_KEY) return null;
 
     try {
@@ -160,7 +162,10 @@ async function validateWithRadar(addr: NormalizedAddress): Promise<Partial<Valid
             headers: { "Authorization": environment.RADAR_KEY }
         });
 
-        if (!res.ok) return null;
+        if (!res.ok) {
+            debugLog.push(`Radar API error: ${res.status} ${res.statusText}`);
+            return null;
+        }
         const data = await res.json() as any;
 
         if (data.meta.code === 200 && data.address) {
@@ -207,93 +212,437 @@ async function validateWithRadar(addr: NormalizedAddress): Promise<Partial<Valid
  * TIER 2: Geoapify (Excellent Backup)
  * Limit: 3,000 requests / day free.
  */
-async function validateWithGeoapify(addr: NormalizedAddress): Promise<Partial<ValidationResult> | null> {
-    if (!environment.GEOAPIFY_KEY) return null;
+async function validateWithGeoapify(
+    addr: NormalizedAddress,
+    debugLog: string[] = []
+): Promise<Partial<ValidationResult> | null> {
+    const API_KEY = environment.GEOAPIFY_KEY;
+    if (!API_KEY) {
+        debugLog.push("Geoapify key not configured");
+        return null; // keep 'null' to let the pipeline try other providers
+    }
+
+    // ---------- Helpers ----------
+    const PO_BOX_REGEX =
+        /\b(p(?:ost(?:al)?)?\.?\s*o(?:ffice)?\.?\s*box|apo|fpo|dpo|bo[íi]te\s*postale|gpo\s*box|apartado|casilla)\b/i;
+
+    const DISALLOWED_CATEGORY_PREFIXES = [
+        "entertainment.museum",
+        "airport",
+        "memorial",
+        "religion.place_of_worship",
+        "public_transport",
+        "office.diplomatic",
+        "office.government",
+        "education"
+    ];
+
+    // Minimal “unique ZIP” hook; replace with USPS dataset lookup in production
+    const UNIQUE_ZIPS_US = new Set<string>(["20500"]); // White House
+    function isUniqueZipUS(zip?: string) {
+        return !!zip && UNIQUE_ZIPS_US.has(zip);
+    }
+
+    function isMilitaryAddress(a: { city?: string; state?: string }) {
+        const city = (a.city || "").toUpperCase();
+        const state = (a.state || "").toUpperCase();
+        return ["APO", "FPO", "DPO"].includes(city) && ["AA", "AE", "AP"].includes(state);
+    }
+
+    function parseLine1(line1: string | undefined): { housenumber?: string; street?: string } {
+        if (!line1) return {};
+        // Handles "221B Baker Street", "1600 Pennsylvania Ave NW", "10 Downing St"
+        const m = line1.trim().match(/^(\d+\w*)\s+(.+)$/);
+        if (!m) return {};
+        return { housenumber: m[1], street: m[2] };
+    }
+
+    function startsWithAny(cat: string | undefined, prefixes: string[]) {
+        if (!cat) return false;
+        return prefixes.some((p) => cat === p || cat.startsWith(p + "."));
+    }
+
+    type GeoFeature = {
+        properties: any;
+        geometry: { coordinates: [number, number] };
+    };
+
+    // Prefer full_match > match_by_building > match_by_street > inner_part > match_by_postcode > match_by_city(_or_district) > match_by_country_or_state
+    const MATCH_TYPE_SCORE: Record<string, number> = {
+        full_match: 100,
+        match_by_building: 95,
+        match_by_street: 80,
+        inner_part: 70,
+        match_by_postcode: 40,
+        match_by_city_or_district: 30,
+        match_by_city_or_disrict: 30, // some payloads miss the 't'
+        match_by_country_or_state: 10
+    };
+
+    function pickBestFeature(features: GeoFeature[]): GeoFeature | undefined {
+        if (!features?.length) return undefined;
+        // Score by: result_type (building first), building confidence, match_type, overall confidence
+        return [...features].sort((a, b) => {
+            const pa = a.properties ?? {};
+            const pb = b.properties ?? {};
+            const ra = pa.rank ?? {};
+            const rb = pb.rank ?? {};
+            const aBuilding = pa.result_type === "building" ? 1 : 0;
+            const bBuilding = pb.result_type === "building" ? 1 : 0;
+            if (bBuilding !== aBuilding) return bBuilding - aBuilding;
+
+            const aBC = typeof ra.confidence_building_level === "number" ? ra.confidence_building_level : -1;
+            const bBC = typeof rb.confidence_building_level === "number" ? rb.confidence_building_level : -1;
+            if (bBC !== aBC) return bBC - aBC;
+
+            const aMatch = MATCH_TYPE_SCORE[ra.match_type] ?? 0;
+            const bMatch = MATCH_TYPE_SCORE[rb.match_type] ?? 0;
+            if (bMatch !== aMatch) return bMatch - aMatch;
+
+            const aConf = typeof ra.confidence === "number" ? ra.confidence : -1;
+            const bConf = typeof rb.confidence === "number" ? rb.confidence : -1;
+            return bConf - aConf;
+        })[0];
+    }
+
+    function classify(properties: any, inputText: string) {
+        const rank = properties?.rank ?? {};
+        const resultType = properties?.result_type;
+        const hasHouseNumber = !!properties?.housenumber;
+        const matchType: string = rank?.match_type || "unknown";
+        const buildingConf: number =
+            typeof rank?.confidence_building_level === "number" ? rank.confidence_building_level : 0;
+        const overallConf: number = typeof rank?.confidence === "number" ? rank.confidence : 0;
+
+        const reasons: string[] = [];
+        let needsReview = false;
+
+        // Postal-only checks (input-based)
+        const isPOBox = PO_BOX_REGEX.test(inputText);
+        if (isPOBox) reasons.push("PO_BOX");
+
+        // Geo hard fails
+        if (resultType !== "building") reasons.push("NON_BUILDING_RESULT");
+        if (!hasHouseNumber) reasons.push("MISSING_HOUSENUMBER");
+        if (["match_by_country_or_state", "match_by_postcode", "match_by_city_or_disrict", "match_by_city_or_district"].includes(matchType)) {
+            reasons.push("GEO_MATCH_TOO_BROAD");
+        }
+        if (buildingConf === 0) reasons.push("GEO_BUILDING_CONFIDENCE_ZERO");
+
+        // Soft fails (review)
+        if (["inner_part", "match_by_street"].includes(matchType)) {
+            reasons.push("GEO_PARTIAL_MATCH_TYPE");
+            needsReview = true;
+        }
+        if (buildingConf < 0.9) {
+            reasons.push("GEO_BUILDING_CONFIDENCE_LOW");
+            needsReview = true;
+        }
+
+        // Category-based review
+        const category: string | undefined = properties?.category;
+        if (startsWithAny(category, DISALLOWED_CATEGORY_PREFIXES)) {
+            reasons.push("INSTITUTION_OR_LANDMARK");
+            needsReview = true;
+        }
+
+        // Military & unique ZIPs
+        const stateLike = properties?.state_code || properties?.state;
+        const cityLike = properties?.city;
+        if (isMilitaryAddress({ city: cityLike, state: stateLike })) {
+            reasons.push("MILITARY_ADDRESS");
+            needsReview = true;
+        }
+        if (isUniqueZipUS(properties?.postcode)) {
+            reasons.push("UNIQUE_ZIP_ORGANIZATION");
+            needsReview = true;
+        }
+
+        const hardFail =
+            reasons.includes("PO_BOX") ||
+            reasons.includes("NON_BUILDING_RESULT") ||
+            reasons.includes("MISSING_HOUSENUMBER") ||
+            reasons.includes("GEO_MATCH_TOO_BROAD") ||
+            reasons.includes("GEO_BUILDING_CONFIDENCE_ZERO");
+
+        const deliverable =
+            !hardFail &&
+            !needsReview &&
+            (matchType === "full_match" || matchType === "match_by_building") &&
+            buildingConf >= 0.9;
+
+        return {
+            deliverable,
+            needsReview,
+            reasons,
+            buildingConf,
+            overallConf,
+            category
+        };
+    }
+
+    function toNormalized(properties: any, fallback: NormalizedAddress): NormalizedAddress {
+        return {
+            line1: properties?.address_line1 || fallback.line1,
+            line2: fallback.line2,
+            city: properties?.city || fallback.city,
+            state: properties?.state_code || properties?.state || fallback.state,
+            postal_code: properties?.postcode || fallback.postal_code,
+            country: (properties?.country_code || fallback.country || "").toString().toUpperCase()
+        };
+    }
+
+    function buildResult({
+        valid,
+        score,
+        normalized,
+        geo,
+        reason_codes,
+        extra
+    }: {
+        valid: boolean;
+        score: number;
+        normalized: NormalizedAddress;
+        geo?: { lat: number; lng: number; confidence: number; source: "radar" | "geoapify" | "nominatim" | "local_db" };
+        reason_codes: string[];
+        extra?: Partial<ValidationResult["metadata"]> & { category?: string; needs_review?: boolean };
+    }): Partial<ValidationResult> {
+        return {
+            valid,
+            score,
+            normalized,
+            metadata: {
+                is_residential: null,
+                is_po_box: reason_codes.includes("PO_BOX"),
+                format_matched: true,
+                ...(extra?.needs_review !== undefined ? { needs_review: extra.needs_review } : {}),
+                ...(extra?.category ? { category: extra.category } : {}),
+                ...extra
+            },
+            ...(geo ? { geo } : {}),
+            source_used: "geoapify",
+            reason_codes
+        };
+    }
+
+    // ---------- Fetch candidates (structured first, then text) ----------
+    const { housenumber, street } = parseLine1(addr.line1);
+    const qs = (o: Record<string, string | number | undefined>) =>
+        Object.entries(o)
+            .filter(([, v]) => v !== undefined && v !== "")
+            .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(String(v))}`)
+            .join("&");
+
+    const inputText = `${addr.line1}, ${addr.city}, ${addr.state} ${addr.postal_code}, ${addr.country}`;
+    const urls: string[] = [];
+
+    if (housenumber && street) {
+        urls.push(
+            `https://api.geoapify.com/v1/geocode/search?${qs({
+                housenumber,
+                street,
+                city: addr.city,
+                state: addr.state,
+                postcode: addr.postal_code,
+                country: addr.country,
+                limit: 3,
+                apiKey: API_KEY
+            })}`
+        );
+    }
+
+    // Always have a text fallback
+    urls.push(
+        `https://api.geoapify.com/v1/geocode/search?${qs({
+            text: inputText,
+            limit: 3,
+            apiKey: API_KEY
+        })}`
+    );
+
+    let allFeatures: GeoFeature[] = [];
+    let apiError: { status: number; statusText: string } | null = null;
 
     try {
-        const text = `${addr.line1}, ${addr.city}, ${addr.state} ${addr.postal_code}, ${addr.country}`;
-        const url = `https://api.geoapify.com/v1/geocode/search?text=${encodeURIComponent(text)}&apiKey=${environment.GEOAPIFY_KEY}&limit=1`;
+        for (const url of urls) {
+            try {
+                const res = await fetch(url);
+                if (!res.ok) {
+                    apiError = { status: res.status, statusText: res.statusText };
+                    debugLog.push(`Geoapify API error: ${res.status} ${res.statusText}`);
+                    continue;
+                }
+                const data = (await res.json()) as { features?: GeoFeature[] };
+                const feats = Array.isArray(data?.features) ? data.features : [];
 
-        const res = await fetch(url);
-        if (!res.ok) return null;
+                if (feats.length) {
+                    allFeatures = allFeatures.concat(feats);
 
-        const data = await res.json() as any;
-        if (data.features && data.features.length > 0) {
-            const f = data.features[0].properties;
-
-            // Geoapify returns a "rank" confidence. We check if it matched the street.
-            const matchType = f.rank.match_type; // full_match, match_by_street, match_by_city, etc.
-            const isValid = ["full_match", "match_by_street"].includes(matchType);
-
-            return {
-                valid: isValid,
-                score: f.rank.confidence * 100,
-                normalized: {
-                    line1: f.address_line1 || addr.line1,
-                    line2: addr.line2,
-                    city: f.city || addr.city,
-                    state: f.state_code || f.state || addr.state,
-                    postal_code: f.postcode || addr.postal_code,
-                    country: f.country_code ? f.country_code.toUpperCase() : addr.country
-                },
-                metadata: {
-                    is_residential: null,
-                    is_po_box: false,
-                    format_matched: true
-                },
-                geo: {
-                    lat: data.features[0].geometry.coordinates[1],
-                    lng: data.features[0].geometry.coordinates[0],
-                    confidence: f.rank.confidence,
-                    source: "geoapify"
-                },
-                source_used: "geoapify",
-                reason_codes: isValid ? [] : ["ADDRESS_PARTIAL_MATCH"]
-            };
+                    // --- NEW OPTIMIZATION ---
+                    // If we found a High Confidence match, stop asking!
+                    // Don't burn credits on the text fallback.
+                    const bestSoFar = pickBestFeature(feats);
+                    const conf = bestSoFar?.properties?.rank?.confidence ?? 0;
+                    if (conf >= 0.95) {
+                        debugLog.push("Geoapify: High confidence match found in structured search, skipping fallback.");
+                        break;
+                    }
+                }
+            } catch (inner) {
+                debugLog.push(`Geoapify fetch/parse error: ${String(inner)}`);
+            }
         }
-    } catch (e) {
-        console.error("Geoapify validation error:", e);
+    } catch (outer) {
+        debugLog.push(`Geoapify unexpected error: ${String(outer)}`);
     }
-    return null;
+
+    if (allFeatures.length === 0 && apiError) {
+        debugLog.push(`Geoapify failed critically: ${apiError.status}`);
+        return null; // Allow fallback to Nominatim
+    }
+
+    if (!allFeatures.length) {
+        // The API worked, but the address doesn't exist.
+        // We return a RESULT (valid: false), which stops the chain.
+        const normalized = {
+            line1: addr.line1,
+            line2: addr.line2,
+            city: addr.city,
+            state: addr.state,
+            postal_code: addr.postal_code,
+            country: addr.country
+        };
+
+        return buildResult({
+            valid: false,
+            score: 0,
+            normalized,
+            reason_codes: ["ADDRESS_NOT_FOUND", ...(PO_BOX_REGEX.test(inputText) ? ["PO_BOX"] : [])]
+        });
+    }
+
+    // ---------- Pick and classify best candidate ----------
+    const best = pickBestFeature(allFeatures);
+    const f = best!.properties;
+    const { deliverable, needsReview, reasons, buildingConf, overallConf, category } = classify(f, inputText);
+
+    // Prepare the return payload
+    const normalized = toNormalized(f, addr);
+    const lat = best!.geometry?.coordinates?.[1];
+    const lng = best!.geometry?.coordinates?.[0];
+
+    // Add helpful logging
+    debugLog.push(
+        `Geoapify: result_type=${f.result_type}, match_type=${f?.rank?.match_type}, ` +
+        `conf_building=${buildingConf ?? "n/a"}, conf_overall=${overallConf ?? "n/a"}, category=${category ?? "n/a"}`
+    );
+
+    // Decide final validity
+    const valid = !!deliverable;
+    const reason_codes = reasons.length ? reasons : [];
+
+    return buildResult({
+        valid,
+        score: Math.round(((buildingConf || overallConf || 0) as number) * 100),
+        normalized,
+        geo:
+            typeof lat === "number" && typeof lng === "number"
+                ? { lat, lng, confidence: overallConf || 0, source: "geoapify" }
+                : undefined,
+        reason_codes,
+        extra: {
+            needs_review: !!needsReview,
+            category
+        }
+    });
 }
 
 /**
  * TIER 3: Nominatim (OpenStreetMap)
  * Limit: Rate limited (1 req/sec), but free.
  */
-async function validateWithNominatim(addr: NormalizedAddress): Promise<Partial<ValidationResult> | null> {
+async function validateWithNominatim(addr: NormalizedAddress, debugLog: string[] = []): Promise<Partial<ValidationResult> | null> {
     try {
-        await new Promise(r => { setTimeout(r, 500); }); // Throttle slightly
+        await new Promise(r => { setTimeout(r, 500); });
+
+        // ENCODE:
         const q = encodeURIComponent(`${addr.line1}, ${addr.city}, ${addr.state}, ${addr.postal_code}, ${addr.country}`);
 
         const res = await fetch(`${environment.NOMINATIM_URL}/search?format=json&addressdetails=1&limit=1&q=${q}`, {
             headers: { "User-Agent": "OrbitCheck/2.0 (Internal Tool)" }
         });
 
+        if (!res.ok) {
+            debugLog.push(`Nominatim API error: ${res.status} ${res.statusText}`);
+            return null;
+        }
+
         if (res.ok) {
             const data = await res.json() as any[];
             if (data[0]) {
                 const d = data[0];
-                // Check strictness: Did the postal code actually match?
-                const returnedZip = d.address.postcode;
+                const resultAddr = d.address;
+
+                // --- FIXED LOGIC HERE ---
+
+                // 1. Determine match precision
+                // We REMOVED the "string" check here. If line1 is "string", hasStreetInInput is TRUE.
+                const hasStreetInInput = addr.line1 && addr.line1.trim().length > 0;
+
+                // Check if Nominatim returned a specific street/building
+                const hasStreetInResult = !!(resultAddr.road || resultAddr.pedestrian || resultAddr.cycleway || resultAddr.footway || resultAddr.house_number);
+
+                // 2. REJECTION LOGIC
+                // If we sent "string" (hasStreetInInput=true), but Nominatim returned a State/City (hasStreetInResult=false),
+                // THIS will now catch it and return valid: false.
+                if (hasStreetInInput && !hasStreetInResult) {
+                    return {
+                        valid: false,
+                        score: 10,
+                        source_used: "nominatim",
+                        reason_codes: ["GEO_FOUND_BUT_PRECISION_LOW", "MISSING_STREET_MATCH"],
+                        geo: {
+                            lat: parseFloat(d.lat),
+                            lng: parseFloat(d.lon),
+                            confidence: 0.1,
+                            source: "nominatim"
+                        }
+                    };
+                }
+
+                // --- EXISTING LOGIC ---
+
+                const returnedZip = resultAddr.postcode;
                 const strictMatch = returnedZip && returnedZip.replace(/\s/g, '') === addr.postal_code.replace(/\s/g, '');
+                const hasHouseNumber = !!resultAddr.house_number;
+
+                let score = 50;
+                if (strictMatch) score += 20;
+                if (hasHouseNumber) score += 20;
 
                 return {
-                    valid: true, // If OSM found it, it's usually physically there
-                    score: strictMatch ? 80 : 50,
+                    valid: true,
+                    score: score,
                     normalized: {
-                        line1: addr.line1, // OSM formatting is often too verbose
+                        line1: resultAddr.house_number
+                            ? `${resultAddr.house_number} ${resultAddr.road}`
+                            : resultAddr.road || addr.line1,
                         line2: addr.line2,
-                        city: d.address.city || d.address.town || d.address.village || addr.city,
-                        state: d.address.state || addr.state,
-                        postal_code: d.address.postcode || addr.postal_code,
-                        country: (d.address.country_code || addr.country).toUpperCase()
+                        city: resultAddr.city || resultAddr.town || resultAddr.village || addr.city,
+                        state: resultAddr.state || addr.state,
+                        postal_code: resultAddr.postcode || addr.postal_code,
+                        country: (resultAddr.country_code || addr.country).toUpperCase()
                     },
-                    metadata: { is_residential: null, is_po_box: false, format_matched: false },
+                    metadata: {
+                        is_residential: null,
+                        is_po_box: false,
+                        format_matched: true,
+                        match_type: d.type
+                    },
                     geo: {
                         lat: parseFloat(d.lat),
                         lng: parseFloat(d.lon),
-                        confidence: 0.6,
+                        confidence: hasHouseNumber ? 1.0 : 0.7,
                         source: "nominatim"
                     },
                     source_used: "nominatim",
@@ -302,6 +651,7 @@ async function validateWithNominatim(addr: NormalizedAddress): Promise<Partial<V
             }
         }
     } catch (e) {
+        debugLog.push(`Nominatim error: ${e}`);
         console.error("Nominatim error:", e);
     }
     return null;
@@ -334,40 +684,62 @@ export async function validateAddress(
         if (cached) return JSON.parse(cached);
     }
 
-    // 3. Fail Fast
+    // 3. Fail Fast: Block Placeholder/Junk Data
+    // This prevents Swagger defaults ("string") from passing as valid City/State matches
+    const placeholders = ["string", "test", "n/a", "null", "undefined", "sample"];
+    const isPlaceholder = (val: string) => placeholders.includes(val.toLowerCase());
+
+    if (isPlaceholder(input.line1) || isPlaceholder(input.city) || isPlaceholder(input.postal_code)) {
+        return formatResult({
+            valid: false,
+            score: 0,
+            normalized: input,
+            metadata: { is_residential: null, is_po_box: false, format_matched: false },
+            geo: null,
+            reason_codes: ["INVALID_INPUT_DATA"], // Specific error for junk data
+            source_used: "logic_validation"
+        }, cacheKey, input, redis);
+    }
+
+    // 4. Fail Fast: Missing Required Fields
     if (!input.line1 || !input.city || !input.country) {
         return formatResult({
-            valid: false, score: 0, normalized: input,
+            valid: false,
+            score: 0,
+            normalized: input,
             metadata: { is_residential: null, is_po_box: false, format_matched: false },
-            geo: null, reason_codes: [REASON_CODES.MISSING_REQUIRED_FIELDS], source_used: "logic"
+            geo: null,
+            reason_codes: [REASON_CODES.MISSING_REQUIRED_FIELDS],
+            source_used: "logic"
         }, cacheKey, input, redis);
     }
 
     let result: Partial<ValidationResult> | null = null;
 
+    let debugLog: string[] = [];
+
     // --- PROVIDER CHAIN ---
 
-    // Step A: Radar (High Quality, Free)
-    result = await validateWithRadar(input);
+    // Step A: Radar (Best Commercial Grade)
+    // If Radar works (returns object), we accept its verdict (valid or invalid).
+    // If Radar errors (returns null, e.g. 402 Payment), we proceed.
+    result = await validateWithRadar(input, debugLog);
 
-    // Step B: Geoapify (If Radar failed or unverified)
-    if (!result || !result.valid) {
-        const geoRes = await validateWithGeoapify(input);
-        // If Geoapify found a strong match, use it. 
-        if (geoRes && geoRes.valid) {
-            result = geoRes;
-        }
+    // Step B: Geoapify (Backup)
+    // Only run if Radar returned NULL (system error/no key)
+    if (!result) {
+        result = await validateWithGeoapify(input, debugLog);
     }
 
-    // Step C: Nominatim (Last Resort for API)
-    if (!result || (!result.valid && !result.geo)) {
-        const nomRes = await validateWithNominatim(input);
-        if (nomRes) result = nomRes;
+    // Step C: Nominatim (Open Source Fallback)
+    // Only run if both Radar AND Geoapify returned NULL (system errors)
+    if (!result) {
+        result = await validateWithNominatim(input, debugLog);
     }
 
-    // Step D: Local DB Fallback (The Failsafe)
-    // If APIs failed, or we just want to cross-reference city/zip validity
-    if (!result || !result.valid) {
+    // Step D: Local DB Fallback
+    // Only run if ALL APIs failed to return a result object
+    if (!result) {
         const { rows } = await pool.query(
             `SELECT place_name, admin_name1, postal_code, country_code 
              FROM geonames_postal 
@@ -419,6 +791,8 @@ export async function validateAddress(
             geo: null, reason_codes: [REASON_CODES.ADDRESS_NOT_FOUND], source_used: "none"
         };
     }
+
+    result = { ...result, debug_log: debugLog };
 
     return formatResult(result!, cacheKey, input, redis);
 }

@@ -5,7 +5,7 @@ import type { FastifyReply, FastifyRequest } from 'fastify';
 import { createShopifyService } from '../../../services/shopify.js';
 import type { Mode } from '../lib/types.js';
 
-export async function getShopSettings(request: FastifyRequest, reply: FastifyReply, pool: any) {
+export async function getShopSettings(request: FastifyRequest, reply: FastifyReply, pool: any): Promise<FastifyReply> {
     const shop = (request as any).shopDomain || ((request as any).shopHost as string | undefined)?.replace(/^https?:\/\//, '');
 
     if (!shop) {
@@ -26,7 +26,7 @@ export async function getShopSettings(request: FastifyRequest, reply: FastifyRep
     });
 }
 
-export async function updateShopSettings(request: FastifyRequest, reply: FastifyReply, pool: any) {
+export async function updateShopSettings(request: FastifyRequest, reply: FastifyReply, pool: any): Promise<FastifyReply> {
     const shop = (request as any).shopDomain || ((request as any).shopHost as string | undefined)?.replace(/^https?:\/\//, '');
 
     if (!shop) {

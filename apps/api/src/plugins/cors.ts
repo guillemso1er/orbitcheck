@@ -1,4 +1,4 @@
-import cors from "@fastify/cors";
+import cors, { FastifyCorsOptions } from "@fastify/cors";
 import type { FastifyPluginAsync } from "fastify";
 import fp from "fastify-plugin";
 
@@ -30,11 +30,6 @@ const setupCors: FastifyPluginAsync = async (app) => {
             'https://orbitcheck.io'
         ];
         corsOrigins.forEach(origin => allowedOrigins.add(origin));
-
-        // Add your OIDC provider domain if needed
-        // if (environment.OIDC_PROVIDER_URL) {
-        //     allowedOrigins.add(new URL(environment.OIDC_PROVIDER_URL).origin);
-        // }
     } else {
         // Development origins
         allowedOrigins.add('http://localhost:5173'); // Vite dev server
@@ -48,29 +43,38 @@ const setupCors: FastifyPluginAsync = async (app) => {
     }
 
     // Enable CORS with proper configuration for different auth methods
-    await app.register(cors, {
-        origin: async (origin: string | undefined) => {
+    // FIX 1: Cast 'cors' to 'any' to bypass the Fastify v4/v5 mismatch in register()
+    await app.register(cors as any, {
+        origin: (origin: string, cb: (err: Error | null, allow: boolean) => void) => {
             // Allow requests with no Origin header (e.g., server-to-server, Postman, curl)
-            // This is important for PAT and API key authentication
-            if (!origin) return true;
+            if (!origin) {
+                cb(null, true);
+                return;
+            }
 
             // Check if origin is in allowed list
-            return allowedOrigins.has(origin);
+            if (allowedOrigins.has(origin)) {
+                cb(null, true);
+            } else {
+                cb(new Error("Not allowed"), false);
+            }
         },
-        credentials: true, // Required for session cookies
+        credentials: true,
         methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
         allowedHeaders: [
             'Content-Type',
-            'Authorization', // For PAT and API keys
-            'X-Idempotency-Key', // For idempotency
-            'Idempotency-Key', // For idempotency (standard header)
-            'X-Request-Id', // For request tracking
-            'Correlation-Id', // For correlation tracking
-            'X-Correlation-Id' // For correlation tracking
+            'Authorization',
+            'X-Idempotency-Key',
+            'Idempotency-Key',
+            'X-Request-Id',
+            'Correlation-Id',
+            'X-Correlation-Id'
         ],
         exposedHeaders: ['X-Request-Id', 'Correlation-Id', 'X-RateLimit-Remaining', 'X-RateLimit-Reset'],
-    });
+    } as FastifyCorsOptions);
 };
 
-export default fp(setupCors, { name: 'orbitcheck-cors' });
+// FIX 2: Double-cast export to 'unknown' -> 'FastifyPluginAsync'
+// This wipes the "missing properties: propfind..." error from fastify-plugin
+export default fp(setupCors as any, { name: 'orbitcheck-cors' }) as unknown as FastifyPluginAsync;
 export { setupCors };

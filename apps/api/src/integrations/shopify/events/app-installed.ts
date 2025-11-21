@@ -1,8 +1,8 @@
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import type { Pool } from 'pg';
 
-import { createShopifyService } from '../../../services/shopify.js';
 import { createShopifyOnboardingService } from '../../../services/shopify-onboarding.js';
+import { createShopifyService } from '../../../services/shopify.js';
 import { shopifyGraphql } from '../lib/graphql.js';
 import { missingScopes, parseScopes } from '../lib/scopes.js';
 import { captureShopifyEvent } from '../lib/telemetry.js';
@@ -31,7 +31,7 @@ const QUERY_SHOP_METADATA = `
   }
 `;
 
-export async function appInstalled(request: FastifyRequest, reply: FastifyReply, pool: Pool) {
+export async function appInstalled(request: FastifyRequest, reply: FastifyReply, pool: Pool): Promise<FastifyReply> {
     const { shop, accessToken, grantedScopes } = request.body as AppInstalledPayload;
 
     if (!shop || typeof shop !== 'string' || !accessToken || typeof accessToken !== 'string') {
@@ -107,6 +107,7 @@ export async function appInstalled(request: FastifyRequest, reply: FastifyReply,
     }
 
     // Run onboarding asynchronously after responding to avoid timeout
+    // eslint-disable-next-line @typescript-eslint/no-misused-promises
     queueMicrotask(async () => {
         const onboardingService = createShopifyOnboardingService(pool, request.log);
         try {

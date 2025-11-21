@@ -5,7 +5,7 @@ import type { FastifyReply, FastifyRequest } from 'fastify';
 import { createShopifyService } from '../../../services/shopify.js';
 import { missingScopes, parseScopes } from '../lib/scopes.js';
 
-export async function getAccessScopes(request: FastifyRequest, reply: FastifyReply, pool: any) {
+export async function getAccessScopes(request: FastifyRequest, reply: FastifyReply, pool: any): Promise<FastifyReply> {
     const shop = (request as any).shopDomain || ((request as any).shopHost as string | undefined)?.replace(/^https?:\/\//, '');
     if (!shop) {
         request.log.warn('Missing shop domain for access scopes request');

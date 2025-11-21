@@ -4,7 +4,7 @@ import type { Pool } from 'pg';
 import { createShopifyService } from '../../../services/shopify.js';
 import { captureShopifyEvent } from '../lib/telemetry.js';
 
-export async function appUninstalled(request: FastifyRequest, reply: FastifyReply, pool: Pool) {
+export async function appUninstalled(request: FastifyRequest, reply: FastifyReply, pool: Pool): Promise<FastifyReply> {
     const shop = request.headers['x-shopify-shop-domain'] as string;
     if (!shop) {
         request.log.warn('Received app/uninstalled webhook without shop header');

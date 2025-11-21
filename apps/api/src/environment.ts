@@ -10,7 +10,7 @@ const NODE_ENV = process.env.NODE_ENV || 'production';
 const isProd = NODE_ENV === 'production';
 
 // Helpers
-const randomHex = (bytes: number) => randomBytes(bytes).toString('hex');
+const randomHex = (bytes: number): string => randomBytes(bytes).toString('hex');
 
 const csv = makeValidator<string[]>((s) => {
   if (typeof s !== 'string') throw new Error('must be a string');
@@ -31,15 +31,14 @@ const urlOrEmpty = makeValidator<string>((s) => {
 });
 
 // Enforce hex key of exact byte length
-const hexOfBytes = (bytes: number) =>
-  makeValidator<string>((s) => {
-    if (typeof s !== 'string') throw new Error('must be a hex string');
-    if (!/^[0-9a-f]+$/i.test(s)) throw new Error('must be hex');
-    if (s.length % 2 !== 0) throw new Error('hex length must be even');
-    const buf = Buffer.from(s, 'hex');
-    if (buf.length !== bytes) throw new Error(`must be ${bytes} bytes (${bytes * 2} hex chars)`);
-    return s.toLowerCase();
-  });
+const hexOfBytes = (bytes: number): ReturnType<typeof makeValidator<string>> => makeValidator<string>((s) => {
+  if (typeof s !== 'string') throw new Error('must be a hex string');
+  if (!/^[0-9a-f]+$/i.test(s)) throw new Error('must be hex');
+  if (s.length % 2 !== 0) throw new Error('hex length must be even');
+  const buf = Buffer.from(s, 'hex');
+  if (buf.length !== bytes) throw new Error(`must be ${bytes} bytes (${bytes * 2} hex chars)`);
+  return s.toLowerCase();
+});
 
 export const env = cleanEnv(process.env, {
   // Runtime mode

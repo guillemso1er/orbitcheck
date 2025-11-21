@@ -1,6 +1,5 @@
 import type { FastifyReply, FastifyRequest } from 'fastify';
 
-
 import { normalizeAddress } from '../../../validators/address.js';
 
 interface ShopifyCustomer {
@@ -72,6 +71,7 @@ export async function customersUpdate(request: FastifyRequest, reply: FastifyRep
 
     // Process customer address profile refresh asynchronously
     if (customer.default_address && hasRequiredAddressFields(customer.default_address)) {
+        // eslint-disable-next-line @typescript-eslint/no-misused-promises
         queueMicrotask(async () => {
             try {
                 await processCustomerAddress(request, shopDomain, customer);

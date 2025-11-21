@@ -10,6 +10,7 @@ import { ErrorHandler } from "../utils/errorHandler.js";
  */
 export async function setupErrorHandler<TServer extends RawServerBase = RawServerBase>(app: FastifyInstance<TServer>): Promise<void> {
     // Enhanced error handler to prevent sensitive information leakage
+    // eslint-disable-next-line promise/prefer-await-to-callbacks
     app.setErrorHandler(async (error: Error & { code?: string; statusCode?: number }, request: FastifyRequest<RouteGenericInterface, TServer>, reply: FastifyReply<RouteGenericInterface, TServer>) => {
         // Use the ErrorHandler utility for secure logging
         ErrorHandler.logErrorSecurely(request.log, error, {
