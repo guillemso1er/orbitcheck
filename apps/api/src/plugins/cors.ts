@@ -53,7 +53,8 @@ const setupCors: FastifyPluginAsync = async (app) => {
             }
 
             // Check if origin is in allowed list
-            if (allowedOrigins.has(origin)) {
+            // Allow Shopify CLI tunnel URLs in development
+            if (allowedOrigins.has(origin) || (!environment.isProd && origin.endsWith('.trycloudflare.com'))) {
                 cb(null, true);
             } else {
                 cb(new Error("Not allowed"), false);

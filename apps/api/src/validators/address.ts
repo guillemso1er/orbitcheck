@@ -305,9 +305,9 @@ async function validateWithGeoapify(
         })[0];
     }
 
-    function classify(properties: any, inputText: string) {
+function classify(properties: any, inputText: string) {
         const rank = properties?.rank ?? {};
-        const resultType = properties?.result_type;
+        const resultType = properties?.result_type; // e.g., building, amenity, premise
         const hasHouseNumber = !!properties?.housenumber;
         const matchType: string = rank?.match_type || "unknown";
         const buildingConf: number =
@@ -321,23 +321,43 @@ async function validateWithGeoapify(
         const isPOBox = PO_BOX_REGEX.test(inputText);
         if (isPOBox) reasons.push("PO_BOX");
 
-        // Geo hard fails
-        if (resultType !== "building") reasons.push("NON_BUILDING_RESULT");
+        // --- LOGIC UPDATE START ---
+
+        // 1. Define what constitutes a "high confidence" match
+        // If both overall and building confidence are perfect (or near perfect), we trust it more.
+        const isHighConfidence = overallConf >= 0.95;
+
+        // 2. Relax Result Type Check
+        // Allow 'amenity' (commercial places) and 'premise' (specific lots)
+        const validTypes = ["building", "amenity", "premise"];
+        if (!validTypes.includes(resultType)) {
+            reasons.push("NON_BUILDING_RESULT");
+        }
+
+        // 3. Check House Number
         if (!hasHouseNumber) reasons.push("MISSING_HOUSENUMBER");
+
+        // 4. Check Match Broadness
         if (["match_by_country_or_state", "match_by_postcode", "match_by_city_or_disrict", "match_by_city_or_district"].includes(matchType)) {
             reasons.push("GEO_MATCH_TOO_BROAD");
         }
-        if (buildingConf === 0) reasons.push("GEO_BUILDING_CONFIDENCE_ZERO");
+        
+        // 5. Handle Zero Confidence
+        if (buildingConf === 0 && !isHighConfidence) reasons.push("GEO_BUILDING_CONFIDENCE_ZERO");
 
-        // Soft fails (review)
-        if (["inner_part", "match_by_street"].includes(matchType)) {
+        // 6. Soft Fails (Review)
+        // FIX: Don't flag "inner_part" or "match_by_street" if we have High Confidence
+        if (["inner_part", "match_by_street"].includes(matchType) && !isHighConfidence) {
             reasons.push("GEO_PARTIAL_MATCH_TYPE");
             needsReview = true;
         }
-        if (buildingConf < 0.9) {
+        
+        if (buildingConf < 0.8 && overallConf < 0.8) { // Relaxed slightly
             reasons.push("GEO_BUILDING_CONFIDENCE_LOW");
             needsReview = true;
         }
+
+        // --- LOGIC UPDATE END ---
 
         // Category-based review
         const category: string | undefined = properties?.category;
@@ -358,18 +378,21 @@ async function validateWithGeoapify(
             needsReview = true;
         }
 
+        // DETERMINE DELIVERABILITY
         const hardFail =
             reasons.includes("PO_BOX") ||
-            reasons.includes("NON_BUILDING_RESULT") ||
             reasons.includes("MISSING_HOUSENUMBER") ||
-            reasons.includes("GEO_MATCH_TOO_BROAD") ||
-            reasons.includes("GEO_BUILDING_CONFIDENCE_ZERO");
+            reasons.includes("GEO_MATCH_TOO_BROAD");
 
+        // Valid if:
+        // 1. No Hard Fails AND
+        // 2. (High Confidence) OR (Good Match Type + Decent Confidence)
         const deliverable =
             !hardFail &&
-            !needsReview &&
-            (matchType === "full_match" || matchType === "match_by_building") &&
-            buildingConf >= 0.9;
+            (
+                (isHighConfidence) || // TRUST THE SCORE: 1600 Amphitheatre has conf=1.0
+                (!needsReview && ["full_match", "match_by_building"].includes(matchType) && buildingConf >= 0.9)
+            );
 
         return {
             deliverable,
