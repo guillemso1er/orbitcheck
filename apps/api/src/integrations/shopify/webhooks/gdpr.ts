@@ -1,6 +1,7 @@
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { type Redis as IORedisType } from 'ioredis';
 
+import type { GdprCustomersDataRequest, GdprCustomersRedact, GdprShopRedact } from '../../../generated/fastify/index.js';
 import { createShopifyService } from '../../../services/shopify.js';
 import { captureShopifyEvent } from '../lib/telemetry.js';
 
@@ -161,7 +162,7 @@ async function clearCustomerCacheData(
 
 export async function customersDataRequest(request: FastifyRequest, reply: FastifyReply): Promise<any> {
     const shop = (request.headers['x-shopify-shop-domain'] as string) || ((request as any).shopDomain as string);
-    const payload = request.body as Record<string, unknown>;
+    const payload: GdprCustomersDataRequest = request.body as any;
     const customerId = extractCustomerId(payload);
 
     if (!shop) {
@@ -284,7 +285,7 @@ export async function customersDataRequest(request: FastifyRequest, reply: Fasti
 
 export async function customersRedact(request: FastifyRequest, reply: FastifyReply): Promise<any> {
     const shop = (request.headers['x-shopify-shop-domain'] as string) || ((request as any).shopDomain as string);
-    const payload = request.body as Record<string, unknown>;
+    const payload: GdprCustomersRedact = request.body as any;
     const customerId = extractCustomerId(payload);
 
     if (!shop) {
@@ -409,7 +410,7 @@ export async function customersRedact(request: FastifyRequest, reply: FastifyRep
 
 export async function shopRedact(request: FastifyRequest, reply: FastifyReply): Promise<any> {
     const shop = request.headers['x-shopify-shop-domain'] as string;
-    const payload = request.body as Record<string, unknown>;
+    const payload: GdprShopRedact = request.body as any;
 
     if (!shop) {
         request.log.warn('Missing shop header for shop/redact webhook');

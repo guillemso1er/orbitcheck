@@ -43,7 +43,8 @@ export async function dedupeAddress(
         const project_id = (request as any).project_id;
         const reason_codes: string[] = [];
 
-        const result = await dedupeAddressLogic(body, project_id, pool);
+        const cleanedBody = { ...body, line2: body.line2 ?? undefined };
+        const result = await dedupeAddressLogic(cleanedBody, project_id, pool);
         const mappedMatches = result.matches.map((match: any) => ({
             ...match,
             match_type: match.match_type as "exact_address" | "exact_postal" | "fuzzy_address" | undefined

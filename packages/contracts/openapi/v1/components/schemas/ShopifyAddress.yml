@@ -1,0 +1,19 @@
+type: object
+properties:
+  id: { type: integer, format: int64 }
+  first_name: { type: [string, "null"] }
+  last_name: { type: [string, "null"] }
+  name: { type: [string, "null"] }
+  company: { type: [string, "null"] }
+  phone: { type: [string, "null"] }
+  address1: { type: [string, "null"] }
+  address2: { type: [string, "null"] }
+  city: { type: [string, "null"] }
+  province: { type: [string, "null"] }
+  province_code: { type: [string, "null"] }
+  zip: { type: [string, "null"] }
+  country: { type: [string, "null"] }
+  country_code: { type: [string, "null"] }
+  latitude: { type: [number, "null"] }
+  longitude: { type: [number, "null"] }
+  default: { type: [boolean, "null"] }

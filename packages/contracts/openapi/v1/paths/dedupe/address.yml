@@ -13,33 +13,7 @@ requestBody:
   content:
     application/json:
       schema:
-        type: object
-        required:
-          - line1
-          - city
-          - postal_code
-          - country
-        properties:
-          line1:
-            type: string
-            description: Street address line 1
-          line2:
-            type: string
-            description: Street address line 2
-          city:
-            type: string
-            description: City
-          state:
-            type: string
-            description: State or province
-          postal_code:
-            type: string
-            description: Postal code
-          country:
-            type: string
-            minLength: 2
-            maxLength: 2
-            description: Two-letter country code
+        $ref: '../../components/schemas/AddressInput.yml'
 responses:
   '200':
     description: Deduplication results
@@ -67,32 +41,7 @@ responses:
                       - fuzzy_address
                     description: Type of match
                   data:
-                    type: object
-                    properties:
-                      line1:
-                        type: string
-                        description: Street address line 1
-                      line2:
-                        type: string
-                        description: Street address line 2
-                      city:
-                        type: string
-                        description: City
-                      state:
-                        type: string
-                        description: State or province
-                      postal_code:
-                        type: string
-                        description: Postal code
-                      country:
-                        type: string
-                        description: Two-letter country code
-                      lat:
-                        type: [number, "null"]
-                        description: Latitude
-                      lng:
-                        type: [number, "null"]
-                        description: Longitude
+                    $ref: '../../components/schemas/Address.yml#/components/schemas/Address'
             suggested_action:
               type: string
               enum:

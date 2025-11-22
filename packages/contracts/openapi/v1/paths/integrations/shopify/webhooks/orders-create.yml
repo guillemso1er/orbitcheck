@@ -9,9 +9,7 @@ requestBody:
   content:
     application/json:
       schema:
-        type: object
-        description: Shopify order webhook payload
-        additionalProperties: true
+        $ref: '../../../../components/schemas/ShopifyOrder.yml'
 responses:
   '200':
     description: Webhook processed successfully

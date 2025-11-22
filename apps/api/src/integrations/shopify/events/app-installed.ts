@@ -1,6 +1,7 @@
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import type { Pool } from 'pg';
 
+import type { GetShopQuery } from '../../../generated/shopify/admin/admin.generated.js';
 import { createShopifyService } from '../../../services/shopify.js';
 import { createShopifyOnboardingService } from '../../../services/shopify-onboarding.js';
 import { shopifyGraphql } from '../lib/graphql.js';
@@ -86,7 +87,7 @@ export async function appInstalled(request: FastifyRequest, reply: FastifyReply,
         request.log.debug({ shop }, 'Fetching shop metadata from Shopify Admin API');
         const client = await shopifyGraphql(shop, accessToken, process.env.SHOPIFY_API_VERSION || '2024-01');
         const response = await client.query(QUERY_SHOP_METADATA, {});
-        shopMetadata = response.data?.shop;
+        shopMetadata = (response.data as GetShopQuery).shop;
 
         if (!shopMetadata) {
             throw new Error('No shop data returned from Shopify API');

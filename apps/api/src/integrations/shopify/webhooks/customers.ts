@@ -1,21 +1,7 @@
 import type { FastifyReply, FastifyRequest } from 'fastify';
 
+import type { ShopifyCustomer } from '../../../generated/fastify/index.js';
 import { normalizeAddress } from '../../../validators/address.js';
-
-interface ShopifyCustomer {
-    id: number;
-    email: string;
-    default_address?: {
-        address1?: string;
-        address2?: string;
-        city?: string;
-        province?: string;
-        zip?: string;
-        country_code?: string;
-        first_name?: string;
-        last_name?: string;
-    };
-}
 
 /**
  * Handle Shopify customers/create webhook

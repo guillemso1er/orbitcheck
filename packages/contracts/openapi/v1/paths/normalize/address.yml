@@ -18,27 +18,7 @@ requestBody:
           - address
         properties:
           address:
-            type: object
-            required:
-              - line1
-              - city
-              - postal_code
-              - country
-            properties:
-              line1:
-                type: string
-              line2:
-                type: string
-              city:
-                type: string
-              state:
-                type: string
-              postal_code:
-                type: string
-              country:
-                type: string
-                minLength: 2
-                maxLength: 2
+            $ref: '../../components/schemas/AddressInput.yml'
 responses:
   '200':
     description: Successful normalization response
@@ -48,20 +28,7 @@ responses:
           type: object
           properties:
             normalized:
-              type: object
-              properties:
-                line1:
-                  type: string
-                line2:
-                  type: string
-                city:
-                  type: string
-                state:
-                  type: string
-                postal_code:
-                  type: string
-                country:
-                  type: string
+              $ref: '../../components/schemas/BaseAddress.yml'
             request_id:
               type: string
   '400':

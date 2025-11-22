@@ -1,0 +1,28 @@
+description: Payload for app/uninstalled (Shop resource snapshot).
+type: object
+properties:
+  id: { type: integer, format: int64 }
+  admin_graphql_api_id: { type: [string, "null"] }
+  name: { type: string }
+  email: { type: [string, "null"], format: email }
+  domain: { type: [string, "null"] }
+  myshopify_domain: { type: [string, "null"] }
+  province: { type: [string, "null"] }
+  country: { type: [string, "null"] }
+  address1: { type: [string, "null"] }
+  address2: { type: [string, "null"] }
+  zip: { type: [string, "null"] }
+  city: { type: [string, "null"] }
+  phone: { type: [string, "null"] }
+  latitude: { type: [number, "null"] }
+  longitude: { type: [number, "null"] }
+  primary_locale: { type: [string, "null"] }
+  created_at: { type: [string, "null"], format: date-time }
+  updated_at: { type: [string, "null"], format: date-time }
+  country_code: { type: [string, "null"] }
+  country_name: { type: [string, "null"] }
+  currency: { type: [string, "null"] }
+  customer_email: { type: [string, "null"], format: email }
+  timezone: { type: [string, "null"] }
+  iana_timezone: { type: [string, "null"] }
+  shop_owner: { type: [string, "null"] }

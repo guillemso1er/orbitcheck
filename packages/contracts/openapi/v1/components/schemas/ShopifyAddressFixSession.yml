@@ -17,45 +17,11 @@ properties:
     type: string
     description: Customer email address
   original_address:
-    type: object
     description: Original shipping address from the order
-    properties:
-      address1:
-        type: string
-      address2:
-        type: [string, "null"]
-      city:
-        type: string
-      province:
-        type: string
-      zip:
-        type: string
-      country_code:
-        type: string
-      first_name:
-        type: [string, "null"]
-      last_name:
-        type: [string, "null"]
+    $ref: './ShopifyAddress.yml'
   normalized_address:
-    type: object
     description: Normalized/corrected shipping address
-    properties:
-      address1:
-        type: string
-      address2:
-        type: [string, "null"]
-      city:
-        type: string
-      province:
-        type: string
-      zip:
-        type: string
-      country_code:
-        type: string
-      first_name:
-        type: [string, "null"]
-      last_name:
-        type: [string, "null"]
+    $ref: './ShopifyAddress.yml'
   fix_status:
     type: string
     enum: [pending, confirmed, cancelled]

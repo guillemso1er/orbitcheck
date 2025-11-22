@@ -133,7 +133,8 @@ export async function validateAddress(
             });
         }
 
-        const out = await validateAddressLogic(address, pool, redis);
+        const cleanedAddress = { ...address, line2: address.line2 ?? undefined };
+        const out = await validateAddressLogic(cleanedAddress, pool, redis);
         if (rep.saveIdem) {
             await rep.saveIdem(out);
         }

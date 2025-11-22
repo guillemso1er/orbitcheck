@@ -321,7 +321,11 @@ components:
     Webhook:
       $ref: './components/schemas/Webhook.yml'
     Address:
-      $ref: './components/schemas/Address.yml'
+      $ref: './components/schemas/Address.yml#/components/schemas/Address'
+    BaseAddress:
+      $ref: './components/schemas/BaseAddress.yml'
+    AddressInput:
+      $ref: './components/schemas/AddressInput.yml'
     Customer:
       $ref: './components/schemas/Customer.yml'
     CustomerMatch:
@@ -334,6 +338,8 @@ components:
       $ref: './components/schemas/ValidationResult.yml'
     AddressValidationResult:
       $ref: './components/schemas/AddressValidationResult.yml'
+    DetailedAddressValidationResult:
+      $ref: './components/schemas/DetailedAddressValidationResult.yml'
     LogEntry:
       $ref: './components/schemas/LogEntry.yml'
     Rule:
@@ -374,6 +380,8 @@ components:
       $ref: './components/schemas/Pagination.yml'
     ShopifyOrder:
       $ref: './components/schemas/ShopifyOrder.yml'
+    ShopifyAddress:
+      $ref: './components/schemas/ShopifyAddress.yml'
     ShopifyAddressFixSession:
       $ref: './components/schemas/ShopifyAddressFixSession.yml'
     ShopifyAddressFixConfirmRequest:

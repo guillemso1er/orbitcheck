@@ -1249,10 +1249,14 @@ export const shopifyAppUninstalledWebhook = <ThrowOnError extends boolean = fals
  *
  * Handles Shopify GDPR customers/data_request webhook events
  */
-export const shopifyGdprCustomersDataRequestWebhook = <ThrowOnError extends boolean = false>(options?: Options<ShopifyGdprCustomersDataRequestWebhookData, ThrowOnError>) => {
-    return (options?.client ?? client).post<ShopifyGdprCustomersDataRequestWebhookResponses, ShopifyGdprCustomersDataRequestWebhookErrors, ThrowOnError>({
+export const shopifyGdprCustomersDataRequestWebhook = <ThrowOnError extends boolean = false>(options: Options<ShopifyGdprCustomersDataRequestWebhookData, ThrowOnError>) => {
+    return (options.client ?? client).post<ShopifyGdprCustomersDataRequestWebhookResponses, ShopifyGdprCustomersDataRequestWebhookErrors, ThrowOnError>({
         url: '/integrations/shopify/webhooks/gdpr/customers-data-request',
-        ...options
+        ...options,
+        headers: {
+            'Content-Type': 'application/json',
+            ...options.headers
+        }
     });
 };
 
@@ -1261,10 +1265,14 @@ export const shopifyGdprCustomersDataRequestWebhook = <ThrowOnError extends bool
  *
  * Handles Shopify GDPR customers/redact webhook events
  */
-export const shopifyGdprCustomersRedactWebhook = <ThrowOnError extends boolean = false>(options?: Options<ShopifyGdprCustomersRedactWebhookData, ThrowOnError>) => {
-    return (options?.client ?? client).post<ShopifyGdprCustomersRedactWebhookResponses, ShopifyGdprCustomersRedactWebhookErrors, ThrowOnError>({
+export const shopifyGdprCustomersRedactWebhook = <ThrowOnError extends boolean = false>(options: Options<ShopifyGdprCustomersRedactWebhookData, ThrowOnError>) => {
+    return (options.client ?? client).post<ShopifyGdprCustomersRedactWebhookResponses, ShopifyGdprCustomersRedactWebhookErrors, ThrowOnError>({
         url: '/integrations/shopify/webhooks/gdpr/customers-redact',
-        ...options
+        ...options,
+        headers: {
+            'Content-Type': 'application/json',
+            ...options.headers
+        }
     });
 };
 
@@ -1273,10 +1281,14 @@ export const shopifyGdprCustomersRedactWebhook = <ThrowOnError extends boolean =
  *
  * Handles Shopify GDPR shop/redact webhook events
  */
-export const shopifyGdprShopRedactWebhook = <ThrowOnError extends boolean = false>(options?: Options<ShopifyGdprShopRedactWebhookData, ThrowOnError>) => {
-    return (options?.client ?? client).post<ShopifyGdprShopRedactWebhookResponses, ShopifyGdprShopRedactWebhookErrors, ThrowOnError>({
+export const shopifyGdprShopRedactWebhook = <ThrowOnError extends boolean = false>(options: Options<ShopifyGdprShopRedactWebhookData, ThrowOnError>) => {
+    return (options.client ?? client).post<ShopifyGdprShopRedactWebhookResponses, ShopifyGdprShopRedactWebhookErrors, ThrowOnError>({
         url: '/integrations/shopify/webhooks/gdpr/shop-redact',
-        ...options
+        ...options,
+        headers: {
+            'Content-Type': 'application/json',
+            ...options.headers
+        }
     });
 };
 

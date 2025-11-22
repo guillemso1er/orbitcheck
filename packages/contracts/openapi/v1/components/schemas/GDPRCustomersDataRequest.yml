@@ -1,0 +1,19 @@
+description: Payload for customers/data_request.
+type: object
+required: [shop_id, shop_domain, customer, data_request]
+properties:
+  shop_id: { type: integer }
+  shop_domain: { type: string }
+  orders_requested:
+    type: array
+    items: { type: integer }
+  customer:
+    type: object
+    properties:
+      id: { type: integer }
+      email: { type: string, format: email }
+      phone: { type: string }
+  data_request:
+    type: object
+    properties:
+      id: { type: integer }

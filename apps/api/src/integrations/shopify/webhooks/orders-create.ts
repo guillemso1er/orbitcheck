@@ -4,6 +4,8 @@ import { type Redis as IORedisType } from 'ioredis';
 import type { Pool } from 'pg';
 
 import { env } from '../../../environment.js';
+import type { ShopifyOrder } from '../../../generated/fastify/index.js';
+import type { AddTagsMutation, GetShopNameQuery } from '../../../generated/shopify/admin/admin.generated.js';
 import { CompositeEmailService, KlaviyoEmailService, ShopifyFlowEmailService } from '../../../services/email/email-service.js';
 import { evaluateOrderForRiskAndRulesDirect } from '../../../services/orders.js';
 import { createShopifyService } from '../../../services/shopify.js';
@@ -11,7 +13,7 @@ import { validateAddress as validateAddressUtil } from '../../../validators/addr
 import { createAddressFixService } from '../address-fix/service.js';
 import { MUT_TAGS_ADD, QUERY_SHOP_NAME, shopifyGraphql } from '../lib/graphql.js';
 import { captureShopifyEvent } from '../lib/telemetry.js';
-import type { OrderEvaluatePayload, ShopifyOrder } from '../lib/types.js';
+import type { OrderEvaluatePayload } from '../lib/types.js';
 
 export async function ordersCreate(request: FastifyRequest, reply: FastifyReply, pool: Pool, redis: IORedisType): Promise<any> {
     const o: ShopifyOrder = request.body as any;
@@ -31,24 +33,24 @@ export async function ordersCreate(request: FastifyRequest, reply: FastifyReply,
     const payload: OrderEvaluatePayload = {
         order_id: String(o.id),
         customer: {
-            email: o.contact_email ?? o.email,
-            phone: o.phone ?? o?.shipping_address?.phone,
-            first_name: o?.shipping_address?.first_name,
-            last_name: o?.shipping_address?.last_name,
+            email: o.contact_email || o.email || undefined,
+            phone: o.phone || o?.shipping_address?.phone || undefined,
+            first_name: o?.shipping_address?.first_name || undefined,
+            last_name: o?.shipping_address?.last_name || undefined,
         },
         shipping_address: {
-            line1: o?.shipping_address?.address1,
-            line2: o?.shipping_address?.address2,
-            city: o?.shipping_address?.city,
-            state: o?.shipping_address?.province,
-            postal_code: o?.shipping_address?.zip,
-            country: o?.shipping_address?.country_code,
-            lat: o?.shipping_address?.latitude ?? undefined,
-            lng: o?.shipping_address?.longitude ?? undefined,
+            line1: o?.shipping_address?.address1 || undefined,
+            line2: o?.shipping_address?.address2 || undefined,
+            city: o?.shipping_address?.city || undefined,
+            state: o?.shipping_address?.province || undefined,
+            postal_code: o?.shipping_address?.zip || undefined,
+            country: o?.shipping_address?.country_code || undefined,
+            lat: o?.shipping_address?.latitude || undefined,
+            lng: o?.shipping_address?.longitude || undefined,
         },
-        total_amount: parseFloat(o.total_price ?? o.current_total_price ?? '0'),
-        currency: o.currency,
-        payment_method: derivePaymentMethod(o),
+        total_amount: parseFloat(o.total_price || o.current_total_price || '0'),
+        currency: o.currency || 'USD',
+        payment_method: undefined, // TODO: Add payment method detection when available in webhook payload
     };
 
     let result: any = null;
@@ -116,7 +118,7 @@ export async function ordersCreate(request: FastifyRequest, reply: FastifyReply,
             try {
                 request.log.debug({ shop: shopDomain, orderId: payload.order_id, tags }, 'Adding tags to Shopify order');
                 const client = await shopifyGraphql(shopDomain, tokenData.access_token, process.env.SHOPIFY_API_VERSION!);
-                await client.mutate(MUT_TAGS_ADD, { id: orderGid, tags });
+                await client.mutate(MUT_TAGS_ADD, { id: orderGid, tags }) as AddTagsMutation;
                 request.log.info({ shop: shopDomain, orderId: payload.order_id, tags }, 'Successfully added tags to Shopify order');
             } catch (error) {
                 request.log.error({
@@ -215,7 +217,7 @@ async function handleOrderAddressFix(
     const { session, token } = await addressFixService.upsertSession({
         shopDomain,
         orderId: String(order.id),
-        orderGid: order.admin_graphql_api_id,
+        orderGid: order.admin_graphql_api_id || `gid://shopify/Order/${order.id}`,
         customerEmail: order.contact_email || order.email || null,
         originalAddress: {
             address1: shippingAddr.address1,
@@ -237,7 +239,7 @@ async function handleOrderAddressFix(
     await addressFixService.tagOrderForAddressFix(
         shopDomain,
         tokenData.access_token,
-        order.admin_graphql_api_id,
+        order.admin_graphql_api_id || `gid://shopify/Order/${order.id}`,
         fixUrl
     );
 
@@ -248,7 +250,7 @@ async function handleOrderAddressFix(
         await addressFixQueue.add('hold-fulfillment', {
             shopDomain,
             orderId: String(order.id),
-            orderGid: order.admin_graphql_api_id,
+            orderGid: order.admin_graphql_api_id || `gid://shopify/Order/${order.id}`,
             sessionId: session.id,
         });
         request.log.info(
@@ -272,7 +274,7 @@ async function handleOrderAddressFix(
     try {
         const client = await shopifyGraphql(shopDomain, tokenData.access_token, process.env.SHOPIFY_API_VERSION!);
         const shopData = await client.query(QUERY_SHOP_NAME, {});
-        shopName = shopData.data?.shop?.name;
+        shopName = (shopData.data as GetShopNameQuery).shop.name;
     } catch (error) {
         request.log.warn({ shop: shopDomain, err: error }, 'Failed to fetch shop name');
     }
@@ -290,23 +292,15 @@ async function handleOrderAddressFix(
         customerName: [shippingAddr.first_name, shippingAddr.last_name].filter(Boolean).join(' '),
         fixUrl,
         orderId: String(order.id),
-        orderGid: order.admin_graphql_api_id,
-        orderName: order.name,
+        orderGid: order.admin_graphql_api_id || `gid://shopify/Order/${order.id}`,
+        orderName: `Order #${order.id}`,
         address1: shippingAddr.address1,
-        address2: shippingAddr.address2,
+        address2: shippingAddr.address2 || undefined,
         city: shippingAddr.city,
         province: shippingAddr.province || '',
         zip: shippingAddr.zip,
         country: shippingAddr.country_code || ''
     });
-}
-
-function derivePaymentMethod(o: ShopifyOrder): string | undefined {
-    const gateway = o.gateway?.toLowerCase();
-    if (gateway?.includes('stripe') || gateway?.includes('shopify_payments')) return 'card';
-    if (gateway?.includes('cod')) return 'cod';
-    if (gateway?.includes('bank') || gateway?.includes('transfer')) return 'bank_transfer';
-    return undefined;
 }
 
 function mapActionToEvent(action?: string | null): string | null {

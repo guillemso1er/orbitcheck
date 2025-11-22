@@ -3,6 +3,14 @@ import type { FastifyBaseLogger } from 'fastify';
 import type { Pool } from 'pg';
 import { promisify } from 'util';
 
+import type {
+    AddTagsMutation,
+    FulfillmentOrderHoldMutation,
+    FulfillmentOrderReleaseHoldMutation,
+    GetFulfillmentOrdersQuery,
+    MetafieldsSetMutation,
+    RemoveTagsMutation
+} from '../../../generated/shopify/admin/admin.generated.js';
 import { MUT_TAGS_ADD, shopifyGraphql } from '../lib/graphql.js';
 import {
     MUT_FULFILLMENT_ORDER_HOLD,
@@ -151,24 +159,34 @@ export class AddressFixService {
     ): Promise<void> {
         const client = await shopifyGraphql(shopDomain, accessToken, process.env.SHOPIFY_API_VERSION || '2025-10');
 
+        const tags = ['address_fix_needed'];
+
         // Add tag
-        await client.mutate(MUT_TAGS_ADD, {
-            id: orderGid,
-            tags: ['address_fix_needed'],
-        });
+        try {
+            await client.mutate(MUT_TAGS_ADD, {
+                id: orderGid,
+                tags,
+            }) as AddTagsMutation;
+        } catch (error) {
+            throw this.logGraphQLError('tagsAdd', error, { shopDomain, orderGid, tags });
+        }
 
         // Add metafield with fix URL
-        await client.mutate(MUT_METAFIELDS_SET, {
-            metafields: [
-                {
-                    ownerId: orderGid,
-                    namespace: 'orbitcheck',
-                    key: 'address_fix_url',
-                    value: fixUrl,
-                    type: 'single_line_text_field',
-                },
-            ],
-        });
+        try {
+            await client.mutate(MUT_METAFIELDS_SET, {
+                metafields: [
+                    {
+                        ownerId: orderGid,
+                        namespace: 'orbitcheck',
+                        key: 'address_fix_url',
+                        value: fixUrl,
+                        type: 'single_line_text_field',
+                    },
+                ],
+            }) as MetafieldsSetMutation;
+        } catch (error) {
+            throw this.logGraphQLError('metafieldsSet', error, { shopDomain, orderGid, fixUrl });
+        }
 
         this.logger.info({ shopDomain, orderGid }, 'Tagged order for address fix');
     }
@@ -186,11 +204,18 @@ export class AddressFixService {
 
         let fulfillmentOrders: any[] = [];
         for (let attempt = 0; attempt < maxRetries; attempt++) {
-            // eslint-disable-next-line no-await-in-loop
-            const response = await client.mutate(QUERY_FULFILLMENT_ORDERS, { orderId: orderGid });
-            fulfillmentOrders = response.data?.order?.fulfillmentOrders?.edges || [];
+            try {
+                // eslint-disable-next-line no-await-in-loop
+                const response = await client.mutate(QUERY_FULFILLMENT_ORDERS, { orderId: orderGid });
+                fulfillmentOrders = (response.data as GetFulfillmentOrdersQuery)?.order?.fulfillmentOrders?.edges || [];
 
-            if (fulfillmentOrders.length > 0) break;
+                if (fulfillmentOrders.length > 0) break;
+            } catch (error) {
+                const err = this.logGraphQLError('fulfillmentOrders', error, { shopDomain, orderGid, attempt });
+                if (attempt === maxRetries - 1) {
+                    throw err;
+                }
+            }
 
             // Wait before retry (exponential backoff)
             // eslint-disable-next-line no-await-in-loop
@@ -212,7 +237,7 @@ export class AddressFixService {
                     id: foId,
                     reason: 'INCORRECT_ADDRESS',
                     reasonNotes: 'Address validation failed - customer confirmation required',
-                });
+                }) as FulfillmentOrderHoldMutation;
                 this.logger.info({ shopDomain, orderGid, fulfillmentOrderId: foId }, 'Applied fulfillment hold');
                 return foId;
             } catch (error) {
@@ -244,33 +269,63 @@ export class AddressFixService {
 
         // Update order address if using corrected or override provided
         if (useCorrected || addressOverride) {
-            const addr = addressOverride || session.normalized_address;
+            const addr = addressOverride || session.normalized_address || session.original_address;
             if (!addr) {
                 throw new Error('Cannot confirm address fix: No corrected address available');
             }
 
+            const addressSources = [addressOverride, session.normalized_address, session.original_address];
+
+            const shippingAddress = {
+                address1: this.resolveFieldFromSources(addressSources, 'address1', 'line1'),
+                address2: this.resolveFieldFromSources(addressSources, 'address2', 'line2'),
+                city: this.resolveFieldFromSources(addressSources, 'city'),
+                province: this.resolveFieldFromSources(addressSources, 'province', 'state'),
+                zip: this.resolveFieldFromSources(addressSources, 'zip', 'postal_code'),
+                country: this.resolveFieldFromSources(addressSources, 'country', 'country_code'),
+                countryCode: this.resolveFieldFromSources(addressSources, 'country_code', 'country'),
+                firstName: this.resolveFieldFromSources(addressSources, 'first_name', 'firstName'),
+                lastName: this.resolveFieldFromSources(addressSources, 'last_name', 'lastName'),
+            };
+
+            if (!shippingAddress.address1 || !shippingAddress.city || !shippingAddress.province || !shippingAddress.zip || !shippingAddress.country) {
+                throw new Error('Cannot confirm address fix: corrected address missing required fields');
+            }
+
             try {
-                await client.mutate(MUT_ORDER_UPDATE, {
+                this.logger.info({ shopDomain, orderGid: session.order_gid, shippingAddress }, 'Updating order shipment address');
+                // 1. Capture the response
+                const response: any = await client.mutate(MUT_ORDER_UPDATE, {
                     input: {
                         id: session.order_gid,
-                        shippingAddress: {
-                            address1: addr.address1,
-                            address2: addr.address2 || null,
-                            city: addr.city,
-                            province: addr.province,
-                            zip: addr.zip,
-                            countryCode: addr.country_code,
-                            firstName: addr.first_name || null,
-                            lastName: addr.last_name || null,
-                        },
+                        shippingAddress,
                     },
                 });
+
+                // 2. Extract the mutation result
+                // Note: Structure depends on your shopifyGraphql client, but usually:
+                const result = response.orderUpdate || response.data?.orderUpdate;
+
+                // 3. Check for Logic Errors (The missing piece)
+                if (result?.userErrors && result.userErrors.length > 0) {
+                    this.logger.error(
+                        {
+                            userErrors: result.userErrors,
+                            shopDomain,
+                            orderGid: session.order_gid
+                        },
+                        'Shopify rejected the address update'
+                    );
+                    throw new Error(`Shopify Logic Error: ${result.userErrors[0].message}`);
+                }
+
             } catch (error) {
+                // 4. Ensure you log the actual error detail if it was thrown above
                 this.logger.error(
                     { err: error, shopDomain, orderGid: session.order_gid },
                     'Failed to update order with corrected address'
                 );
-                throw new Error('Failed to update order with corrected address');
+                throw error; // Re-throw so the parent knows it failed
             }
             this.logger.info({ shopDomain, orderGid: session.order_gid }, 'Updated order with corrected address');
         }
@@ -278,7 +333,7 @@ export class AddressFixService {
         // Release fulfillment holds
         const releasePromises = session.fulfillment_hold_ids.map(async (holdId) => {
             try {
-                await client.mutate(MUT_FULFILLMENT_ORDER_RELEASE_HOLD, { id: holdId });
+                await client.mutate(MUT_FULFILLMENT_ORDER_RELEASE_HOLD, { id: holdId }) as FulfillmentOrderReleaseHoldMutation;
                 this.logger.info({ shopDomain, fulfillmentOrderId: holdId }, 'Released fulfillment hold');
             } catch (error) {
                 this.logger.error(
@@ -291,23 +346,31 @@ export class AddressFixService {
         await Promise.all(releasePromises);
 
         // Remove tag
-        await client.mutate(MUT_TAGS_REMOVE, {
-            id: session.order_gid,
-            tags: ['address_fix_needed'],
-        });
+        try {
+            await client.mutate(MUT_TAGS_REMOVE, {
+                id: session.order_gid,
+                tags: ['address_fix_needed'],
+            }) as RemoveTagsMutation;
+        } catch (error) {
+            this.logGraphQLError('tagsRemove', error, { shopDomain, orderGid: session.order_gid });
+        }
 
         // Clear metafield (set to empty)
-        await client.mutate(MUT_METAFIELDS_SET, {
-            metafields: [
-                {
-                    ownerId: session.order_gid,
-                    namespace: 'orbitcheck',
-                    key: 'address_fix_url',
-                    value: '',
-                    type: 'single_line_text_field',
-                },
-            ],
-        });
+        try {
+            await client.mutate(MUT_METAFIELDS_SET, {
+                metafields: [
+                    {
+                        ownerId: session.order_gid,
+                        namespace: 'orbitcheck',
+                        key: 'address_fix_url',
+                        value: '',
+                        type: 'single_line_text_field',
+                    },
+                ],
+            }) as MetafieldsSetMutation;
+        } catch (error) {
+            this.logGraphQLError('metafieldsSetClear', error, { shopDomain, orderGid: session.order_gid });
+        }
 
         this.logger.info({ shopDomain, orderGid: session.order_gid, useCorrected }, 'Confirmed address fix');
     }
@@ -326,6 +389,46 @@ export class AddressFixService {
      */
     private hashToken(token: string): string {
         return crypto.createHash('sha256').update(token).digest('hex');
+    }
+
+    private resolveAddressField(address: Record<string, any> | null | undefined, ...keys: string[]): string | null {
+        if (!address) {
+            return null;
+        }
+
+        for (const key of keys) {
+            const value = address[key];
+            if (typeof value === 'string') {
+                const trimmed = value.trim();
+                if (trimmed !== '') {
+                    return trimmed;
+                }
+            } else if (value !== null && value !== undefined) {
+                return String(value);
+            }
+        }
+
+        return null;
+    }
+
+    private resolveFieldFromSources(
+        addresses: Array<Record<string, any> | null | undefined>,
+        ...keys: string[]
+    ): string | null {
+        for (const address of addresses) {
+            const resolved = this.resolveAddressField(address, ...keys);
+            if (resolved) {
+                return resolved;
+            }
+        }
+
+        return null;
+    }
+
+    private logGraphQLError(operation: string, error: unknown, context: Record<string, unknown>): Error {
+        const err = error instanceof Error ? error : new Error('Unexpected Shopify GraphQL error');
+        this.logger.error({ err, operation, ...context }, 'Shopify GraphQL call failed');
+        return err;
     }
 }
 

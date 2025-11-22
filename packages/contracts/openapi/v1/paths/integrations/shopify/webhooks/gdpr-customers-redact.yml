@@ -4,6 +4,12 @@ summary: Shopify GDPR customers/redact webhook
 description: Handles Shopify GDPR customers/redact webhook events
 operationId: shopifyGdprCustomersRedactWebhook
 security: []
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        $ref: '../../../../components/schemas/GDPRCustomersRedact.yml'
 responses:
   '200':
     description: Webhook processed successfully

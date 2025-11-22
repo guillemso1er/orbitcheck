@@ -1,6 +1,7 @@
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import type { Pool } from 'pg';
 
+import type { ShopifyShop } from '../../../generated/fastify/index.js';
 import { createShopifyService } from '../../../services/shopify.js';
 import { captureShopifyEvent } from '../lib/telemetry.js';
 
@@ -17,7 +18,7 @@ export async function appUninstalled(request: FastifyRequest, reply: FastifyRepl
         const shopifyService = createShopifyService(pool);
         request.log.debug({ shop }, 'Recording GDPR uninstall event');
         const recordStart = Date.now();
-        await shopifyService.recordGdprEvent(shop, 'app/uninstalled', request.body as Record<string, unknown>);
+        await shopifyService.recordGdprEvent(shop, 'app/uninstalled', request.body as ShopifyShop);
         request.log.debug({ shop, duration: Date.now() - recordStart }, 'GDPR event recorded');
 
         captureShopifyEvent(shop, 'uninstalled');

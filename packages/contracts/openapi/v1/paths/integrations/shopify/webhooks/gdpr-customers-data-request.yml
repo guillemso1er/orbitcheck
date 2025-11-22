@@ -4,6 +4,12 @@ summary: Shopify GDPR customers/data_request webhook
 description: Handles Shopify GDPR customers/data_request webhook events
 operationId: shopifyGdprCustomersDataRequestWebhook
 security: []
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        $ref: '../../../../components/schemas/GDPRCustomersDataRequest.yml'
 responses:
   '200':
     description: Webhook processed successfully

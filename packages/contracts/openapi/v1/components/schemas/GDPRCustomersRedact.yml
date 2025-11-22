@@ -1,0 +1,15 @@
+description: Payload for customers/redact.
+type: object
+required: [shop_id, shop_domain, customer]
+properties:
+  shop_id: { type: integer }
+  shop_domain: { type: string }
+  customer:
+    type: object
+    properties:
+      id: { type: integer }
+      email: { type: string, format: email }
+      phone: { type: string }
+  orders_to_redact:
+    type: array
+    items: { type: integer }

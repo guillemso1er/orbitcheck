@@ -77,29 +77,24 @@ export type Webhook = {
 
 export type Address = {
     /**
-     * Street address line 1
+     * Street address, P.O. Box, Company name, c/o
      */
     line1?: string;
     /**
-     * Street address line 2
+     * Apartment, Suite, Unit, Building, Floor, etc.
      */
-    line2?: string;
-    /**
-     * City
-     */
+    line2?: string | null;
     city?: string;
     /**
-     * State or province
+     * ISO 3166-2 subdivision code (e.g. NY)
      */
     state?: string;
-    /**
-     * Postal code
-     */
     postal_code?: string;
     /**
-     * Two-letter country code
+     * ISO 3166-1 alpha-2 country code (e.g. US)
      */
     country?: string;
+} & {
     /**
      * Latitude
      */
@@ -108,6 +103,48 @@ export type Address = {
      * Longitude
      */
     lng?: number | null;
+};
+
+export type BaseAddress = {
+    /**
+     * Street address, P.O. Box, Company name, c/o
+     */
+    line1?: string;
+    /**
+     * Apartment, Suite, Unit, Building, Floor, etc.
+     */
+    line2?: string | null;
+    city?: string;
+    /**
+     * ISO 3166-2 subdivision code (e.g. NY)
+     */
+    state?: string;
+    postal_code?: string;
+    /**
+     * ISO 3166-1 alpha-2 country code (e.g. US)
+     */
+    country?: string;
+};
+
+export type AddressInput = {
+    /**
+     * Street address, P.O. Box, Company name, c/o
+     */
+    line1: string;
+    /**
+     * Apartment, Suite, Unit, Building, Floor, etc.
+     */
+    line2?: string | null;
+    city: string;
+    /**
+     * ISO 3166-2 subdivision code (e.g. NY)
+     */
+    state?: string;
+    postal_code: string;
+    /**
+     * ISO 3166-1 alpha-2 country code (e.g. US)
+     */
+    country: string;
 };
 
 export type Customer = {
@@ -244,6 +281,112 @@ export type AddressValidationResult = {
      * Whether the address is within bounds
      */
     in_bounds?: boolean;
+};
+
+export type DetailedAddressValidationResult = {
+    /**
+     * Whether the address is valid
+     */
+    valid?: boolean;
+    /**
+     * Confidence score of the validation
+     */
+    confidence?: number;
+    /**
+     * List of reason codes
+     */
+    reason_codes?: Array<string>;
+    /**
+     * Risk score of the address
+     */
+    risk_score?: number;
+    /**
+     * Time taken to process the validation
+     */
+    processing_time_ms?: number;
+    /**
+     * Validation provider used
+     */
+    provider?: string;
+    /**
+     * Normalized address data
+     */
+    normalized?: {
+        /**
+         * Street address, P.O. Box, Company name, c/o
+         */
+        line1?: string;
+        /**
+         * Apartment, Suite, Unit, Building, Floor, etc.
+         */
+        line2?: string | null;
+        city?: string;
+        /**
+         * ISO 3166-2 subdivision code (e.g. NY)
+         */
+        state?: string;
+        postal_code?: string;
+        /**
+         * ISO 3166-1 alpha-2 country code (e.g. US)
+         */
+        country?: string;
+    } & {
+        /**
+         * Latitude
+         */
+        lat?: number | null;
+        /**
+         * Longitude
+         */
+        lng?: number | null;
+    };
+    /**
+     * Whether the address is a P.O. Box
+     */
+    po_box?: boolean;
+    /**
+     * Whether the address is residential
+     */
+    residential?: boolean;
+    /**
+     * Whether mail is deliverable to this address
+     */
+    deliverable?: boolean;
+    /**
+     * Whether DPV (Delivery Point Validation) confirmed the address
+     */
+    dpv_confirmed?: boolean;
+    /**
+     * Geographic coordinates
+     */
+    geocode?: {
+        /**
+         * Latitude
+         */
+        lat?: number;
+        /**
+         * Longitude
+         */
+        lng?: number;
+    };
+    /**
+     * Whether there's a mismatch between postal code and location
+     */
+    postal_code_mismatch?: boolean;
+    /**
+     * City name
+     */
+    city?: string;
+    /**
+     * Postal code
+     */
+    postal_code?: string;
+    /**
+     * Additional metadata
+     */
+    metadata?: {
+        [key: string]: unknown;
+    };
 };
 
 export type LogEntry = {
@@ -702,89 +845,206 @@ export type Pagination = {
     total_pages: number;
 };
 
+/**
+ * Payload for orders/create (Order resource snapshot).
+ */
 export type ShopifyOrder = {
-    /**
-     * Shopify order ID
-     */
-    id: string;
-    /**
-     * Shopify GraphQL API ID
-     */
-    admin_graphql_api_id: string;
-    /**
-     * Customer contact email
-     */
+    id?: number;
+    admin_graphql_api_id?: string;
+    app_id?: number | null;
     contact_email?: string | null;
-    /**
-     * Customer email
-     */
     email?: string | null;
-    /**
-     * Customer phone number
-     */
     phone?: string | null;
-    shipping_address?: {
-        /**
-         * Shipping address line 1
-         */
-        address1?: string | null;
-        /**
-         * Shipping address line 2
-         */
-        address2?: string | null;
-        /**
-         * Shipping city
-         */
-        city?: string | null;
-        /**
-         * Shipping province/state
-         */
-        province?: string | null;
-        /**
-         * Shipping postal code
-         */
-        zip?: string | null;
-        /**
-         * Shipping country code
-         */
-        country_code?: string | null;
-        /**
-         * Shipping address latitude
-         */
-        latitude?: number | null;
-        /**
-         * Shipping address longitude
-         */
-        longitude?: number | null;
-        /**
-         * Shipping first name
-         */
+    created_at?: string;
+    updated_at?: string | null;
+    closed_at?: string | null;
+    cancelled_at?: string | null;
+    cancel_reason?: string | null;
+    currency?: string;
+    buyer_accepts_marketing?: boolean | null;
+    current_total_price?: string | null;
+    current_total_price_set?: {
+        shop_money?: {
+            amount?: string;
+            currency_code?: string;
+        };
+        presentment_money?: {
+            amount?: string;
+            currency_code?: string;
+        };
+    };
+    current_subtotal_price?: string | null;
+    current_subtotal_price_set?: {
+        shop_money?: {
+            amount?: string;
+            currency_code?: string;
+        };
+        presentment_money?: {
+            amount?: string;
+            currency_code?: string;
+        };
+    };
+    current_shipping_price_set?: {
+        shop_money?: {
+            amount?: string;
+            currency_code?: string;
+        };
+        presentment_money?: {
+            amount?: string;
+            currency_code?: string;
+        };
+    };
+    total_price?: string | null;
+    subtotal_price?: string | null;
+    financial_status?: string | null;
+    fulfillment_status?: string | null;
+    /**
+     * Payload for customers/create and customers/update (Customer resource snapshot).
+     */
+    customer?: {
+        id?: number;
+        admin_graphql_api_id?: string | null;
+        email?: string | null;
+        phone?: string | null;
+        created_at?: string;
+        updated_at?: string;
         first_name?: string | null;
-        /**
-         * Shipping last name
-         */
         last_name?: string | null;
         /**
-         * Shipping phone number
+         * enabled | disabled | invited | declined
          */
-        phone?: string | null;
+        state?: string | null;
+        note?: string | null;
+        verified_email?: boolean | null;
+        tags?: string | null;
+        orders_count?: number | null;
+        total_spent?: string | null;
+        default_address?: {
+            id?: number;
+            first_name?: string | null;
+            last_name?: string | null;
+            name?: string | null;
+            company?: string | null;
+            phone?: string | null;
+            address1?: string | null;
+            address2?: string | null;
+            city?: string | null;
+            province?: string | null;
+            province_code?: string | null;
+            zip?: string | null;
+            country?: string | null;
+            country_code?: string | null;
+            latitude?: number | null;
+            longitude?: number | null;
+            default?: boolean | null;
+        };
+        addresses?: Array<{
+            id?: number;
+            first_name?: string | null;
+            last_name?: string | null;
+            name?: string | null;
+            company?: string | null;
+            phone?: string | null;
+            address1?: string | null;
+            address2?: string | null;
+            city?: string | null;
+            province?: string | null;
+            province_code?: string | null;
+            zip?: string | null;
+            country?: string | null;
+            country_code?: string | null;
+            latitude?: number | null;
+            longitude?: number | null;
+            default?: boolean | null;
+        }>;
+        currency?: string | null;
+        email_marketing_consent?: {
+            state?: string | null;
+            opt_in_level?: string | null;
+            consent_updated_at?: string | null;
+        } | null;
+        sms_marketing_consent?: {
+            state?: string | null;
+            opt_in_level?: string | null;
+            consent_updated_at?: string | null;
+            consent_collected_from?: string | null;
+        } | null;
     };
-    /**
-     * Order total price
-     */
-    total_price?: string | null;
-    /**
-     * Current order total price
-     */
-    current_total_price?: string | null;
-    /**
-     * Currency code
-     */
-    currency: string;
-    /**
-     * Payment gateway
-     */
-    gateway?: string | null;
+    billing_address?: {
+        id?: number;
+        first_name?: string | null;
+        last_name?: string | null;
+        name?: string | null;
+        company?: string | null;
+        phone?: string | null;
+        address1?: string | null;
+        address2?: string | null;
+        city?: string | null;
+        province?: string | null;
+        province_code?: string | null;
+        zip?: string | null;
+        country?: string | null;
+        country_code?: string | null;
+        latitude?: number | null;
+        longitude?: number | null;
+        default?: boolean | null;
+    };
+    shipping_address?: {
+        id?: number;
+        first_name?: string | null;
+        last_name?: string | null;
+        name?: string | null;
+        company?: string | null;
+        phone?: string | null;
+        address1?: string | null;
+        address2?: string | null;
+        city?: string | null;
+        province?: string | null;
+        province_code?: string | null;
+        zip?: string | null;
+        country?: string | null;
+        country_code?: string | null;
+        latitude?: number | null;
+        longitude?: number | null;
+        default?: boolean | null;
+    };
+    client_details?: {
+        [key: string]: unknown;
+    };
+    line_items?: Array<{
+        [key: string]: unknown;
+    }>;
+    shipping_lines?: Array<{
+        [key: string]: unknown;
+    }>;
+    discount_codes?: Array<{
+        [key: string]: unknown;
+    }>;
+    tax_lines?: Array<{
+        [key: string]: unknown;
+    }>;
+    note?: string | null;
+    tags?: string | null;
+};
+
+export type ShopifyAddress = {
+    id?: number;
+    first_name?: string | null;
+    last_name?: string | null;
+    name?: string | null;
+    company?: string | null;
+    phone?: string | null;
+    address1?: string | null;
+    address2?: string | null;
+    city?: string | null;
+    province?: string | null;
+    province_code?: string | null;
+    zip?: string | null;
+    country?: string | null;
+    country_code?: string | null;
+    latitude?: number | null;
+    longitude?: number | null;
+    default?: boolean | null;
 };
 
 export type ShopifyAddressFixSession = {
@@ -812,27 +1072,45 @@ export type ShopifyAddressFixSession = {
      * Original shipping address from the order
      */
     original_address: {
-        address1?: string;
-        address2?: string | null;
-        city?: string;
-        province?: string;
-        zip?: string;
-        country_code?: string;
+        id?: number;
         first_name?: string | null;
         last_name?: string | null;
+        name?: string | null;
+        company?: string | null;
+        phone?: string | null;
+        address1?: string | null;
+        address2?: string | null;
+        city?: string | null;
+        province?: string | null;
+        province_code?: string | null;
+        zip?: string | null;
+        country?: string | null;
+        country_code?: string | null;
+        latitude?: number | null;
+        longitude?: number | null;
+        default?: boolean | null;
     };
     /**
      * Normalized/corrected shipping address
      */
     normalized_address: {
-        address1?: string;
-        address2?: string | null;
-        city?: string;
-        province?: string;
-        zip?: string;
-        country_code?: string;
+        id?: number;
         first_name?: string | null;
         last_name?: string | null;
+        name?: string | null;
+        company?: string | null;
+        phone?: string | null;
+        address1?: string | null;
+        address2?: string | null;
+        city?: string | null;
+        province?: string | null;
+        province_code?: string | null;
+        zip?: string | null;
+        country?: string | null;
+        country_code?: string | null;
+        latitude?: number | null;
+        longitude?: number | null;
+        default?: boolean | null;
     };
     /**
      * Current status of the address fix
@@ -859,29 +1137,24 @@ export type ShopifyAddressFixConfirmRequest = {
     shop_domain: string;
     address?: {
         /**
-         * Street address line 1
+         * Street address, P.O. Box, Company name, c/o
          */
         line1?: string;
         /**
-         * Street address line 2
+         * Apartment, Suite, Unit, Building, Floor, etc.
          */
-        line2?: string;
-        /**
-         * City
-         */
+        line2?: string | null;
         city?: string;
         /**
-         * State or province
+         * ISO 3166-2 subdivision code (e.g. NY)
          */
         state?: string;
-        /**
-         * Postal code
-         */
         postal_code?: string;
         /**
-         * Two-letter country code
+         * ISO 3166-1 alpha-2 country code (e.g. US)
          */
         country?: string;
+    } & {
         /**
          * Latitude
          */
@@ -891,6 +1164,160 @@ export type ShopifyAddressFixConfirmRequest = {
          */
         lng?: number | null;
     };
+};
+
+export type MoneySet = {
+    shop_money?: {
+        amount?: string;
+        currency_code?: string;
+    };
+    presentment_money?: {
+        amount?: string;
+        currency_code?: string;
+    };
+};
+
+/**
+ * Payload for customers/create and customers/update (Customer resource snapshot).
+ */
+export type ShopifyCustomer = {
+    id?: number;
+    admin_graphql_api_id?: string | null;
+    email?: string | null;
+    phone?: string | null;
+    created_at?: string;
+    updated_at?: string;
+    first_name?: string | null;
+    last_name?: string | null;
+    /**
+     * enabled | disabled | invited | declined
+     */
+    state?: string | null;
+    note?: string | null;
+    verified_email?: boolean | null;
+    tags?: string | null;
+    orders_count?: number | null;
+    total_spent?: string | null;
+    default_address?: {
+        id?: number;
+        first_name?: string | null;
+        last_name?: string | null;
+        name?: string | null;
+        company?: string | null;
+        phone?: string | null;
+        address1?: string | null;
+        address2?: string | null;
+        city?: string | null;
+        province?: string | null;
+        province_code?: string | null;
+        zip?: string | null;
+        country?: string | null;
+        country_code?: string | null;
+        latitude?: number | null;
+        longitude?: number | null;
+        default?: boolean | null;
+    };
+    addresses?: Array<{
+        id?: number;
+        first_name?: string | null;
+        last_name?: string | null;
+        name?: string | null;
+        company?: string | null;
+        phone?: string | null;
+        address1?: string | null;
+        address2?: string | null;
+        city?: string | null;
+        province?: string | null;
+        province_code?: string | null;
+        zip?: string | null;
+        country?: string | null;
+        country_code?: string | null;
+        latitude?: number | null;
+        longitude?: number | null;
+        default?: boolean | null;
+    }>;
+    currency?: string | null;
+    email_marketing_consent?: {
+        state?: string | null;
+        opt_in_level?: string | null;
+        consent_updated_at?: string | null;
+    } | null;
+    sms_marketing_consent?: {
+        state?: string | null;
+        opt_in_level?: string | null;
+        consent_updated_at?: string | null;
+        consent_collected_from?: string | null;
+    } | null;
+};
+
+/**
+ * Payload for app/uninstalled (Shop resource snapshot).
+ */
+export type ShopifyShop = {
+    id?: number;
+    admin_graphql_api_id?: string | null;
+    name?: string;
+    email?: string | null;
+    domain?: string | null;
+    myshopify_domain?: string | null;
+    province?: string | null;
+    country?: string | null;
+    address1?: string | null;
+    address2?: string | null;
+    zip?: string | null;
+    city?: string | null;
+    phone?: string | null;
+    latitude?: number | null;
+    longitude?: number | null;
+    primary_locale?: string | null;
+    created_at?: string | null;
+    updated_at?: string | null;
+    country_code?: string | null;
+    country_name?: string | null;
+    currency?: string | null;
+    customer_email?: string | null;
+    timezone?: string | null;
+    iana_timezone?: string | null;
+    shop_owner?: string | null;
+};
+
+/**
+ * Payload for customers/data_request.
+ */
+export type GdprCustomersDataRequest = {
+    shop_id: number;
+    shop_domain: string;
+    orders_requested?: Array<number>;
+    customer: {
+        id?: number;
+        email?: string;
+        phone?: string;
+    };
+    data_request: {
+        id?: number;
+    };
+};
+
+/**
+ * Payload for customers/redact.
+ */
+export type GdprCustomersRedact = {
+    shop_id: number;
+    shop_domain: string;
+    customer: {
+        id?: number;
+        email?: string;
+        phone?: string;
+    };
+    orders_to_redact?: Array<number>;
+};
+
+/**
+ * Payload for shop/redact.
+ */
+export type GdprShopRedact = {
+    shop_id: number;
+    shop_domain: string;
 };
 
 export type LoginUserData = {
@@ -2074,26 +2501,106 @@ export type TestRulesAgainstPayloadResponses = {
                 };
             };
             address?: {
+                /**
+                 * Whether the address is valid
+                 */
                 valid?: boolean;
+                /**
+                 * Confidence score of the validation
+                 */
                 confidence?: number;
+                /**
+                 * List of reason codes
+                 */
                 reason_codes?: Array<string>;
+                /**
+                 * Risk score of the address
+                 */
                 risk_score?: number;
+                /**
+                 * Time taken to process the validation
+                 */
                 processing_time_ms?: number;
+                /**
+                 * Validation provider used
+                 */
                 provider?: string;
+                /**
+                 * Normalized address data
+                 */
                 normalized?: {
-                    [key: string]: unknown;
+                    /**
+                     * Street address, P.O. Box, Company name, c/o
+                     */
+                    line1?: string;
+                    /**
+                     * Apartment, Suite, Unit, Building, Floor, etc.
+                     */
+                    line2?: string | null;
+                    city?: string;
+                    /**
+                     * ISO 3166-2 subdivision code (e.g. NY)
+                     */
+                    state?: string;
+                    postal_code?: string;
+                    /**
+                     * ISO 3166-1 alpha-2 country code (e.g. US)
+                     */
+                    country?: string;
+                } & {
+                    /**
+                     * Latitude
+                     */
+                    lat?: number | null;
+                    /**
+                     * Longitude
+                     */
+                    lng?: number | null;
                 };
+                /**
+                 * Whether the address is a P.O. Box
+                 */
                 po_box?: boolean;
+                /**
+                 * Whether the address is residential
+                 */
                 residential?: boolean;
+                /**
+                 * Whether mail is deliverable to this address
+                 */
                 deliverable?: boolean;
+                /**
+                 * Whether DPV (Delivery Point Validation) confirmed the address
+                 */
                 dpv_confirmed?: boolean;
+                /**
+                 * Geographic coordinates
+                 */
                 geocode?: {
+                    /**
+                     * Latitude
+                     */
                     lat?: number;
+                    /**
+                     * Longitude
+                     */
                     lng?: number;
                 };
+                /**
+                 * Whether there's a mismatch between postal code and location
+                 */
                 postal_code_mismatch?: boolean;
+                /**
+                 * City name
+                 */
                 city?: string;
+                /**
+                 * Postal code
+                 */
                 postal_code?: string;
+                /**
+                 * Additional metadata
+                 */
                 metadata?: {
                     [key: string]: unknown;
                 };
@@ -2691,27 +3198,21 @@ export type ValidateAddressData = {
     body: {
         address: {
             /**
-             * Street address line 1
+             * Street address, P.O. Box, Company name, c/o
              */
             line1: string;
             /**
-             * Street address line 2
+             * Apartment, Suite, Unit, Building, Floor, etc.
              */
-            line2?: string;
-            /**
-             * City
-             */
+            line2?: string | null;
             city: string;
             /**
-             * State or province
+             * ISO 3166-2 subdivision code (e.g. NY)
              */
             state?: string;
-            /**
-             * Postal code
-             */
             postal_code: string;
             /**
-             * Two-letter country code
+             * ISO 3166-1 alpha-2 country code (e.g. US)
              */
             country: string;
         };
@@ -2767,15 +3268,24 @@ export type ValidateAddressResponses = {
          * Whether the address is valid
          */
         valid?: boolean;
-        /**
-         * Normalized address object
-         */
         normalized?: {
+            /**
+             * Street address, P.O. Box, Company name, c/o
+             */
             line1?: string;
-            line2?: string;
+            /**
+             * Apartment, Suite, Unit, Building, Floor, etc.
+             */
+            line2?: string | null;
             city?: string;
+            /**
+             * ISO 3166-2 subdivision code (e.g. NY)
+             */
             state?: string;
             postal_code?: string;
+            /**
+             * ISO 3166-1 alpha-2 country code (e.g. US)
+             */
             country?: string;
         };
         /**
@@ -4267,11 +4777,23 @@ export type CreateUserResponse = CreateUserResponses[keyof CreateUserResponses];
 export type NormalizeAddressData = {
     body: {
         address: {
+            /**
+             * Street address, P.O. Box, Company name, c/o
+             */
             line1: string;
-            line2?: string;
+            /**
+             * Apartment, Suite, Unit, Building, Floor, etc.
+             */
+            line2?: string | null;
             city: string;
+            /**
+             * ISO 3166-2 subdivision code (e.g. NY)
+             */
             state?: string;
             postal_code: string;
+            /**
+             * ISO 3166-1 alpha-2 country code (e.g. US)
+             */
             country: string;
         };
     };
@@ -4323,11 +4845,23 @@ export type NormalizeAddressResponses = {
      */
     200: {
         normalized?: {
+            /**
+             * Street address, P.O. Box, Company name, c/o
+             */
             line1?: string;
-            line2?: string;
+            /**
+             * Apartment, Suite, Unit, Building, Floor, etc.
+             */
+            line2?: string | null;
             city?: string;
+            /**
+             * ISO 3166-2 subdivision code (e.g. NY)
+             */
             state?: string;
             postal_code?: string;
+            /**
+             * ISO 3166-1 alpha-2 country code (e.g. US)
+             */
             country?: string;
         };
         request_id?: string;
@@ -4835,10 +5369,185 @@ export type CreateShopifyDashboardSessionResponse = CreateShopifyDashboardSessio
 
 export type ShopifyOrdersCreateWebhookData = {
     /**
-     * Shopify order webhook payload
+     * Payload for orders/create (Order resource snapshot).
      */
     body: {
-        [key: string]: unknown;
+        id?: number;
+        admin_graphql_api_id?: string;
+        app_id?: number | null;
+        contact_email?: string | null;
+        email?: string | null;
+        phone?: string | null;
+        created_at?: string;
+        updated_at?: string | null;
+        closed_at?: string | null;
+        cancelled_at?: string | null;
+        cancel_reason?: string | null;
+        currency?: string;
+        buyer_accepts_marketing?: boolean | null;
+        current_total_price?: string | null;
+        current_total_price_set?: {
+            shop_money?: {
+                amount?: string;
+                currency_code?: string;
+            };
+            presentment_money?: {
+                amount?: string;
+                currency_code?: string;
+            };
+        };
+        current_subtotal_price?: string | null;
+        current_subtotal_price_set?: {
+            shop_money?: {
+                amount?: string;
+                currency_code?: string;
+            };
+            presentment_money?: {
+                amount?: string;
+                currency_code?: string;
+            };
+        };
+        current_shipping_price_set?: {
+            shop_money?: {
+                amount?: string;
+                currency_code?: string;
+            };
+            presentment_money?: {
+                amount?: string;
+                currency_code?: string;
+            };
+        };
+        total_price?: string | null;
+        subtotal_price?: string | null;
+        financial_status?: string | null;
+        fulfillment_status?: string | null;
+        /**
+         * Payload for customers/create and customers/update (Customer resource snapshot).
+         */
+        customer?: {
+            id?: number;
+            admin_graphql_api_id?: string | null;
+            email?: string | null;
+            phone?: string | null;
+            created_at?: string;
+            updated_at?: string;
+            first_name?: string | null;
+            last_name?: string | null;
+            /**
+             * enabled | disabled | invited | declined
+             */
+            state?: string | null;
+            note?: string | null;
+            verified_email?: boolean | null;
+            tags?: string | null;
+            orders_count?: number | null;
+            total_spent?: string | null;
+            default_address?: {
+                id?: number;
+                first_name?: string | null;
+                last_name?: string | null;
+                name?: string | null;
+                company?: string | null;
+                phone?: string | null;
+                address1?: string | null;
+                address2?: string | null;
+                city?: string | null;
+                province?: string | null;
+                province_code?: string | null;
+                zip?: string | null;
+                country?: string | null;
+                country_code?: string | null;
+                latitude?: number | null;
+                longitude?: number | null;
+                default?: boolean | null;
+            };
+            addresses?: Array<{
+                id?: number;
+                first_name?: string | null;
+                last_name?: string | null;
+                name?: string | null;
+                company?: string | null;
+                phone?: string | null;
+                address1?: string | null;
+                address2?: string | null;
+                city?: string | null;
+                province?: string | null;
+                province_code?: string | null;
+                zip?: string | null;
+                country?: string | null;
+                country_code?: string | null;
+                latitude?: number | null;
+                longitude?: number | null;
+                default?: boolean | null;
+            }>;
+            currency?: string | null;
+            email_marketing_consent?: {
+                state?: string | null;
+                opt_in_level?: string | null;
+                consent_updated_at?: string | null;
+            } | null;
+            sms_marketing_consent?: {
+                state?: string | null;
+                opt_in_level?: string | null;
+                consent_updated_at?: string | null;
+                consent_collected_from?: string | null;
+            } | null;
+        };
+        billing_address?: {
+            id?: number;
+            first_name?: string | null;
+            last_name?: string | null;
+            name?: string | null;
+            company?: string | null;
+            phone?: string | null;
+            address1?: string | null;
+            address2?: string | null;
+            city?: string | null;
+            province?: string | null;
+            province_code?: string | null;
+            zip?: string | null;
+            country?: string | null;
+            country_code?: string | null;
+            latitude?: number | null;
+            longitude?: number | null;
+            default?: boolean | null;
+        };
+        shipping_address?: {
+            id?: number;
+            first_name?: string | null;
+            last_name?: string | null;
+            name?: string | null;
+            company?: string | null;
+            phone?: string | null;
+            address1?: string | null;
+            address2?: string | null;
+            city?: string | null;
+            province?: string | null;
+            province_code?: string | null;
+            zip?: string | null;
+            country?: string | null;
+            country_code?: string | null;
+            latitude?: number | null;
+            longitude?: number | null;
+            default?: boolean | null;
+        };
+        client_details?: {
+            [key: string]: unknown;
+        };
+        line_items?: Array<{
+            [key: string]: unknown;
+        }>;
+        shipping_lines?: Array<{
+            [key: string]: unknown;
+        }>;
+        discount_codes?: Array<{
+            [key: string]: unknown;
+        }>;
+        tax_lines?: Array<{
+            [key: string]: unknown;
+        }>;
+        note?: string | null;
+        tags?: string | null;
     };
     path?: never;
     query?: never;
@@ -4878,10 +5587,76 @@ export type ShopifyOrdersCreateWebhookResponses = {
 
 export type ShopifyCustomersCreateWebhookData = {
     /**
-     * Shopify customer webhook payload
+     * Payload for customers/create and customers/update (Customer resource snapshot).
      */
     body: {
-        [key: string]: unknown;
+        id?: number;
+        admin_graphql_api_id?: string | null;
+        email?: string | null;
+        phone?: string | null;
+        created_at?: string;
+        updated_at?: string;
+        first_name?: string | null;
+        last_name?: string | null;
+        /**
+         * enabled | disabled | invited | declined
+         */
+        state?: string | null;
+        note?: string | null;
+        verified_email?: boolean | null;
+        tags?: string | null;
+        orders_count?: number | null;
+        total_spent?: string | null;
+        default_address?: {
+            id?: number;
+            first_name?: string | null;
+            last_name?: string | null;
+            name?: string | null;
+            company?: string | null;
+            phone?: string | null;
+            address1?: string | null;
+            address2?: string | null;
+            city?: string | null;
+            province?: string | null;
+            province_code?: string | null;
+            zip?: string | null;
+            country?: string | null;
+            country_code?: string | null;
+            latitude?: number | null;
+            longitude?: number | null;
+            default?: boolean | null;
+        };
+        addresses?: Array<{
+            id?: number;
+            first_name?: string | null;
+            last_name?: string | null;
+            name?: string | null;
+            company?: string | null;
+            phone?: string | null;
+            address1?: string | null;
+            address2?: string | null;
+            city?: string | null;
+            province?: string | null;
+            province_code?: string | null;
+            zip?: string | null;
+            country?: string | null;
+            country_code?: string | null;
+            latitude?: number | null;
+            longitude?: number | null;
+            default?: boolean | null;
+        }>;
+        currency?: string | null;
+        email_marketing_consent?: {
+            state?: string | null;
+            opt_in_level?: string | null;
+            consent_updated_at?: string | null;
+        } | null;
+        sms_marketing_consent?: {
+            state?: string | null;
+            opt_in_level?: string | null;
+            consent_updated_at?: string | null;
+            consent_collected_from?: string | null;
+        } | null;
     };
     path?: never;
     query?: never;
@@ -4921,10 +5696,76 @@ export type ShopifyCustomersCreateWebhookResponses = {
 
 export type ShopifyCustomersUpdateWebhookData = {
     /**
-     * Shopify customer webhook payload
+     * Payload for customers/create and customers/update (Customer resource snapshot).
      */
     body: {
-        [key: string]: unknown;
+        id?: number;
+        admin_graphql_api_id?: string | null;
+        email?: string | null;
+        phone?: string | null;
+        created_at?: string;
+        updated_at?: string;
+        first_name?: string | null;
+        last_name?: string | null;
+        /**
+         * enabled | disabled | invited | declined
+         */
+        state?: string | null;
+        note?: string | null;
+        verified_email?: boolean | null;
+        tags?: string | null;
+        orders_count?: number | null;
+        total_spent?: string | null;
+        default_address?: {
+            id?: number;
+            first_name?: string | null;
+            last_name?: string | null;
+            name?: string | null;
+            company?: string | null;
+            phone?: string | null;
+            address1?: string | null;
+            address2?: string | null;
+            city?: string | null;
+            province?: string | null;
+            province_code?: string | null;
+            zip?: string | null;
+            country?: string | null;
+            country_code?: string | null;
+            latitude?: number | null;
+            longitude?: number | null;
+            default?: boolean | null;
+        };
+        addresses?: Array<{
+            id?: number;
+            first_name?: string | null;
+            last_name?: string | null;
+            name?: string | null;
+            company?: string | null;
+            phone?: string | null;
+            address1?: string | null;
+            address2?: string | null;
+            city?: string | null;
+            province?: string | null;
+            province_code?: string | null;
+            zip?: string | null;
+            country?: string | null;
+            country_code?: string | null;
+            latitude?: number | null;
+            longitude?: number | null;
+            default?: boolean | null;
+        }>;
+        currency?: string | null;
+        email_marketing_consent?: {
+            state?: string | null;
+            opt_in_level?: string | null;
+            consent_updated_at?: string | null;
+        } | null;
+        sms_marketing_consent?: {
+            state?: string | null;
+            opt_in_level?: string | null;
+            consent_updated_at?: string | null;
+            consent_collected_from?: string | null;
+        } | null;
     };
     path?: never;
     query?: never;
@@ -5039,27 +5880,45 @@ export type ShopifyAddressFixGetResponses = {
          * Original shipping address from the order
          */
         original_address: {
-            address1?: string;
-            address2?: string | null;
-            city?: string;
-            province?: string;
-            zip?: string;
-            country_code?: string;
+            id?: number;
             first_name?: string | null;
             last_name?: string | null;
+            name?: string | null;
+            company?: string | null;
+            phone?: string | null;
+            address1?: string | null;
+            address2?: string | null;
+            city?: string | null;
+            province?: string | null;
+            province_code?: string | null;
+            zip?: string | null;
+            country?: string | null;
+            country_code?: string | null;
+            latitude?: number | null;
+            longitude?: number | null;
+            default?: boolean | null;
         };
         /**
          * Normalized/corrected shipping address
          */
         normalized_address: {
-            address1?: string;
-            address2?: string | null;
-            city?: string;
-            province?: string;
-            zip?: string;
-            country_code?: string;
+            id?: number;
             first_name?: string | null;
             last_name?: string | null;
+            name?: string | null;
+            company?: string | null;
+            phone?: string | null;
+            address1?: string | null;
+            address2?: string | null;
+            city?: string | null;
+            province?: string | null;
+            province_code?: string | null;
+            zip?: string | null;
+            country?: string | null;
+            country_code?: string | null;
+            latitude?: number | null;
+            longitude?: number | null;
+            default?: boolean | null;
         };
         /**
          * Current status of the address fix
@@ -5090,29 +5949,24 @@ export type ShopifyAddressFixConfirmData = {
         shop_domain: string;
         address?: {
             /**
-             * Street address line 1
+             * Street address, P.O. Box, Company name, c/o
              */
             line1?: string;
             /**
-             * Street address line 2
+             * Apartment, Suite, Unit, Building, Floor, etc.
              */
-            line2?: string;
-            /**
-             * City
-             */
+            line2?: string | null;
             city?: string;
             /**
-             * State or province
+             * ISO 3166-2 subdivision code (e.g. NY)
              */
             state?: string;
-            /**
-             * Postal code
-             */
             postal_code?: string;
             /**
-             * Two-letter country code
+             * ISO 3166-1 alpha-2 country code (e.g. US)
              */
             country?: string;
+        } & {
             /**
              * Latitude
              */
@@ -5182,8 +6036,35 @@ export type ShopifyAddressFixConfirmResponses = {
 export type ShopifyAddressFixConfirmResponse = ShopifyAddressFixConfirmResponses[keyof ShopifyAddressFixConfirmResponses];
 
 export type ShopifyAppUninstalledWebhookData = {
+    /**
+     * Payload for app/uninstalled (Shop resource snapshot).
+     */
     body: {
-        [key: string]: unknown;
+        id?: number;
+        admin_graphql_api_id?: string | null;
+        name?: string;
+        email?: string | null;
+        domain?: string | null;
+        myshopify_domain?: string | null;
+        province?: string | null;
+        country?: string | null;
+        address1?: string | null;
+        address2?: string | null;
+        zip?: string | null;
+        city?: string | null;
+        phone?: string | null;
+        latitude?: number | null;
+        longitude?: number | null;
+        primary_locale?: string | null;
+        created_at?: string | null;
+        updated_at?: string | null;
+        country_code?: string | null;
+        country_name?: string | null;
+        currency?: string | null;
+        customer_email?: string | null;
+        timezone?: string | null;
+        iana_timezone?: string | null;
+        shop_owner?: string | null;
     };
     path?: never;
     query?: never;
@@ -5222,7 +6103,22 @@ export type ShopifyAppUninstalledWebhookResponses = {
 };
 
 export type ShopifyGdprCustomersDataRequestWebhookData = {
-    body?: never;
+    /**
+     * Payload for customers/data_request.
+     */
+    body: {
+        shop_id: number;
+        shop_domain: string;
+        orders_requested?: Array<number>;
+        customer: {
+            id?: number;
+            email?: string;
+            phone?: string;
+        };
+        data_request: {
+            id?: number;
+        };
+    };
     path?: never;
     query?: never;
     url: '/integrations/shopify/webhooks/gdpr/customers-data-request';
@@ -5260,7 +6156,19 @@ export type ShopifyGdprCustomersDataRequestWebhookResponses = {
 };
 
 export type ShopifyGdprCustomersRedactWebhookData = {
-    body?: never;
+    /**
+     * Payload for customers/redact.
+     */
+    body: {
+        shop_id: number;
+        shop_domain: string;
+        customer: {
+            id?: number;
+            email?: string;
+            phone?: string;
+        };
+        orders_to_redact?: Array<number>;
+    };
     path?: never;
     query?: never;
     url: '/integrations/shopify/webhooks/gdpr/customers-redact';
@@ -5298,7 +6206,13 @@ export type ShopifyGdprCustomersRedactWebhookResponses = {
 };
 
 export type ShopifyGdprShopRedactWebhookData = {
-    body?: never;
+    /**
+     * Payload for shop/redact.
+     */
+    body: {
+        shop_id: number;
+        shop_domain: string;
+    };
     path?: never;
     query?: never;
     url: '/integrations/shopify/webhooks/gdpr/shop-redact';
@@ -5428,27 +6342,21 @@ export type DedupeCustomerResponse = DedupeCustomerResponses[keyof DedupeCustome
 export type DedupeAddressData = {
     body: {
         /**
-         * Street address line 1
+         * Street address, P.O. Box, Company name, c/o
          */
         line1: string;
         /**
-         * Street address line 2
+         * Apartment, Suite, Unit, Building, Floor, etc.
          */
-        line2?: string;
-        /**
-         * City
-         */
+        line2?: string | null;
         city: string;
         /**
-         * State or province
+         * ISO 3166-2 subdivision code (e.g. NY)
          */
         state?: string;
-        /**
-         * Postal code
-         */
         postal_code: string;
         /**
-         * Two-letter country code
+         * ISO 3166-1 alpha-2 country code (e.g. US)
          */
         country: string;
     };
@@ -5501,29 +6409,24 @@ export type DedupeAddressResponses = {
             match_type?: 'exact_address' | 'exact_postal' | 'fuzzy_address';
             data?: {
                 /**
-                 * Street address line 1
+                 * Street address, P.O. Box, Company name, c/o
                  */
                 line1?: string;
                 /**
-                 * Street address line 2
+                 * Apartment, Suite, Unit, Building, Floor, etc.
                  */
-                line2?: string;
-                /**
-                 * City
-                 */
+                line2?: string | null;
                 city?: string;
                 /**
-                 * State or province
+                 * ISO 3166-2 subdivision code (e.g. NY)
                  */
                 state?: string;
-                /**
-                 * Postal code
-                 */
                 postal_code?: string;
                 /**
-                 * Two-letter country code
+                 * ISO 3166-1 alpha-2 country code (e.g. US)
                  */
                 country?: string;
+            } & {
                 /**
                  * Latitude
                  */
