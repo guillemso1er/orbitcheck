@@ -22,7 +22,7 @@ export default function Settings() {
                 setLoading(false);
             }
         })();
-    }, []);
+    }, [apiClient]);
 
     async function onChange(event: Event & { currentTarget: { value: string } }) {
         const val = event.currentTarget.value;

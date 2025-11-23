@@ -1,15 +1,16 @@
-import { shopifyAppInstalledEvent } from "@orbitcheck/contracts";
 import "@shopify/shopify-app-react-router/adapters/node";
+
+import { shopifyAppInstalledEvent } from "@orbitcheck/contracts";
 import {
   ApiVersion,
   AppDistribution,
   shopifyApp,
 } from "@shopify/shopify-app-react-router/server";
 import { PrismaSessionStorage } from "@shopify/shopify-app-session-storage-prisma";
+import dotenv from "dotenv";
+
 import prisma from "./db.server";
 import { getOrbitcheckClient } from "./utils/orbitcheck.server.js";
-
-import dotenv from "dotenv";
 
 if (process.env.NODE_ENV !== 'production' && process.env.NODE_ENV !== 'test') {
   dotenv.config();
@@ -28,6 +29,7 @@ const shopify = shopifyApp({
   distribution: AppDistribution.AppStore,
   hooks: {
     afterAuth: async ({ session }) => {
+      // eslint-disable-next-line no-console
       console.log("Shopify afterAuth hook triggered for shop", { shop: session.shop });
 
       const client = getOrbitcheckClient();
@@ -64,13 +66,14 @@ const shopify = shopifyApp({
           return;
         }
         try {
+          // eslint-disable-next-line no-console
           console.log(`Notifying OrbitCheck API about Shopify installation for shop ${session.shop} with scopes`, { scopeList: grantedScopes });
           await shopifyAppInstalledEvent<true>({
             client,
             body: {
               shop: session.shop,
               accessToken: session.accessToken,
-              grantedScopes: grantedScopes,
+              grantedScopes,
             },
             throwOnError: true,
           });

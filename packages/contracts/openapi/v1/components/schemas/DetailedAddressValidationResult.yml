@@ -21,7 +21,7 @@ properties:
     type: string
     description: Validation provider used
   normalized:
-    $ref: './Address.yml#/components/schemas/Address'
+    $ref: './Address.yml'
     description: Normalized address data
   po_box:
     type: boolean

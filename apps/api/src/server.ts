@@ -64,6 +64,11 @@ export async function build(pool: Pool, redis: IORedisType): Promise<FastifyInst
         bodyLimit: 1024 * 100, // 100KB limit to trigger 413
         trustProxy: true,
         allowErrorHandlerOverride: false, // Disable error handler override warnings
+        ajv: {
+            customOptions: {
+                strict: false
+            }
+        }
     }) as any;
 
     // Setup API documentation

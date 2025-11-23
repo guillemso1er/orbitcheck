@@ -1,0 +1,29 @@
+type: object
+allOf:
+  - $ref: './Address.yml'
+  - type: object
+    properties:
+      first_name:
+        type: string
+        description: First name
+      last_name:
+        type: string
+        description: Last name
+      phone:
+        type: string
+        description: Phone number
+      province:
+        type: string
+        description: Province or state
+      zip:
+        type: string
+        description: Postal or ZIP code
+      country_code:
+        type: string
+        description: Two-letter country code
+      address1:
+        type: string
+        description: Address line 1
+      address2:
+        type: string
+        description: Address line 2

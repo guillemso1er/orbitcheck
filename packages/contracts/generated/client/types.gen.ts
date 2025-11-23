@@ -126,6 +126,69 @@ export type BaseAddress = {
     country?: string;
 };
 
+export type AddressWithContact = {
+    /**
+     * Street address, P.O. Box, Company name, c/o
+     */
+    line1?: string;
+    /**
+     * Apartment, Suite, Unit, Building, Floor, etc.
+     */
+    line2?: string | null;
+    city?: string;
+    /**
+     * ISO 3166-2 subdivision code (e.g. NY)
+     */
+    state?: string;
+    postal_code?: string;
+    /**
+     * ISO 3166-1 alpha-2 country code (e.g. US)
+     */
+    country?: string;
+} & {
+    /**
+     * Latitude
+     */
+    lat?: number | null;
+    /**
+     * Longitude
+     */
+    lng?: number | null;
+} & {
+    /**
+     * First name
+     */
+    first_name?: string;
+    /**
+     * Last name
+     */
+    last_name?: string;
+    /**
+     * Phone number
+     */
+    phone?: string;
+    /**
+     * Province or state
+     */
+    province?: string;
+    /**
+     * Postal or ZIP code
+     */
+    zip?: string;
+    /**
+     * Two-letter country code
+     */
+    country_code?: string;
+    /**
+     * Address line 1
+     */
+    address1?: string;
+    /**
+     * Address line 2
+     */
+    address2?: string;
+};
+
 export type AddressInput = {
     /**
      * Street address, P.O. Box, Company name, c/o
@@ -1072,45 +1135,98 @@ export type ShopifyAddressFixSession = {
      * Original shipping address from the order
      */
     original_address: {
-        id?: number;
-        first_name?: string | null;
-        last_name?: string | null;
-        name?: string | null;
-        company?: string | null;
-        phone?: string | null;
-        address1?: string | null;
-        address2?: string | null;
-        city?: string | null;
-        province?: string | null;
-        province_code?: string | null;
-        zip?: string | null;
-        country?: string | null;
-        country_code?: string | null;
-        latitude?: number | null;
-        longitude?: number | null;
-        default?: boolean | null;
+        /**
+         * Street address, P.O. Box, Company name, c/o
+         */
+        line1?: string;
+        /**
+         * Apartment, Suite, Unit, Building, Floor, etc.
+         */
+        line2?: string | null;
+        city?: string;
+        /**
+         * ISO 3166-2 subdivision code (e.g. NY)
+         */
+        state?: string;
+        postal_code?: string;
+        /**
+         * ISO 3166-1 alpha-2 country code (e.g. US)
+         */
+        country?: string;
+    } & {
+        /**
+         * Latitude
+         */
+        lat?: number | null;
+        /**
+         * Longitude
+         */
+        lng?: number | null;
+    } & {
+        /**
+         * First name
+         */
+        first_name?: string;
+        /**
+         * Last name
+         */
+        last_name?: string;
+        /**
+         * Phone number
+         */
+        phone?: string;
+        /**
+         * Province or state
+         */
+        province?: string;
+        /**
+         * Postal or ZIP code
+         */
+        zip?: string;
+        /**
+         * Two-letter country code
+         */
+        country_code?: string;
+        /**
+         * Address line 1
+         */
+        address1?: string;
+        /**
+         * Address line 2
+         */
+        address2?: string;
     };
     /**
      * Normalized/corrected shipping address
      */
     normalized_address: {
-        id?: number;
-        first_name?: string | null;
-        last_name?: string | null;
-        name?: string | null;
-        company?: string | null;
-        phone?: string | null;
-        address1?: string | null;
-        address2?: string | null;
-        city?: string | null;
-        province?: string | null;
-        province_code?: string | null;
-        zip?: string | null;
-        country?: string | null;
-        country_code?: string | null;
-        latitude?: number | null;
-        longitude?: number | null;
-        default?: boolean | null;
+        /**
+         * Street address, P.O. Box, Company name, c/o
+         */
+        line1?: string;
+        /**
+         * Apartment, Suite, Unit, Building, Floor, etc.
+         */
+        line2?: string | null;
+        city?: string;
+        /**
+         * ISO 3166-2 subdivision code (e.g. NY)
+         */
+        state?: string;
+        postal_code?: string;
+        /**
+         * ISO 3166-1 alpha-2 country code (e.g. US)
+         */
+        country?: string;
+    } & {
+        /**
+         * Latitude
+         */
+        lat?: number | null;
+        /**
+         * Longitude
+         */
+        lng?: number | null;
     };
     /**
      * Current status of the address fix
@@ -5880,45 +5996,98 @@ export type ShopifyAddressFixGetResponses = {
          * Original shipping address from the order
          */
         original_address: {
-            id?: number;
-            first_name?: string | null;
-            last_name?: string | null;
-            name?: string | null;
-            company?: string | null;
-            phone?: string | null;
-            address1?: string | null;
-            address2?: string | null;
-            city?: string | null;
-            province?: string | null;
-            province_code?: string | null;
-            zip?: string | null;
-            country?: string | null;
-            country_code?: string | null;
-            latitude?: number | null;
-            longitude?: number | null;
-            default?: boolean | null;
+            /**
+             * Street address, P.O. Box, Company name, c/o
+             */
+            line1?: string;
+            /**
+             * Apartment, Suite, Unit, Building, Floor, etc.
+             */
+            line2?: string | null;
+            city?: string;
+            /**
+             * ISO 3166-2 subdivision code (e.g. NY)
+             */
+            state?: string;
+            postal_code?: string;
+            /**
+             * ISO 3166-1 alpha-2 country code (e.g. US)
+             */
+            country?: string;
+        } & {
+            /**
+             * Latitude
+             */
+            lat?: number | null;
+            /**
+             * Longitude
+             */
+            lng?: number | null;
+        } & {
+            /**
+             * First name
+             */
+            first_name?: string;
+            /**
+             * Last name
+             */
+            last_name?: string;
+            /**
+             * Phone number
+             */
+            phone?: string;
+            /**
+             * Province or state
+             */
+            province?: string;
+            /**
+             * Postal or ZIP code
+             */
+            zip?: string;
+            /**
+             * Two-letter country code
+             */
+            country_code?: string;
+            /**
+             * Address line 1
+             */
+            address1?: string;
+            /**
+             * Address line 2
+             */
+            address2?: string;
         };
         /**
          * Normalized/corrected shipping address
          */
         normalized_address: {
-            id?: number;
-            first_name?: string | null;
-            last_name?: string | null;
-            name?: string | null;
-            company?: string | null;
-            phone?: string | null;
-            address1?: string | null;
-            address2?: string | null;
-            city?: string | null;
-            province?: string | null;
-            province_code?: string | null;
-            zip?: string | null;
-            country?: string | null;
-            country_code?: string | null;
-            latitude?: number | null;
-            longitude?: number | null;
-            default?: boolean | null;
+            /**
+             * Street address, P.O. Box, Company name, c/o
+             */
+            line1?: string;
+            /**
+             * Apartment, Suite, Unit, Building, Floor, etc.
+             */
+            line2?: string | null;
+            city?: string;
+            /**
+             * ISO 3166-2 subdivision code (e.g. NY)
+             */
+            state?: string;
+            postal_code?: string;
+            /**
+             * ISO 3166-1 alpha-2 country code (e.g. US)
+             */
+            country?: string;
+        } & {
+            /**
+             * Latitude
+             */
+            lat?: number | null;
+            /**
+             * Longitude
+             */
+            lng?: number | null;
         };
         /**
          * Current status of the address fix

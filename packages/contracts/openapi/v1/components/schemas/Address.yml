@@ -1,14 +1,11 @@
-components:
-  schemas:
-    Address:
-      type: object
-      allOf:
-        - $ref: './BaseAddress.yml'
-        - type: object
-          properties:
-            lat:
-              type: [number, "null"]
-              description: Latitude
-            lng:
-              type: [number, "null"]
-              description: Longitude
+type: object
+allOf:
+  - $ref: './BaseAddress.yml'
+  - type: object
+    properties:
+      lat:
+        type: [number, "null"]
+        description: Latitude
+      lng:
+        type: [number, "null"]
+        description: Longitude

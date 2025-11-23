@@ -1,9 +1,11 @@
 import { createClient } from "@orbitcheck/contracts";
 import jwt from "jsonwebtoken";
 
+import { fetchWithRetry } from "./fetch-with-retry.js";
+
 const DEFAULT_API_BASE = "http://localhost:8080";
 
-const resolveApiBaseUrl = () => {
+const resolveApiBaseUrl = (): string => {
     const raw = process.env.ORBITCHECK_API_URL || process.env.API_BASE_URL || process.env.VITE_API_BASE;
     if (!raw) {
         return DEFAULT_API_BASE;
@@ -19,12 +21,13 @@ const resolveApiBaseUrl = () => {
 
 let cachedClient: ReturnType<typeof createClient> | null = null;
 
-export const getOrbitcheckApiBaseUrl = () => resolveApiBaseUrl();
+export const getOrbitcheckApiBaseUrl = (): string => resolveApiBaseUrl();
 
-export const getOrbitcheckClient = () => {
+export const getOrbitcheckClient = (): ReturnType<typeof createClient> => {
     if (!cachedClient) {
         cachedClient = createClient({
             baseUrl: resolveApiBaseUrl(),
+            fetch: fetchWithRetry,
         });
     }
     return cachedClient;

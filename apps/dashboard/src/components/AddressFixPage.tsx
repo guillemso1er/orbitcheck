@@ -4,14 +4,20 @@ import { useSearchParams } from 'react-router-dom';
 import { useApiClient } from '../utils/api';
 
 interface Address {
-    address1: string;
+    address1?: string;
     address2?: string;
-    city: string;
+    city?: string;
     province?: string;
-    zip: string;
-    country_code: string;
+    zip?: string;
+    country_code?: string;
     first_name?: string;
     last_name?: string;
+    // Mapping for ContractAddress (API response)
+    line1?: string;
+    line2?: string;
+    state?: string;
+    postal_code?: string;
+    country?: string;
 }
 
 interface AddressFixSession {
@@ -225,12 +231,12 @@ const AddressFixPage: React.FC = () => {
                                     )}
                                 </div>
                                 <div className="space-y-1 text-gray-600 dark:text-gray-300">
-                                    <p>{session.original_address.address1}</p>
-                                    {session.original_address.address2 && <p>{session.original_address.address2}</p>}
+                                    <p>{session.original_address.address1 || session.original_address.line1}</p>
+                                    {session.original_address.address2 || session.original_address.line2 ? <p>{session.original_address.address2 || session.original_address.line2}</p> : null}
                                     <p>
-                                        {session.original_address.city}, {session.original_address.province} {session.original_address.zip}
+                                        {session.original_address.city}, {session.original_address.province || session.original_address.state} {session.original_address.zip || session.original_address.postal_code}
                                     </p>
-                                    <p>{session.original_address.country_code}</p>
+                                    <p>{session.original_address.country_code || session.original_address.country}</p>
                                 </div>
                                 <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
                                     <span className="text-sm text-yellow-600 dark:text-yellow-400 font-medium flex items-center">
@@ -262,12 +268,12 @@ const AddressFixPage: React.FC = () => {
                                         )}
                                     </div>
                                     <div className="space-y-1 text-gray-600 dark:text-gray-300">
-                                        <p>{session.normalized_address.address1}</p>
-                                        {session.normalized_address.address2 && <p>{session.normalized_address.address2}</p>}
+                                        <p>{session.normalized_address.address1 || session.normalized_address.line1}</p>
+                                        {session.normalized_address.address2 || session.normalized_address.line2 ? <p>{session.normalized_address.address2 || session.normalized_address.line2}</p> : null}
                                         <p>
-                                            {session.normalized_address.city}, {session.normalized_address.province} {session.normalized_address.zip}
+                                            {session.normalized_address.city}, {session.normalized_address.province || session.normalized_address.state} {session.normalized_address.zip || session.normalized_address.postal_code}
                                         </p>
-                                        <p>{session.normalized_address.country_code}</p>
+                                        <p>{session.normalized_address.country_code || session.normalized_address.country}</p>
                                     </div>
                                     <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
                                         <span className="text-sm text-green-600 dark:text-green-400 font-medium flex items-center">

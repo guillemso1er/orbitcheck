@@ -3,6 +3,7 @@ import type { FastifyBaseLogger } from 'fastify';
 import type { Pool } from 'pg';
 import { promisify } from 'util';
 
+import type { components } from '@orbitcheck/contracts';
 import type {
     AddTagsMutation,
     FulfillmentOrderHoldMutation,
@@ -21,14 +22,28 @@ import {
     QUERY_FULFILLMENT_ORDERS,
 } from './graphql.js';
 
+type ContractAddress = components['schemas']['Address'];
+export type AddressWithContact = Omit<ContractAddress, 'line2'> & {
+    line2?: string | null;
+    first_name?: string;
+    last_name?: string;
+    phone?: string;
+    // Shopify-specific field mappings for backward compatibility
+    province?: string;
+    zip?: string;
+    country_code?: string;
+    address1?: string;
+    address2?: string;
+};
+
 export interface AddressFixSession {
     id: string;
     shop_domain: string;
     order_id: string;
     order_gid: string;
     customer_email: string | null;
-    original_address: Record<string, any>;
-    normalized_address: Record<string, any> | null;
+    original_address: AddressWithContact;
+    normalized_address: ContractAddress | null;
     token_hash: string;
     token_expires_at: Date;
     fix_status: 'pending' | 'confirmed' | 'cancelled';
@@ -43,8 +58,8 @@ export interface CreateSessionParams {
     orderId: string;
     orderGid: string;
     customerEmail: string | null;
-    originalAddress: Record<string, any>;
-    normalizedAddress: Record<string, any> | null;
+    originalAddress: AddressWithContact;
+    normalizedAddress: ContractAddress | null;
 }
 
 export class AddressFixService {
@@ -263,7 +278,7 @@ export class AddressFixService {
         accessToken: string,
         session: AddressFixSession,
         useCorrected: boolean,
-        addressOverride?: Record<string, any>
+        addressOverride?: AddressWithContact
     ): Promise<void> {
         const client = await shopifyGraphql(shopDomain, accessToken, process.env.SHOPIFY_API_VERSION || '2025-10');
 
@@ -391,20 +406,20 @@ export class AddressFixService {
         return crypto.createHash('sha256').update(token).digest('hex');
     }
 
-    private resolveAddressField(address: Record<string, any> | null | undefined, ...keys: string[]): string | null {
+    private resolveAddressField(address: AddressWithContact | ContractAddress | null | undefined, ...keys: string[]): string | null {
         if (!address) {
             return null;
         }
 
         for (const key of keys) {
-            const value = address[key];
-            if (typeof value === 'string') {
-                const trimmed = value.trim();
-                if (trimmed !== '') {
-                    return trimmed;
+            // Check if key exists in object (even if value is empty string or null)
+            if (key in address) {
+                const value = (address as any)[key];
+                if (typeof value === 'string') {
+                    return value.trim();
+                } else if (value !== null && value !== undefined) {
+                    return String(value);
                 }
-            } else if (value !== null && value !== undefined) {
-                return String(value);
             }
         }
 
@@ -412,7 +427,7 @@ export class AddressFixService {
     }
 
     private resolveFieldFromSources(
-        addresses: Array<Record<string, any> | null | undefined>,
+        addresses: Array<AddressWithContact | ContractAddress | null | undefined>,
         ...keys: string[]
     ): string | null {
         for (const address of addresses) {

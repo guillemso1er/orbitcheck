@@ -3,6 +3,7 @@ import type { FastifyReply, FastifyRequest } from 'fastify';
 import { type Redis as IORedisType } from 'ioredis';
 import type { Pool } from 'pg';
 
+import type { components } from '@orbitcheck/contracts';
 import { env } from '../../../environment.js';
 import type { ShopifyOrder } from '../../../generated/fastify/index.js';
 import type { AddTagsMutation, GetShopNameQuery } from '../../../generated/shopify/admin/admin.generated.js';
@@ -10,7 +11,7 @@ import { CompositeEmailService, KlaviyoEmailService, ShopifyFlowEmailService } f
 import { evaluateOrderForRiskAndRulesDirect } from '../../../services/orders.js';
 import { createShopifyService } from '../../../services/shopify.js';
 import { validateAddress as validateAddressUtil } from '../../../validators/address.js';
-import { createAddressFixService } from '../address-fix/service.js';
+import { createAddressFixService, type AddressWithContact } from '../address-fix/service.js';
 import { MUT_TAGS_ADD, QUERY_SHOP_NAME, shopifyGraphql } from '../lib/graphql.js';
 import { captureShopifyEvent } from '../lib/telemetry.js';
 import type { OrderEvaluatePayload } from '../lib/types.js';
@@ -176,6 +177,7 @@ async function handleOrderAddressFix(
     redis: IORedisType,
     mode: string
 ): Promise<void> {
+    type ContractAddress = components['schemas']['Address'];
     const shippingAddr = order.shipping_address;
     if (!shippingAddr || !shippingAddr.address1 || !shippingAddr.city || !shippingAddr.zip) {
         request.log.debug({ shop: shopDomain, orderId: order.id }, 'Skipping address fix - insufficient address data');
@@ -220,16 +222,29 @@ async function handleOrderAddressFix(
         orderGid: order.admin_graphql_api_id || `gid://shopify/Order/${order.id}`,
         customerEmail: order.contact_email || order.email || null,
         originalAddress: {
+            line1: shippingAddr.address1,
+            line2: shippingAddr.address2,
+            city: shippingAddr.city,
+            state: shippingAddr.province,
+            postal_code: shippingAddr.zip,
+            country: shippingAddr.country_code,
+            // Keep original fields for backward compatibility if needed by AddressWithContact
             address1: shippingAddr.address1,
             address2: shippingAddr.address2,
-            city: shippingAddr.city,
             province: shippingAddr.province,
             zip: shippingAddr.zip,
             country_code: shippingAddr.country_code,
             first_name: shippingAddr.first_name,
             last_name: shippingAddr.last_name,
-        },
-        normalizedAddress: validationResult.normalized || null,
+        } as AddressWithContact,
+        normalizedAddress: (validationResult.valid && validationResult.normalized) ? {
+            line1: validationResult.normalized.line1,
+            line2: validationResult.normalized.line2,
+            city: validationResult.normalized.city,
+            state: validationResult.normalized.state,
+            postal_code: validationResult.normalized.postal_code,
+            country: validationResult.normalized.country,
+        } as ContractAddress : null,
     });
 
     // Generate fix URL (will be used in Shopify Flow)
@@ -289,7 +304,10 @@ async function handleOrderAddressFix(
         shopDomain,
         shopName,
         customerEmail: order.contact_email || order.email || '',
-        customerName: [shippingAddr.first_name, shippingAddr.last_name].filter(Boolean).join(' '),
+        customerName: [
+            shippingAddr.first_name || order.customer?.first_name || order.billing_address?.first_name,
+            shippingAddr.last_name || order.customer?.last_name || order.billing_address?.last_name
+        ].filter(Boolean).join(' '),
         fixUrl,
         orderId: String(order.id),
         orderGid: order.admin_graphql_api_id || `gid://shopify/Order/${order.id}`,

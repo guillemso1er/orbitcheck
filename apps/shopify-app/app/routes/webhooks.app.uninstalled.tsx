@@ -3,6 +3,7 @@ import type { ActionFunctionArgs } from "react-router";
 import db from "../db.server";
 import { authenticate } from "../shopify.server";
 import { getOrbitcheckClient } from "../utils/orbitcheck.server.js";
+import { mapShopPayloadToContract } from "../utils/webhook-mapper";
 
 const orbitcheckClient = getOrbitcheckClient();
 
@@ -16,7 +17,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     // Or use a shared internal secret
     await shopifyAppUninstalledWebhook<true>({
       client: orbitcheckClient,
-      body: payload ?? {},
+      body: mapShopPayloadToContract(payload),
       headers: {
         "Content-Type": "application/json",
         "X-Shopify-Topic": typeof topic === "string" ? topic : String(topic),

@@ -1,4 +1,4 @@
-import { getShopifyShopSettings, updateShopifyShopSettings } from "@orbitcheck/contracts";
+import { createShopifyDashboardSession, getShopifyShopSettings, updateShopifyShopSettings } from "@orbitcheck/contracts";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 import { useEffect, useState } from "react";
 import type {
@@ -42,7 +42,7 @@ export default function Index() {
     };
 
     checkStatus();
-  }, []);
+  }, [apiClient]);
 
   const updateMode = async (newMode: 'disabled' | 'notify' | 'activated') => {
     try {
@@ -59,22 +59,11 @@ export default function Index() {
   const openDashboard = async () => {
     setDashboardLoading(true);
     try {
-      // Call the dashboard session endpoint to establish auth
-      const response = await fetch('/api/shopify/dashboard-session', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to create dashboard session');
-      }
-
-      const data = await response.json();
+      const response = await createShopifyDashboardSession({ client: apiClient });
+      const data = response.data;
 
       // Redirect to the dashboard URL
-      window.open(data.dashboard_url, '_blank');
+      window.open(data?.dashboard_url, '_blank');
     } catch (error) {
       console.error('Failed to open dashboard:', error);
       alert('Failed to open OrbitCheck Dashboard. Please try again.');
@@ -173,10 +162,11 @@ export default function Index() {
               <hr style={{ margin: '16px 0', border: 'none', borderBottom: '1px solid #e5e7eb' }} />
 
               <div>
-                <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
+                <label htmlFor="mode-select" style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
                   Order Validation Mode
                 </label>
                 <select
+                  id="mode-select"
                   value={mode}
                   onChange={(e) => updateMode(e.target.value as any)}
                   style={{
@@ -188,7 +178,7 @@ export default function Index() {
                   }}
                 >
                   <option value="disabled">Disabled - No validation will be performed</option>
-                  <option value="notify">Notify - Validate orders and add tags, but don't block</option>
+                  <option value="notify">Notify - Validate orders and add tags, but don&apos;t block</option>
                   <option value="activated">Activated - Full validation with blocking capabilities</option>
                 </select>
               </div>
@@ -200,7 +190,7 @@ export default function Index() {
           <hr style={{ margin: '16px 0', border: 'none', borderBottom: '1px solid #e5e7eb' }} />
           <h3 style={{ marginTop: '0', marginBottom: '8px' }}>How it works</h3>
           <ul style={{ margin: '0', paddingLeft: '20px' }}>
-            <li>New orders are automatically validated against OrbitCheck's  data validation algorithms</li>
+            <li>New orders are automatically validated against OrbitCheck&apos;s  data validation algorithms</li>
             <li>High-risk orders are tagged with appropriate risk indicators</li>
           </ul>
         </s-stack>

@@ -321,9 +321,11 @@ components:
     Webhook:
       $ref: './components/schemas/Webhook.yml'
     Address:
-      $ref: './components/schemas/Address.yml#/components/schemas/Address'
+      $ref: './components/schemas/Address.yml'
     BaseAddress:
       $ref: './components/schemas/BaseAddress.yml'
+    AddressWithContact:
+      $ref: './components/schemas/AddressWithContact.yml'
     AddressInput:
       $ref: './components/schemas/AddressInput.yml'
     Customer:

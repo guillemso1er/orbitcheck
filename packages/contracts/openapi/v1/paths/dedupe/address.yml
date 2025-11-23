@@ -41,7 +41,7 @@ responses:
                       - fuzzy_address
                     description: Type of match
                   data:
-                    $ref: '../../components/schemas/Address.yml#/components/schemas/Address'
+                    $ref: '../../components/schemas/Address.yml'
             suggested_action:
               type: string
               enum:

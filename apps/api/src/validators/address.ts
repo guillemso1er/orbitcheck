@@ -116,6 +116,9 @@ export async function normalizeAddress(rawAddr: RawAddressInput): Promise<Normal
     };
 
     if (!cleaned.line1 || !cleaned.city || !cleaned.postal_code || !cleaned.country) {
+        // If line1 is missing, we cannot suggest a valid address fix.
+        // Returning null for normalized address prevents bad suggestions (like City-only).
+        if (!cleaned.line1) return { ...cleaned, line1: "" }; // Or handle as invalid upstream
         return cleaned;
     }
 
