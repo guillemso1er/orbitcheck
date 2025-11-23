@@ -35,7 +35,8 @@ RUN pnpm --filter @orbitcheck/api deploy --prod /app
 # --- REBUILD NATIVE MODULES ---
 WORKDIR /app
 # We only need to worry about standard native modules like argon2 now.
-# No node-postal steps here.
+# Install TypeScript globally for argon2 rebuild
+RUN npm install -g typescript
 RUN npm rebuild argon2 --build-from-source
 
 
