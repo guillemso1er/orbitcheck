@@ -37,6 +37,7 @@ api.orbitcheck.io {
     @cors_origin {
         header Origin https://dashboard.orbitcheck.io
         header Origin https://orbitcheck.io
+        header Origin https://shopify.orbitcheck.io
         not method OPTIONS
     }
     header @cors_origin Access-Control-Allow-Origin "{http.request.header.Origin}"
@@ -192,6 +193,51 @@ dashboard.orbitcheck.io {
             roll_keep_for 720h
         }
         format json
+    }
+
+    handle_errors {
+        respond "{http.error.status_code} {http.error.status_text}"
+    }
+}
+
+
+shopify.orbitcheck.io {
+    import common_security_headers
+
+    # Allow credentialed CORS only from the dashboard and site
+    @cors_origin {
+        header Origin https://dashboard.orbitcheck.io
+        header Origin https://orbitcheck.io
+        header Origin https://api.orbitcheck.io
+
+        not method OPTIONS
+    }
+    header @cors_origin Access-Control-Allow-Origin "{http.request.header.Origin}"
+    header @cors_origin Access-Control-Allow-Credentials "true"
+    header @cors_origin Vary "Origin"
+
+    # Preflight handler
+    @preflight {
+        method OPTIONS
+        header Origin *
+        header Access-Control-Request-Method *
+    }
+    handle @preflight {
+        header Access-Control-Allow-Origin "{http.request.header.Origin}"
+        header Access-Control-Allow-Credentials "true"
+        header Access-Control-Allow-Methods "GET, POST, PUT, PATCH, DELETE, OPTIONS"
+        header Access-Control-Allow-Headers "Content-Type, X-CSRF-Token"
+        header Access-Control-Max-Age "3600"
+        header Vary "Origin, Access-Control-Request-Method, Access-Control-Request-Headers"
+        respond 204
+    }
+
+    reverse_proxy 127.0.0.1:18080 {
+        header_up X-Forwarded-Proto {scheme}
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up +X-Forwarded-For {remote_host}
+        trusted_proxies private_ranges
     }
 
     handle_errors {

@@ -89,7 +89,8 @@ validate_required_vars() {
         "REGISTRY"
         "IMAGE_OWNER"
         "API_IMAGE_NAME"
-        "CADDY_IMAGE_NAME" 
+        "CADDY_IMAGE_NAME"
+        "SHOPIFY_IMAGE_NAME" 
     )
     
     for var in "${required_vars[@]}"; do
@@ -107,16 +108,16 @@ validate_required_vars() {
 # Set defaults for optional variables
 : "${NEEDS_INFRA_CHANGES:=false}"
 : "${NEEDS_API_CHANGES:=false}"
+: "${NEEDS_SHOPIFY_CHANGES:=false}"
 : "${IS_WORKFLOW_DISPATCH:=false}"
 : "${FORCE_DEPLOY:=false}"
 
 : "${NEEDS_DASHBOARD_CHANGES:=false}"
-: "${API_IMAGE_REF:=}"        # e.g., ghcr.io/org/api@sha256:...
-: "${CADDY_IMAGE_REF:=}"      # e.g., ghcr.io/org/caddy@sha256:...
-: "${RELEASE_VERSION:=}"      # e.g., v1.2.3
+: "${API_IMAGE_REF:=}"        
+: "${CADDY_IMAGE_REF:=}"
+: "${SHOPIFY_IMAGE_REF:=}"
+: "${RELEASE_VERSION:=}"      
 : "${FORCE_RESTART:=false}"
-
-
 
 # Validate all required variables
 validate_required_vars
@@ -131,6 +132,7 @@ normalize_bool() {
 
 NEEDS_INFRA_CHANGES=$(normalize_bool "$NEEDS_INFRA_CHANGES")
 NEEDS_API_CHANGES=$(normalize_bool "$NEEDS_API_CHANGES")
+NEEDS_SHOPIFY_CHANGES=$(normalize_bool "$NEEDS_SHOPIFY_CHANGES")
 IS_WORKFLOW_DISPATCH=$(normalize_bool "$IS_WORKFLOW_DISPATCH")
 FORCE_DEPLOY=$(normalize_bool "$FORCE_DEPLOY")
 NEEDS_DASHBOARD_CHANGES=$(normalize_bool "$NEEDS_DASHBOARD_CHANGES")
@@ -231,9 +233,9 @@ verify_podman_quadlet() {
 # - Else use version tag (RELEASE_VERSION)
 # - Else error (we don't want floating tags in prod)
 resolve_image_ref() {
-  local svc_name="$1"           # "api" or "caddy"
-  local image_name="$2"         # e.g., "$API_IMAGE_NAME" or "$CADDY_IMAGE_NAME"
-  local explicit_ref="$3"       # e.g., "$API_IMAGE_REF" or "$CADDY_IMAGE_REF"
+  local svc_name="$1"           # "api" or "caddy" or "shopify"
+  local image_name="$2"         # e.g., "$API_IMAGE_NAME"
+  local explicit_ref="$3"       # e.g., "$API_IMAGE_REF"
 
   local repo="${REGISTRY}/${IMAGE_OWNER}/${image_name}"
 
@@ -247,7 +249,7 @@ resolve_image_ref() {
     return 0
   fi
 
-  log_error "No immutable ref or version provided for ${svc_name} (${repo}). Provide API_IMAGE_REF/CADDY_IMAGE_REF or RELEASE_VERSION."
+  log_error "No immutable ref or version provided for ${svc_name} (${repo})."
   return 1
 }
 
@@ -338,38 +340,45 @@ runtime_patch_quadlet_images() {
   api_ref="$(resolve_image_ref "api" "$API_IMAGE_NAME" "$API_IMAGE_REF")" || return 1
   local caddy_ref
   caddy_ref="$(resolve_image_ref "caddy" "$CADDY_IMAGE_NAME" "$CADDY_IMAGE_REF")" || return 1
+  local shopify_ref
+  shopify_ref="$(resolve_image_ref "shopify" "$SHOPIFY_IMAGE_NAME" "$SHOPIFY_IMAGE_REF")" || return 1
 
   log_info "Patching Quadlet Image= lines with immutable refs"
-  log_info "  API   -> $api_ref"
-  log_info "  Caddy -> $caddy_ref"
+  log_info "  API     -> $api_ref"
+  log_info "  Caddy   -> $caddy_ref"
+  log_info "  Shopify -> $shopify_ref"
 
   shopt -s nullglob
   local f
-  local api_patched=0 caddy_patched=0
+  local api_patched=0 caddy_patched=0 shopify_patched=0
 
   for f in "$dest_sys_d"/*.container "$dest_sys_d"/*.pod; do
     [[ -f "$f" ]] || continue
 
-    # Patch API lines that reference the API image path
+    # Patch API
     if grep -Eq "^\s*Image\s*=\s*.*/${API_IMAGE_NAME}(:|@)" "$f"; then
       sed -i -E "s#^(\s*Image\s*=\s*).*/${API_IMAGE_NAME}(:|@)[^[:space:]]*#\1${api_ref}#g" "$f"
       ((++api_patched))
     fi
 
-    # Patch Caddy lines that reference the Caddy image path
+    # Patch Caddy
     if grep -Eq "^\s*Image\s*=\s*.*/${CADDY_IMAGE_NAME}(:|@)" "$f"; then
       sed -i -E "s#^(\s*Image\s*=\s*).*/${CADDY_IMAGE_NAME}(:|@)[^[:space:]]*#\1${caddy_ref}#g" "$f"
       ((++caddy_patched))
     fi
+
+    # Patch Shopify
+    if grep -Eq "^\s*Image\s*=\s*.*/${SHOPIFY_IMAGE_NAME}(:|@)" "$f"; then
+      sed -i -E "s#^(\s*Image\s*=\s*).*/${SHOPIFY_IMAGE_NAME}(:|@)[^[:space:]]*#\1${shopify_ref}#g" "$f"
+      ((++shopify_patched))
+    fi
   done
 
-  if (( api_patched == 0 )); then
-    log_warning "No API Image= lines patched; ensure Quadlet files reference .../${API_IMAGE_NAME}:<tag>"
-  fi
-  if (( caddy_patched == 0 )); then
-    log_warning "No Caddy Image= lines patched; ensure Quadlet files reference .../${CADDY_IMAGE_NAME}:<tag>"
-  fi
-  log_success "Quadlet images patched (API: $api_patched, Caddy: $caddy_patched)"
+  if (( api_patched == 0 )); then log_warning "No API Image= lines patched"; fi
+  if (( caddy_patched == 0 )); then log_warning "No Caddy Image= lines patched"; fi
+  if (( shopify_patched == 0 )); then log_warning "No Shopify Image= lines patched"; fi
+  
+  log_success "Quadlet images patched (API: $api_patched, Caddy: $caddy_patched, Shopify: $shopify_patched)"
 }
 
 runtime_deploy_quadlet_files() {
@@ -862,17 +871,30 @@ runtime_main_deployment() {
     local dest_user_cfg="$HOME/.config"
 
     runtime_preflight_storage 2048 95
-    # These file deployments should always happen if the deploy job runs
     runtime_deploy_quadlet_files "$src" "$dest_sys_d"
     runtime_patch_quadlet_images "$dest_sys_d"
     runtime_deploy_env_files "$src" "$dest_user_cfg"
 
+    # --- Handle Secrets ---
+    
+    # 1. API Secrets
     local service="$API_IMAGE_NAME"
     local cfg_dir="$dest_user_cfg/$service"
     mkdir -p "$cfg_dir"
-
     local token_file="$HOME/.secrets/infisical/${service}.token"
     runtime_fetch_infisical_secrets "$service" "$token_file" "/api" "$cfg_dir/${service}.secrets.env"
+
+    # 2. Shopify Secrets (NEW)
+    local shopify_svc="$SHOPIFY_IMAGE_NAME"
+    local shopify_cfg_dir="$dest_user_cfg/$shopify_svc"
+    mkdir -p "$shopify_cfg_dir"
+    local shopify_token_file="$HOME/.secrets/infisical/${shopify_svc}.token"
+    # Assuming Infisical path is /shopify and token file exists
+    if [[ -f "$shopify_token_file" ]]; then
+        runtime_fetch_infisical_secrets "$shopify_svc" "$shopify_token_file" "/shopify" "$shopify_cfg_dir/${shopify_svc}.secrets.env"
+    else
+        log_warning "Shopify token file not found at $shopify_token_file, skipping secret fetch"
+    fi
 
     # Pod args
     local pod_name
@@ -884,25 +906,24 @@ runtime_main_deployment() {
     local should_restart="false"
     local run_migrations="false"
 
-    # A tagged release always redeploys and runs migrations
     if [[ -n "$RELEASE_VERSION" ]]; then
         should_restart="true"
         run_migrations="true"
     fi
 
-    # File-based change detection
     if [[ "$NEEDS_API_CHANGES" == "true" ]]; then
         should_restart="true"
         run_migrations="true"
+    fi
+    if [[ "$NEEDS_SHOPIFY_CHANGES" == "true" ]]; then
+        should_restart="true"
     fi
     if [[ "$NEEDS_INFRA_CHANGES" == "true" || "$NEEDS_DASHBOARD_CHANGES" == "true" ]]; then
         should_restart="true"
     fi
 
-    # Force flags
     if [[ "$IS_WORKFLOW_DISPATCH" == "true" && "$FORCE_DEPLOY" == "true" ]]; then
         should_restart="true"
-        # Be conservative and run migrations; they're idempotent
         run_migrations="true"
     fi
     if [[ "$FORCE_RESTART" == "true" ]]; then
@@ -914,8 +935,8 @@ runtime_main_deployment() {
         runtime_manage_systemd_services "$dest_sys_d"
 
         if [[ "$run_migrations" == "true" ]]; then
-            log_info "Executing DB wait + provision + migrations"
-
+            log_info "Executing DB wait + provision + migrations for API"
+            
             local admin_token_file="$HOME/.secrets/infisical/${service}-infra.token"
             local admin_env="$cfg_dir/${service}.dbadmin.env"
 
@@ -926,22 +947,14 @@ runtime_main_deployment() {
             local migration_image
             migration_image="$(resolve_image_ref "api" "$API_IMAGE_NAME" "$API_IMAGE_REF")"
 
-            # Build an array of arguments for the podman command
             local -a migration_args=()
-            migration_args+=("${pod_args[@]}") # Add pod args first
-
-            # Add env files if they exist
+            migration_args+=("${pod_args[@]}")
             local env_file="$cfg_dir/$service.env"
             local secrets_file="$cfg_dir/${service}.secrets.env"
             
-            if [[ -f "$env_file" ]]; then
-                migration_args+=(--env-file "$env_file")
-            fi
-            if [[ -f "$secrets_file" ]]; then
-                migration_args+=(--env-file "$secrets_file")
-            fi
+            if [[ -f "$env_file" ]]; then migration_args+=(--env-file "$env_file"); fi
+            if [[ -f "$secrets_file" ]]; then migration_args+=(--env-file "$secrets_file"); fi
 
-            # Call with the image, attempt count, and the combined arguments array
             runtime_run_migrations "$migration_image" 10 "${migration_args[@]}"
         else
             log_info "Skipping migrations for this deploy"
@@ -952,6 +965,7 @@ runtime_main_deployment() {
 
     log_success "Runtime deployment completed successfully"
 }
+
 
 # Export all functions for use in subshell
 export -f log_info log_success log_warning log_error
@@ -974,6 +988,7 @@ deploy_as_runtime_user() {
   if ! sudo -iu "$REMOTE_RUNTIME_USER" \
         DEBUG="${DEBUG:-0}" \
         NEEDS_API_CHANGES="$NEEDS_API_CHANGES" \
+        NEEDS_SHOPIFY_CHANGES="$NEEDS_SHOPIFY_CHANGES" \
         NEEDS_INFRA_CHANGES="$NEEDS_INFRA_CHANGES" \
         NEEDS_DASHBOARD_CHANGES="${NEEDS_DASHBOARD_CHANGES:-false}" \
         IS_WORKFLOW_DISPATCH="$IS_WORKFLOW_DISPATCH" \
@@ -983,8 +998,10 @@ deploy_as_runtime_user() {
         REMOTE_SYSTEMD_USER_DIR="$REMOTE_SYSTEMD_USER_DIR" \
         API_IMAGE_NAME="$API_IMAGE_NAME" \
         CADDY_IMAGE_NAME="${CADDY_IMAGE_NAME}" \
+        SHOPIFY_IMAGE_NAME="${SHOPIFY_IMAGE_NAME}" \
         API_IMAGE_REF="${API_IMAGE_REF:-}" \
         CADDY_IMAGE_REF="${CADDY_IMAGE_REF:-}" \
+        SHOPIFY_IMAGE_REF="${SHOPIFY_IMAGE_REF:-}" \
         RELEASE_VERSION="${RELEASE_VERSION:-}" \
         REGISTRY="$REGISTRY" \
         IMAGE_OWNER="$IMAGE_OWNER" \
