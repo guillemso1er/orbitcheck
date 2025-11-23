@@ -19,6 +19,7 @@ RUN corepack enable
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml tsconfig.base.json ./
 COPY apps/api/package.json apps/api/
 COPY packages/contracts/package.json packages/contracts/
+COPY packages/contracts/openapi packages/contracts/openapi
 
 # Install dependencies
 # Note: Make sure you run `pnpm remove node-postal` in your project first!
