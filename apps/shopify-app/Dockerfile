@@ -6,17 +6,19 @@ EXPOSE 3000
 
 WORKDIR /workspace
 
-ENV NODE_ENV=production
 ENV PNPM_HOME=/pnpm
 ENV PATH=$PNPM_HOME:$PATH
 RUN corepack enable
+
+# --- CHANGE 1: REMOVE NODE_ENV=production FROM HERE ---
 
 # Copy manifests
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml tsconfig.base.json ./
 COPY apps/shopify-app/package.json apps/shopify-app/
 COPY packages/contracts/ packages/contracts/
 
-# Install dependencies (including dev deps for build)
+# Install dependencies
+# Without NODE_ENV=production, pnpm will now install devDependencies needed for building
 RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store \
     pnpm install --filter @orbitcheck/orbitcheck-shopify-app... --frozen-lockfile --ignore-scripts
 
@@ -31,5 +33,8 @@ RUN pnpm --filter @orbitcheck/orbitcheck-shopify-app run build
 RUN pnpm --filter @orbitcheck/orbitcheck-shopify-app deploy --prod /app
 
 WORKDIR /app
+
+# --- CHANGE 2: ADD NODE_ENV=production HERE (Runtime only) ---
+ENV NODE_ENV=production
 
 CMD ["pnpm", "run", "docker-start"]
