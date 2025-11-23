@@ -62,7 +62,7 @@ env:
   CADDY_IMAGE_NAME: caddy
   CADDY_DOCKERFILE_PATH: ./infra/quadlets/caddy/Containerfile
   CADDYFILE_PATH: infra/config/caddy/Caddyfile
-  
+
   # NEW: Shopify App Image
   SHOPIFY_IMAGE_NAME: shopify-app
   SHOPIFY_DOCKERFILE_PATH: ./apps/shopify-app/Dockerfile
@@ -503,7 +503,7 @@ jobs:
             export NEEDS_DASHBOARD_CHANGES="${{ needs.detect-changes.outputs.dashboard }}"
             export NEEDS_API_CHANGES="${{ needs.detect-changes.outputs.api }}"
             export NEEDS_SHOPIFY_CHANGES="${{ needs.detect-changes.outputs.shopify }}"
-            
+
             export IS_WORKFLOW_DISPATCH="${{ github.event_name == 'workflow_dispatch' }}"
             export FORCE_DEPLOY="${{ inputs.force_deploy }}"
             export FORCE_RESTART="${{ inputs.force_restart || false }}"
