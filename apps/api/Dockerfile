@@ -29,22 +29,17 @@ RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store \
 COPY . .
 RUN pnpm --filter @orbitcheck/api... build
 
+# Rebuild native modules before deploy
+RUN pnpm rebuild argon2
+
 # Deploy production bundle to /app
 RUN pnpm --filter @orbitcheck/api deploy --prod /app
-
-# --- REBUILD NATIVE MODULES ---
-WORKDIR /app
-# We only need to worry about standard native modules like argon2 now.
-# Install TypeScript globally for argon2 rebuild
-RUN npm install -g typescript
-RUN npm rebuild argon2 --build-from-source
 
 
 # 2) Runtime Image
 FROM node:22-bookworm-slim AS runner
 
 ENV NODE_ENV=production
-# No LIBPOSTAL_DATA_DIR needed anymore
 
 # Minimal runtime tools
 RUN apt-get update && apt-get install -y --no-install-recommends \
