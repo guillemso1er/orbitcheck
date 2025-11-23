@@ -65,7 +65,7 @@ env:
   
   # NEW: Shopify App Image
   SHOPIFY_IMAGE_NAME: shopify-app
-  SHOPIFY_DOCKERFILE_PATH: ./apps/shopify/Dockerfile
+  SHOPIFY_DOCKERFILE_PATH: ./apps/shopify-app/Dockerfile
 
   # Dashboard
   DASHBOARD_ARTIFACT_NAME: dashboard-dist
@@ -152,8 +152,8 @@ jobs:
               - 'package.json'
               - 'tsconfig.base.json'
             shopify:
-              - 'apps/shopify/**'
-              - 'apps/shopify/Dockerfile'
+              - 'apps/shopify-app/**'
+              - 'apps/shopify-app/Dockerfile'
               - 'packages/**'
               - 'pnpm-lock.yaml'
               - 'pnpm-workspace.yaml'
@@ -433,7 +433,7 @@ jobs:
            echo "caddy_ref=${CADDY_REF}" >> "$GITHUB_OUTPUT"
 
            # NEW: Promote Shopify
-           SHOPIFY_REF="$(promote "$SHOPIFY_IMG" apps/shopify packages pnpm-lock.yaml pnpm-workspace.yaml package.json tsconfig.base.json)"
+           SHOPIFY_REF="$(promote "$SHOPIFY_IMG" apps/shopify-app packages pnpm-lock.yaml pnpm-workspace.yaml package.json tsconfig.base.json)"
            echo "shopify_ref=${SHOPIFY_REF}" >> "$GITHUB_OUTPUT"
 
   deploy:
