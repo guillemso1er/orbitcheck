@@ -27,6 +27,14 @@
       "webRoot": "${workspaceFolder}/apps/dashboard",
       "preLaunchTask": "Start React App"
     },
+        {
+      "type": "chrome",
+      "request": "launch",
+      "name": "Debug Shopify App",
+      "url": "http://localhost:5173",
+      "webRoot": "${workspaceFolder}/apps/shopify-app",
+      "preLaunchTask": "Start Shopify App"
+    },
     {
       "type": "node",
       "request": "launch",

@@ -1,6 +1,7 @@
 import type { Pool } from 'pg';
-import type { Plan, Usage, UserPlan } from '../types/plans.js';
+
 import { HTTP_STATUS } from '../errors.js';
+import type { Plan, Usage, UserPlan } from '../types/plans.js';
 
 const DEFAULT_PLAN_SLUG = 'free';
 
@@ -165,9 +166,91 @@ export class PlansService {
     const features = userPlan.plan.features as Record<string, any>;
     return features[feature] === true || features.all_v1_features === true || features.all_features === true;
   }
+
+  // Response formatting methods to move logic from handlers to service
+  async getUserPlanResponse(userId: string): Promise<{
+    id: string;
+    email: string;
+    monthlyValidationsUsed: number;
+    subscriptionStatus: string;
+    trialEndDate?: string;
+    projectsCount: number;
+    plan: Plan;
+  }> {
+    const userPlan = await this.getUserPlan(userId);
+    return {
+      id: userPlan.id,
+      email: userPlan.email,
+      monthlyValidationsUsed: userPlan.monthlyValidationsUsed,
+      subscriptionStatus: userPlan.subscriptionStatus,
+      trialEndDate: userPlan.trialEndDate,
+      projectsCount: userPlan.projectsCount,
+      plan: userPlan.plan
+    };
+  }
+
+  async updateUserPlanResponse(userId: string, planSlug: string, trialDays?: number): Promise<{
+    id: string;
+    email: string;
+    monthlyValidationsUsed: number;
+    subscriptionStatus: string;
+    trialEndDate?: string;
+    projectsCount: number;
+    plan: Plan;
+  }> {
+    const userPlan = await this.updateUserPlan(userId, planSlug, trialDays);
+    return {
+      id: userPlan.id,
+      email: userPlan.email,
+      monthlyValidationsUsed: userPlan.monthlyValidationsUsed,
+      subscriptionStatus: userPlan.subscriptionStatus,
+      trialEndDate: userPlan.trialEndDate,
+      projectsCount: userPlan.projectsCount,
+      plan: userPlan.plan
+    };
+  }
+
+  async getAvailablePlansResponse(): Promise<Array<{
+    id: string;
+    name: string;
+    slug: string;
+    price: number;
+    validationsLimit: number;
+    projectsLimit: number;
+    features: Record<string, any>;
+  }>> {
+    // Temporary: return only the free plan as array, shape matching spec
+    const free = await this.getPlanBySlug('free');
+    return free ? [{
+      id: free.id,
+      name: free.name,
+      slug: free.slug,
+      price: free.price,
+      validationsLimit: free.validationsLimit,
+      projectsLimit: free.projectsLimit,
+      features: free.features
+    }] : [];
+  }
+
+  async checkValidationLimitsResponse(userId: string, count: number = 1): Promise<{
+    canProceed: boolean;
+    remainingValidations: number;
+    overageAllowed: boolean;
+    monthlyValidationsUsed: number;
+    planValidationsLimit: number;
+  }> {
+    const usage = await this.checkValidationLimit(userId, count);
+    return {
+      canProceed: usage.remainingValidations > 0 || usage.overageAllowed,
+      remainingValidations: usage.remainingValidations,
+      overageAllowed: usage.overageAllowed,
+      monthlyValidationsUsed: usage.monthlyValidationsUsed,
+      planValidationsLimit: usage.planValidationsLimit
+    };
+  }
 }
 
-export const createPlansService = (pool: Pool) => new PlansService(pool);
+export const createPlansService = (pool: Pool): PlansService => new PlansService(pool);
 
 // Middleware to attach plans service to request
 // export function attachPlansService(request: FastifyRequest, pool: Pool) {
@@ -176,3 +259,103 @@ export const createPlansService = (pool: Pool) => new PlansService(pool);
 //   }
 //   return request.plansService;
 // }
+
+// Handler methods to move HTTP logic from handlers to service
+export async function getUserPlanHandler(
+  request: any,
+  reply: any,
+  pool: any
+): Promise<any> {
+  try {
+    const userId = (request as any).user_id;
+    const plansService = new PlansService(pool);
+    const response = await plansService.getUserPlanResponse(userId);
+
+    // Convert plan to generic object to match generated types
+    return reply.status(200).send({
+      ...response,
+      plan: { ...response.plan }
+    });
+  } catch (error) {
+    if (error && typeof error === 'object' && 'status' in error) {
+      return reply.status((error as any).status).send((error as any).error);
+    }
+    return reply.status(500).send({
+      error: { code: 'INTERNAL_SERVER_ERROR', message: 'An unexpected error occurred' }
+    });
+  }
+}
+
+export async function updateUserPlanHandler(
+  request: any,
+  reply: any,
+  pool: any
+): Promise<any> {
+  try {
+    const userId = (request as any).user_id;
+    const { planSlug, trialDays } = request.body as any;
+
+    if (!planSlug || typeof planSlug !== 'string') {
+      return reply.status(400).send({
+        error: { code: 'INVALID_INPUT', message: 'planSlug is required' }
+      });
+    }
+
+    const plansService = new PlansService(pool);
+    const response = await plansService.updateUserPlanResponse(userId, planSlug, trialDays);
+
+    // Convert plan to generic object to match generated types
+    return reply.status(200).send({
+      ...response,
+      plan: { ...response.plan }
+    });
+  } catch (error) {
+    if (error && typeof error === 'object' && 'status' in error) {
+      return reply.status((error as any).status).send((error as any).error);
+    }
+    return reply.status(500).send({
+      error: { code: 'INTERNAL_SERVER_ERROR', message: 'An unexpected error occurred' }
+    });
+  }
+}
+
+export async function getAvailablePlansHandler(
+  _request: any,
+  reply: any,
+  pool: any
+): Promise<any> {
+  try {
+    const plansService = new PlansService(pool);
+    const response = await plansService.getAvailablePlansResponse();
+    return reply.status(200).send(response);
+  } catch (error) {
+    if (error && typeof error === 'object' && 'status' in error) {
+      return reply.status((error as any).status).send((error as any).error);
+    }
+    return reply.status(500).send({
+      error: { code: 'INTERNAL_SERVER_ERROR', message: 'An unexpected error occurred' }
+    });
+  }
+}
+
+export async function checkValidationLimitsHandler(
+  request: any,
+  reply: any,
+  pool: any
+): Promise<any> {
+  try {
+    const userId = (request as any).user_id;
+    const { count = 1 } = request.body as any;
+
+    const plansService = new PlansService(pool);
+    const response = await plansService.checkValidationLimitsResponse(userId, count);
+    return reply.status(200).send(response);
+  } catch (error) {
+    if (error && typeof error === 'object' && 'status' in error) {
+      return reply.status((error as any).status).send((error as any).error);
+    }
+    return reply.status(500).send({
+      error: { code: 'INTERNAL_SERVER_ERROR', message: 'An unexpected error occurred' }
+    });
+  }
+}

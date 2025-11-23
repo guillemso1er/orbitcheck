@@ -1,6 +1,7 @@
 import type { FastifyReply, FastifyRequest } from "fastify";
 import nodemailer from "nodemailer";
 import type { Pool } from "pg";
+
 import { CACHE_HIT_PLACEHOLDER, COMPLIANCE_REASONS, LOGS_DEFAULT_LIMIT, LOGS_MAX_LIMIT, MESSAGES, TOP_REASONS_LIMIT, USAGE_DAYS, USAGE_PERIOD } from "../config.js";
 import { ERROR_CODES, HTTP_STATUS } from "../errors.js";
 import type { DeleteLogData, DeleteLogResponses, EraseDataData, EraseDataResponses, GetLogsData, GetLogsResponses, GetUsageResponses } from "../generated/fastify/types.gen.js";

@@ -1,8 +1,21 @@
-import { FastifyInstance, RawServerBase } from "fastify";
+import * as crypto from 'node:crypto';
+
+import type { FastifyInstance, RawServerBase } from "fastify";
 import type { Redis as IORedisType } from "ioredis";
-import crypto from 'node:crypto';
-import { Pool } from "pg";
-import { RouteHandlers } from "../generated/fastify/fastify.gen.js";
+import type { Pool } from "pg";
+
+import type { RouteHandlers } from "../generated/fastify/fastify.gen.js";
+import { getAccessScopes } from "../integrations/shopify/api/access-scopes.js";
+import { getShopSettings, updateShopSettings } from "../integrations/shopify/api/shop-settings.js";
+import { callback } from "../integrations/shopify/auth/callback.js";
+import { install } from "../integrations/shopify/auth/install.js";
+import { appInstalled } from "../integrations/shopify/events/app-installed.js";
+import { createDashboardSession } from "../integrations/shopify/events/dashboard-session.js";
+import { appUninstalled } from "../integrations/shopify/webhooks/app-uninstalled.js";
+import { customersCreate, customersUpdate } from "../integrations/shopify/webhooks/customers.js";
+import { customersDataRequest, customersRedact, shopRedact } from "../integrations/shopify/webhooks/gdpr.js";
+import { ordersCreate } from "../integrations/shopify/webhooks/orders-create.js";
+import { shopifySSOHandler } from "../routes/shopify-sso.js";
 import { createApiKey, listApiKeys, revokeApiKey } from "../services/api-keys.js";
 import { loginUser, logoutUser, registerUser } from "../services/auth.js";
 import { batchDeduplicateData, batchEvaluateOrders, batchValidateData } from "../services/batch.js";
@@ -10,35 +23,37 @@ import { createStripeCheckoutSession, createStripeCustomerPortalSession } from "
 import { deleteLogEntry, eraseUserData, getEventLogs, getUsageStatistics } from "../services/data.js";
 import { dedupeAddress, dedupeCustomer, mergeDeduplicatedRecords } from "../services/dedupe/dedupe.js";
 import { getJobStatus } from "../services/jobs.js";
+import { normalizeAddressCheap } from "../services/normalize.js";
 import { evaluateOrderForRiskAndRules } from "../services/orders.js";
 import { createPersonalAccessToken, listPersonalAccessTokens, revokePersonalAccessToken } from "../services/pats.js";
-import { PlansService } from "../services/plans.js";
 import { createProject, deleteProject, getUserProjects } from "../services/projects.js";
 import { computeRoiEstimate } from "../services/roi.js";
 import { deleteCustomRule, getAvailableRules, getBuiltInRules, getErrorCodeCatalog, getReasonCodeCatalog, registerCustomRules, testRulesAgainstPayload } from "../services/rules/rules.js";
 import { getTenantSettings, updateTenantSettings } from "../services/settings.js";
 import { validateAddress, validateEmailAddress, validateName, validatePhoneNumber, validateTaxId, verifyPhoneOtp } from "../services/validation.js";
 import { createWebhook, deleteWebhook, listWebhooks, testWebhook } from "../services/webhook.js";
-import { normalizeAddressCheap } from "../services/normalize.js";
+import { confirmAddressFixSession, getAddressFixSession } from "./shopify-address-fix.js";
 
-export const serviceHandlers = <TServer extends RawServerBase = RawServerBase>(pool: Pool, redis: IORedisType, app: FastifyInstance<TServer>): RouteHandlers => ({
-    // Auth handlers
+const makeAuthHandlers = <TServer extends RawServerBase = RawServerBase>(pool: Pool, _redis: IORedisType, _app: FastifyInstance<TServer>): Partial<RouteHandlers> => ({
     loginUser: async (request, reply) => loginUser(request, reply, pool),
     registerUser: async (request, reply) => registerUser(request, reply, pool),
     logoutUser: async (request, reply) => logoutUser(request, reply),
+});
 
-    // API Key handlers
+const makeApiKeyHandlers = (pool: Pool): Partial<RouteHandlers> => ({
     listApiKeys: async (request, reply) => listApiKeys(request, reply, pool),
     createApiKey: async (request, reply) => createApiKey(request, reply, pool),
     revokeApiKey: async (request, reply) => revokeApiKey(request, reply, pool),
+});
 
-    // Webhook handlers
+const makeWebhookHandlers = (pool: Pool): Partial<RouteHandlers> => ({
     listWebhooks: async (request, reply) => listWebhooks(request, reply, pool),
     createWebhook: async (request, reply) => createWebhook(request, reply, pool),
     deleteWebhook: async (request, reply) => deleteWebhook(request, reply, pool),
     testWebhook: async (request, reply) => testWebhook(request, reply, pool),
+});
 
-    // Rules handlers
+const makeRulesHandlers = (pool: Pool, redis: IORedisType): Partial<RouteHandlers> => ({
     getAvailableRules: async (request, reply) => getAvailableRules(request, reply, pool),
     getBuiltInRules: async (request, reply) => getBuiltInRules(request, reply),
     getErrorCodeCatalog: async (request, reply) => getErrorCodeCatalog(request, reply),
@@ -46,8 +61,9 @@ export const serviceHandlers = <TServer extends RawServerBase = RawServerBase>(p
     testRulesAgainstPayload: async (request, reply) => testRulesAgainstPayload(request, reply, pool, redis),
     registerCustomRules: async (request, reply) => registerCustomRules(request, reply, pool),
     deleteCustomRule: async (request, reply) => deleteCustomRule(request, reply, pool),
+});
 
-    // Validation handlers
+const makeValidationHandlers = <TServer extends RawServerBase = RawServerBase>(pool: Pool, redis: IORedisType, app: FastifyInstance<TServer>): Partial<RouteHandlers> => ({
     validateEmail: async (request, reply) => validateEmailAddress(request, reply, pool, redis),
     validatePhone: async (request, reply) => validatePhoneNumber(request, reply, pool, redis),
     validateAddress: async (request, reply) => validateAddress(request, reply, pool, redis),
@@ -55,143 +71,147 @@ export const serviceHandlers = <TServer extends RawServerBase = RawServerBase>(p
     validateName: async (request, reply) => validateName(request, reply),
     evaluateOrder: async (request, reply) => evaluateOrderForRiskAndRules(app, request, reply, pool, redis),
     verifyPhoneOtp: async (request, reply) => verifyPhoneOtp(request, reply, pool),
+});
 
-    // Data handlers
+const makeDataHandlers = (pool: Pool): Partial<RouteHandlers> => ({
     getLogs: async (request, reply) => getEventLogs(request, reply, pool),
     getUsage: async (request, reply) => getUsageStatistics(request, reply, pool),
     deleteLog: async (request, reply) => deleteLogEntry(request, reply, pool),
     eraseData: async (request, reply) => eraseUserData(request, reply, pool),
+});
 
-    // Personal Access Token handlers
+const makePersonalAccessTokenHandlers = (pool: Pool): Partial<RouteHandlers> => ({
     listPersonalAccessTokens: async (request, reply) => listPersonalAccessTokens(request, reply, pool),
     createPersonalAccessToken: async (request, reply) => createPersonalAccessToken(request, reply, pool),
     revokePersonalAccessToken: async (request, reply) => revokePersonalAccessToken(request, reply, pool),
+});
 
-    // Settings handlers
+const makeSettingsHandlers = (pool: Pool): Partial<RouteHandlers> => ({
     getSettings: async (request, reply) => getTenantSettings(request, reply, pool),
     updateSettings: async (request, reply) => updateTenantSettings(request, reply, pool),
+});
 
-    // Billing handlers
+const makeBillingHandlers = (pool: Pool): Partial<RouteHandlers> => ({
     createCheckoutSession: async (request, reply) => createStripeCheckoutSession(request, reply, pool),
     createCustomerPortalSession: async (request, reply) => createStripeCustomerPortalSession(request, reply, pool),
+});
 
-    // User management handlers (placeholder implementations)
+const makeUserHandlers = (): Partial<RouteHandlers> => ({
     listUsers: async (_request, reply) => {
-        // Placeholder implementation returning empty list
         return reply.status(200).send({ data: [], request_id: crypto.randomUUID?.() });
     },
     createUser: async (_request, reply) => {
-        // Placeholder implementation returning error (bad request)
         return reply.status(400).send({ error: { code: 'INVALID_INPUT', message: 'Create user not implemented' }, request_id: crypto.randomUUID?.() });
     },
     normalizeAddress: async (request, reply) => normalizeAddressCheap(request, reply),
+});
 
-    // Dedupe handlers
+const makeDedupeHandlers = (pool: Pool): Partial<RouteHandlers> => ({
     dedupeCustomer: async (request, reply) => dedupeCustomer(request, reply, pool),
     dedupeAddress: async (request, reply) => dedupeAddress(request, reply, pool),
     mergeDeduplicated: async (request, reply) => mergeDeduplicatedRecords(request, reply, pool),
+});
 
-    // Batch handlers
+const makeBatchHandlers = (pool: Pool, redis: IORedisType): Partial<RouteHandlers> => ({
     batchValidate: async (request, reply) => batchValidateData(request, reply, pool, redis),
     batchDedupe: async (request, reply) => batchDeduplicateData(request, reply, pool, redis),
     batchEvaluateOrders: async (request, reply) => batchEvaluateOrders(request, reply, pool, redis),
+});
 
-    // Job handlers
+const makeJobHandlers = (pool: Pool): Partial<RouteHandlers> => ({
     getJobStatusById: async (request, reply) => getJobStatus(request, reply, pool),
+});
 
-    // ROI handlers
-    estimateRoi: async (request) => {
-        const body = request.body as any;
-        const { inputs, estimates } = computeRoiEstimate({
-            orders_per_month: body.orders_per_month,
-            issue_rate: body.issue_rate,
-            carrier_fee_share: body.carrier_fee_share,
-            avg_correction_fee: body.avg_correction_fee,
-            reship_share: body.reship_share,
-            reship_cost: body.reship_cost,
-            prevention_rate: body.prevention_rate
-        });
+const makeRoiHandlers = (): Partial<RouteHandlers> => ({
+    estimateRoi: async (request, reply) => computeRoiEstimate(request, reply),
+});
 
-        return {
-            inputs: {
-                orders_per_month: inputs.orders_per_month,
-                issue_rate: inputs.issue_rate,
-                carrier_fee_share: inputs.carrier_fee_share,
-                avg_correction_fee: inputs.avg_correction_fee,
-                reship_share: inputs.reship_share,
-                reship_cost: inputs.reship_cost,
-                prevention_rate: inputs.prevention_rate,
-                currency: body.currency ?? 'USD'
-            },
-            estimates: {
-                issues_per_month: estimates.issues_per_month,
-                loss_per_issue: Number(estimates.loss_per_issue.toFixed(2)),
-                baseline_loss_per_month: Number(estimates.baseline_loss_per_month.toFixed(2)),
-                savings_per_month: Number(estimates.savings_per_month.toFixed(2))
-            },
-            meta: {
-                model_version: 'roi-v1',
-                request_id: crypto.randomUUID?.() ?? 'unknown'
-            }
-        } as any;
-    },
-
-    // Project handlers
+const makeProjectHandlers = (pool: Pool): Partial<RouteHandlers> => ({
     getUserProjects: async (request, reply) => getUserProjects(request, reply, pool),
     createProject: async (request, reply) => createProject(request, reply, pool),
     deleteProject: async (request, reply) => deleteProject(request, reply, pool),
+});
 
-    // Plan handlers
+const makePlanHandlers = (pool: Pool): Partial<RouteHandlers> => ({
     getUserPlan: async (request, reply) => {
-        const plansService = new PlansService(pool);
-        const userPlan = await plansService.getUserPlan((request as any).user_id);
-        const response = {
-            id: userPlan.id,
-            email: userPlan.email,
-            monthlyValidationsUsed: userPlan.monthlyValidationsUsed,
-            subscriptionStatus: userPlan.subscriptionStatus,
-            trialEndDate: userPlan.trialEndDate,
-            projectsCount: userPlan.projectsCount,
-            plan: { ...userPlan.plan }
-        };
-        return reply.status(200).send(response);
+        const { getUserPlanHandler } = await import('../services/plans.js');
+        return getUserPlanHandler(request, reply, pool);
     },
     updateUserPlan: async (request, reply) => {
-        const plansService = new PlansService(pool);
-        const { planSlug, trialDays } = request.body as any; // Align with generated types
-        if (!planSlug || typeof planSlug !== 'string') {
-            return reply.status(400).send({ error: { code: 'INVALID_INPUT', message: 'planSlug is required' } });
-        }
-        const userPlan = await plansService.updateUserPlan((request as any).user_id, planSlug, trialDays);
-        const response = {
-            id: userPlan.id,
-            email: userPlan.email,
-            monthlyValidationsUsed: userPlan.monthlyValidationsUsed,
-            subscriptionStatus: userPlan.subscriptionStatus,
-            trialEndDate: userPlan.trialEndDate,
-            projectsCount: userPlan.projectsCount,
-            plan: { ...userPlan.plan }
-        };
-        return reply.status(200).send(response);
+        const { updateUserPlanHandler } = await import('../services/plans.js');
+        return updateUserPlanHandler(request, reply, pool);
     },
-    getAvailablePlans: async (_request, reply) => {
-        const plansService = new PlansService(pool);
-        // Temporary: return only the free plan as array, shape matching spec
-        const free = await plansService.getPlanBySlug('free');
-        const arr = free ? [{ id: free.id, name: free.name, slug: free.slug, price: free.price, validationsLimit: free.validationsLimit, projectsLimit: free.projectsLimit, features: free.features }] : [];
-        return reply.status(200).send(arr);
+    getAvailablePlans: async (request, reply) => {
+        const { getAvailablePlansHandler } = await import('../services/plans.js');
+        return getAvailablePlansHandler(request, reply, pool);
     },
     checkValidationLimits: async (request, reply) => {
-        const plansService = new PlansService(pool);
-        const { count = 1 } = request.body as any;
-        const usage = await plansService.checkValidationLimit((request as any).user_id, count);
-        const response = {
-            canProceed: usage.remainingValidations > 0 || usage.overageAllowed,
-            remainingValidations: usage.remainingValidations,
-            overageAllowed: usage.overageAllowed,
-            monthlyValidationsUsed: usage.monthlyValidationsUsed,
-            planValidationsLimit: usage.planValidationsLimit
-        };
-        return reply.status(200).send(response);
-    }
-})
+        const { checkValidationLimitsHandler } = await import('../services/plans.js');
+        return checkValidationLimitsHandler(request, reply, pool);
+    },
+});
+
+const makeShopifyHandlers = (pool: Pool, redis: IORedisType): Partial<RouteHandlers> => ({
+    // eslint-disable-next-line promise/prefer-await-to-callbacks
+    shopifyInstall: async (request, reply) => install(request, reply),
+    // eslint-disable-next-line promise/prefer-await-to-callbacks
+    shopifyCallback: async (request, reply) => callback(request, reply, pool),
+    // eslint-disable-next-line promise/prefer-await-to-callbacks
+    shopifySso: async (request, reply) => shopifySSOHandler(request, reply, pool, redis),
+
+    // eslint-disable-next-line promise/prefer-await-to-callbacks
+    getShopifyShopSettings: async (request, reply) => getShopSettings(request, reply, pool),
+    // eslint-disable-next-line promise/prefer-await-to-callbacks
+    updateShopifyShopSettings: async (request, reply) => updateShopSettings(request, reply, pool),
+    // eslint-disable-next-line promise/prefer-await-to-callbacks
+    getShopifyAccessScopes: async (request, reply) => getAccessScopes(request, reply, pool),
+
+    // eslint-disable-next-line promise/prefer-await-to-callbacks
+    shopifyAppInstalledEvent: async (request, reply) => appInstalled(request, reply, pool),
+    // eslint-disable-next-line promise/prefer-await-to-callbacks
+    createShopifyDashboardSession: async (request, reply) => createDashboardSession(request, reply, pool, redis),
+    // eslint-disable-next-line promise/prefer-await-to-callbacks
+    shopifyOrdersCreateWebhook: async (request, reply) => ordersCreate(request, reply, pool, redis),
+    // eslint-disable-next-line promise/prefer-await-to-callbacks
+    shopifyCustomersCreateWebhook: async (request, reply) => customersCreate(request, reply),
+    // eslint-disable-next-line promise/prefer-await-to-callbacks
+    shopifyCustomersUpdateWebhook: async (request, reply) => customersUpdate(request, reply),
+    // eslint-disable-next-line promise/prefer-await-to-callbacks
+    shopifyAppUninstalledWebhook: async (request, reply) => appUninstalled(request, reply, pool),
+    // eslint-disable-next-line promise/prefer-await-to-callbacks
+    shopifyGdprCustomersDataRequestWebhook: async (request, reply) => customersDataRequest(request, reply),
+    // eslint-disable-next-line promise/prefer-await-to-callbacks
+    shopifyGdprCustomersRedactWebhook: async (request, reply) => customersRedact(request, reply),
+    // eslint-disable-next-line promise/prefer-await-to-callbacks
+    shopifyGdprShopRedactWebhook: async (request, reply) => shopRedact(request, reply),
+
+    // eslint-disable-next-line promise/prefer-await-to-callbacks
+    shopifyAddressFixGet: async (request, reply) => getAddressFixSession(request, reply, pool),
+    // eslint-disable-next-line promise/prefer-await-to-callbacks
+    shopifyAddressFixConfirm: async (request, reply) => confirmAddressFixSession(request, reply, pool),
+});
+
+export const serviceHandlers = <TServer extends RawServerBase = RawServerBase>(pool: Pool, redis: IORedisType, app: FastifyInstance<TServer>): RouteHandlers => {
+    const handlers = {
+        ...makeAuthHandlers(pool, redis, app),
+        ...makeApiKeyHandlers(pool),
+        ...makeWebhookHandlers(pool),
+        ...makeRulesHandlers(pool, redis),
+        ...makeValidationHandlers(pool, redis, app),
+        ...makeDataHandlers(pool),
+        ...makePersonalAccessTokenHandlers(pool),
+        ...makeSettingsHandlers(pool),
+        ...makeBillingHandlers(pool),
+        ...makeUserHandlers(),
+        ...makeDedupeHandlers(pool),
+        ...makeBatchHandlers(pool, redis),
+        ...makeJobHandlers(pool),
+        ...makeRoiHandlers(),
+        ...makeProjectHandlers(pool),
+        ...makePlanHandlers(pool),
+        ...makeShopifyHandlers(pool, redis),
+    };
+
+    // cast to RouteHandlers since we've composed all required handlers above
+    return handlers as RouteHandlers;
+};

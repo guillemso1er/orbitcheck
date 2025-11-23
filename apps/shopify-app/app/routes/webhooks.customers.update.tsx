@@ -1,0 +1,110 @@
+import { shopifyCustomersUpdateWebhook } from "@orbitcheck/contracts";
+import type { ActionFunctionArgs } from "react-router";
+import { authenticate } from "../shopify.server";
+import type { Customer } from "../types/admin.types";
+import { getOrbitcheckClient } from "../utils/orbitcheck.server.js";
+import { mapCustomerGraphQLToContract } from "../utils/webhook-mapper";
+
+const orbitcheckClient = getOrbitcheckClient();
+
+export const action = async ({ request }: ActionFunctionArgs) => {
+  console.log("Incoming webhook request", {
+    method: request.method,
+    url: request.url,
+    headers: Object.fromEntries(request.headers.entries())
+  });
+
+  const { shop, topic, payload, apiVersion, webhookId, admin } = await authenticate.webhook(request);
+
+  console.log(`Received ${topic} webhook for ${shop}`);
+
+  if (topic !== "CUSTOMERS_UPDATE") {
+    console.warn(`Received unexpected topic: ${topic}`);
+    return new Response();
+  }
+
+  if (!admin) {
+    console.error("No admin context available for webhook");
+    return new Response();
+  }
+
+  try {
+    // 1. Extract ID and fetch fresh data
+    const payloadId = (payload as any).id;
+    const resourceId = `gid://shopify/Customer/${payloadId}`;
+
+    const response = await admin.graphql(
+      `#graphql
+            query getCustomer($id: ID!) {
+              customer(id: $id) {
+                id
+                email
+                phone
+                createdAt
+                updatedAt
+                firstName
+                lastName
+                state
+                note
+                verifiedEmail
+                tags
+                numberOfOrders
+                amountSpent { amount currencyCode }
+                currency
+                defaultAddress {
+                  firstName lastName address1 address2 city province provinceCode zip country countryCodeV2 company phone latitude longitude name
+                }
+                addresses {
+                  firstName lastName address1 address2 city province provinceCode zip country countryCodeV2 company phone latitude longitude name
+                }
+                emailMarketingConsent {
+                  marketingState
+                  marketingOptInLevel
+                  consentUpdatedAt
+                }
+                smsMarketingConsent {
+                  marketingState
+                  marketingOptInLevel
+                  consentUpdatedAt
+                  consentCollectedFrom
+                }
+              }
+            }`,
+      { variables: { id: resourceId } }
+    );
+
+    const { data } = await response.json();
+
+    if (!data?.customer) {
+      console.error("Failed to fetch customer data from Shopify GraphQL");
+      return new Response();
+    }
+
+    // 2. Map to contract type
+    const customerBody = mapCustomerGraphQLToContract(data.customer as Customer);
+
+    // 3. Send to OrbitCheck API
+    await shopifyCustomersUpdateWebhook<true>({
+      client: orbitcheckClient,
+      body: customerBody,
+      headers: {
+        "Content-Type": "application/json",
+        "X-Shopify-Topic": typeof topic === "string" ? topic : String(topic),
+        "X-Shopify-Shop-Domain": shop,
+        "X-Shopify-Api-Version": apiVersion ?? "",
+        "X-Shopify-Webhook-Id": webhookId ?? "",
+        "X-Internal-Request": "shopify-app",
+      },
+      throwOnError: true,
+    });
+  } catch (error) {
+    const msg = (error as Error).message;
+    if (msg === 'fetch failed' || msg.includes('ECONNREFUSED')) {
+      console.warn("Failed to forward customers/update webhook to OrbitCheck API: API appears to be down.");
+    } else {
+      console.error("Failed to forward customers/update webhook to OrbitCheck API", error);
+    }
+  }
+
+  return new Response();
+};

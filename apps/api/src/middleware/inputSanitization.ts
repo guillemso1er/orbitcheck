@@ -11,6 +11,11 @@ export async function inputSanitizationHook(request: FastifyRequest, _reply: Fas
         return;
     }
 
+    // Skip sanitization for Shopify webhooks - they have their own signature verification and complex payloads
+    if (request.url.includes('/integrations/shopify/webhooks')) {
+        return;
+    }
+
     // Check content-type for POST requests to validation endpoints
     if (request.method === 'POST' && request.url.includes('/v1/validate/')) {
         const contentType = request.headers['content-type'];
@@ -57,6 +62,12 @@ function sanitizeRequestBody(body: any): any {
     if (isAuthRequest(body)) {
         return sanitizeAuthRequest(body);
     }
+
+    // Handle address fix confirmation specifically before generic validation
+    if (isAddressFixConfirmRequest(body)) {
+        return sanitizeAddressFixConfirmRequest(body);
+    }
+
     // Handle different validation endpoints that have known schemas
     if (isValidationRequest(body)) {
         return sanitizeValidationRequest(body);
@@ -72,6 +83,39 @@ function sanitizeRequestBody(body: any): any {
 
     // Default sanitization for unknown structures
     return InputSanitizer.sanitizeObject(body);
+}
+
+/**
+ * Detects if this is an address fix confirmation request
+ */
+function isAddressFixConfirmRequest(body: any): boolean {
+    return body && (
+        body.use_corrected !== undefined &&
+        typeof body.shop_domain === 'string'
+    );
+}
+
+/**
+ * Sanitizes address fix confirmation request body
+ */
+function sanitizeAddressFixConfirmRequest(body: any): any {
+    const sanitized: any = {
+        use_corrected: !!body.use_corrected,
+        shop_domain: InputSanitizer.sanitizeString(body.shop_domain)
+    };
+
+    if (body.address) {
+        sanitized.address = {
+            line1: body.address.line1 ? InputSanitizer.sanitizeAddress(body.address.line1) : '',
+            line2: body.address.line2 ? InputSanitizer.sanitizeAddress(body.address.line2) : '',
+            city: body.address.city ? InputSanitizer.sanitizeName(body.address.city) : '',
+            state: body.address.state ? InputSanitizer.sanitizeName(body.address.state) : '',
+            postal_code: body.address.postal_code ? InputSanitizer.sanitizePostalCode(body.address.postal_code) : '',
+            country: body.address.country ? InputSanitizer.sanitizeString(body.address.country) : ''
+        };
+    }
+
+    return sanitized;
 }
 
 /**

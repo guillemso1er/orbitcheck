@@ -2,7 +2,6 @@ import { createHash } from "node:crypto";
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 
-
 import AdmZip from 'adm-zip';
 import { Pool } from "pg";
 
@@ -34,59 +33,107 @@ async function processCountry(country: string, temporaryDirectory: string, geona
     const zip = new AdmZip(zipPath);
     zip.extractAllTo(temporaryDirectory, true);
 
+    // Handle fallback filename (some zips contain ISO.txt, others ISO_postal_...txt)
+    let finalTsvPath = tsvPath;
     try {
         await fs.access(tsvPath);
     } catch {
-        // Fallback for postal codes txt file name format
-        const alternativeTsvPath = path.join(temporaryDirectory, `${country}postalCodeLatLongCity.txt`);
-        try {
-            await fs.access(alternativeTsvPath);
-        } catch {
-            console.warn(`TSV file not found for ${country} after extraction. Skipping.`);
-            await fs.unlink(zipPath).catch(() => { });
+        const files = await fs.readdir(temporaryDirectory);
+        // Find the text file that isn't the readme
+        const textFile = files.find(f => f.endsWith('.txt') && !f.toLowerCase().includes('readme') && !f.toLowerCase().includes('license'));
+        if (textFile) {
+            finalTsvPath = path.join(temporaryDirectory, textFile);
+        } else {
+            console.warn(`TSV file not found for ${country}. Skipping.`);
             return 0;
         }
     }
 
-
     console.warn(`Parsing and importing data for ${country}...`);
-    const data = await fs.readFile(tsvPath, 'utf8');
-    const lines = data.trim().split('\n').slice(1); // Skip header if present
+    const data = await fs.readFile(finalTsvPath, 'utf8');
+
+    // GeoNames files usually DO NOT have a header row, so we do NOT slice(1).
+    // However, check the first char. If it starts with "country code", it's a header.
+    let lines = data.trim().split('\n');
+    if (lines[0] && lines[0].toLowerCase().startsWith('country')) {
+        lines = lines.slice(1);
+    }
 
     const batchSize = BATCH_SIZE_GEONAMES;
     const allBatches: (string | number)[][][] = [];
     let currentBatch: (string | number)[][] = [];
     let countryCount = 0;
 
-    // Prepare all batches first
     for (const line of lines) {
-        const [postalCode, placeName, adminName1, adminCode1, lat, lng, _accuracy] = line.split('\t');
-        if (postalCode && placeName) { // Skip empty postal codes
-            currentBatch.push([country, postalCode, placeName, adminName1 || '', adminCode1 || '', Number.parseFloat(lat), Number.parseFloat(lng)]);
+        if (!line.trim()) continue;
 
-            if (currentBatch.length >= batchSize) {
-                allBatches.push(currentBatch);
-                countryCount += currentBatch.length;
-                currentBatch = [];
-            }
+        const parts = line.split('\t');
+
+        // GeoNames Postal Format:
+        // 0: country code      (e.g. US)
+        // 1: postal code       (e.g. 90210)
+        // 2: place name        (e.g. Beverly Hills)
+        // 3: admin name1       (e.g. California)
+        // 4: admin code1       (e.g. CA)
+        // 5: admin name2       (e.g. Los Angeles) - County/District
+        // 6: admin code2       (e.g. 037)
+        // 7: admin name3       (Community)
+        // 8: admin code3
+        // 9: latitude
+        // 10: longitude
+        // 11: accuracy
+
+        // Safety check: ensure we have enough columns
+        if (parts.length < 3) continue;
+
+        const rowCountry = parts[0]; // Sometimes the file has the country code, sometimes specific files might not. usually they do.
+        const postalCode = parts[1];
+        const placeName = parts[2];
+        const adminName1 = parts[3] || '';
+        const adminCode1 = parts[4] || '';
+        const adminName2 = parts[5] || '';
+        const adminCode2 = parts[6] || '';
+        const lat = parseFloat(parts[9]);
+        const lng = parseFloat(parts[10]);
+
+        // Only insert if we have a valid number for lat/lng
+        const validLat = isNaN(lat) ? 0 : lat;
+        const validLng = isNaN(lng) ? 0 : lng;
+
+        // Use the 'country' arg as fallback if the row's country code is empty
+        const finalCountry = rowCountry || country;
+
+        currentBatch.push([
+            finalCountry,
+            postalCode,
+            placeName,
+            adminName1,
+            adminCode1,
+            adminName2,
+            adminCode2,
+            validLat,
+            validLng
+        ]);
+
+        if (currentBatch.length >= batchSize) {
+            allBatches.push(currentBatch);
+            countryCount += currentBatch.length;
+            currentBatch = [];
         }
     }
 
-    // Add remaining batch
     if (currentBatch.length > 0) {
         allBatches.push(currentBatch);
         countryCount += currentBatch.length;
     }
 
-    // Process batches in parallel
     await Promise.all(allBatches.map(batch => insertBatch(pool, batch)));
-    console.warn(`Successfully imported ${countryCount} postal code records for ${country}.`);
+    console.warn(`Successfully imported ${countryCount} records for ${country}.`);
 
-    // Cleanup in parallel
-    await Promise.all([
-        fs.unlink(zipPath).catch(() => { }),
-        fs.unlink(tsvPath).catch(() => { })
-    ]);
+    // Cleanup
+    try {
+        await fs.rm(temporaryDirectory, { recursive: true, force: true });
+    } catch { } // Ignore cleanup errors
 
     return countryCount;
 }
@@ -149,10 +196,18 @@ async function downloadAndImport(): Promise<void> {
 async function insertBatch(_pool: Pool, batch: (string | number)[][]): Promise<void> {
     const client = await _pool.connect();
     try {
-        const placeholders = batch.map((_, index) => `($${index * 7 + 1}, $${index * 7 + 2}, $${index * 7 + 3}, $${index * 7 + 4}, $${index * 7 + 5}, $${index * 7 + 6}, $${index * 7 + 7})`).join(', ');
+        // We now insert 9 values per row
+        const placeholders = batch.map((_, index) =>
+            `($${index * 9 + 1}, $${index * 9 + 2}, $${index * 9 + 3}, $${index * 9 + 4}, $${index * 9 + 5}, $${index * 9 + 6}, $${index * 9 + 7}, $${index * 9 + 8}, $${index * 9 + 9})`
+        ).join(', ');
 
         const query = `
-            INSERT INTO geonames_postal (country_code, postal_code, place_name, admin_name1, admin_code1, latitude, longitude)
+            INSERT INTO geonames_postal (
+                country_code, postal_code, place_name, 
+                admin_name1, admin_code1, 
+                admin_name2, admin_code2, 
+                latitude, longitude
+            )
             VALUES ${placeholders}
             ON CONFLICT DO NOTHING
         `;
@@ -163,6 +218,7 @@ async function insertBatch(_pool: Pool, batch: (string | number)[][]): Promise<v
         client.release();
     }
 }
+
 
 export async function main(endPool: boolean = true): Promise<void> {
     try {
@@ -224,5 +280,6 @@ export async function main(endPool: boolean = true): Promise<void> {
 }
 
 if (process.argv[1] === import.meta.url.slice(7)) {
+    // eslint-disable-next-line promise/prefer-await-to-then
     void main().catch(console.error);
 }

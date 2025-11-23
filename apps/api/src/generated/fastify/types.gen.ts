@@ -77,29 +77,24 @@ export type Webhook = {
 
 export type Address = {
     /**
-     * Street address line 1
+     * Street address, P.O. Box, Company name, c/o
      */
     line1?: string;
     /**
-     * Street address line 2
+     * Apartment, Suite, Unit, Building, Floor, etc.
      */
-    line2?: string;
-    /**
-     * City
-     */
+    line2?: string | null;
     city?: string;
     /**
-     * State or province
+     * ISO 3166-2 subdivision code (e.g. NY)
      */
     state?: string;
-    /**
-     * Postal code
-     */
     postal_code?: string;
     /**
-     * Two-letter country code
+     * ISO 3166-1 alpha-2 country code (e.g. US)
      */
     country?: string;
+} & {
     /**
      * Latitude
      */
@@ -108,6 +103,111 @@ export type Address = {
      * Longitude
      */
     lng?: number | null;
+};
+
+export type BaseAddress = {
+    /**
+     * Street address, P.O. Box, Company name, c/o
+     */
+    line1?: string;
+    /**
+     * Apartment, Suite, Unit, Building, Floor, etc.
+     */
+    line2?: string | null;
+    city?: string;
+    /**
+     * ISO 3166-2 subdivision code (e.g. NY)
+     */
+    state?: string;
+    postal_code?: string;
+    /**
+     * ISO 3166-1 alpha-2 country code (e.g. US)
+     */
+    country?: string;
+};
+
+export type AddressWithContact = {
+    /**
+     * Street address, P.O. Box, Company name, c/o
+     */
+    line1?: string;
+    /**
+     * Apartment, Suite, Unit, Building, Floor, etc.
+     */
+    line2?: string | null;
+    city?: string;
+    /**
+     * ISO 3166-2 subdivision code (e.g. NY)
+     */
+    state?: string;
+    postal_code?: string;
+    /**
+     * ISO 3166-1 alpha-2 country code (e.g. US)
+     */
+    country?: string;
+} & {
+    /**
+     * Latitude
+     */
+    lat?: number | null;
+    /**
+     * Longitude
+     */
+    lng?: number | null;
+} & {
+    /**
+     * First name
+     */
+    first_name?: string;
+    /**
+     * Last name
+     */
+    last_name?: string;
+    /**
+     * Phone number
+     */
+    phone?: string;
+    /**
+     * Province or state
+     */
+    province?: string;
+    /**
+     * Postal or ZIP code
+     */
+    zip?: string;
+    /**
+     * Two-letter country code
+     */
+    country_code?: string;
+    /**
+     * Address line 1
+     */
+    address1?: string;
+    /**
+     * Address line 2
+     */
+    address2?: string;
+};
+
+export type AddressInput = {
+    /**
+     * Street address, P.O. Box, Company name, c/o
+     */
+    line1: string;
+    /**
+     * Apartment, Suite, Unit, Building, Floor, etc.
+     */
+    line2?: string | null;
+    city: string;
+    /**
+     * ISO 3166-2 subdivision code (e.g. NY)
+     */
+    state?: string;
+    postal_code: string;
+    /**
+     * ISO 3166-1 alpha-2 country code (e.g. US)
+     */
+    country: string;
 };
 
 export type Customer = {
@@ -244,6 +344,112 @@ export type AddressValidationResult = {
      * Whether the address is within bounds
      */
     in_bounds?: boolean;
+};
+
+export type DetailedAddressValidationResult = {
+    /**
+     * Whether the address is valid
+     */
+    valid?: boolean;
+    /**
+     * Confidence score of the validation
+     */
+    confidence?: number;
+    /**
+     * List of reason codes
+     */
+    reason_codes?: Array<string>;
+    /**
+     * Risk score of the address
+     */
+    risk_score?: number;
+    /**
+     * Time taken to process the validation
+     */
+    processing_time_ms?: number;
+    /**
+     * Validation provider used
+     */
+    provider?: string;
+    /**
+     * Normalized address data
+     */
+    normalized?: {
+        /**
+         * Street address, P.O. Box, Company name, c/o
+         */
+        line1?: string;
+        /**
+         * Apartment, Suite, Unit, Building, Floor, etc.
+         */
+        line2?: string | null;
+        city?: string;
+        /**
+         * ISO 3166-2 subdivision code (e.g. NY)
+         */
+        state?: string;
+        postal_code?: string;
+        /**
+         * ISO 3166-1 alpha-2 country code (e.g. US)
+         */
+        country?: string;
+    } & {
+        /**
+         * Latitude
+         */
+        lat?: number | null;
+        /**
+         * Longitude
+         */
+        lng?: number | null;
+    };
+    /**
+     * Whether the address is a P.O. Box
+     */
+    po_box?: boolean;
+    /**
+     * Whether the address is residential
+     */
+    residential?: boolean;
+    /**
+     * Whether mail is deliverable to this address
+     */
+    deliverable?: boolean;
+    /**
+     * Whether DPV (Delivery Point Validation) confirmed the address
+     */
+    dpv_confirmed?: boolean;
+    /**
+     * Geographic coordinates
+     */
+    geocode?: {
+        /**
+         * Latitude
+         */
+        lat?: number;
+        /**
+         * Longitude
+         */
+        lng?: number;
+    };
+    /**
+     * Whether there's a mismatch between postal code and location
+     */
+    postal_code_mismatch?: boolean;
+    /**
+     * City name
+     */
+    city?: string;
+    /**
+     * Postal code
+     */
+    postal_code?: string;
+    /**
+     * Additional metadata
+     */
+    metadata?: {
+        [key: string]: unknown;
+    };
 };
 
 export type LogEntry = {
@@ -702,6 +908,534 @@ export type Pagination = {
     total_pages: number;
 };
 
+/**
+ * Payload for orders/create (Order resource snapshot).
+ */
+export type ShopifyOrder = {
+    id?: number;
+    admin_graphql_api_id?: string;
+    app_id?: number | null;
+    contact_email?: string | null;
+    email?: string | null;
+    phone?: string | null;
+    created_at?: string;
+    updated_at?: string | null;
+    closed_at?: string | null;
+    cancelled_at?: string | null;
+    cancel_reason?: string | null;
+    currency?: string;
+    buyer_accepts_marketing?: boolean | null;
+    current_total_price?: string | null;
+    current_total_price_set?: {
+        shop_money?: {
+            amount?: string;
+            currency_code?: string;
+        };
+        presentment_money?: {
+            amount?: string;
+            currency_code?: string;
+        };
+    };
+    current_subtotal_price?: string | null;
+    current_subtotal_price_set?: {
+        shop_money?: {
+            amount?: string;
+            currency_code?: string;
+        };
+        presentment_money?: {
+            amount?: string;
+            currency_code?: string;
+        };
+    };
+    current_shipping_price_set?: {
+        shop_money?: {
+            amount?: string;
+            currency_code?: string;
+        };
+        presentment_money?: {
+            amount?: string;
+            currency_code?: string;
+        };
+    };
+    total_price?: string | null;
+    subtotal_price?: string | null;
+    financial_status?: string | null;
+    fulfillment_status?: string | null;
+    /**
+     * Payload for customers/create and customers/update (Customer resource snapshot).
+     */
+    customer?: {
+        id?: number;
+        admin_graphql_api_id?: string | null;
+        email?: string | null;
+        phone?: string | null;
+        created_at?: string;
+        updated_at?: string;
+        first_name?: string | null;
+        last_name?: string | null;
+        /**
+         * enabled | disabled | invited | declined
+         */
+        state?: string | null;
+        note?: string | null;
+        verified_email?: boolean | null;
+        tags?: string | null;
+        orders_count?: number | null;
+        total_spent?: string | null;
+        default_address?: {
+            id?: number;
+            first_name?: string | null;
+            last_name?: string | null;
+            name?: string | null;
+            company?: string | null;
+            phone?: string | null;
+            address1?: string | null;
+            address2?: string | null;
+            city?: string | null;
+            province?: string | null;
+            province_code?: string | null;
+            zip?: string | null;
+            country?: string | null;
+            country_code?: string | null;
+            latitude?: number | null;
+            longitude?: number | null;
+            default?: boolean | null;
+        };
+        addresses?: Array<{
+            id?: number;
+            first_name?: string | null;
+            last_name?: string | null;
+            name?: string | null;
+            company?: string | null;
+            phone?: string | null;
+            address1?: string | null;
+            address2?: string | null;
+            city?: string | null;
+            province?: string | null;
+            province_code?: string | null;
+            zip?: string | null;
+            country?: string | null;
+            country_code?: string | null;
+            latitude?: number | null;
+            longitude?: number | null;
+            default?: boolean | null;
+        }>;
+        currency?: string | null;
+        email_marketing_consent?: {
+            state?: string | null;
+            opt_in_level?: string | null;
+            consent_updated_at?: string | null;
+        } | null;
+        sms_marketing_consent?: {
+            state?: string | null;
+            opt_in_level?: string | null;
+            consent_updated_at?: string | null;
+            consent_collected_from?: string | null;
+        } | null;
+    };
+    billing_address?: {
+        id?: number;
+        first_name?: string | null;
+        last_name?: string | null;
+        name?: string | null;
+        company?: string | null;
+        phone?: string | null;
+        address1?: string | null;
+        address2?: string | null;
+        city?: string | null;
+        province?: string | null;
+        province_code?: string | null;
+        zip?: string | null;
+        country?: string | null;
+        country_code?: string | null;
+        latitude?: number | null;
+        longitude?: number | null;
+        default?: boolean | null;
+    };
+    shipping_address?: {
+        id?: number;
+        first_name?: string | null;
+        last_name?: string | null;
+        name?: string | null;
+        company?: string | null;
+        phone?: string | null;
+        address1?: string | null;
+        address2?: string | null;
+        city?: string | null;
+        province?: string | null;
+        province_code?: string | null;
+        zip?: string | null;
+        country?: string | null;
+        country_code?: string | null;
+        latitude?: number | null;
+        longitude?: number | null;
+        default?: boolean | null;
+    };
+    client_details?: {
+        [key: string]: unknown;
+    };
+    line_items?: Array<{
+        [key: string]: unknown;
+    }>;
+    shipping_lines?: Array<{
+        [key: string]: unknown;
+    }>;
+    discount_codes?: Array<{
+        [key: string]: unknown;
+    }>;
+    tax_lines?: Array<{
+        [key: string]: unknown;
+    }>;
+    note?: string | null;
+    tags?: string | null;
+};
+
+export type ShopifyAddress = {
+    id?: number;
+    first_name?: string | null;
+    last_name?: string | null;
+    name?: string | null;
+    company?: string | null;
+    phone?: string | null;
+    address1?: string | null;
+    address2?: string | null;
+    city?: string | null;
+    province?: string | null;
+    province_code?: string | null;
+    zip?: string | null;
+    country?: string | null;
+    country_code?: string | null;
+    latitude?: number | null;
+    longitude?: number | null;
+    default?: boolean | null;
+};
+
+export type ShopifyAddressFixSession = {
+    /**
+     * Unique session ID
+     */
+    id: string;
+    /**
+     * Shopify shop domain
+     */
+    shop_domain: string;
+    /**
+     * Shopify order ID
+     */
+    order_id: string;
+    /**
+     * Shopify GraphQL ID for the order
+     */
+    order_gid: string;
+    /**
+     * Customer email address
+     */
+    customer_email: string;
+    /**
+     * Original shipping address from the order
+     */
+    original_address: {
+        /**
+         * Street address, P.O. Box, Company name, c/o
+         */
+        line1?: string;
+        /**
+         * Apartment, Suite, Unit, Building, Floor, etc.
+         */
+        line2?: string | null;
+        city?: string;
+        /**
+         * ISO 3166-2 subdivision code (e.g. NY)
+         */
+        state?: string;
+        postal_code?: string;
+        /**
+         * ISO 3166-1 alpha-2 country code (e.g. US)
+         */
+        country?: string;
+    } & {
+        /**
+         * Latitude
+         */
+        lat?: number | null;
+        /**
+         * Longitude
+         */
+        lng?: number | null;
+    } & {
+        /**
+         * First name
+         */
+        first_name?: string;
+        /**
+         * Last name
+         */
+        last_name?: string;
+        /**
+         * Phone number
+         */
+        phone?: string;
+        /**
+         * Province or state
+         */
+        province?: string;
+        /**
+         * Postal or ZIP code
+         */
+        zip?: string;
+        /**
+         * Two-letter country code
+         */
+        country_code?: string;
+        /**
+         * Address line 1
+         */
+        address1?: string;
+        /**
+         * Address line 2
+         */
+        address2?: string;
+    };
+    /**
+     * Normalized/corrected shipping address
+     */
+    normalized_address: {
+        /**
+         * Street address, P.O. Box, Company name, c/o
+         */
+        line1?: string;
+        /**
+         * Apartment, Suite, Unit, Building, Floor, etc.
+         */
+        line2?: string | null;
+        city?: string;
+        /**
+         * ISO 3166-2 subdivision code (e.g. NY)
+         */
+        state?: string;
+        postal_code?: string;
+        /**
+         * ISO 3166-1 alpha-2 country code (e.g. US)
+         */
+        country?: string;
+    } & {
+        /**
+         * Latitude
+         */
+        lat?: number | null;
+        /**
+         * Longitude
+         */
+        lng?: number | null;
+    };
+    /**
+     * Current status of the address fix
+     */
+    fix_status: 'pending' | 'confirmed' | 'cancelled';
+    /**
+     * When the fix token expires
+     */
+    token_expires_at: string;
+    /**
+     * When the session was created
+     */
+    created_at: string;
+};
+
+export type ShopifyAddressFixConfirmRequest = {
+    /**
+     * Whether to use the corrected address (true) or keep original (false)
+     */
+    use_corrected: boolean;
+    /**
+     * Shopify shop domain for verification
+     */
+    shop_domain: string;
+    address?: {
+        /**
+         * Street address, P.O. Box, Company name, c/o
+         */
+        line1?: string;
+        /**
+         * Apartment, Suite, Unit, Building, Floor, etc.
+         */
+        line2?: string | null;
+        city?: string;
+        /**
+         * ISO 3166-2 subdivision code (e.g. NY)
+         */
+        state?: string;
+        postal_code?: string;
+        /**
+         * ISO 3166-1 alpha-2 country code (e.g. US)
+         */
+        country?: string;
+    } & {
+        /**
+         * Latitude
+         */
+        lat?: number | null;
+        /**
+         * Longitude
+         */
+        lng?: number | null;
+    };
+};
+
+export type MoneySet = {
+    shop_money?: {
+        amount?: string;
+        currency_code?: string;
+    };
+    presentment_money?: {
+        amount?: string;
+        currency_code?: string;
+    };
+};
+
+/**
+ * Payload for customers/create and customers/update (Customer resource snapshot).
+ */
+export type ShopifyCustomer = {
+    id?: number;
+    admin_graphql_api_id?: string | null;
+    email?: string | null;
+    phone?: string | null;
+    created_at?: string;
+    updated_at?: string;
+    first_name?: string | null;
+    last_name?: string | null;
+    /**
+     * enabled | disabled | invited | declined
+     */
+    state?: string | null;
+    note?: string | null;
+    verified_email?: boolean | null;
+    tags?: string | null;
+    orders_count?: number | null;
+    total_spent?: string | null;
+    default_address?: {
+        id?: number;
+        first_name?: string | null;
+        last_name?: string | null;
+        name?: string | null;
+        company?: string | null;
+        phone?: string | null;
+        address1?: string | null;
+        address2?: string | null;
+        city?: string | null;
+        province?: string | null;
+        province_code?: string | null;
+        zip?: string | null;
+        country?: string | null;
+        country_code?: string | null;
+        latitude?: number | null;
+        longitude?: number | null;
+        default?: boolean | null;
+    };
+    addresses?: Array<{
+        id?: number;
+        first_name?: string | null;
+        last_name?: string | null;
+        name?: string | null;
+        company?: string | null;
+        phone?: string | null;
+        address1?: string | null;
+        address2?: string | null;
+        city?: string | null;
+        province?: string | null;
+        province_code?: string | null;
+        zip?: string | null;
+        country?: string | null;
+        country_code?: string | null;
+        latitude?: number | null;
+        longitude?: number | null;
+        default?: boolean | null;
+    }>;
+    currency?: string | null;
+    email_marketing_consent?: {
+        state?: string | null;
+        opt_in_level?: string | null;
+        consent_updated_at?: string | null;
+    } | null;
+    sms_marketing_consent?: {
+        state?: string | null;
+        opt_in_level?: string | null;
+        consent_updated_at?: string | null;
+        consent_collected_from?: string | null;
+    } | null;
+};
+
+/**
+ * Payload for app/uninstalled (Shop resource snapshot).
+ */
+export type ShopifyShop = {
+    id?: number;
+    admin_graphql_api_id?: string | null;
+    name?: string;
+    email?: string | null;
+    domain?: string | null;
+    myshopify_domain?: string | null;
+    province?: string | null;
+    country?: string | null;
+    address1?: string | null;
+    address2?: string | null;
+    zip?: string | null;
+    city?: string | null;
+    phone?: string | null;
+    latitude?: number | null;
+    longitude?: number | null;
+    primary_locale?: string | null;
+    created_at?: string | null;
+    updated_at?: string | null;
+    country_code?: string | null;
+    country_name?: string | null;
+    currency?: string | null;
+    customer_email?: string | null;
+    timezone?: string | null;
+    iana_timezone?: string | null;
+    shop_owner?: string | null;
+};
+
+/**
+ * Payload for customers/data_request.
+ */
+export type GdprCustomersDataRequest = {
+    shop_id: number;
+    shop_domain: string;
+    orders_requested?: Array<number>;
+    customer: {
+        id?: number;
+        email?: string;
+        phone?: string;
+    };
+    data_request: {
+        id?: number;
+    };
+};
+
+/**
+ * Payload for customers/redact.
+ */
+export type GdprCustomersRedact = {
+    shop_id: number;
+    shop_domain: string;
+    customer: {
+        id?: number;
+        email?: string;
+        phone?: string;
+    };
+    orders_to_redact?: Array<number>;
+};
+
+/**
+ * Payload for shop/redact.
+ */
+export type GdprShopRedact = {
+    shop_id: number;
+    shop_domain: string;
+};
+
 export type LoginUserData = {
     body: {
         /**
@@ -972,6 +1706,87 @@ export type LogoutUserResponses = {
 };
 
 export type LogoutUserResponse = LogoutUserResponses[keyof LogoutUserResponses];
+
+export type ShopifySsoData = {
+    body?: never;
+    path?: never;
+    query: {
+        /**
+         * One-time token created by the Shopify app for dashboard SSO.
+         */
+        token: string;
+    };
+    url: '/auth/shopify-sso';
+};
+
+export type ShopifySsoErrors = {
+    /**
+     * Missing or malformed token parameter.
+     */
+    400: {
+        error?: {
+            /**
+             * Error code
+             */
+            code?: string;
+            /**
+             * Error message
+             */
+            message?: string;
+        };
+        /**
+         * Request identifier
+         */
+        request_id?: string;
+    };
+    /**
+     * Token invalid or expired.
+     */
+    401: {
+        error?: {
+            /**
+             * Error code
+             */
+            code?: string;
+            /**
+             * Error message
+             */
+            message?: string;
+        };
+        /**
+         * Request identifier
+         */
+        request_id?: string;
+    };
+    /**
+     * Failed to create a session for the Shopify-authenticated user.
+     */
+    500: {
+        error?: {
+            /**
+             * Error code
+             */
+            code?: string;
+            /**
+             * Error message
+             */
+            message?: string;
+        };
+        /**
+         * Request identifier
+         */
+        request_id?: string;
+    };
+};
+
+export type ShopifySsoError = ShopifySsoErrors[keyof ShopifySsoErrors];
+
+export type ShopifySsoResponses = {
+    /**
+     * Operation validated; clients should expect a redirect via the Location header.
+     */
+    200: unknown;
+};
 
 export type ListApiKeysData = {
     body?: never;
@@ -1802,26 +2617,106 @@ export type TestRulesAgainstPayloadResponses = {
                 };
             };
             address?: {
+                /**
+                 * Whether the address is valid
+                 */
                 valid?: boolean;
+                /**
+                 * Confidence score of the validation
+                 */
                 confidence?: number;
+                /**
+                 * List of reason codes
+                 */
                 reason_codes?: Array<string>;
+                /**
+                 * Risk score of the address
+                 */
                 risk_score?: number;
+                /**
+                 * Time taken to process the validation
+                 */
                 processing_time_ms?: number;
+                /**
+                 * Validation provider used
+                 */
                 provider?: string;
+                /**
+                 * Normalized address data
+                 */
                 normalized?: {
-                    [key: string]: unknown;
+                    /**
+                     * Street address, P.O. Box, Company name, c/o
+                     */
+                    line1?: string;
+                    /**
+                     * Apartment, Suite, Unit, Building, Floor, etc.
+                     */
+                    line2?: string | null;
+                    city?: string;
+                    /**
+                     * ISO 3166-2 subdivision code (e.g. NY)
+                     */
+                    state?: string;
+                    postal_code?: string;
+                    /**
+                     * ISO 3166-1 alpha-2 country code (e.g. US)
+                     */
+                    country?: string;
+                } & {
+                    /**
+                     * Latitude
+                     */
+                    lat?: number | null;
+                    /**
+                     * Longitude
+                     */
+                    lng?: number | null;
                 };
+                /**
+                 * Whether the address is a P.O. Box
+                 */
                 po_box?: boolean;
+                /**
+                 * Whether the address is residential
+                 */
                 residential?: boolean;
+                /**
+                 * Whether mail is deliverable to this address
+                 */
                 deliverable?: boolean;
+                /**
+                 * Whether DPV (Delivery Point Validation) confirmed the address
+                 */
                 dpv_confirmed?: boolean;
+                /**
+                 * Geographic coordinates
+                 */
                 geocode?: {
+                    /**
+                     * Latitude
+                     */
                     lat?: number;
+                    /**
+                     * Longitude
+                     */
                     lng?: number;
                 };
+                /**
+                 * Whether there's a mismatch between postal code and location
+                 */
                 postal_code_mismatch?: boolean;
+                /**
+                 * City name
+                 */
                 city?: string;
+                /**
+                 * Postal code
+                 */
                 postal_code?: string;
+                /**
+                 * Additional metadata
+                 */
                 metadata?: {
                     [key: string]: unknown;
                 };
@@ -2419,27 +3314,21 @@ export type ValidateAddressData = {
     body: {
         address: {
             /**
-             * Street address line 1
+             * Street address, P.O. Box, Company name, c/o
              */
             line1: string;
             /**
-             * Street address line 2
+             * Apartment, Suite, Unit, Building, Floor, etc.
              */
-            line2?: string;
-            /**
-             * City
-             */
+            line2?: string | null;
             city: string;
             /**
-             * State or province
+             * ISO 3166-2 subdivision code (e.g. NY)
              */
             state?: string;
-            /**
-             * Postal code
-             */
             postal_code: string;
             /**
-             * Two-letter country code
+             * ISO 3166-1 alpha-2 country code (e.g. US)
              */
             country: string;
         };
@@ -2495,15 +3384,24 @@ export type ValidateAddressResponses = {
          * Whether the address is valid
          */
         valid?: boolean;
-        /**
-         * Normalized address object
-         */
         normalized?: {
+            /**
+             * Street address, P.O. Box, Company name, c/o
+             */
             line1?: string;
-            line2?: string;
+            /**
+             * Apartment, Suite, Unit, Building, Floor, etc.
+             */
+            line2?: string | null;
             city?: string;
+            /**
+             * ISO 3166-2 subdivision code (e.g. NY)
+             */
             state?: string;
             postal_code?: string;
+            /**
+             * ISO 3166-1 alpha-2 country code (e.g. US)
+             */
             country?: string;
         };
         /**
@@ -3995,11 +4893,23 @@ export type CreateUserResponse = CreateUserResponses[keyof CreateUserResponses];
 export type NormalizeAddressData = {
     body: {
         address: {
+            /**
+             * Street address, P.O. Box, Company name, c/o
+             */
             line1: string;
-            line2?: string;
+            /**
+             * Apartment, Suite, Unit, Building, Floor, etc.
+             */
+            line2?: string | null;
             city: string;
+            /**
+             * ISO 3166-2 subdivision code (e.g. NY)
+             */
             state?: string;
             postal_code: string;
+            /**
+             * ISO 3166-1 alpha-2 country code (e.g. US)
+             */
             country: string;
         };
     };
@@ -4051,11 +4961,23 @@ export type NormalizeAddressResponses = {
      */
     200: {
         normalized?: {
+            /**
+             * Street address, P.O. Box, Company name, c/o
+             */
             line1?: string;
-            line2?: string;
+            /**
+             * Apartment, Suite, Unit, Building, Floor, etc.
+             */
+            line2?: string | null;
             city?: string;
+            /**
+             * ISO 3166-2 subdivision code (e.g. NY)
+             */
             state?: string;
             postal_code?: string;
+            /**
+             * ISO 3166-1 alpha-2 country code (e.g. US)
+             */
             country?: string;
         };
         request_id?: string;
@@ -4063,6 +4985,1438 @@ export type NormalizeAddressResponses = {
 };
 
 export type NormalizeAddressResponse = NormalizeAddressResponses[keyof NormalizeAddressResponses];
+
+export type ShopifyInstallData = {
+    body?: never;
+    path?: never;
+    query: {
+        /**
+         * Shopify shop domain (e.g., my-store.myshopify.com)
+         */
+        shop: string;
+    };
+    url: '/integrations/shopify/auth/install';
+};
+
+export type ShopifyInstallErrors = {
+    /**
+     * Missing shop parameter
+     */
+    400: {
+        error?: {
+            /**
+             * Error code
+             */
+            code?: string;
+            /**
+             * Error message
+             */
+            message?: string;
+        };
+        /**
+         * Request identifier
+         */
+        request_id?: string;
+    };
+};
+
+export type ShopifyInstallError = ShopifyInstallErrors[keyof ShopifyInstallErrors];
+
+export type ShopifyInstallResponses = {
+    /**
+     * Success response for validation
+     */
+    200: unknown;
+};
+
+export type ShopifyCallbackData = {
+    body?: never;
+    path?: never;
+    query: {
+        /**
+         * OAuth authorization code
+         */
+        code: string;
+        /**
+         * Shopify shop domain
+         */
+        shop: string;
+        /**
+         * State parameter for CSRF protection
+         */
+        state: string;
+    };
+    url: '/integrations/shopify/auth/callback';
+};
+
+export type ShopifyCallbackErrors = {
+    /**
+     * Invalid parameters or missing required scopes
+     */
+    400: {
+        error?: {
+            /**
+             * Error code
+             */
+            code?: string;
+            /**
+             * Error message
+             */
+            message?: string;
+        };
+        /**
+         * Request identifier
+         */
+        request_id?: string;
+    };
+    /**
+     * Failed to exchange OAuth code
+     */
+    500: {
+        error?: {
+            /**
+             * Error code
+             */
+            code?: string;
+            /**
+             * Error message
+             */
+            message?: string;
+        };
+        /**
+         * Request identifier
+         */
+        request_id?: string;
+    };
+};
+
+export type ShopifyCallbackError = ShopifyCallbackErrors[keyof ShopifyCallbackErrors];
+
+export type ShopifyCallbackResponses = {
+    /**
+     * Success response for validation
+     */
+    200: unknown;
+};
+
+export type GetShopifyShopSettingsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/integrations/shopify/api/shop-settings';
+};
+
+export type GetShopifyShopSettingsErrors = {
+    /**
+     * Unauthorized
+     */
+    401: {
+        error?: {
+            /**
+             * Error code
+             */
+            code?: string;
+            /**
+             * Error message
+             */
+            message?: string;
+        };
+        /**
+         * Request identifier
+         */
+        request_id?: string;
+    };
+};
+
+export type GetShopifyShopSettingsError = GetShopifyShopSettingsErrors[keyof GetShopifyShopSettingsErrors];
+
+export type GetShopifyShopSettingsResponses = {
+    /**
+     * Shop settings retrieved successfully
+     */
+    200: {
+        /**
+         * Current shop mode
+         */
+        mode?: 'disabled' | 'notify' | 'activated';
+        /**
+         * Request identifier
+         */
+        request_id?: string;
+    };
+};
+
+export type GetShopifyShopSettingsResponse = GetShopifyShopSettingsResponses[keyof GetShopifyShopSettingsResponses];
+
+export type UpdateShopifyShopSettingsData = {
+    body: {
+        /**
+         * New shop mode
+         */
+        mode: 'disabled' | 'notify' | 'activated';
+    };
+    path?: never;
+    query?: never;
+    url: '/integrations/shopify/api/shop-settings';
+};
+
+export type UpdateShopifyShopSettingsErrors = {
+    /**
+     * Invalid request body
+     */
+    400: {
+        error?: {
+            /**
+             * Error code
+             */
+            code?: string;
+            /**
+             * Error message
+             */
+            message?: string;
+        };
+        /**
+         * Request identifier
+         */
+        request_id?: string;
+    };
+    /**
+     * Unauthorized
+     */
+    401: {
+        error?: {
+            /**
+             * Error code
+             */
+            code?: string;
+            /**
+             * Error message
+             */
+            message?: string;
+        };
+        /**
+         * Request identifier
+         */
+        request_id?: string;
+    };
+};
+
+export type UpdateShopifyShopSettingsError = UpdateShopifyShopSettingsErrors[keyof UpdateShopifyShopSettingsErrors];
+
+export type UpdateShopifyShopSettingsResponses = {
+    /**
+     * Shop settings updated successfully
+     */
+    200: {
+        /**
+         * Updated shop mode
+         */
+        mode?: 'disabled' | 'notify' | 'activated';
+        /**
+         * Request identifier
+         */
+        request_id?: string;
+    };
+};
+
+export type UpdateShopifyShopSettingsResponse = UpdateShopifyShopSettingsResponses[keyof UpdateShopifyShopSettingsResponses];
+
+export type GetShopifyAccessScopesData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/integrations/shopify/api/access-scopes';
+};
+
+export type GetShopifyAccessScopesErrors = {
+    /**
+     * Missing shop domain
+     */
+    400: {
+        error?: {
+            /**
+             * Error code
+             */
+            code?: string;
+            /**
+             * Error message
+             */
+            message?: string;
+        };
+        /**
+         * Request identifier
+         */
+        request_id?: string;
+    };
+    /**
+     * Unauthorized
+     */
+    401: {
+        error?: {
+            /**
+             * Error code
+             */
+            code?: string;
+            /**
+             * Error message
+             */
+            message?: string;
+        };
+        /**
+         * Request identifier
+         */
+        request_id?: string;
+    };
+    /**
+     * Shop not registered
+     */
+    404: {
+        error?: {
+            /**
+             * Error code
+             */
+            code?: string;
+            /**
+             * Error message
+             */
+            message?: string;
+        };
+        /**
+         * Request identifier
+         */
+        request_id?: string;
+    };
+    /**
+     * Unable to verify scopes with Shopify
+     */
+    502: {
+        error?: {
+            /**
+             * Error code
+             */
+            code?: string;
+            /**
+             * Error message
+             */
+            message?: string;
+        };
+        /**
+         * Request identifier
+         */
+        request_id?: string;
+    };
+};
+
+export type GetShopifyAccessScopesError = GetShopifyAccessScopesErrors[keyof GetShopifyAccessScopesErrors];
+
+export type GetShopifyAccessScopesResponses = {
+    /**
+     * Access scopes retrieved successfully
+     */
+    200: {
+        /**
+         * Currently granted scopes
+         */
+        access_scopes?: Array<string>;
+        /**
+         * Required scopes that are missing
+         */
+        missing_scopes?: Array<string>;
+        /**
+         * Request identifier
+         */
+        request_id?: string;
+    };
+};
+
+export type GetShopifyAccessScopesResponse = GetShopifyAccessScopesResponses[keyof GetShopifyAccessScopesResponses];
+
+export type ShopifyAppInstalledEventData = {
+    body: {
+        /**
+         * Shopify shop domain (e.g., my-store.myshopify.com)
+         */
+        shop: string;
+        /**
+         * Offline access token issued by Shopify
+         */
+        accessToken: string;
+        /**
+         * Scopes granted to the app during installation
+         */
+        grantedScopes: Array<string>;
+    };
+    path?: never;
+    query?: never;
+    url: '/integrations/shopify/events/app-installed';
+};
+
+export type ShopifyAppInstalledEventErrors = {
+    /**
+     * Missing or invalid installation payload
+     */
+    400: {
+        error?: {
+            /**
+             * Error code
+             */
+            code?: string;
+            /**
+             * Error message
+             */
+            message?: string;
+        };
+        /**
+         * Request identifier
+         */
+        request_id?: string;
+    };
+};
+
+export type ShopifyAppInstalledEventError = ShopifyAppInstalledEventErrors[keyof ShopifyAppInstalledEventErrors];
+
+export type ShopifyAppInstalledEventResponses = {
+    /**
+     * Installation recorded successfully
+     */
+    200: unknown;
+};
+
+export type CreateShopifyDashboardSessionData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/integrations/shopify/events/dashboard-session';
+};
+
+export type CreateShopifyDashboardSessionErrors = {
+    /**
+     * Unauthorized - Invalid or missing Shopify session token
+     */
+    401: {
+        error?: {
+            /**
+             * Error code
+             */
+            code?: string;
+            /**
+             * Error message
+             */
+            message?: string;
+        };
+        /**
+         * Request identifier
+         */
+        request_id?: string;
+    };
+    /**
+     * Shop not found - Installation not found in database
+     */
+    404: {
+        error?: {
+            /**
+             * Error code
+             */
+            code?: string;
+            /**
+             * Error message
+             */
+            message?: string;
+        };
+        /**
+         * Request identifier
+         */
+        request_id?: string;
+    };
+    /**
+     * Service Unavailable - Onboarding still in progress
+     */
+    503: {
+        error?: {
+            /**
+             * Error code
+             */
+            code?: string;
+            /**
+             * Error message
+             */
+            message?: string;
+        };
+        /**
+         * Request identifier
+         */
+        request_id?: string;
+    };
+};
+
+export type CreateShopifyDashboardSessionError = CreateShopifyDashboardSessionErrors[keyof CreateShopifyDashboardSessionErrors];
+
+export type CreateShopifyDashboardSessionResponses = {
+    /**
+     * Dashboard session created successfully
+     */
+    200: {
+        /**
+         * Whether the session was created successfully
+         */
+        success: boolean;
+        user: {
+            /**
+             * OrbitCheck user ID
+             */
+            id: string;
+            /**
+             * User email address
+             */
+            email: string;
+        };
+        /**
+         * Default project ID for this shop
+         */
+        project_id?: string | null;
+        /**
+         * URL to redirect user to the OrbitCheck dashboard
+         */
+        dashboard_url: string;
+    };
+};
+
+export type CreateShopifyDashboardSessionResponse = CreateShopifyDashboardSessionResponses[keyof CreateShopifyDashboardSessionResponses];
+
+export type ShopifyOrdersCreateWebhookData = {
+    /**
+     * Payload for orders/create (Order resource snapshot).
+     */
+    body: {
+        id?: number;
+        admin_graphql_api_id?: string;
+        app_id?: number | null;
+        contact_email?: string | null;
+        email?: string | null;
+        phone?: string | null;
+        created_at?: string;
+        updated_at?: string | null;
+        closed_at?: string | null;
+        cancelled_at?: string | null;
+        cancel_reason?: string | null;
+        currency?: string;
+        buyer_accepts_marketing?: boolean | null;
+        current_total_price?: string | null;
+        current_total_price_set?: {
+            shop_money?: {
+                amount?: string;
+                currency_code?: string;
+            };
+            presentment_money?: {
+                amount?: string;
+                currency_code?: string;
+            };
+        };
+        current_subtotal_price?: string | null;
+        current_subtotal_price_set?: {
+            shop_money?: {
+                amount?: string;
+                currency_code?: string;
+            };
+            presentment_money?: {
+                amount?: string;
+                currency_code?: string;
+            };
+        };
+        current_shipping_price_set?: {
+            shop_money?: {
+                amount?: string;
+                currency_code?: string;
+            };
+            presentment_money?: {
+                amount?: string;
+                currency_code?: string;
+            };
+        };
+        total_price?: string | null;
+        subtotal_price?: string | null;
+        financial_status?: string | null;
+        fulfillment_status?: string | null;
+        /**
+         * Payload for customers/create and customers/update (Customer resource snapshot).
+         */
+        customer?: {
+            id?: number;
+            admin_graphql_api_id?: string | null;
+            email?: string | null;
+            phone?: string | null;
+            created_at?: string;
+            updated_at?: string;
+            first_name?: string | null;
+            last_name?: string | null;
+            /**
+             * enabled | disabled | invited | declined
+             */
+            state?: string | null;
+            note?: string | null;
+            verified_email?: boolean | null;
+            tags?: string | null;
+            orders_count?: number | null;
+            total_spent?: string | null;
+            default_address?: {
+                id?: number;
+                first_name?: string | null;
+                last_name?: string | null;
+                name?: string | null;
+                company?: string | null;
+                phone?: string | null;
+                address1?: string | null;
+                address2?: string | null;
+                city?: string | null;
+                province?: string | null;
+                province_code?: string | null;
+                zip?: string | null;
+                country?: string | null;
+                country_code?: string | null;
+                latitude?: number | null;
+                longitude?: number | null;
+                default?: boolean | null;
+            };
+            addresses?: Array<{
+                id?: number;
+                first_name?: string | null;
+                last_name?: string | null;
+                name?: string | null;
+                company?: string | null;
+                phone?: string | null;
+                address1?: string | null;
+                address2?: string | null;
+                city?: string | null;
+                province?: string | null;
+                province_code?: string | null;
+                zip?: string | null;
+                country?: string | null;
+                country_code?: string | null;
+                latitude?: number | null;
+                longitude?: number | null;
+                default?: boolean | null;
+            }>;
+            currency?: string | null;
+            email_marketing_consent?: {
+                state?: string | null;
+                opt_in_level?: string | null;
+                consent_updated_at?: string | null;
+            } | null;
+            sms_marketing_consent?: {
+                state?: string | null;
+                opt_in_level?: string | null;
+                consent_updated_at?: string | null;
+                consent_collected_from?: string | null;
+            } | null;
+        };
+        billing_address?: {
+            id?: number;
+            first_name?: string | null;
+            last_name?: string | null;
+            name?: string | null;
+            company?: string | null;
+            phone?: string | null;
+            address1?: string | null;
+            address2?: string | null;
+            city?: string | null;
+            province?: string | null;
+            province_code?: string | null;
+            zip?: string | null;
+            country?: string | null;
+            country_code?: string | null;
+            latitude?: number | null;
+            longitude?: number | null;
+            default?: boolean | null;
+        };
+        shipping_address?: {
+            id?: number;
+            first_name?: string | null;
+            last_name?: string | null;
+            name?: string | null;
+            company?: string | null;
+            phone?: string | null;
+            address1?: string | null;
+            address2?: string | null;
+            city?: string | null;
+            province?: string | null;
+            province_code?: string | null;
+            zip?: string | null;
+            country?: string | null;
+            country_code?: string | null;
+            latitude?: number | null;
+            longitude?: number | null;
+            default?: boolean | null;
+        };
+        client_details?: {
+            [key: string]: unknown;
+        };
+        line_items?: Array<{
+            [key: string]: unknown;
+        }>;
+        shipping_lines?: Array<{
+            [key: string]: unknown;
+        }>;
+        discount_codes?: Array<{
+            [key: string]: unknown;
+        }>;
+        tax_lines?: Array<{
+            [key: string]: unknown;
+        }>;
+        note?: string | null;
+        tags?: string | null;
+    };
+    path?: never;
+    query?: never;
+    url: '/integrations/shopify/webhooks/orders-create';
+};
+
+export type ShopifyOrdersCreateWebhookErrors = {
+    /**
+     * Invalid webhook data
+     */
+    400: {
+        error?: {
+            /**
+             * Error code
+             */
+            code?: string;
+            /**
+             * Error message
+             */
+            message?: string;
+        };
+        /**
+         * Request identifier
+         */
+        request_id?: string;
+    };
+};
+
+export type ShopifyOrdersCreateWebhookError = ShopifyOrdersCreateWebhookErrors[keyof ShopifyOrdersCreateWebhookErrors];
+
+export type ShopifyOrdersCreateWebhookResponses = {
+    /**
+     * Webhook processed successfully
+     */
+    200: unknown;
+};
+
+export type ShopifyCustomersCreateWebhookData = {
+    /**
+     * Payload for customers/create and customers/update (Customer resource snapshot).
+     */
+    body: {
+        id?: number;
+        admin_graphql_api_id?: string | null;
+        email?: string | null;
+        phone?: string | null;
+        created_at?: string;
+        updated_at?: string;
+        first_name?: string | null;
+        last_name?: string | null;
+        /**
+         * enabled | disabled | invited | declined
+         */
+        state?: string | null;
+        note?: string | null;
+        verified_email?: boolean | null;
+        tags?: string | null;
+        orders_count?: number | null;
+        total_spent?: string | null;
+        default_address?: {
+            id?: number;
+            first_name?: string | null;
+            last_name?: string | null;
+            name?: string | null;
+            company?: string | null;
+            phone?: string | null;
+            address1?: string | null;
+            address2?: string | null;
+            city?: string | null;
+            province?: string | null;
+            province_code?: string | null;
+            zip?: string | null;
+            country?: string | null;
+            country_code?: string | null;
+            latitude?: number | null;
+            longitude?: number | null;
+            default?: boolean | null;
+        };
+        addresses?: Array<{
+            id?: number;
+            first_name?: string | null;
+            last_name?: string | null;
+            name?: string | null;
+            company?: string | null;
+            phone?: string | null;
+            address1?: string | null;
+            address2?: string | null;
+            city?: string | null;
+            province?: string | null;
+            province_code?: string | null;
+            zip?: string | null;
+            country?: string | null;
+            country_code?: string | null;
+            latitude?: number | null;
+            longitude?: number | null;
+            default?: boolean | null;
+        }>;
+        currency?: string | null;
+        email_marketing_consent?: {
+            state?: string | null;
+            opt_in_level?: string | null;
+            consent_updated_at?: string | null;
+        } | null;
+        sms_marketing_consent?: {
+            state?: string | null;
+            opt_in_level?: string | null;
+            consent_updated_at?: string | null;
+            consent_collected_from?: string | null;
+        } | null;
+    };
+    path?: never;
+    query?: never;
+    url: '/integrations/shopify/webhooks/customers-create';
+};
+
+export type ShopifyCustomersCreateWebhookErrors = {
+    /**
+     * Invalid webhook data
+     */
+    400: {
+        error?: {
+            /**
+             * Error code
+             */
+            code?: string;
+            /**
+             * Error message
+             */
+            message?: string;
+        };
+        /**
+         * Request identifier
+         */
+        request_id?: string;
+    };
+};
+
+export type ShopifyCustomersCreateWebhookError = ShopifyCustomersCreateWebhookErrors[keyof ShopifyCustomersCreateWebhookErrors];
+
+export type ShopifyCustomersCreateWebhookResponses = {
+    /**
+     * Webhook processed successfully
+     */
+    200: unknown;
+};
+
+export type ShopifyCustomersUpdateWebhookData = {
+    /**
+     * Payload for customers/create and customers/update (Customer resource snapshot).
+     */
+    body: {
+        id?: number;
+        admin_graphql_api_id?: string | null;
+        email?: string | null;
+        phone?: string | null;
+        created_at?: string;
+        updated_at?: string;
+        first_name?: string | null;
+        last_name?: string | null;
+        /**
+         * enabled | disabled | invited | declined
+         */
+        state?: string | null;
+        note?: string | null;
+        verified_email?: boolean | null;
+        tags?: string | null;
+        orders_count?: number | null;
+        total_spent?: string | null;
+        default_address?: {
+            id?: number;
+            first_name?: string | null;
+            last_name?: string | null;
+            name?: string | null;
+            company?: string | null;
+            phone?: string | null;
+            address1?: string | null;
+            address2?: string | null;
+            city?: string | null;
+            province?: string | null;
+            province_code?: string | null;
+            zip?: string | null;
+            country?: string | null;
+            country_code?: string | null;
+            latitude?: number | null;
+            longitude?: number | null;
+            default?: boolean | null;
+        };
+        addresses?: Array<{
+            id?: number;
+            first_name?: string | null;
+            last_name?: string | null;
+            name?: string | null;
+            company?: string | null;
+            phone?: string | null;
+            address1?: string | null;
+            address2?: string | null;
+            city?: string | null;
+            province?: string | null;
+            province_code?: string | null;
+            zip?: string | null;
+            country?: string | null;
+            country_code?: string | null;
+            latitude?: number | null;
+            longitude?: number | null;
+            default?: boolean | null;
+        }>;
+        currency?: string | null;
+        email_marketing_consent?: {
+            state?: string | null;
+            opt_in_level?: string | null;
+            consent_updated_at?: string | null;
+        } | null;
+        sms_marketing_consent?: {
+            state?: string | null;
+            opt_in_level?: string | null;
+            consent_updated_at?: string | null;
+            consent_collected_from?: string | null;
+        } | null;
+    };
+    path?: never;
+    query?: never;
+    url: '/integrations/shopify/webhooks/customers-update';
+};
+
+export type ShopifyCustomersUpdateWebhookErrors = {
+    /**
+     * Invalid webhook data
+     */
+    400: {
+        error?: {
+            /**
+             * Error code
+             */
+            code?: string;
+            /**
+             * Error message
+             */
+            message?: string;
+        };
+        /**
+         * Request identifier
+         */
+        request_id?: string;
+    };
+};
+
+export type ShopifyCustomersUpdateWebhookError = ShopifyCustomersUpdateWebhookErrors[keyof ShopifyCustomersUpdateWebhookErrors];
+
+export type ShopifyCustomersUpdateWebhookResponses = {
+    /**
+     * Webhook processed successfully
+     */
+    200: unknown;
+};
+
+export type ShopifyAddressFixGetData = {
+    body?: never;
+    path: {
+        /**
+         * Fix session token
+         */
+        token: string;
+    };
+    query?: never;
+    url: '/integrations/shopify/address-fix/{token}';
+};
+
+export type ShopifyAddressFixGetErrors = {
+    /**
+     * Invalid token
+     */
+    400: {
+        error?: {
+            /**
+             * Error code
+             */
+            code?: string;
+            /**
+             * Error message
+             */
+            message?: string;
+        };
+        /**
+         * Request identifier
+         */
+        request_id?: string;
+    };
+    /**
+     * Session not found or expired
+     */
+    404: {
+        error?: {
+            code?: 'NOT_FOUND';
+            /**
+             * Error message
+             */
+            message?: string;
+        };
+    };
+};
+
+export type ShopifyAddressFixGetError = ShopifyAddressFixGetErrors[keyof ShopifyAddressFixGetErrors];
+
+export type ShopifyAddressFixGetResponses = {
+    /**
+     * Address fix session retrieved successfully
+     */
+    200: {
+        /**
+         * Unique session ID
+         */
+        id: string;
+        /**
+         * Shopify shop domain
+         */
+        shop_domain: string;
+        /**
+         * Shopify order ID
+         */
+        order_id: string;
+        /**
+         * Shopify GraphQL ID for the order
+         */
+        order_gid: string;
+        /**
+         * Customer email address
+         */
+        customer_email: string;
+        /**
+         * Original shipping address from the order
+         */
+        original_address: {
+            /**
+             * Street address, P.O. Box, Company name, c/o
+             */
+            line1?: string;
+            /**
+             * Apartment, Suite, Unit, Building, Floor, etc.
+             */
+            line2?: string | null;
+            city?: string;
+            /**
+             * ISO 3166-2 subdivision code (e.g. NY)
+             */
+            state?: string;
+            postal_code?: string;
+            /**
+             * ISO 3166-1 alpha-2 country code (e.g. US)
+             */
+            country?: string;
+        } & {
+            /**
+             * Latitude
+             */
+            lat?: number | null;
+            /**
+             * Longitude
+             */
+            lng?: number | null;
+        } & {
+            /**
+             * First name
+             */
+            first_name?: string;
+            /**
+             * Last name
+             */
+            last_name?: string;
+            /**
+             * Phone number
+             */
+            phone?: string;
+            /**
+             * Province or state
+             */
+            province?: string;
+            /**
+             * Postal or ZIP code
+             */
+            zip?: string;
+            /**
+             * Two-letter country code
+             */
+            country_code?: string;
+            /**
+             * Address line 1
+             */
+            address1?: string;
+            /**
+             * Address line 2
+             */
+            address2?: string;
+        };
+        /**
+         * Normalized/corrected shipping address
+         */
+        normalized_address: {
+            /**
+             * Street address, P.O. Box, Company name, c/o
+             */
+            line1?: string;
+            /**
+             * Apartment, Suite, Unit, Building, Floor, etc.
+             */
+            line2?: string | null;
+            city?: string;
+            /**
+             * ISO 3166-2 subdivision code (e.g. NY)
+             */
+            state?: string;
+            postal_code?: string;
+            /**
+             * ISO 3166-1 alpha-2 country code (e.g. US)
+             */
+            country?: string;
+        } & {
+            /**
+             * Latitude
+             */
+            lat?: number | null;
+            /**
+             * Longitude
+             */
+            lng?: number | null;
+        };
+        /**
+         * Current status of the address fix
+         */
+        fix_status: 'pending' | 'confirmed' | 'cancelled';
+        /**
+         * When the fix token expires
+         */
+        token_expires_at: string;
+        /**
+         * When the session was created
+         */
+        created_at: string;
+    };
+};
+
+export type ShopifyAddressFixGetResponse = ShopifyAddressFixGetResponses[keyof ShopifyAddressFixGetResponses];
+
+export type ShopifyAddressFixConfirmData = {
+    body: {
+        /**
+         * Whether to use the corrected address (true) or keep original (false)
+         */
+        use_corrected: boolean;
+        /**
+         * Shopify shop domain for verification
+         */
+        shop_domain: string;
+        address?: {
+            /**
+             * Street address, P.O. Box, Company name, c/o
+             */
+            line1?: string;
+            /**
+             * Apartment, Suite, Unit, Building, Floor, etc.
+             */
+            line2?: string | null;
+            city?: string;
+            /**
+             * ISO 3166-2 subdivision code (e.g. NY)
+             */
+            state?: string;
+            postal_code?: string;
+            /**
+             * ISO 3166-1 alpha-2 country code (e.g. US)
+             */
+            country?: string;
+        } & {
+            /**
+             * Latitude
+             */
+            lat?: number | null;
+            /**
+             * Longitude
+             */
+            lng?: number | null;
+        };
+    };
+    path: {
+        /**
+         * Fix session token
+         */
+        token: string;
+    };
+    query?: never;
+    url: '/integrations/shopify/address-fix/{token}';
+};
+
+export type ShopifyAddressFixConfirmErrors = {
+    /**
+     * Invalid request
+     */
+    400: {
+        error?: {
+            /**
+             * Error code
+             */
+            code?: string;
+            /**
+             * Error message
+             */
+            message?: string;
+        };
+        /**
+         * Request identifier
+         */
+        request_id?: string;
+    };
+    /**
+     * Session not found or expired
+     */
+    404: {
+        error?: {
+            code?: 'NOT_FOUND';
+            /**
+             * Error message
+             */
+            message?: string;
+        };
+    };
+};
+
+export type ShopifyAddressFixConfirmError = ShopifyAddressFixConfirmErrors[keyof ShopifyAddressFixConfirmErrors];
+
+export type ShopifyAddressFixConfirmResponses = {
+    /**
+     * Address fix confirmed and order updated successfully
+     */
+    200: {
+        success?: boolean;
+        message?: string;
+    };
+};
+
+export type ShopifyAddressFixConfirmResponse = ShopifyAddressFixConfirmResponses[keyof ShopifyAddressFixConfirmResponses];
+
+export type ShopifyAppUninstalledWebhookData = {
+    /**
+     * Payload for app/uninstalled (Shop resource snapshot).
+     */
+    body: {
+        id?: number;
+        admin_graphql_api_id?: string | null;
+        name?: string;
+        email?: string | null;
+        domain?: string | null;
+        myshopify_domain?: string | null;
+        province?: string | null;
+        country?: string | null;
+        address1?: string | null;
+        address2?: string | null;
+        zip?: string | null;
+        city?: string | null;
+        phone?: string | null;
+        latitude?: number | null;
+        longitude?: number | null;
+        primary_locale?: string | null;
+        created_at?: string | null;
+        updated_at?: string | null;
+        country_code?: string | null;
+        country_name?: string | null;
+        currency?: string | null;
+        customer_email?: string | null;
+        timezone?: string | null;
+        iana_timezone?: string | null;
+        shop_owner?: string | null;
+    };
+    path?: never;
+    query?: never;
+    url: '/integrations/shopify/webhooks/app-uninstalled';
+};
+
+export type ShopifyAppUninstalledWebhookErrors = {
+    /**
+     * Invalid webhook data
+     */
+    400: {
+        error?: {
+            /**
+             * Error code
+             */
+            code?: string;
+            /**
+             * Error message
+             */
+            message?: string;
+        };
+        /**
+         * Request identifier
+         */
+        request_id?: string;
+    };
+};
+
+export type ShopifyAppUninstalledWebhookError = ShopifyAppUninstalledWebhookErrors[keyof ShopifyAppUninstalledWebhookErrors];
+
+export type ShopifyAppUninstalledWebhookResponses = {
+    /**
+     * Webhook processed successfully
+     */
+    200: unknown;
+};
+
+export type ShopifyGdprCustomersDataRequestWebhookData = {
+    /**
+     * Payload for customers/data_request.
+     */
+    body: {
+        shop_id: number;
+        shop_domain: string;
+        orders_requested?: Array<number>;
+        customer: {
+            id?: number;
+            email?: string;
+            phone?: string;
+        };
+        data_request: {
+            id?: number;
+        };
+    };
+    path?: never;
+    query?: never;
+    url: '/integrations/shopify/webhooks/gdpr/customers-data-request';
+};
+
+export type ShopifyGdprCustomersDataRequestWebhookErrors = {
+    /**
+     * Invalid webhook data
+     */
+    400: {
+        error?: {
+            /**
+             * Error code
+             */
+            code?: string;
+            /**
+             * Error message
+             */
+            message?: string;
+        };
+        /**
+         * Request identifier
+         */
+        request_id?: string;
+    };
+};
+
+export type ShopifyGdprCustomersDataRequestWebhookError = ShopifyGdprCustomersDataRequestWebhookErrors[keyof ShopifyGdprCustomersDataRequestWebhookErrors];
+
+export type ShopifyGdprCustomersDataRequestWebhookResponses = {
+    /**
+     * Webhook processed successfully
+     */
+    200: unknown;
+};
+
+export type ShopifyGdprCustomersRedactWebhookData = {
+    /**
+     * Payload for customers/redact.
+     */
+    body: {
+        shop_id: number;
+        shop_domain: string;
+        customer: {
+            id?: number;
+            email?: string;
+            phone?: string;
+        };
+        orders_to_redact?: Array<number>;
+    };
+    path?: never;
+    query?: never;
+    url: '/integrations/shopify/webhooks/gdpr/customers-redact';
+};
+
+export type ShopifyGdprCustomersRedactWebhookErrors = {
+    /**
+     * Invalid webhook data
+     */
+    400: {
+        error?: {
+            /**
+             * Error code
+             */
+            code?: string;
+            /**
+             * Error message
+             */
+            message?: string;
+        };
+        /**
+         * Request identifier
+         */
+        request_id?: string;
+    };
+};
+
+export type ShopifyGdprCustomersRedactWebhookError = ShopifyGdprCustomersRedactWebhookErrors[keyof ShopifyGdprCustomersRedactWebhookErrors];
+
+export type ShopifyGdprCustomersRedactWebhookResponses = {
+    /**
+     * Webhook processed successfully
+     */
+    200: unknown;
+};
+
+export type ShopifyGdprShopRedactWebhookData = {
+    /**
+     * Payload for shop/redact.
+     */
+    body: {
+        shop_id: number;
+        shop_domain: string;
+    };
+    path?: never;
+    query?: never;
+    url: '/integrations/shopify/webhooks/gdpr/shop-redact';
+};
+
+export type ShopifyGdprShopRedactWebhookErrors = {
+    /**
+     * Invalid webhook data
+     */
+    400: {
+        error?: {
+            /**
+             * Error code
+             */
+            code?: string;
+            /**
+             * Error message
+             */
+            message?: string;
+        };
+        /**
+         * Request identifier
+         */
+        request_id?: string;
+    };
+};
+
+export type ShopifyGdprShopRedactWebhookError = ShopifyGdprShopRedactWebhookErrors[keyof ShopifyGdprShopRedactWebhookErrors];
+
+export type ShopifyGdprShopRedactWebhookResponses = {
+    /**
+     * Webhook processed successfully
+     */
+    200: unknown;
+};
 
 export type DedupeCustomerData = {
     body: {
@@ -4157,27 +6511,21 @@ export type DedupeCustomerResponse = DedupeCustomerResponses[keyof DedupeCustome
 export type DedupeAddressData = {
     body: {
         /**
-         * Street address line 1
+         * Street address, P.O. Box, Company name, c/o
          */
         line1: string;
         /**
-         * Street address line 2
+         * Apartment, Suite, Unit, Building, Floor, etc.
          */
-        line2?: string;
-        /**
-         * City
-         */
+        line2?: string | null;
         city: string;
         /**
-         * State or province
+         * ISO 3166-2 subdivision code (e.g. NY)
          */
         state?: string;
-        /**
-         * Postal code
-         */
         postal_code: string;
         /**
-         * Two-letter country code
+         * ISO 3166-1 alpha-2 country code (e.g. US)
          */
         country: string;
     };
@@ -4230,29 +6578,24 @@ export type DedupeAddressResponses = {
             match_type?: 'exact_address' | 'exact_postal' | 'fuzzy_address';
             data?: {
                 /**
-                 * Street address line 1
+                 * Street address, P.O. Box, Company name, c/o
                  */
                 line1?: string;
                 /**
-                 * Street address line 2
+                 * Apartment, Suite, Unit, Building, Floor, etc.
                  */
-                line2?: string;
-                /**
-                 * City
-                 */
+                line2?: string | null;
                 city?: string;
                 /**
-                 * State or province
+                 * ISO 3166-2 subdivision code (e.g. NY)
                  */
                 state?: string;
-                /**
-                 * Postal code
-                 */
                 postal_code?: string;
                 /**
-                 * Two-letter country code
+                 * ISO 3166-1 alpha-2 country code (e.g. US)
                  */
                 country?: string;
+            } & {
                 /**
                  * Latitude
                  */

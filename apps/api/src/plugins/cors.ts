@@ -1,5 +1,7 @@
+import type { FastifyCorsOptions } from "@fastify/cors";
 import cors from "@fastify/cors";
-import type { FastifyInstance, RawServerBase } from "fastify";
+import type { FastifyPluginAsync } from "fastify";
+import fp from "fastify-plugin";
 
 import { environment } from "../environment.js";
 
@@ -8,9 +10,9 @@ import { environment } from "../environment.js";
  * Handles both development and production origins, with support for server-to-server requests.
  * In production, CORS is handled by the reverse proxy (Caddy), so we skip registration here.
  */
-export async function setupCors<TServer extends RawServerBase = RawServerBase>(app: FastifyInstance<TServer>): Promise<void> {
+const setupCors: FastifyPluginAsync = async (app) => {
     // In production, CORS is handled by Caddy reverse proxy, so skip Fastify CORS to avoid duplicate headers
-    if (process.env.NODE_ENV === 'production') {
+    if (environment.isProd) {
         return;
     }
 
@@ -21,7 +23,7 @@ export async function setupCors<TServer extends RawServerBase = RawServerBase>(a
     ]);
 
     // Add production origins from environment variable or defaults
-    if (process.env.NODE_ENV === 'production') {
+    if (environment.isProd) {
         // Allow origins from environment variable or use defaults
         const corsOrigins = environment.CORS_ORIGINS && environment.CORS_ORIGINS.length > 0 ? environment.CORS_ORIGINS : [
             'https://dashboard.orbitcheck.io',
@@ -29,11 +31,6 @@ export async function setupCors<TServer extends RawServerBase = RawServerBase>(a
             'https://orbitcheck.io'
         ];
         corsOrigins.forEach(origin => allowedOrigins.add(origin));
-
-        // Add your OIDC provider domain if needed
-        // if (environment.OIDC_PROVIDER_URL) {
-        //     allowedOrigins.add(new URL(environment.OIDC_PROVIDER_URL).origin);
-        // }
     } else {
         // Development origins
         allowedOrigins.add('http://localhost:5173'); // Vite dev server
@@ -47,26 +44,38 @@ export async function setupCors<TServer extends RawServerBase = RawServerBase>(a
     }
 
     // Enable CORS with proper configuration for different auth methods
-    await app.register(cors, {
-        origin: async (origin: string | undefined) => {
+    // FIX 1: Cast 'cors' to 'any' to bypass the Fastify v4/v5 mismatch in register()
+    await app.register(cors as any, {
+        origin: async (origin: string): Promise<boolean> => {
             // Allow requests with no Origin header (e.g., server-to-server, Postman, curl)
-            // This is important for PAT and API key authentication
-            if (!origin) return true;
+            if (!origin) {
+                return true;
+            }
 
             // Check if origin is in allowed list
-            return allowedOrigins.has(origin);
+            // Allow Shopify CLI tunnel URLs in development
+            if (allowedOrigins.has(origin) || (!environment.isProd && origin.endsWith('.trycloudflare.com'))) {
+                return true;
+            } else {
+                throw new Error("Not allowed");
+            }
         },
-        credentials: true, // Required for session cookies
+        credentials: true,
         methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
         allowedHeaders: [
             'Content-Type',
-            'Authorization', // For PAT and API keys
-            'X-Idempotency-Key', // For idempotency
-            'Idempotency-Key', // For idempotency (standard header)
-            'X-Request-Id', // For request tracking
-            'Correlation-Id', // For correlation tracking
-            'X-Correlation-Id' // For correlation tracking
+            'Authorization',
+            'X-Idempotency-Key',
+            'Idempotency-Key',
+            'X-Request-Id',
+            'Correlation-Id',
+            'X-Correlation-Id'
         ],
         exposedHeaders: ['X-Request-Id', 'Correlation-Id', 'X-RateLimit-Remaining', 'X-RateLimit-Reset'],
-    });
-}
+    } as FastifyCorsOptions);
+};
+
+// FIX 2: Double-cast export to 'unknown' -> 'FastifyPluginAsync'
+// This wipes the "missing properties: propfind..." error from fastify-plugin
+export default fp(setupCors as any, { name: 'orbitcheck-cors' }) as unknown as FastifyPluginAsync;
+export { setupCors };

@@ -1,14 +1,16 @@
 // src/config/environment.ts
-import { randomBytes } from 'crypto';
 import 'dotenv/config'; // harmless in prod; useful for local dev
+
+import { randomBytes } from 'crypto';
 import { bool, cleanEnv, makeValidator, num, port, str, url } from 'envalid';
+
 import { CRYPTO_KEY_BYTES } from './config.js'; // must match your crypto key size (bytes)
 
 const NODE_ENV = process.env.NODE_ENV || 'production';
 const isProd = NODE_ENV === 'production';
 
 // Helpers
-const randomHex = (bytes: number) => randomBytes(bytes).toString('hex');
+const randomHex = (bytes: number): string => randomBytes(bytes).toString('hex');
 
 const csv = makeValidator<string[]>((s) => {
   if (typeof s !== 'string') throw new Error('must be a string');
@@ -29,15 +31,14 @@ const urlOrEmpty = makeValidator<string>((s) => {
 });
 
 // Enforce hex key of exact byte length
-const hexOfBytes = (bytes: number) =>
-  makeValidator<string>((s) => {
-    if (typeof s !== 'string') throw new Error('must be a hex string');
-    if (!/^[0-9a-f]+$/i.test(s)) throw new Error('must be hex');
-    if (s.length % 2 !== 0) throw new Error('hex length must be even');
-    const buf = Buffer.from(s, 'hex');
-    if (buf.length !== bytes) throw new Error(`must be ${bytes} bytes (${bytes * 2} hex chars)`);
-    return s.toLowerCase();
-  });
+const hexOfBytes = (bytes: number): ReturnType<typeof makeValidator<string>> => makeValidator<string>((s) => {
+  if (typeof s !== 'string') throw new Error('must be a hex string');
+  if (!/^[0-9a-f]+$/i.test(s)) throw new Error('must be hex');
+  if (s.length % 2 !== 0) throw new Error('hex length must be even');
+  const buf = Buffer.from(s, 'hex');
+  if (buf.length !== bytes) throw new Error(`must be ${bytes} bytes (${bytes * 2} hex chars)`);
+  return s.toLowerCase();
+});
 
 export const env = cleanEnv(process.env, {
   // Runtime mode
@@ -49,6 +50,7 @@ export const env = cleanEnv(process.env, {
   APP_DATABASE_URL: url({ default: '' }),
   REDIS_URL: isProd ? url() : url({ default: 'redis://localhost:6379' }),
   BASE_URL: url({ default: isProd ? '' : 'http://localhost:8080' }),
+  ADDRESS_SERVICE_URL: url({ default: 'http://localhost:8081' }),
 
   // Logging/observability
   LOG_LEVEL: str({ choices: ['trace', 'debug', 'info', 'warn', 'error', 'fatal', 'silent'], default: 'info' }),
@@ -59,6 +61,10 @@ export const env = cleanEnv(process.env, {
   LOCATIONIQ_KEY: str({ default: '' }),
   DISPOSABLE_LIST_URL: url({ default: 'https://raw.githubusercontent.com/disposable/disposable-email-domains/master/domains.json' }),
   VIES_WSDL_URL: url({ default: 'https://ec.europa.eu/taxation_customs/vies/checkVatService.wsdl' }),
+  GEOAPIFY_KEY: str({ default: '' }),
+
+  POSTHOG_KEY: str({ default: '' }),
+  POSTHOG_HOST: url({ default: 'https://us.i.posthog.com' }),
 
   // Retention / rate limits
   RETENTION_DAYS: num({ default: 90 }),
@@ -81,6 +87,8 @@ export const env = cleanEnv(process.env, {
   // Geocoding
   GOOGLE_GEOCODING_KEY: str({ default: '' }),
   USE_GOOGLE_FALLBACK: bool({ default: false }),
+  RADAR_KEY: str({ default: '' }),
+  RADAR_API_URL: url({ default: 'https://api.radar.io/v1' }),
 
   // Auth/secrets
   JWT_SECRET: isProd ? str() : str({ default: `dev_jwt_${randomHex(16)}` }),
@@ -102,6 +110,10 @@ export const env = cleanEnv(process.env, {
   STRIPE_BASE_PLAN_PRICE_ID: str({ default: '' }),
   STRIPE_USAGE_PRICE_ID: str({ default: '' }),
   STRIPE_STORE_ADDON_PRICE_ID: str({ default: '' }),
+
+  // Shopify
+  SHOPIFY_API_KEY: str({ default: '' }),
+  SHOPIFY_API_SECRET: str({ default: '' }),
 
   // CORS / frontend
   FRONTEND_URL: isProd ? url() : url({ default: 'http://localhost:5173' }),

@@ -2,7 +2,7 @@
 
 import type { RouteHandler } from 'fastify';
 
-import type { BatchDedupeData, BatchDedupeErrors, BatchDedupeResponses, BatchEvaluateOrdersData, BatchEvaluateOrdersErrors, BatchEvaluateOrdersResponses, BatchValidateData, BatchValidateErrors, BatchValidateResponses, CheckValidationLimitsData, CheckValidationLimitsErrors, CheckValidationLimitsResponses, CreateApiKeyData, CreateApiKeyErrors, CreateApiKeyResponses, CreateCheckoutSessionErrors, CreateCheckoutSessionResponses, CreateCustomerPortalSessionErrors, CreateCustomerPortalSessionResponses, CreatePersonalAccessTokenData, CreatePersonalAccessTokenErrors, CreatePersonalAccessTokenResponses, CreateProjectData, CreateProjectErrors, CreateProjectResponses, CreateUserData, CreateUserErrors, CreateUserResponses, CreateWebhookData, CreateWebhookErrors, CreateWebhookResponses, DedupeAddressData, DedupeAddressErrors, DedupeAddressResponses, DedupeCustomerData, DedupeCustomerErrors, DedupeCustomerResponses, DeleteCustomRuleData, DeleteCustomRuleErrors, DeleteCustomRuleResponses, DeleteLogData, DeleteLogErrors, DeleteLogResponses, DeleteProjectData, DeleteProjectErrors, DeleteProjectResponses, DeleteWebhookData, DeleteWebhookErrors, DeleteWebhookResponses, EraseDataData, EraseDataErrors, EraseDataResponses, EstimateRoiData, EstimateRoiErrors, EstimateRoiResponses, EvaluateOrderData, EvaluateOrderErrors, EvaluateOrderResponses, GetAvailablePlansErrors, GetAvailablePlansResponses, GetAvailableRulesErrors, GetAvailableRulesResponses, GetBuiltInRulesErrors, GetBuiltInRulesResponses, GetErrorCodeCatalogErrors, GetErrorCodeCatalogResponses, GetJobStatusByIdData, GetJobStatusByIdErrors, GetJobStatusByIdResponses, GetLogsData, GetLogsErrors, GetLogsResponses, GetReasonCodeCatalogErrors, GetReasonCodeCatalogResponses, GetSettingsErrors, GetSettingsResponses, GetUsageErrors, GetUsageResponses, GetUserPlanErrors, GetUserPlanResponses, GetUserProjectsErrors, GetUserProjectsResponses, ListApiKeysErrors, ListApiKeysResponses, ListPersonalAccessTokensErrors, ListPersonalAccessTokensResponses, ListUsersErrors, ListUsersResponses, ListWebhooksErrors, ListWebhooksResponses, LoginUserData, LoginUserErrors, LoginUserResponses, LogoutUserErrors, LogoutUserResponses, MergeDeduplicatedData, MergeDeduplicatedErrors, MergeDeduplicatedResponses, NormalizeAddressData, NormalizeAddressErrors, NormalizeAddressResponses, RegisterCustomRulesData, RegisterCustomRulesErrors, RegisterCustomRulesResponses, RegisterUserData, RegisterUserErrors, RegisterUserResponses, RevokeApiKeyData, RevokeApiKeyErrors, RevokeApiKeyResponses, RevokePersonalAccessTokenData, RevokePersonalAccessTokenErrors, RevokePersonalAccessTokenResponses, TestRulesAgainstPayloadData, TestRulesAgainstPayloadErrors, TestRulesAgainstPayloadResponses, TestWebhookData, TestWebhookErrors, TestWebhookResponses, UpdateSettingsData, UpdateSettingsErrors, UpdateSettingsResponses, UpdateUserPlanData, UpdateUserPlanErrors, UpdateUserPlanResponses, ValidateAddressData, ValidateAddressErrors, ValidateAddressResponses, ValidateEmailData, ValidateEmailErrors, ValidateEmailResponses, ValidateNameData, ValidateNameErrors, ValidateNameResponses, ValidatePhoneData, ValidatePhoneErrors, ValidatePhoneResponses, ValidateTaxIdData, ValidateTaxIdErrors, ValidateTaxIdResponses, VerifyPhoneOtpData, VerifyPhoneOtpErrors, VerifyPhoneOtpResponses } from './types.gen';
+import type { BatchDedupeData, BatchDedupeErrors, BatchDedupeResponses, BatchEvaluateOrdersData, BatchEvaluateOrdersErrors, BatchEvaluateOrdersResponses, BatchValidateData, BatchValidateErrors, BatchValidateResponses, CheckValidationLimitsData, CheckValidationLimitsErrors, CheckValidationLimitsResponses, CreateApiKeyData, CreateApiKeyErrors, CreateApiKeyResponses, CreateCheckoutSessionErrors, CreateCheckoutSessionResponses, CreateCustomerPortalSessionErrors, CreateCustomerPortalSessionResponses, CreatePersonalAccessTokenData, CreatePersonalAccessTokenErrors, CreatePersonalAccessTokenResponses, CreateProjectData, CreateProjectErrors, CreateProjectResponses, CreateShopifyDashboardSessionErrors, CreateShopifyDashboardSessionResponses, CreateUserData, CreateUserErrors, CreateUserResponses, CreateWebhookData, CreateWebhookErrors, CreateWebhookResponses, DedupeAddressData, DedupeAddressErrors, DedupeAddressResponses, DedupeCustomerData, DedupeCustomerErrors, DedupeCustomerResponses, DeleteCustomRuleData, DeleteCustomRuleErrors, DeleteCustomRuleResponses, DeleteLogData, DeleteLogErrors, DeleteLogResponses, DeleteProjectData, DeleteProjectErrors, DeleteProjectResponses, DeleteWebhookData, DeleteWebhookErrors, DeleteWebhookResponses, EraseDataData, EraseDataErrors, EraseDataResponses, EstimateRoiData, EstimateRoiErrors, EstimateRoiResponses, EvaluateOrderData, EvaluateOrderErrors, EvaluateOrderResponses, GetAvailablePlansErrors, GetAvailablePlansResponses, GetAvailableRulesErrors, GetAvailableRulesResponses, GetBuiltInRulesErrors, GetBuiltInRulesResponses, GetErrorCodeCatalogErrors, GetErrorCodeCatalogResponses, GetJobStatusByIdData, GetJobStatusByIdErrors, GetJobStatusByIdResponses, GetLogsData, GetLogsErrors, GetLogsResponses, GetReasonCodeCatalogErrors, GetReasonCodeCatalogResponses, GetSettingsErrors, GetSettingsResponses, GetShopifyAccessScopesErrors, GetShopifyAccessScopesResponses, GetShopifyShopSettingsErrors, GetShopifyShopSettingsResponses, GetUsageErrors, GetUsageResponses, GetUserPlanErrors, GetUserPlanResponses, GetUserProjectsErrors, GetUserProjectsResponses, ListApiKeysErrors, ListApiKeysResponses, ListPersonalAccessTokensErrors, ListPersonalAccessTokensResponses, ListUsersErrors, ListUsersResponses, ListWebhooksErrors, ListWebhooksResponses, LoginUserData, LoginUserErrors, LoginUserResponses, LogoutUserErrors, LogoutUserResponses, MergeDeduplicatedData, MergeDeduplicatedErrors, MergeDeduplicatedResponses, NormalizeAddressData, NormalizeAddressErrors, NormalizeAddressResponses, RegisterCustomRulesData, RegisterCustomRulesErrors, RegisterCustomRulesResponses, RegisterUserData, RegisterUserErrors, RegisterUserResponses, RevokeApiKeyData, RevokeApiKeyErrors, RevokeApiKeyResponses, RevokePersonalAccessTokenData, RevokePersonalAccessTokenErrors, RevokePersonalAccessTokenResponses, ShopifyAddressFixConfirmData, ShopifyAddressFixConfirmErrors, ShopifyAddressFixConfirmResponses, ShopifyAddressFixGetData, ShopifyAddressFixGetErrors, ShopifyAddressFixGetResponses, ShopifyAppInstalledEventData, ShopifyAppInstalledEventErrors, ShopifyAppInstalledEventResponses, ShopifyAppUninstalledWebhookData, ShopifyAppUninstalledWebhookErrors, ShopifyAppUninstalledWebhookResponses, ShopifyCallbackData, ShopifyCallbackErrors, ShopifyCallbackResponses, ShopifyCustomersCreateWebhookData, ShopifyCustomersCreateWebhookErrors, ShopifyCustomersCreateWebhookResponses, ShopifyCustomersUpdateWebhookData, ShopifyCustomersUpdateWebhookErrors, ShopifyCustomersUpdateWebhookResponses, ShopifyGdprCustomersDataRequestWebhookData, ShopifyGdprCustomersDataRequestWebhookErrors, ShopifyGdprCustomersDataRequestWebhookResponses, ShopifyGdprCustomersRedactWebhookData, ShopifyGdprCustomersRedactWebhookErrors, ShopifyGdprCustomersRedactWebhookResponses, ShopifyGdprShopRedactWebhookData, ShopifyGdprShopRedactWebhookErrors, ShopifyGdprShopRedactWebhookResponses, ShopifyInstallData, ShopifyInstallErrors, ShopifyInstallResponses, ShopifyOrdersCreateWebhookData, ShopifyOrdersCreateWebhookErrors, ShopifyOrdersCreateWebhookResponses, ShopifySsoData, ShopifySsoErrors, ShopifySsoResponses, TestRulesAgainstPayloadData, TestRulesAgainstPayloadErrors, TestRulesAgainstPayloadResponses, TestWebhookData, TestWebhookErrors, TestWebhookResponses, UpdateSettingsData, UpdateSettingsErrors, UpdateSettingsResponses, UpdateShopifyShopSettingsData, UpdateShopifyShopSettingsErrors, UpdateShopifyShopSettingsResponses, UpdateUserPlanData, UpdateUserPlanErrors, UpdateUserPlanResponses, ValidateAddressData, ValidateAddressErrors, ValidateAddressResponses, ValidateEmailData, ValidateEmailErrors, ValidateEmailResponses, ValidateNameData, ValidateNameErrors, ValidateNameResponses, ValidatePhoneData, ValidatePhoneErrors, ValidatePhoneResponses, ValidateTaxIdData, ValidateTaxIdErrors, ValidateTaxIdResponses, VerifyPhoneOtpData, VerifyPhoneOtpErrors, VerifyPhoneOtpResponses } from './types.gen';
 
 export type RouteHandlers = {
     loginUser: RouteHandler<{
@@ -15,6 +15,10 @@ export type RouteHandlers = {
     }>;
     logoutUser: RouteHandler<{
         Reply: LogoutUserErrors & LogoutUserResponses;
+    }>;
+    shopifySso: RouteHandler<{
+        Querystring: ShopifySsoData['query'];
+        Reply: ShopifySsoErrors & ShopifySsoResponses;
     }>;
     listApiKeys: RouteHandler<{
         Reply: ListApiKeysErrors & ListApiKeysResponses;
@@ -143,6 +147,68 @@ export type RouteHandlers = {
     normalizeAddress: RouteHandler<{
         Body: NormalizeAddressData['body'];
         Reply: NormalizeAddressErrors & NormalizeAddressResponses;
+    }>;
+    shopifyInstall: RouteHandler<{
+        Querystring: ShopifyInstallData['query'];
+        Reply: ShopifyInstallErrors & ShopifyInstallResponses;
+    }>;
+    shopifyCallback: RouteHandler<{
+        Querystring: ShopifyCallbackData['query'];
+        Reply: ShopifyCallbackErrors & ShopifyCallbackResponses;
+    }>;
+    getShopifyShopSettings: RouteHandler<{
+        Reply: GetShopifyShopSettingsErrors & GetShopifyShopSettingsResponses;
+    }>;
+    updateShopifyShopSettings: RouteHandler<{
+        Body: UpdateShopifyShopSettingsData['body'];
+        Reply: UpdateShopifyShopSettingsErrors & UpdateShopifyShopSettingsResponses;
+    }>;
+    getShopifyAccessScopes: RouteHandler<{
+        Reply: GetShopifyAccessScopesErrors & GetShopifyAccessScopesResponses;
+    }>;
+    shopifyAppInstalledEvent: RouteHandler<{
+        Body: ShopifyAppInstalledEventData['body'];
+        Reply: ShopifyAppInstalledEventErrors & ShopifyAppInstalledEventResponses;
+    }>;
+    createShopifyDashboardSession: RouteHandler<{
+        Reply: CreateShopifyDashboardSessionErrors & CreateShopifyDashboardSessionResponses;
+    }>;
+    shopifyOrdersCreateWebhook: RouteHandler<{
+        Body: ShopifyOrdersCreateWebhookData['body'];
+        Reply: ShopifyOrdersCreateWebhookErrors & ShopifyOrdersCreateWebhookResponses;
+    }>;
+    shopifyCustomersCreateWebhook: RouteHandler<{
+        Body: ShopifyCustomersCreateWebhookData['body'];
+        Reply: ShopifyCustomersCreateWebhookErrors & ShopifyCustomersCreateWebhookResponses;
+    }>;
+    shopifyCustomersUpdateWebhook: RouteHandler<{
+        Body: ShopifyCustomersUpdateWebhookData['body'];
+        Reply: ShopifyCustomersUpdateWebhookErrors & ShopifyCustomersUpdateWebhookResponses;
+    }>;
+    shopifyAddressFixGet: RouteHandler<{
+        Params: ShopifyAddressFixGetData['path'];
+        Reply: ShopifyAddressFixGetErrors & ShopifyAddressFixGetResponses;
+    }>;
+    shopifyAddressFixConfirm: RouteHandler<{
+        Body: ShopifyAddressFixConfirmData['body'];
+        Params: ShopifyAddressFixConfirmData['path'];
+        Reply: ShopifyAddressFixConfirmErrors & ShopifyAddressFixConfirmResponses;
+    }>;
+    shopifyAppUninstalledWebhook: RouteHandler<{
+        Body: ShopifyAppUninstalledWebhookData['body'];
+        Reply: ShopifyAppUninstalledWebhookErrors & ShopifyAppUninstalledWebhookResponses;
+    }>;
+    shopifyGdprCustomersDataRequestWebhook: RouteHandler<{
+        Body: ShopifyGdprCustomersDataRequestWebhookData['body'];
+        Reply: ShopifyGdprCustomersDataRequestWebhookErrors & ShopifyGdprCustomersDataRequestWebhookResponses;
+    }>;
+    shopifyGdprCustomersRedactWebhook: RouteHandler<{
+        Body: ShopifyGdprCustomersRedactWebhookData['body'];
+        Reply: ShopifyGdprCustomersRedactWebhookErrors & ShopifyGdprCustomersRedactWebhookResponses;
+    }>;
+    shopifyGdprShopRedactWebhook: RouteHandler<{
+        Body: ShopifyGdprShopRedactWebhookData['body'];
+        Reply: ShopifyGdprShopRedactWebhookErrors & ShopifyGdprShopRedactWebhookResponses;
     }>;
     dedupeCustomer: RouteHandler<{
         Body: DedupeCustomerData['body'];

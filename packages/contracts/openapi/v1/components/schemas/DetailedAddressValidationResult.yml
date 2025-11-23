@@ -1,0 +1,60 @@
+type: object
+properties:
+  valid:
+    type: boolean
+    description: Whether the address is valid
+  confidence:
+    type: number
+    description: Confidence score of the validation
+  reason_codes:
+    type: array
+    items:
+      type: string
+    description: List of reason codes
+  risk_score:
+    type: number
+    description: Risk score of the address
+  processing_time_ms:
+    type: number
+    description: Time taken to process the validation
+  provider:
+    type: string
+    description: Validation provider used
+  normalized:
+    $ref: './Address.yml'
+    description: Normalized address data
+  po_box:
+    type: boolean
+    description: Whether the address is a P.O. Box
+  residential:
+    type: boolean
+    description: Whether the address is residential
+  deliverable:
+    type: boolean
+    description: Whether mail is deliverable to this address
+  dpv_confirmed:
+    type: boolean
+    description: Whether DPV (Delivery Point Validation) confirmed the address
+  geocode:
+    type: object
+    description: Geographic coordinates
+    properties:
+      lat:
+        type: number
+        description: Latitude
+      lng:
+        type: number
+        description: Longitude
+  postal_code_mismatch:
+    type: boolean
+    description: Whether there's a mismatch between postal code and location
+  city:
+    type: string
+    description: City name
+  postal_code:
+    type: string
+    description: Postal code
+  metadata:
+    type: object
+    description: Additional metadata
+    additionalProperties: true

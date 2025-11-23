@@ -1,0 +1,6 @@
+description: Payload for shop/redact.
+type: object
+required: [shop_id, shop_domain]
+properties:
+  shop_id: { type: integer }
+  shop_domain: { type: string }

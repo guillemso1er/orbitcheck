@@ -1,0 +1,21 @@
+tags:
+  - Integrations
+summary: Shopify orders/create webhook
+description: Handles Shopify orders/create webhook events
+operationId: shopifyOrdersCreateWebhook
+security: []
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        $ref: '../../../../components/schemas/ShopifyOrder.yml'
+responses:
+  '200':
+    description: Webhook processed successfully
+  '400':
+    description: Invalid webhook data
+    content:
+      application/json:
+        schema:
+          $ref: '../../../../components/schemas/Error.yml'

@@ -60,8 +60,10 @@ const up = (pgm) => {
     country_code text,
     postal_code text,
     place_name text,
-    admin_name1 text,
+    admin_name1 text, 
     admin_code1 text,
+    admin_name2 text, 
+    admin_code2 text, 
     latitude double precision,
     longitude double precision
     );

@@ -1,0 +1,48 @@
+tags:
+  - Integrations
+summary: Shopify OAuth callback
+description: Handles Shopify OAuth callback and completes app installation
+operationId: shopifyCallback
+security: []
+parameters:
+  - name: code
+    in: query
+    required: true
+    schema:
+      type: string
+    description: OAuth authorization code
+  - name: shop
+    in: query
+    required: true
+    schema:
+      type: string
+    description: Shopify shop domain
+  - name: state
+    in: query
+    required: true
+    schema:
+      type: string
+    description: State parameter for CSRF protection
+responses:
+  '302':
+    description: Redirect to Shopify admin app
+    headers:
+      Location:
+        description: Shopify admin app URL
+        schema:
+          type: string
+          format: uri
+  '400':
+    description: Invalid parameters or missing required scopes
+    content:
+      application/json:
+        schema:
+          $ref: '../../../../components/schemas/Error.yml'
+  '500':
+    description: Failed to exchange OAuth code
+    content:
+      application/json:
+        schema:
+          $ref: '../../../../components/schemas/Error.yml'
+  '200':
+    description: Success response for validation

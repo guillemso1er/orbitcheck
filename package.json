@@ -16,6 +16,7 @@
     "k6:all": "k6 run -e KEY=ok_test_a450e23f007460bc2a01e5ec715a12a76952  tests/k6/main.js",
     "generate": "pnpm --filter @orbitcheck/contracts run build && pnpm --filter @orbitcheck/api run gen",
     "infra": "podman compose -f infra/compose/local.compose.yml up -d",
+    "shopify": "pnpm --filter @orbitcheck/orbitcheck-shopify-app dev",
     "all": "pnpm infra && concurrently \"pnpm api\" \"pnpm dashboard\"",
     "podman": "podman compose -f  infra/compose/dev.compose.yml up --build -d",
     "typecheck": "pnpm -r typecheck",
@@ -30,6 +31,7 @@
   "devDependencies": {
     "@hey-api/openapi-ts": "0.87.1",
     "@types/adm-zip": "^0.5.7",
+    "@types/jsonwebtoken": "^9.0.10",
     "adm-zip": "^0.5.16",
     "dotenv": "^17.2.2",
     "ts-node-dev": "2.0.0",

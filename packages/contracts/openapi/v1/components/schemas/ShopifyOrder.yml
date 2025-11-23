@@ -1,0 +1,43 @@
+description: Payload for orders/create (Order resource snapshot).
+type: object
+properties:
+  id: { type: integer, format: int64 }
+  admin_graphql_api_id: { type: string }
+  app_id: { type: [integer, "null"], format: int64 }
+  contact_email: { type: [string, "null"], format: email }
+  email: { type: [string, "null"], format: email }
+  phone: { type: [string, "null"] }
+  created_at: { type: string, format: date-time }
+  updated_at: { type: [string, "null"], format: date-time }
+  closed_at: { type: [string, "null"], format: date-time }
+  cancelled_at: { type: [string, "null"], format: date-time }
+  cancel_reason: { type: [string, "null"] }
+  currency: { type: string }
+  buyer_accepts_marketing: { type: [boolean, "null"] }
+  current_total_price: { type: [string, "null"] }
+  current_total_price_set: { $ref: './MoneySet.yml' }
+  current_subtotal_price: { type: [string, "null"] }
+  current_subtotal_price_set: { $ref: './MoneySet.yml' }
+  current_shipping_price_set: { $ref: './MoneySet.yml' }
+  total_price: { type: [string, "null"] }
+  subtotal_price: { type: [string, "null"] }
+  financial_status: { type: [string, "null"] }
+  fulfillment_status: { type: [string, "null"] }
+  customer: { $ref: './ShopifyCustomer.yml' }
+  billing_address: { $ref: './ShopifyAddress.yml' }
+  shipping_address: { $ref: './ShopifyAddress.yml' }
+  client_details: { type: object }
+  line_items:
+    type: array
+    items: { type: object }
+  shipping_lines:
+    type: array
+    items: { type: object }
+  discount_codes:
+    type: array
+    items: { type: object }
+  tax_lines:
+    type: array
+    items: { type: object }
+  note: { type: [string, "null"] }
+  tags: { type: [string, "null"] }

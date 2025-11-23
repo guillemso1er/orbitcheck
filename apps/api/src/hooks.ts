@@ -28,7 +28,7 @@ export async function rateLimit(request: FastifyRequest, rep: FastifyReply, redi
     if (!projectId) {
         return;
     }
-    
+
     const key = `rl:${projectId}:${request.ip}`;
     const limit = process.env.NODE_ENV === 'production' ? environment.RATE_LIMIT_BURST : environment.RATE_LIMIT_COUNT;
     const ttl = RATE_LIMIT_TTL_SECONDS;
@@ -108,7 +108,8 @@ async function sendWebhooks(project_id: string, event: string, payload: Record<s
             [project_id, 'active', event]
         );
 
-        for (const webhook of webhooks.rows) {
+        // Send all webhooks in parallel
+        const webhookPromises = webhooks.rows.map(async (webhook) => {
             // Create signature
             const signature = crypto.createHmac(HASH_ALGORITHM, webhook.secret).update(JSON.stringify(payload)).digest('hex');
 
@@ -123,7 +124,7 @@ async function sendWebhooks(project_id: string, event: string, payload: Record<s
                     body: JSON.stringify(payload)
                 });
 
-                // Update last_fired_at
+                // Update last_fired_at only if the webhook was sent successfully
                 await pool.query(
                     'UPDATE webhooks SET last_fired_at = now() WHERE id = $1',
                     [webhook.id]
@@ -132,7 +133,9 @@ async function sendWebhooks(project_id: string, event: string, payload: Record<s
                 // Log webhook send failure, but don't fail the main operation
                 console.error(`Webhook send failed for ${webhook.url}:`, error);
             }
-        }
+        });
+
+        await Promise.all(webhookPromises);
     } catch (error) {
         console.error('Error sending webhooks:', error);
     }
@@ -172,6 +175,7 @@ export async function logEvent(project_id: string, type: string, endpoint: strin
             ...meta
         };
         // Fire and forget, but make sure pool is still valid
+        // eslint-disable-next-line @typescript-eslint/no-misused-promises
         setImmediate(async () => {
             try {
                 // Check if pool is still valid before making queries

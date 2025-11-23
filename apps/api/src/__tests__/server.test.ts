@@ -128,6 +128,7 @@ jest.mock('js-yaml', () => ({
 
 // Now these imports will receive the mocked modules
 import cors from '@fastify/cors';
+import * as Sentry from '@sentry/node';
 import { Queue, Worker } from 'bullmq';
 import Fastify from 'fastify';
 import { type Redis as IORedisType, Redis } from 'ioredis';
@@ -136,7 +137,6 @@ import { Pool } from 'pg';
 
 // Import the mocked env so we can manipulate it in tests
 import { environment } from '../environment.js';
-import * as Sentry from '@sentry/node';
 // Re-require the server module to ensure it gets the mocked dependencies
 import { build, start } from '../server.js';
 import { registerRoutes } from '../web.js';

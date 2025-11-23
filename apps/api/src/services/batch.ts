@@ -2,6 +2,7 @@ import { Queue } from 'bullmq';
 import type { FastifyReply, FastifyRequest } from "fastify";
 import type { Redis as IORedisType } from 'ioredis';
 import type { Pool } from "pg";
+
 import { HTTP_STATUS } from "../errors.js";
 import type { BatchDedupeData, BatchDedupeResponses, BatchEvaluateOrdersData, BatchEvaluateOrdersResponses, BatchValidateData, BatchValidateResponses } from "../generated/fastify/types.gen.js";
 import { logEvent } from "../hooks.js";

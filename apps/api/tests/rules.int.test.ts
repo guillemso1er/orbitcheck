@@ -68,8 +68,8 @@ beforeEach(async () => {
       url: '/auth/register',
       payload: {
         email: 'test@example.com',
-        password: 'password123',
-        confirm_password: 'password123'
+        password: 'Password123*',
+        confirm_password: 'Password123*'
       }
     })
     // Login and get fresh session cookie for each test
@@ -78,7 +78,7 @@ beforeEach(async () => {
       url: '/auth/login',
       payload: {
         email: 'test@example.com',
-        password: 'password123'
+        password: 'Password123*'
       }
     })
 

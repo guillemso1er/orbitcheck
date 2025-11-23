@@ -1,0 +1,17 @@
+description: Payload for app/scopes_update.
+type: object
+required: [id, shop_id, previous, current, updated_at]
+properties:
+  id: { type: integer }
+  shop_id:
+    type: string
+    description: GID of the shop, e.g. gid://shopify/Shop/123
+  previous:
+    type: array
+    items: { type: string }
+  current:
+    type: array
+    items: { type: string }
+  updated_at:
+    type: string
+    format: date-time

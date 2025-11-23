@@ -92,3 +92,5 @@ scripts/.orbitcheck-reader.ua.env
 apps/setup/.orbitcheck-reader.ua.env
 infra/ansible/vars/secrets.txt
 .turbo/daemon/*
+tasks/
+.turbo/cookies/1.cookie

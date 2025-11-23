@@ -31,8 +31,8 @@ beforeAll(async () => {
       url: '/auth/register',
       payload: {
         email: 'test@example.com',
-        password: 'password123',
-        confirm_password: 'password123'
+        password: 'Password123*',
+        confirm_password: 'Password123*'
       }
     })
 
@@ -41,7 +41,7 @@ beforeAll(async () => {
       url: '/auth/login',
       payload: {
         email: 'test@example.com',
-        password: 'password123'
+        password: 'Password123*'
       }
     })
 
@@ -104,8 +104,8 @@ beforeEach(async () => {
     url: '/auth/register',
     payload: {
       email: 'test@example.com',
-      password: 'password123',
-      confirm_password: 'password123'
+      password: 'Password123*',
+      confirm_password: 'Password123*'
     }
   })
 
@@ -114,7 +114,7 @@ beforeEach(async () => {
     url: '/auth/login',
     payload: {
       email: 'test@example.com',
-      password: 'password123'
+      password: 'Password123*'
     }
   })
 

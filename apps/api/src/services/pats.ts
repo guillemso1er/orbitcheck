@@ -1,6 +1,7 @@
-import argon2 from 'argon2';
 import crypto from "node:crypto";
+import { promisify } from "node:util";
 
+import argon2 from 'argon2';
 import type { FastifyReply, FastifyRequest } from "fastify";
 import type { Pool } from "pg";
 
@@ -21,14 +22,16 @@ const PAT_PEPPER = process.env.PAT_PEPPER || '';
 /**
  * Generate a base64url-encoded random string of specified byte length
  */
-function b64url(bytes: number): string {
-    return crypto.randomBytes(bytes).toString('base64url');
+async function b64url(bytes: number): Promise<string> {
+    const randomBytesAsync = promisify(crypto.randomBytes);
+    const buffer = await randomBytesAsync(bytes);
+    return buffer.toString('base64url');
 }
 
 /**
  * Parse PAT from Authorization header
  */
-export function parsePat(bearer?: string) {
+export function parsePat(bearer?: string): { raw: string; env: string; tokenId: string; secret: string; } | null {
     if (!bearer?.startsWith(BEARER_PREFIX)) return null;
     const raw = bearer.slice(7).trim();
 
@@ -52,17 +55,41 @@ export function parsePat(bearer?: string) {
     return { raw, env, tokenId, secret };
 }
 
+export async function verifyPat(
+    token: string,
+    pool: Pool
+): Promise<{ valid: boolean; userId?: string; scopes?: string[]; projectId?: string; error?: string }> {
+    const parsed = parsePat(token);
+    if (!parsed) return { valid: false, error: 'Invalid token format' };
+
+    const { rows } = await pool.query(
+        "SELECT id, user_id, scopes, ip_allowlist, expires_at, disabled, token_hash, project_id FROM personal_access_tokens WHERE token_id = $1",
+        [parsed.tokenId]
+    );
+
+    if (rows.length === 0) return { valid: false, error: 'Token not found' };
+    const pat = rows[0];
+
+    if (pat.disabled) return { valid: false, error: 'Token is disabled' };
+    if (pat.expires_at && new Date(pat.expires_at) < new Date()) return { valid: false, error: 'Token expired' };
+
+    // Verify secret
+    const isValid = await argon2.verify(pat.token_hash, parsed.secret + PAT_PEPPER);
+    if (!isValid) return { valid: false, error: 'Invalid token secret' };
+
+    return {
+        valid: true,
+        userId: pat.user_id,
+        scopes: pat.scopes || [],
+        projectId: pat.project_id
+    };
+}
+
 /**
  * Create a new Personal Access Token
  */
 export async function createPat({
-    userId,
-    name,
-    scopes,
-    env = 'live',
-    expiresAt,
-    ipAllowlist,
-    projectId
+    env = 'live'
 }: {
     userId: string;
     name: string;
@@ -72,10 +99,8 @@ export async function createPat({
     ipAllowlist?: string[];
     projectId?: string | null;
 }): Promise<{ token: string; tokenId: string; hashedSecret: string }> {
-    // Use parameters to satisfy TypeScript (values are used in return object)
-    void userId, name, scopes, expiresAt, ipAllowlist, projectId;
-    const tokenId = b64url(9);       // ~12 chars
-    const secret = b64url(24);       // ~32 chars
+    const tokenId = await b64url(9);       // ~12 chars
+    const secret = await b64url(24);       // ~32 chars
     // Use ':' as separator to avoid conflicts with base64url content (no colons in b64url)
     const token = `${OC_PAT_PREFIX}${env}:${tokenId}:${secret}`;
 

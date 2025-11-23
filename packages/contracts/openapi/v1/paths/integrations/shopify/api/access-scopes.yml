@@ -1,0 +1,52 @@
+tags:
+  - Integrations
+summary: Get Shopify access scopes
+description: Retrieves the current Shopify access scopes for the authenticated shop
+operationId: getShopifyAccessScopes
+security:
+  - shopifySessionToken: []
+responses:
+  '200':
+    description: Access scopes retrieved successfully
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            access_scopes:
+              type: array
+              items:
+                type: string
+              description: Currently granted scopes
+            missing_scopes:
+              type: array
+              items:
+                type: string
+              description: Required scopes that are missing
+            request_id:
+              type: string
+              description: Request identifier
+  '400':
+    description: Missing shop domain
+    content:
+      application/json:
+        schema:
+          $ref: '../../../../components/schemas/Error.yml'
+  '404':
+    description: Shop not registered
+    content:
+      application/json:
+        schema:
+          $ref: '../../../../components/schemas/Error.yml'
+  '401':
+    description: Unauthorized
+    content:
+      application/json:
+        schema:
+          $ref: '../../../../components/schemas/Error.yml'
+  '502':
+    description: Unable to verify scopes with Shopify
+    content:
+      application/json:
+        schema:
+          $ref: '../../../../components/schemas/Error.yml'

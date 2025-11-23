@@ -109,49 +109,7 @@ responses:
                       type: object
                       additionalProperties: true
                 address:
-                  type: object
-                  properties:
-                    valid:
-                      type: boolean
-                    confidence:
-                      type: number
-                    reason_codes:
-                      type: array
-                      items:
-                        type: string
-                    risk_score:
-                      type: number
-                    processing_time_ms:
-                      type: number
-                    provider:
-                      type: string
-                    normalized:
-                      type: object
-                      additionalProperties: true
-                    po_box:
-                      type: boolean
-                    residential:
-                      type: boolean
-                    deliverable:
-                      type: boolean
-                    dpv_confirmed:
-                      type: boolean
-                    geocode:
-                      type: object
-                      properties:
-                        lat:
-                          type: number
-                        lng:
-                          type: number
-                    postal_code_mismatch:
-                      type: boolean
-                    city:
-                      type: string
-                    postal_code:
-                      type: string
-                    metadata:
-                      type: object
-                      additionalProperties: true
+                  $ref: '../../components/schemas/DetailedAddressValidationResult.yml'
                 name:
                   type: object
                   properties:

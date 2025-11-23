@@ -3,7 +3,6 @@ name: Build, Sign, and Deploy (immutable by version)
 on:
   push:
     branches: [main]
-    # Build once on main, deploy only for version tags. Pre-releases (e.g. -rc.1) build but do not deploy to prod.
     tags:
       - "v*.*.*"
       - "v*.*.*-*"
@@ -11,7 +10,6 @@ on:
     types: [published]
   workflow_dispatch:
     inputs:
-      # Optional: allow a manual deploy pass (e.g., re-deploy same tag).
       version:
         description: "Release tag to deploy (e.g., v1.2.3). If set, only deploy will run (no rebuild)."
         required: false
@@ -25,6 +23,11 @@ on:
         default: false
       force_dashboard_build:
         description: "Rebuild/push Caddy+dashboard even if unchanged"
+        type: boolean
+        default: false
+      # NEW INPUT
+      force_shopify_build:
+        description: "Rebuild/push Shopify app even if unchanged"
         type: boolean
         default: false
       force_restart:
@@ -59,6 +62,10 @@ env:
   CADDY_IMAGE_NAME: caddy
   CADDY_DOCKERFILE_PATH: ./infra/quadlets/caddy/Containerfile
   CADDYFILE_PATH: infra/config/caddy/Caddyfile
+  
+  # NEW: Shopify App Image
+  SHOPIFY_IMAGE_NAME: shopify-app
+  SHOPIFY_DOCKERFILE_PATH: ./apps/shopify/Dockerfile
 
   # Dashboard
   DASHBOARD_ARTIFACT_NAME: dashboard-dist
@@ -89,8 +96,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-
-          # Pull context into vars (may be empty on some events)
+          # (Existing logic remains unchanged...)
           ref_type="${{ github.ref_type || '' }}"
           ref_name="${{ github.ref_name || '' }}"
           event_name="${{ github.event_name }}"
@@ -103,35 +109,18 @@ jobs:
           is_stable_release=false
           version=""
 
-          # 1) Manual deploy via workflow_dispatch input
           if [[ -n "$version_input" ]]; then
             is_tag=true
             version="$version_input"
-            if [[ "$version" == *-* ]]; then
-              is_prerelease=true
-            else
-              is_stable_release=true
-            fi
-
-          # 2) Release event (published)
+            if [[ "$version" == *-* ]]; then is_prerelease=true; else is_stable_release=true; fi
           elif [[ "$event_name" == "release" && -n "$release_tag" ]]; then
             is_tag=true
             version="$release_tag"
-            if [[ "$release_prerelease" == "true" ]]; then
-              is_prerelease=true
-            else
-              is_stable_release=true
-            fi
-
-          # 3) Tag-driven run (push with a tag ref)
+            if [[ "$release_prerelease" == "true" ]]; then is_prerelease=true; else is_stable_release=true; fi
           elif [[ "$ref_type" == "tag" && "$ref_name" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
             is_tag=true
             version="$ref_name"
-            if [[ "$ref_name" == *-* ]]; then
-              is_prerelease=true
-            else
-              is_stable_release=true
-            fi
+            if [[ "$ref_name" == *-* ]]; then is_prerelease=true; else is_stable_release=true; fi
           fi
 
           echo "is_tag=$is_tag" >> "$GITHUB_OUTPUT"
@@ -145,6 +134,7 @@ jobs:
     outputs:
       api: ${{ steps.filter.outputs.api }}
       dashboard: ${{ steps.filter.outputs.dashboard }}
+      shopify: ${{ steps.filter.outputs.shopify }}
       infra: ${{ steps.filter.outputs.infra }}
     steps:
       - uses: actions/checkout@v4
@@ -156,6 +146,14 @@ jobs:
             api:
               - 'apps/api/**'
               - 'apps/api/Dockerfile'
+              - 'packages/**'
+              - 'pnpm-lock.yaml'
+              - 'pnpm-workspace.yaml'
+              - 'package.json'
+              - 'tsconfig.base.json'
+            shopify:
+              - 'apps/shopify/**'
+              - 'apps/shopify/Dockerfile'
               - 'packages/**'
               - 'pnpm-lock.yaml'
               - 'pnpm-workspace.yaml'
@@ -176,7 +174,6 @@ jobs:
   build-dashboard-dist:
     name: Build dashboard dist (workspace)
     needs: [detect-changes]
-    # Build only on main branch pushes with relevant changes, or when forced
     if: (github.event_name == 'push' && github.ref_name == 'main' && (needs.detect-changes.outputs.dashboard == 'true' || needs.detect-changes.outputs.infra == 'true')) || (github.event_name == 'workflow_dispatch' && inputs.force_dashboard_build)
     runs-on: ubuntu-24.04-arm
     steps:
@@ -206,7 +203,6 @@ jobs:
   build-caddy:
     name: Build, sign, and push Caddy (dashboard + reverse proxy)
     needs: [detect-changes, build-dashboard-dist]
-    # Build only on main branch pushes with relevant changes, or when forced
     if: (github.event_name == 'push' && github.ref_name == 'main' && (needs.detect-changes.outputs.dashboard == 'true' || needs.detect-changes.outputs.infra == 'true')) || (github.event_name == 'workflow_dispatch' && inputs.force_dashboard_build)
     runs-on: ubuntu-24.04-arm
     steps:
@@ -259,7 +255,6 @@ jobs:
   build-api:
     name: Build, sign, and push API
     needs: [detect-changes]
-    # Build only on main branch pushes with relevant changes, or when forced
     if: (github.event_name == 'push' && github.ref_name == 'main' && needs.detect-changes.outputs.api == 'true') || (github.event_name == 'workflow_dispatch' && inputs.force_api_build)
     runs-on: ubuntu-24.04-arm
     steps:
@@ -301,6 +296,51 @@ jobs:
           subject-digest: ${{ steps.build.outputs.digest }}
           push-to-registry: true
 
+  # --- NEW JOB: Build Shopify ---
+  build-shopify:
+    name: Build, sign, and push Shopify App
+    needs: [detect-changes]
+    if: (github.event_name == 'push' && github.ref_name == 'main' && needs.detect-changes.outputs.shopify == 'true') || (github.event_name == 'workflow_dispatch' && inputs.force_shopify_build)
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          driver-opts: image=moby/buildkit:buildx-stable-1
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build and push Shopify image (arm64 only)
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ env.SHOPIFY_DOCKERFILE_PATH }}
+          push: true
+          platforms: linux/arm64
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/${{ env.SHOPIFY_IMAGE_NAME }}:sha-${{ github.sha }}
+          cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/${{ env.SHOPIFY_IMAGE_NAME }}:buildcache
+          cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/${{ env.SHOPIFY_IMAGE_NAME }}:buildcache,mode=max
+      - name: Compute immutable image ref
+        id: setref
+        run: echo "image_ref=${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/${{ env.SHOPIFY_IMAGE_NAME }}@${{ steps.build.outputs.digest }}" >> "$GITHUB_OUTPUT"
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@v3.7.0
+      - name: Sign Shopify image (keyless)
+        env:
+          COSIGN_EXPERIMENTAL: "true"
+        run: cosign sign --yes "${{ steps.setref.outputs.image_ref }}"
+      - name: Attest build provenance (Shopify)
+        uses: actions/attest-build-provenance@v1
+        with:
+          subject-name: ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/${{ env.SHOPIFY_IMAGE_NAME }}
+          subject-digest: ${{ steps.build.outputs.digest }}
+          push-to-registry: true
+
   promote-images:
     name: Promote SHA images to version tag
     needs: [meta]
@@ -309,6 +349,7 @@ jobs:
     outputs:
       api_ref: ${{ steps.promote.outputs.api_ref }}
       caddy_ref: ${{ steps.promote.outputs.caddy_ref }}
+      shopify_ref: ${{ steps.promote.outputs.shopify_ref }}
     steps:
       - uses: actions/checkout@v4
         with: { fetch-depth: 0 }
@@ -322,7 +363,6 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # Install crane (used to check existence and get digests)
       - uses: imjasonh/setup-crane@v0.4
 
       - name: Promote images by re-tagging (monorepo-aware)
@@ -331,20 +371,17 @@ jobs:
           VER: ${{ needs.meta.outputs.version }}
           API_IMG: ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/${{ env.API_IMAGE_NAME }}
           CADDY_IMG: ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/${{ env.CADDY_IMAGE_NAME }}
+          SHOPIFY_IMG: ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/${{ env.SHOPIFY_IMAGE_NAME }}
         run: |
           set -euo pipefail
 
-           # Resolve the commit for the tag (works for tag push and workflow_dispatch with inputs.version)
+           # Resolve the commit for the tag
            git fetch --tags --quiet origin main
            SHA="$(git rev-list -n 1 "$VER" 2>/dev/null || true)"
-           if [ -z "${SHA:-}" ]; then
-             # Fallback to the workflow commit (e.g., when triggered by tag push)
-             SHA="${{ github.sha }}"
-           fi
+           if [ -z "${SHA:-}" ]; then SHA="${{ github.sha }}"; fi
 
-           # Ensure the tag commit is on main (your builds only run on main)
            if ! git merge-base --is-ancestor "$SHA" origin/main; then
-             echo "::error title=Tag not on main::Tag $VER points to $SHA, which is not on 'main'. Images are built only on main, so promotion cannot continue."
+             echo "::error title=Tag not on main::Tag $VER points to $SHA, which is not on 'main'."
              exit 1
            fi
 
@@ -368,8 +405,7 @@ jobs:
               fi
             done
             if [ -z "$src" ]; then
-              # Write the error to stderr to avoid it being captured as output
-              echo "::error::No built image tag found for ${image} reachable from $SHA. Ensure the component was built on main before tagging." >&2
+              echo "::error::No built image tag found for ${image} reachable from $SHA." >&2
               return 1
             fi
             echo "$src"
@@ -379,41 +415,27 @@ jobs:
             local image="$1"; shift
             local -a paths=("$@")
             local src dst dg
-
-            # Send logs to STDERR so they don't get captured by the variable
-            echo "Resolving source for ${image} from tag $VER (commit $SHA)..." >&2
-
+            echo "Resolving source for ${image} from tag $VER..." >&2
             src="$(find_src_tag "$image" "${paths[@]}")"
-            if [ $? -ne 0 ]; then
-                # This error message is already correctly formatted for the runner
-                echo "::error::Failed to find a source image for ${image}. Aborting promotion." >&2
-                exit 1
-            fi
-
-            # Send logs to STDERR
+            if [ $? -ne 0 ]; then echo "::error::Failed to find source for ${image}"; exit 1; fi
             echo "✓ Found source: $src" >&2
             dst="${image}:${VER}"
             echo "Promoting $src -> $dst" >&2
-
-            # Redirect the buildx command's output to STDERR as well
             docker buildx imagetools create --tag "$dst" "$src" >&2
-
             dg="$(crane digest "$src")"
-
-            # This is the ONLY echo that goes to STDOUT. It becomes the function's return value.
             echo "${image}@${dg}"
           }
 
-           # Define the paths that determine each component
-           # API paths mirror your paths-filter (api)
            API_REF="$(promote "$API_IMG" apps/api packages pnpm-lock.yaml pnpm-workspace.yaml package.json tsconfig.base.json)"
            echo "api_ref=${API_REF}" >> "$GITHUB_OUTPUT"
 
-           # Caddy paths mirror your logic (dashboard OR infra)
            CADDY_REF="$(promote "$CADDY_IMG" infra apps/dashboard packages pnpm-lock.yaml pnpm-workspace.yaml package.json tsconfig.base.json)"
            echo "caddy_ref=${CADDY_REF}" >> "$GITHUB_OUTPUT"
 
-  # Production deploy only for stable release tags vX.Y.Z, or manual dispatch with version set/force_deploy
+           # NEW: Promote Shopify
+           SHOPIFY_REF="$(promote "$SHOPIFY_IMG" apps/shopify packages pnpm-lock.yaml pnpm-workspace.yaml package.json tsconfig.base.json)"
+           echo "shopify_ref=${SHOPIFY_REF}" >> "$GITHUB_OUTPUT"
+
   deploy:
     name: Deploy (production)
     needs: [meta, detect-changes, promote-images]
@@ -437,11 +459,9 @@ jobs:
           key: ${{ secrets.HETZNER_SSH_KEY }}
           script: |
             set -euo pipefail
-            echo "Removing old deployment directory ${{ env.REMOTE_TARGET_BASE_DIR }}..."
             sudo rm -rf "${{ env.REMOTE_TARGET_BASE_DIR }}"
-            echo "Cleanup complete."
 
-      - name: Upload infra to server (only when infra changed or manual)
+      - name: Upload infra to server
         if: needs.meta.outputs.is_stable_release == 'true' || needs.detect-changes.outputs.infra == 'true' || (github.event_name == 'workflow_dispatch' && inputs.force_deploy)
         uses: appleboy/scp-action@v0.1.7
         with:
@@ -471,41 +491,29 @@ jobs:
           username: ${{ env.REMOTE_USER }}
           key: ${{ secrets.HETZNER_SSH_KEY }}
           envs: |
-            NEEDS_INFRA_CHANGES,NEEDS_DASHBOARD_CHANGES,NEEDS_API_CHANGES,IS_WORKFLOW_DISPATCH,FORCE_DEPLOY,
-            REMOTE_TARGET_BASE_DIR,REMOTE_CONFIGS_DIR,REMOTE_DASHBOARD_VOLUME_DIR,REMOTE_RUNTIME_USER,REMOTE_SYSTEMD_USER_DIR,
-            REGISTRY,IMAGE_OWNER,API_IMAGE_NAME,CADDY_IMAGE_NAME,
-            API_IMAGE_REF,CADDY_IMAGE_REF,RELEASE_VERSION,FORCE_RESTART
+            NEEDS_INFRA_CHANGES,NEEDS_DASHBOARD_CHANGES,NEEDS_API_CHANGES,NEEDS_SHOPIFY_CHANGES,
+            IS_WORKFLOW_DISPATCH,FORCE_DEPLOY,
+            REMOTE_TARGET_BASE_DIR,REMOTE_CONFIGS_DIR,REMOTE_DASHBOARD_VOLUME_DIR,
+            REMOTE_RUNTIME_USER,REMOTE_SYSTEMD_USER_DIR,
+            REGISTRY,IMAGE_OWNER,API_IMAGE_NAME,CADDY_IMAGE_NAME,SHOPIFY_IMAGE_NAME,
+            API_IMAGE_REF,CADDY_IMAGE_REF,SHOPIFY_IMAGE_REF,RELEASE_VERSION,FORCE_RESTART
           script: |
             set -euo pipefail
-            # Export variables for the deploy script
             export NEEDS_INFRA_CHANGES="${{ needs.detect-changes.outputs.infra }}"
             export NEEDS_DASHBOARD_CHANGES="${{ needs.detect-changes.outputs.dashboard }}"
             export NEEDS_API_CHANGES="${{ needs.detect-changes.outputs.api }}"
+            export NEEDS_SHOPIFY_CHANGES="${{ needs.detect-changes.outputs.shopify }}"
+            
             export IS_WORKFLOW_DISPATCH="${{ github.event_name == 'workflow_dispatch' }}"
             export FORCE_DEPLOY="${{ inputs.force_deploy }}"
             export FORCE_RESTART="${{ inputs.force_restart || false }}"
 
-            # Use immutable image references. The workflow will have already failed in the 'promote-images' job
-            # if these were missing, so no checks are needed here.
             export API_IMAGE_REF="${{ needs.promote-images.outputs.api_ref }}"
             export CADDY_IMAGE_REF="${{ needs.promote-images.outputs.caddy_ref }}"
+            # NEW: Shopify image ref
+            export SHOPIFY_IMAGE_REF="${{ needs.promote-images.outputs.shopify_ref }}"
 
-            # Version
             export RELEASE_VERSION="${{ needs.meta.outputs.version }}"
 
             chmod +x "${{ env.REMOTE_TARGET_BASE_DIR }}/deploy.sh"
             "${{ env.REMOTE_TARGET_BASE_DIR }}/deploy.sh"
-
-  # --- Ready for Scenario 2 (staging) ---
-  # To enable staging, create an environment "staging" and host secrets (e.g., HETZNER_HOST_STAGING),
-  # then uncomment the job below. Pre-release tags (vX.Y.Z-rc.N) will deploy there.
-  # deploy-staging:
-  #   name: Deploy (staging)
-  #   needs: [meta, promote-images] # Depends on promotion, not build
-  #   if: needs.meta.outputs.is_prerelease == 'true'
-  #   runs-on: ubuntu-latest
-  #   environment:
-  #     name: staging
-  #     url: https://staging.orbitcheck.io
-  #   steps:
-  #     - run: echo "Deploy to staging here using API_IMAGE_REF=${{ needs.promote-images.outputs.api_ref }} and CADDY_IMAGE_REF=${{ needs.promote-images.outputs.caddy_ref }}"

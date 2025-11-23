@@ -1,0 +1,28 @@
+tags:
+  - Integrations
+summary: Get Shopify shop settings
+description: Retrieves the current Shopify shop mode setting
+operationId: getShopifyShopSettings
+security:
+  - shopifySessionToken: []
+responses:
+  '200':
+    description: Shop settings retrieved successfully
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            mode:
+              type: string
+              enum: [disabled, notify, activated]
+              description: Current shop mode
+            request_id:
+              type: string
+              description: Request identifier
+  '401':
+    description: Unauthorized
+    content:
+      application/json:
+        schema:
+          $ref: '../../../../components/schemas/Error.yml'

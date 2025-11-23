@@ -1,5 +1,6 @@
 import type { FastifyReply, FastifyRequest } from "fastify";
 import type { Pool } from "pg";
+
 import type { GetSettingsResponses, UpdateSettingsData, UpdateSettingsResponses } from "../generated/fastify/types.gen.js";
 import { generateRequestId, sendServerError } from "./utils.js";
 

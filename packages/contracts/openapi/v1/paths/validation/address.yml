@@ -18,31 +18,7 @@ requestBody:
           - address
         properties:
           address:
-            type: object
-            required:
-              - line1
-              - city
-              - postal_code
-              - country
-            properties:
-              line1:
-                type: string
-                description: Street address line 1
-              line2:
-                type: string
-                description: Street address line 2
-              city:
-                type: string
-                description: City
-              state:
-                type: string
-                description: State or province
-              postal_code:
-                type: string
-                description: Postal code
-              country:
-                type: string
-                description: Two-letter country code
+            $ref: '../../components/schemas/AddressInput.yml'
 responses:
   '200':
     description: Address validation result
@@ -55,21 +31,7 @@ responses:
               type: boolean
               description: Whether the address is valid
             normalized:
-              type: object
-              description: Normalized address object
-              properties:
-                line1:
-                  type: string
-                line2:
-                  type: string
-                city:
-                  type: string
-                state:
-                  type: string
-                postal_code:
-                  type: string
-                country:
-                  type: string
+              $ref: '../../components/schemas/BaseAddress.yml'
             reason_codes:
               type: array
               items:

@@ -1,0 +1,44 @@
+tags:
+  - Auth
+summary: Shopify SSO entry point
+description: >-
+  Accepts a one-time Shopify-issued token, creates a dashboard session, and redirects
+  back to the OrbitCheck dashboard.
+operationId: shopifySso
+security: []
+parameters:
+  - name: token
+    in: query
+    required: true
+    schema:
+      type: string
+    description: One-time token created by the Shopify app for dashboard SSO.
+responses:
+  '200':
+    description: Operation validated; clients should expect a redirect via the Location header.
+  '302':
+    description: Redirect to the OrbitCheck dashboard home.
+    headers:
+      Location:
+        description: Dashboard URL returned in the Location header.
+        schema:
+          type: string
+          format: uri
+  '400':
+    description: Missing or malformed token parameter.
+    content:
+      application/json:
+        schema:
+          $ref: '../../components/schemas/Error.yml'
+  '401':
+    description: Token invalid or expired.
+    content:
+      application/json:
+        schema:
+          $ref: '../../components/schemas/Error.yml'
+  '500':
+    description: Failed to create a session for the Shopify-authenticated user.
+    content:
+      application/json:
+        schema:
+          $ref: '../../components/schemas/Error.yml'

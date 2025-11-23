@@ -1,69 +1,49 @@
 # syntax=docker/dockerfile:1.7
 
-# Libpostal runtime (libs + CLI binaries + data)
-FROM ghcr.io/guillemso1er/libpostal-runtime:1.1-2025-10-19 AS libpostal
-
-############################
-# 1) Build Node app with pnpm
-############################
+# 1) Build Node app
+# We can use Node 22 safely now!
 FROM node:22-bookworm-slim AS builder
 
-# Toolchain needed to build native modules like argon2 (if no prebuild available)
+# Install build tools (only needed if argon2 or other native deps require compilation)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     python3 \
-    pkg-config \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /workspace
-
-# pnpm
 ENV PNPM_HOME=/pnpm
-ENV PNPM_STORE_DIR=/pnpm/store
 ENV PATH=$PNPM_HOME:$PATH
-RUN corepack enable && corepack prepare pnpm@9.12.1 --activate
+RUN corepack enable
 
-# Copy manifests first for better caching
+# Copy manifests
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml tsconfig.base.json ./
 COPY apps/api/package.json apps/api/
 COPY packages/contracts/package.json packages/contracts/
 
-# Pre-fetch only API (and its workspace deps)
+# Install dependencies
+# Note: Make sure you run `pnpm remove node-postal` in your project first!
 RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store \
-    pnpm fetch --filter @orbitcheck/api...
+    pnpm install --filter @orbitcheck/api... --frozen-lockfile
 
-# Copy sources
+# Build
 COPY . .
-
-# Install only what API needs from the store, offline
-RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store \
-    pnpm install --filter @orbitcheck/api... --offline --frozen-lockfile
-
-# Build API and its deps (contracts, etc.)
 RUN pnpm --filter @orbitcheck/api... build
 
-# Create prod bundle for the API at /app
+# Deploy production bundle to /app
 RUN pnpm --filter @orbitcheck/api deploy --prod /app
 
-# Rebuild argon2 in the deployed app (node-postal is no longer used)
+# --- REBUILD NATIVE MODULES ---
 WORKDIR /app
-ENV NPM_CONFIG_IGNORE_SCRIPTS=false \
-    npm_config_unsafe_perm=true
-RUN npm_config_build_from_source=true npm rebuild argon2 --verbose || true
-
-# Optional sanity check (non-fatal)
-RUN bash -lc 'ls -l node_modules/.pnpm/argon2@*/node_modules/argon2/build/Release/*.node || true'
+# We only need to worry about standard native modules like argon2 now.
+# No node-postal steps here.
+RUN npm rebuild argon2 --build-from-source
 
 
-############################
-# 2) Runtime image
-############################
+# 2) Runtime Image
 FROM node:22-bookworm-slim AS runner
 
 ENV NODE_ENV=production
-ENV NODE_OPTIONS=--enable-source-maps
-ENV LIBPOSTAL_DATA_DIR=/opt/libpostal/data
-
+# No LIBPOSTAL_DATA_DIR needed anymore
 
 # Minimal runtime tools
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -71,19 +51,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Libpostal runtime (includes CLI binaries address_parser / expand_address)
-COPY --from=libpostal /usr/local/ /usr/local/
-COPY --from=libpostal /opt/libpostal/data /opt/libpostal/data
-RUN ldconfig
-
 WORKDIR /app
+
+# Copy the built app
 COPY --from=builder /app /app
 
 USER node
-
 EXPOSE 8080
 
-HEALTHCHECK --interval=30s --timeout=3s --start-period=30s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s \
     CMD curl -fsS http://localhost:8080/health || exit 1
 
 ENTRYPOINT ["tini", "--"]

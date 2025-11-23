@@ -15,8 +15,8 @@ jest.mock('argon2', () => ({
 
 import * as crypto from 'node:crypto';
 
-import * as bcrypt from 'bcryptjs';
 import * as argon2 from 'argon2';
+import * as bcrypt from 'bcryptjs';
 import type { FastifyInstance } from 'fastify';
 import * as jwt from 'jsonwebtoken';
 
@@ -139,7 +139,7 @@ describe('Auth Routes', () => {
     const response = await app.inject({
       method: 'POST',
       url: '/auth/register',
-      payload: { email: 'test@example.com', password: 'password123', confirm_password: 'password123' }
+      payload: { email: 'test@example.com', password: 'Password123*', confirm_password: 'Password123*' }
     });
 
     expect(response.statusCode).toBe(201);
@@ -158,17 +158,17 @@ describe('Auth Routes', () => {
 
     mockPool.query.mockImplementation((queryText: string): Promise<QueryResult<any>> => {
       const upperQuery = queryText.toUpperCase();
-      
+
       // Login query
       if (upperQuery.includes('SELECT') && upperQuery.includes('EMAIL') && upperQuery.includes('USERS')) {
         return Promise.resolve({ rows: [{ id: 'user_1', email: 'test@example.com', password_hash: 'hashed_password' }] });
       }
-      
+
       // PAT insertion query
       if (upperQuery.includes('INSERT') && upperQuery.includes('PERSONAL_ACCESS_TOKENS')) {
         return Promise.resolve({ rows: [] });
       }
-      
+
       return Promise.resolve({ rows: [] });
     });
 
@@ -184,12 +184,12 @@ describe('Auth Routes', () => {
     const response = await app.inject({
       method: 'POST',
       url: '/auth/login',
-      payload: { email: 'test@example.com', password: 'password123' }
+      payload: { email: 'test@example.com', password: 'Password123*' }
     });
 
     expect(response.statusCode).toBe(200);
     const body = response.json<{ user: { id: string; email: string }; pat_token: string; request_id: string }>();
-    expect(bcrypt.compare).toHaveBeenCalledWith('password123', 'hashed_password');
+    expect(bcrypt.compare).toHaveBeenCalledWith('Password123*', 'hashed_password');
     expect(body.user.id).toBe('user_1');
     expect(body.user.email).toBe('test@example.com');
     expect(body.pat_token).toBeDefined();
@@ -201,12 +201,12 @@ describe('Auth Routes', () => {
 
     mockPool.query.mockImplementation((queryText: string) => {
       const upperQuery = queryText.toUpperCase();
-      
+
       // User not found
       if (upperQuery.includes('SELECT') && upperQuery.includes('EMAIL') && upperQuery.includes('USERS')) {
         return Promise.resolve({ rows: [] });
       }
-      
+
       return Promise.resolve({ rows: [] });
     });
 

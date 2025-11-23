@@ -29,6 +29,8 @@ tags:
     description: Authentication endpoints.
   - name: Users
     description: User management endpoints.
+  - name: Integrations
+    description: Third-party integration endpoints for connecting external services.
 paths:
   # Authentication paths
   /auth/login:
@@ -40,6 +42,9 @@ paths:
   /auth/logout:
     post:
       $ref: './paths/auth/logout.yml'
+  /auth/shopify-sso:
+    get:
+      $ref: './paths/auth/shopify-sso.yml'
   
   # API Keys paths
   /v1/api-keys:
@@ -165,7 +170,54 @@ paths:
     post:
       $ref: './paths/normalize/address.yml'
 
-  
+  # Integrations - Shopify paths
+  /integrations/shopify/auth/install:
+    get:
+      $ref: './paths/integrations/shopify/auth/install.yml'
+  /integrations/shopify/auth/callback:
+    get:
+      $ref: './paths/integrations/shopify/auth/callback.yml'
+  /integrations/shopify/api/shop-settings:
+    get:
+      $ref: './paths/integrations/shopify/api/shop-settings.yml'
+    post:
+      $ref: './paths/integrations/shopify/api/shop-settings-update.yml'
+  /integrations/shopify/api/access-scopes:
+    get:
+      $ref: './paths/integrations/shopify/api/access-scopes.yml'
+  /integrations/shopify/events/app-installed:
+    post:
+      $ref: './paths/integrations/shopify/events/app-installed.yml'
+  /integrations/shopify/events/dashboard-session:
+    post:
+      $ref: './paths/integrations/shopify/events/dashboard-session.yml'
+  /integrations/shopify/webhooks/orders-create:
+    post:
+      $ref: './paths/integrations/shopify/webhooks/orders-create.yml'
+  /integrations/shopify/webhooks/customers-create:
+    post:
+      $ref: './paths/integrations/shopify/webhooks/customers-create.yml'
+  /integrations/shopify/webhooks/customers-update:
+    post:
+      $ref: './paths/integrations/shopify/webhooks/customers-update.yml'
+  /integrations/shopify/address-fix/{token}:
+    get:
+      $ref: './paths/integrations/shopify/address-fix-get.yml'
+    post:
+      $ref: './paths/integrations/shopify/address-fix-confirm.yml'
+  /integrations/shopify/webhooks/app-uninstalled:
+    post:
+      $ref: './paths/integrations/shopify/webhooks/app-uninstalled.yml'
+  /integrations/shopify/webhooks/gdpr/customers-data-request:
+    post:
+      $ref: './paths/integrations/shopify/webhooks/gdpr-customers-data-request.yml'
+  /integrations/shopify/webhooks/gdpr/customers-redact:
+    post:
+      $ref: './paths/integrations/shopify/webhooks/gdpr-customers-redact.yml'
+  /integrations/shopify/webhooks/gdpr/shop-redact:
+    post:
+      $ref: './paths/integrations/shopify/webhooks/gdpr-shop-redact.yml'
+
   # Dedupe paths
   /v1/dedupe/customer:
     post:
@@ -255,6 +307,12 @@ components:
         in: header
         name: Signature
         description: HTTP Message Signatures value (RFC 9421).
+
+      shopifySessionToken:
+        type: http
+        scheme: bearer
+        bearerFormat: ShopifySession
+        description: Shopify embedded app session JWT sent in the Authorization header.
   schemas:
     Error:
       $ref: './components/schemas/Error.yml'
@@ -264,6 +322,12 @@ components:
       $ref: './components/schemas/Webhook.yml'
     Address:
       $ref: './components/schemas/Address.yml'
+    BaseAddress:
+      $ref: './components/schemas/BaseAddress.yml'
+    AddressWithContact:
+      $ref: './components/schemas/AddressWithContact.yml'
+    AddressInput:
+      $ref: './components/schemas/AddressInput.yml'
     Customer:
       $ref: './components/schemas/Customer.yml'
     CustomerMatch:
@@ -276,6 +340,8 @@ components:
       $ref: './components/schemas/ValidationResult.yml'
     AddressValidationResult:
       $ref: './components/schemas/AddressValidationResult.yml'
+    DetailedAddressValidationResult:
+      $ref: './components/schemas/DetailedAddressValidationResult.yml'
     LogEntry:
       $ref: './components/schemas/LogEntry.yml'
     Rule:
@@ -314,3 +380,11 @@ components:
       $ref: './components/schemas/User.yml'
     Pagination:
       $ref: './components/schemas/Pagination.yml'
+    ShopifyOrder:
+      $ref: './components/schemas/ShopifyOrder.yml'
+    ShopifyAddress:
+      $ref: './components/schemas/ShopifyAddress.yml'
+    ShopifyAddressFixSession:
+      $ref: './components/schemas/ShopifyAddressFixSession.yml'
+    ShopifyAddressFixConfirmRequest:
+      $ref: './components/schemas/ShopifyAddressFixConfirmRequest.yml'

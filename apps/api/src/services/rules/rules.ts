@@ -1,7 +1,8 @@
 import { type FastifyReply, type FastifyRequest } from "fastify";
 import type { Redis as IORedisType } from "ioredis";
 import type { Pool } from "pg";
-import { DeleteCustomRuleData, DeleteCustomRuleResponses, GetAvailableRulesResponses, GetBuiltInRulesResponses, GetErrorCodeCatalogResponses, GetReasonCodeCatalogResponses, RegisterCustomRulesData, RegisterCustomRulesResponses, TestRulesAgainstPayloadData, TestRulesAgainstPayloadResponses } from "../../generated/fastify/types.gen.js";
+
+import type { DeleteCustomRuleData, DeleteCustomRuleResponse, GetAvailableRulesResponses, GetBuiltInRulesResponses, GetErrorCodeCatalogResponses, GetReasonCodeCatalogResponses, RegisterCustomRulesData, RegisterCustomRulesResponse, TestRulesAgainstPayloadData, TestRulesAgainstPayloadResponse } from "../../generated/fastify/types.gen.js";
 import { generateRequestId, sendServerError } from "../utils.js";
 import { getBuiltInRules as getBuiltInRulesConstants, reasonCodes } from "./rules.constants.js";
 import { handleDeleteCustomRule, handleRegisterCustomRules, handleTestRules } from "./rules.handlers.js";
@@ -12,15 +13,15 @@ export async function getBuiltInRules(
 ): Promise<FastifyReply<{ Body: GetBuiltInRulesResponses }>> {
     try {
         const request_id = generateRequestId();
-        
+
         // Debug logging to track issues
-        console.log(`[DEBUG] getBuiltInRules called with request_id: ${request_id}`);
-        console.log(`[DEBUG] Request auth:`, request.auth);
-        
+        // console.log(`[DEBUG] getBuiltInRules called with request_id: ${request_id}`);
+        // console.log(`[DEBUG] Request auth:`, request.auth);
+
         // Return only built-in rules
         const builtInRules = getBuiltInRulesConstants();
-        
-        console.log(`[DEBUG] getBuiltInRules - Returning ${builtInRules.length} built-in rules`);
+
+        // console.log(`[DEBUG] getBuiltInRules - Returning ${builtInRules.length} built-in rules`);
 
         const response = {
             rules: builtInRules,
@@ -125,7 +126,7 @@ export async function testRulesAgainstPayload(
     rep: FastifyReply,
     pool: Pool,
     redis: IORedisType
-): Promise<FastifyReply<{ Body: TestRulesAgainstPayloadResponses }>> {
+): Promise<FastifyReply<{ Body: TestRulesAgainstPayloadResponse }>> {
     try {
         return await handleTestRules(request, rep, pool, redis);
     } catch (error) {
@@ -138,7 +139,7 @@ export async function registerCustomRules(
     request: FastifyRequest<{ Body: RegisterCustomRulesData['body'] }>,
     rep: FastifyReply,
     pool: Pool
-): Promise<FastifyReply<{ Body: RegisterCustomRulesResponses }>> {
+): Promise<FastifyReply<{ Body: RegisterCustomRulesResponse }>> {
     try {
         return await handleRegisterCustomRules(request, rep, pool);
     } catch (error) {
@@ -150,7 +151,7 @@ export async function deleteCustomRule(
     request: FastifyRequest<{ Params: DeleteCustomRuleData['path'] }>,
     rep: FastifyReply,
     pool: Pool
-): Promise<FastifyReply<{ Body: DeleteCustomRuleResponses }>> {
+): Promise<FastifyReply<{ Body: DeleteCustomRuleResponse }>> {
     try {
         return await handleDeleteCustomRule(request, rep, pool);
     } catch (error) {

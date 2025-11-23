@@ -1,0 +1,7 @@
+allOf:
+  - $ref: './BaseAddress.yml'
+required:
+  - line1
+  - city
+  - postal_code
+  - country

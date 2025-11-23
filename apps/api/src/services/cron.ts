@@ -15,7 +15,7 @@ export function setupCronJobs(pool: Pool): void {
         WHERE p.logs_retention_days IS NOT NULL AND p.logs_retention_days > 0
       `);
 
-      for (const user of result.rows) {
+      await Promise.all(result.rows.map(async (user) => {
         const cutoffDate = new Date();
         cutoffDate.setDate(cutoffDate.getDate() - user.logs_retention_days);
 
@@ -25,11 +25,14 @@ export function setupCronJobs(pool: Pool): void {
           [user.user_id, cutoffDate.toISOString()]
         );
 
+        // eslint-disable-next-line no-console
         console.log(`Cleaned up logs for user ${user.user_id} older than ${user.logs_retention_days} days`);
-      }
+      }));
 
+      // eslint-disable-next-line no-console
       console.log('Daily logs retention cleanup completed');
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error('Logs retention cleanup failed:', error);
     }
   });
@@ -39,10 +42,12 @@ export function setupCronJobs(pool: Pool): void {
     try {
       // Reset monthly validation counters
       await pool.query('UPDATE users SET monthly_validations_used = 0 WHERE monthly_validations_used > 0');
-      
+
       // Log the reset
+      // eslint-disable-next-line no-console
       console.log('Monthly validation usage counters reset');
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error('Monthly usage reset failed:', error);
     }
   });
@@ -58,11 +63,14 @@ export function setupCronJobs(pool: Pool): void {
         ['completed', cutoffDate.toISOString()]
       );
 
+      // eslint-disable-next-line no-console
       console.log(`Cleaned up ${deletedJobs.rowCount} completed jobs older than 30 days`);
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error('Weekly jobs cleanup failed:', error);
     }
   });
 
+  // eslint-disable-next-line no-console
   console.log('Cron jobs scheduled: logs retention, monthly reset, weekly cleanup');
 }

@@ -1,7 +1,9 @@
-import type { FastifyReply, FastifyRequest } from "fastify";
 import crypto from "node:crypto";
+
+import type { FastifyReply, FastifyRequest } from "fastify";
 import type { Pool } from "pg";
 import Stripe from 'stripe';
+
 import { CONTENT_TYPES, CRYPTO_KEY_BYTES, MESSAGES, STRIPE_API_VERSION, STRIPE_DEFAULT_SECRET_KEY, USER_AGENT_WEBHOOK_TESTER, WEBHOOK_TEST_LOW_RISK_TAG, WEBHOOK_TEST_ORDER_ID, WEBHOOK_TEST_RISK_SCORE } from "../config.js";
 import { ERROR_CODES, ERROR_MESSAGES, HTTP_STATUS } from "../errors.js";
 import type { CreateWebhookData, CreateWebhookResponses, DeleteWebhookData, DeleteWebhookResponses, ListWebhooksResponses, TestWebhookData, TestWebhookResponses } from "../generated/fastify/types.gen.js";
@@ -283,136 +285,134 @@ export async function handleStripeWebhook(
     rep: FastifyReply,
     pool: Pool
 ): Promise<FastifyReply> {
-    return new Promise<FastifyReply>(async () => {
-        const sig = request.headers['stripe-signature'] as string;
-        const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
+    const sig = request.headers['stripe-signature'] as string;
+    const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
-        if (!endpointSecret) {
-            request.log.error('Stripe webhook secret not configured');
-            return rep.status(HTTP_STATUS.BAD_REQUEST).send({ error: 'Webhook secret not configured' });
-        }
+    if (!endpointSecret) {
+        request.log.error('Stripe webhook secret not configured');
+        return rep.status(HTTP_STATUS.BAD_REQUEST).send({ error: 'Webhook secret not configured' });
+    }
 
-        let event: Stripe.Event;
+    let event: Stripe.Event;
 
-        try {
-            event = getStripe().webhooks.constructEvent(request.body as string | Buffer, sig, endpointSecret);
-        } catch (err) {
-            request.log.error({ err }, 'Webhook signature verification failed');
-            return rep.status(HTTP_STATUS.BAD_REQUEST).send({ error: 'Webhook signature verification failed' });
-        }
+    try {
+        event = getStripe().webhooks.constructEvent(request.body as string | Buffer, sig, endpointSecret);
+    } catch (err) {
+        request.log.error({ err }, 'Webhook signature verification failed');
+        return rep.status(HTTP_STATUS.BAD_REQUEST).send({ error: 'Webhook signature verification failed' });
+    }
 
-        try {
-            switch (event.type) {
-                case 'checkout.session.completed': {
-                    const session = event.data.object as Stripe.Checkout.Session;
-                    const accountId = session.client_reference_id;
+    try {
+        switch (event.type) {
+            case 'checkout.session.completed': {
+                const session = event.data.object as Stripe.Checkout.Session;
+                const accountId = session.client_reference_id;
 
-                    if (!accountId) {
-                        request.log.warn('No client_reference_id in checkout session');
-                        break;
-                    }
-
-                    // Store subscription and item IDs
-                    if (session.subscription && session.subscription instanceof Object) {
-                        const subscriptionId = (session.subscription as any).id;
-                        const itemIds = session.line_items?.data.map(item => item.price?.id).filter(Boolean) || [];
-
-                        await pool.query(
-                            'UPDATE accounts SET stripe_subscription_id = $1, stripe_item_ids = $2, billing_status = $3 WHERE id = $4',
-                            [subscriptionId, JSON.stringify(itemIds), 'active', accountId]
-                        );
-
-                        request.log.info({ accountId, subscriptionId, itemIds }, 'Subscription created');
-                    }
-
-                    // Create customer if not exists
-                    if (session.customer) {
-                        await pool.query(
-                            'UPDATE accounts SET stripe_customer_id = $1 WHERE id = $2 AND stripe_customer_id IS NULL',
-                            [session.customer, accountId]
-                        );
-                    }
+                if (!accountId) {
+                    request.log.warn('No client_reference_id in checkout session');
                     break;
                 }
 
-                case 'invoice.payment_succeeded': {
-                    const invoice = event.data.object as Stripe.Invoice;
-                    const subscriptionId = (invoice as any).subscription;
-                    if (subscriptionId && typeof subscriptionId === 'string') {
-                        // Update billing status to active on successful payment
-                        await pool.query(
-                            'UPDATE accounts SET billing_status = $1 WHERE stripe_subscription_id = $2',
-                            ['active', subscriptionId]
-                        );
-                    }
-                    break;
-                }
+                // Store subscription and item IDs
+                if (session.subscription && session.subscription instanceof Object) {
+                    const subscriptionId = (session.subscription as any).id;
+                    const itemIds = session.line_items?.data.map(item => item.price?.id).filter(Boolean) || [];
 
-                case 'invoice.payment_failed': {
-                    const invoice = event.data.object as Stripe.Invoice;
-                    const subscriptionId = (invoice as any).subscription;
-                    if (subscriptionId && typeof subscriptionId === 'string') {
-                        // Update billing status to past_due on failed payment
-                        await pool.query(
-                            'UPDATE accounts SET billing_status = $1 WHERE stripe_subscription_id = $2',
-                            ['past_due', subscriptionId]
-                        );
-                    }
-                    break;
-                }
-
-                case 'customer.subscription.updated': {
-                    const subscription = event.data.object as Stripe.Subscription;
-                    const accountResult = await pool.query(
-                        'SELECT id FROM accounts WHERE stripe_subscription_id = $1',
-                        [subscription.id]
-                    );
-
-                    if (accountResult.rows.length > 0) {
-                        const account = accountResult.rows[0];
-
-                        // Update plan and included quantities
-                        const itemIds = subscription.items.data.map(item => item.price.id);
-                        let includedValidations = 0;
-                        let includedStores = 0;
-
-                        // Parse plan details from subscription items (this would need to match your pricing structure)
-                        for (const item of subscription.items.data) {
-                            // This is a simplified example - you'd need to map price IDs to plan features
-                            if (item.price.id.includes('plan')) {
-                                includedValidations = item.quantity || 0;
-                            } else if (item.price.id.includes('store')) {
-                                includedStores = item.quantity || 0;
-                            }
-                        }
-
-                        await pool.query(
-                            'UPDATE accounts SET stripe_item_ids = $1, included_validations = $2, included_stores = $3 WHERE id = $4',
-                            [JSON.stringify(itemIds), includedValidations, includedStores, account.id]
-                        );
-
-                        request.log.info({ accountId: account.id, itemIds, includedValidations, includedStores }, 'Subscription updated');
-                    }
-                    break;
-                }
-
-                case 'customer.subscription.deleted': {
-                    // Restrict production access when subscription is cancelled
                     await pool.query(
-                        'UPDATE accounts SET billing_status = $1 WHERE stripe_subscription_id = $2',
-                        ['cancelled', event.data.object.id]
+                        'UPDATE accounts SET stripe_subscription_id = $1, stripe_item_ids = $2, billing_status = $3 WHERE id = $4',
+                        [subscriptionId, JSON.stringify(itemIds), 'active', accountId]
                     );
-                    break;
+
+                    request.log.info({ accountId, subscriptionId, itemIds }, 'Subscription created');
                 }
 
-                default:
-                    request.log.info({ eventType: event.type }, 'Unhandled Stripe event');
+                // Create customer if not exists
+                if (session.customer) {
+                    await pool.query(
+                        'UPDATE accounts SET stripe_customer_id = $1 WHERE id = $2 AND stripe_customer_id IS NULL',
+                        [session.customer, accountId]
+                    );
+                }
+                break;
             }
 
-            return rep.status(HTTP_STATUS.OK).send({ received: true });
-        } catch (error) {
-            request.log.error({ err: error, eventType: event.type }, 'Error processing Stripe webhook');
-            return rep.status(HTTP_STATUS.BAD_REQUEST).send({ error: 'Webhook processing failed' });
+            case 'invoice.payment_succeeded': {
+                const invoice = event.data.object as Stripe.Invoice;
+                const subscriptionId = (invoice as any).subscription;
+                if (subscriptionId && typeof subscriptionId === 'string') {
+                    // Update billing status to active on successful payment
+                    await pool.query(
+                        'UPDATE accounts SET billing_status = $1 WHERE stripe_subscription_id = $2',
+                        ['active', subscriptionId]
+                    );
+                }
+                break;
+            }
+
+            case 'invoice.payment_failed': {
+                const invoice = event.data.object as Stripe.Invoice;
+                const subscriptionId = (invoice as any).subscription;
+                if (subscriptionId && typeof subscriptionId === 'string') {
+                    // Update billing status to past_due on failed payment
+                    await pool.query(
+                        'UPDATE accounts SET billing_status = $1 WHERE stripe_subscription_id = $2',
+                        ['past_due', subscriptionId]
+                    );
+                }
+                break;
+            }
+
+            case 'customer.subscription.updated': {
+                const subscription = event.data.object as Stripe.Subscription;
+                const accountResult = await pool.query(
+                    'SELECT id FROM accounts WHERE stripe_subscription_id = $1',
+                    [subscription.id]
+                );
+
+                if (accountResult.rows.length > 0) {
+                    const account = accountResult.rows[0];
+
+                    // Update plan and included quantities
+                    const itemIds = subscription.items.data.map(item => item.price.id);
+                    let includedValidations = 0;
+                    let includedStores = 0;
+
+                    // Parse plan details from subscription items (this would need to match your pricing structure)
+                    for (const item of subscription.items.data) {
+                        // This is a simplified example - you'd need to map price IDs to plan features
+                        if (item.price.id.includes('plan')) {
+                            includedValidations = item.quantity || 0;
+                        } else if (item.price.id.includes('store')) {
+                            includedStores = item.quantity || 0;
+                        }
+                    }
+
+                    await pool.query(
+                        'UPDATE accounts SET stripe_item_ids = $1, included_validations = $2, included_stores = $3 WHERE id = $4',
+                        [JSON.stringify(itemIds), includedValidations, includedStores, account.id]
+                    );
+
+                    request.log.info({ accountId: account.id, itemIds, includedValidations, includedStores }, 'Subscription updated');
+                }
+                break;
+            }
+
+            case 'customer.subscription.deleted': {
+                // Restrict production access when subscription is cancelled
+                await pool.query(
+                    'UPDATE accounts SET billing_status = $1 WHERE stripe_subscription_id = $2',
+                    ['cancelled', event.data.object.id]
+                );
+                break;
+            }
+
+            default:
+                request.log.info({ eventType: event.type }, 'Unhandled Stripe event');
         }
-    });
+
+        return rep.status(HTTP_STATUS.OK).send({ received: true });
+    } catch (error) {
+        request.log.error({ err: error, eventType: event.type }, 'Error processing Stripe webhook');
+        return rep.status(HTTP_STATUS.BAD_REQUEST).send({ error: 'Webhook processing failed' });
+    }
 }

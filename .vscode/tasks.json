@@ -20,6 +20,24 @@
             }
         },
         {
+            "label": "Start Shopify App",
+            "type": "npm",
+            "script": "dev",
+            "path": "apps/shopify-app/",
+            "isBackground": true,
+            "problemMatcher": {
+                "owner": "vite",
+                "pattern": {
+                    "regexp": "VITE v\\d+\\.\\d+\\.\\d+ +ready in +\\d+ ms"
+                },
+                "background": {
+                    "activeOnStart": true,
+                    "beginsPattern": "VITE v\\d+\\.\\d+\\.\\d+ +ready in +\\d+ ms",
+                    "endsPattern": "something that never matches"
+                }
+            }
+        },
+        {
             "label": "gen:podman-env",
             "type": "shell",
             "command": "echo \"DOCKER_HOST=unix://$(podman info --format '{{.Host.RemoteSocket.Path}}')\nTESTCONTAINERS_RYUK_DISABLED=true\" > ${workspaceFolder}/.env.podman"

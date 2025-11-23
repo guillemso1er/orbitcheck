@@ -1,4 +1,4 @@
-import { loginUser, registerUser } from '@orbitcheck/contracts';
+import { registerUser } from '@orbitcheck/contracts';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
@@ -38,11 +38,6 @@ const SpinnerIcon = () => (
     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
   </svg>
 );
-
-interface User {
-  id: string;
-  email: string;
-}
 
 interface LoginForm {
   email: string;
@@ -177,8 +172,9 @@ const Login: React.FC<{ isSignup?: boolean }> = ({ isSignup = false }) => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [touched, setTouched] = useState<Partial<Record<keyof LoginForm, boolean>>>({});
 
-  const { login } = useAuth();
+  // const { logout } = useAuth();
   const apiClient = useApiClient();
+  const { login } = useAuth();
   const navigate = useNavigate();
   const emailRef = useRef<HTMLInputElement>(null);
 
@@ -265,28 +261,23 @@ const Login: React.FC<{ isSignup?: boolean }> = ({ isSignup = false }) => {
           },
         });
         data = response.data;
+
+        if (!data?.user) {
+          throw new Error(ERROR_MESSAGES.INVALID_SERVER_RESPONSE);
+        }
       } else {
-        const response = await loginUser({
-          client: apiClient,
-          body: {
-            email: form.email.trim().toLowerCase(),
-            password: form.password,
-            rememberMe: form.rememberMe,
-          },
-        });
-        data = response.data;
+        const loginResult = await login(
+          form.email.trim().toLowerCase(),
+          form.password,
+          form.rememberMe
+        );
+
+        if (!loginResult.success) {
+          throw loginResult.error ?? new Error(ERROR_MESSAGES.UNEXPECTED_ERROR);
+        }
       }
 
-      if (data && data.user) {
-        const user: User = {
-          id: data.user.id || '',
-          email: data.user.email || ''
-        };
-        login(user, form.rememberMe);
-        navigate('/api-keys');
-      } else {
-        throw new Error(ERROR_MESSAGES.INVALID_SERVER_RESPONSE);
-      }
+      navigate('/api-keys');
     } catch (err: any) {
       const errorMessage =
         err.response?.data?.error?.message ||
@@ -565,6 +556,11 @@ const Login: React.FC<{ isSignup?: boolean }> = ({ isSignup = false }) => {
               <button
                 type="button"
                 onClick={toggleAuthMode}
+                // Prevent the input from losing focus on pointer down so onBlur validation
+                // doesn't re-render and block the click event (causes needing a 2nd click)
+                onPointerDown={(e) => e.preventDefault()}
+                onMouseDown={(e) => e.preventDefault()}
+                onTouchStart={(e) => e.preventDefault()}
                 disabled={loading}
                 className="ml-1 font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-400 dark:hover:text-indigo-300 transition-colors disabled:opacity-50"
               >

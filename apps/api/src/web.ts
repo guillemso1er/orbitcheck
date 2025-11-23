@@ -1,17 +1,27 @@
-import type { FastifyInstance, FastifyReply, FastifyRequest, RawServerBase, RouteGenericInterface } from "fastify";
+import crypto from 'node:crypto';
+
+import openapiSpec from "@orbitcheck/contracts/openapi.v1.json" with { type: "json" };
+import type { FastifyInstance, FastifyPluginAsync, FastifyReply, FastifyRequest, RawServerBase, RouteGenericInterface } from "fastify";
 import openapiGlue from "fastify-openapi-glue";
+import fp from "fastify-plugin";
 import { type Redis as IORedisType } from 'ioredis';
 import type { Pool } from "pg";
 
-import openapiSpec from "@orbitcheck/contracts/openapi.v1.json" with { type: "json" };
 import { ROUTES } from "./config.js";
+import { environment } from "./environment.js";
 import { HTTP_STATUS } from "./errors.js";
 import { serviceHandlers } from "./handlers/handlers.js";
 import { idempotency, rateLimit } from "./hooks.js";
+import { verifyShopifySessionToken } from './integrations/shopify/lib/jwt.js';
+import shopifyPlugin from './integrations/shopify/shopify.js';
 import openapiSecurity from "./plugins/auth.js";
 import { managementRoutes, runtimeRoutes } from "./routes/routes.js";
 import { createPlansService } from './services/plans.js';
 
+interface RoutesPluginOptions {
+    pool: Pool;
+    redis: IORedisType;
+}
 /**
  * Applies validation limits for users on validation endpoints.
  * Checks and increments usage for authenticated users only.
@@ -31,6 +41,7 @@ export async function applyValidationLimits<TServer extends RawServerBase = RawS
 
     // Only for users, not API keys
     // Try multiple sources to get user_id, with fallback to auth object
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const userId = (request as any).user_id || request.auth?.userId;
     if (!userId) return;
 
@@ -38,8 +49,9 @@ export async function applyValidationLimits<TServer extends RawServerBase = RawS
         const plansService = createPlansService(pool);
         await plansService.checkValidationLimit(userId, 1);
         await plansService.incrementValidationUsage(userId, 1);
-    } catch (limitError: any) {
-        if (limitError.status === HTTP_STATUS.PAYMENT_REQUIRED) {
+    } catch (limitError: unknown) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        if ((limitError as any).status === HTTP_STATUS.PAYMENT_REQUIRED) {
             rep.status(HTTP_STATUS.PAYMENT_REQUIRED).send(limitError);
             return;
         }
@@ -96,8 +108,12 @@ export async function applyRateLimitingAndIdempotency<TServer extends RawServerB
     });
 
     if (isRuntimeRoute) {
-        await rateLimit(request as any, rep as any, redis);
-        await idempotency(request as any, rep as any, redis);
+        if (isRuntimeRoute) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            await rateLimit(request as any, rep as any, redis);
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            await idempotency(request as any, rep as any, redis);
+        }
     }
 }
 
@@ -111,10 +127,33 @@ export async function applyRateLimitingAndIdempotency<TServer extends RawServerB
  * @param pool - Shared PostgreSQL pool for all route database access.
  * @param redis - Shared Redis client for caching, rate limiting, and idempotency in routes.
  */
-export function registerRoutes<TServer extends RawServerBase = RawServerBase>(app: FastifyInstance<TServer>, pool: Pool, redis: IORedisType): void {
+const routesPlugin: FastifyPluginAsync<RoutesPluginOptions> = async (app, { pool, redis }) => {
 
     // Register OpenAPI routes with integrated security
-    app.register(openapiSecurity, { pool });
+    const shopifyAppKey = environment.SHOPIFY_API_KEY;
+    const shopifyAppSecret = environment.SHOPIFY_API_SECRET;
+
+    app.register(openapiSecurity, {
+        pool,
+        guards: {
+            // eslint-disable-next-line @typescript-eslint/no-misused-promises
+            shopifySessionToken: async (request, reply) => {
+                if (!shopifyAppKey || !shopifyAppSecret) {
+                    request.log.warn('Shopify API credentials missing; cannot verify session token');
+                    await reply.status(503).send({
+                        error: {
+                            code: 'SHOPIFY_CREDENTIALS_MISSING',
+                            message: 'Shopify API credentials are not configured'
+                        },
+                        request_id: crypto.randomUUID?.() ?? 'unknown'
+                    });
+                    return;
+                }
+                const shopifySessionVerifier = verifyShopifySessionToken(shopifyAppKey, shopifyAppSecret);
+                await shopifySessionVerifier(request, reply);
+            },
+        },
+    });
     // Global preHandler hook chain: validation limits + rate limiting/idempotency middleware
     app.addHook("preHandler", async (request, rep) => {
         await applyValidationLimits(request, rep, pool);
@@ -122,11 +161,24 @@ export function registerRoutes<TServer extends RawServerBase = RawServerBase>(ap
         return;
     });
 
-
+    app.register(shopifyPlugin, {
+        appSecret: environment.SHOPIFY_API_SECRET!,
+        redis,
+    });
 
     app.register(openapiGlue, {
         serviceHandlers: serviceHandlers(pool, redis, app),
         specification: openapiSpec,
     });
 
+
+
+};
+
+export const registerRoutesPlugin = fp(routesPlugin, { name: 'orbitcheck-routes' });
+
+export async function registerRoutes<TServer extends RawServerBase = RawServerBase>(app: FastifyInstance<TServer>, pool: Pool, redis: IORedisType): Promise<void> {
+    await app.register(registerRoutesPlugin, { pool, redis });
 }
+
+export default registerRoutesPlugin;

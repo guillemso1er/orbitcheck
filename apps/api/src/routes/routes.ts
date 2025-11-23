@@ -274,7 +274,7 @@ export const routes = {
     };
 };
 
-export const runtimeRoutes = () => {
+export const runtimeRoutes = (): any[] => {
     return [
         ...Object.values(routes.v1.validate),
         ...Object.values(routes.v1.dedupe),
@@ -286,14 +286,14 @@ export const runtimeRoutes = () => {
     ];
 };
 
-export const publicRoutes = () => {
+export const publicRoutes = (): any[] => {
     return [
         ...Object.values(routes.auth),
         ...Object.values(routes.public),
     ];
 }
 
-export const managementRoutes = () => {
+export const managementRoutes = (): any[] => {
     return [
         ...Object.values(routes.v1.apiKeys),
         ...Object.values(routes.v1.webhooks),
@@ -307,7 +307,7 @@ export const managementRoutes = () => {
     ];
 };
 
-export const dashboardRoutes = () => {
+export const dashboardRoutes = (): any[] => {
     return [
         ...Object.values(routes.auth),
         ...Object.values(routes.v1.users),
@@ -330,7 +330,7 @@ export const dashboardRoutes = () => {
     ];
 }
 
-export const adminRoutes = () => {
+export const adminRoutes = (): any[] => {
     return [
         ...Object.values(routes.v1.users),
     ];

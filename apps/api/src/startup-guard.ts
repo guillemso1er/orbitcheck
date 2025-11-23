@@ -132,7 +132,7 @@ function wrapHandler(name: string, handler: Function, location: string): Functio
                 console.error(`    Duration: ${duration.toFixed(2)}ms`);
                 console.error(`    Location: ${location}`);
                 console.error(`    Stack: ${getStackInfo(5)}`);
-            }, 5000); // Warn after 5 seconds
+            }, 30000); // Warn after 30 seconds
 
             try {
                 const result = await handler.apply(this, args);
@@ -171,7 +171,7 @@ function wrapHandler(name: string, handler: Function, location: string): Functio
                     if (!doneCalled) {
                         console.error(`❌ [startup-guard] done() never called in ${name}:`, location);
                     }
-                }, 5000);
+                }, 30000);
             }
 
             return handler.apply(this, args);
@@ -211,11 +211,11 @@ function checkMany(name: keyof typeof expectedArity, handlers: any, location?: s
 }
 
 // Event loop monitoring
-function setupEventLoopMonitoring(_app: FastifyInstance) {
+function setupEventLoopMonitoring(_app: FastifyInstance): NodeJS.Timeout {
     let lastCheck = Date.now();
     const threshold = 50; // ms
 
-    const checkEventLoop = () => {
+    const checkEventLoop = (): NodeJS.Timeout => {
         const now = Date.now();
         const delta = now - lastCheck - 100; // We check every 100ms
 
@@ -234,8 +234,8 @@ function setupEventLoopMonitoring(_app: FastifyInstance) {
 }
 
 // Memory monitoring
-function setupMemoryMonitoring(_app: FastifyInstance) {
-    const checkMemory = () => {
+function setupMemoryMonitoring(_app: FastifyInstance): NodeJS.Timeout {
+    const checkMemory = (): NodeJS.Timeout => {
         const heap = v8.getHeapStatistics();
         const heapUsedMB = heap.used_heap_size / 1024 / 1024;
         const heapLimitMB = heap.heap_size_limit / 1024 / 1024;
@@ -252,7 +252,7 @@ function setupMemoryMonitoring(_app: FastifyInstance) {
 }
 
 export default fp(async (app: FastifyInstance) => {
-    console.log('🛡️  [startup-guard] Initializing API guards...');
+    // console.log('🛡️  [startup-guard] Initializing API guards...');
 
     let eventLoopTimeoutId: NodeJS.Timeout;
     let memoryTimeoutId: NodeJS.Timeout;
@@ -262,7 +262,7 @@ export default fp(async (app: FastifyInstance) => {
 
     // *** CHANGE: Add an onClose hook to clear the timers ***
     app.addHook('onClose', async () => {
-        console.log('🛡️  [startup-guard] Shutting down monitoring...');
+        // console.log('🛡️  [startup-guard] Shutting down monitoring...');
         clearTimeout(eventLoopTimeoutId);
         clearTimeout(memoryTimeoutId);
     });
@@ -329,12 +329,12 @@ export default fp(async (app: FastifyInstance) => {
     });
 
     // Monitor unhandled rejections
-    process.on('unhandledRejection', (reason, _promise) => {
-        console.error('❌ [startup-guard] Unhandled Promise Rejection:', reason);
-        console.error('    Stack:', getStackInfo(10));
+    process.on('unhandledRejection', (_reason, _promise) => {
+        // console.error('❌ [startup-guard] Unhandled Promise Rejection:', reason);
+        // console.error('    Stack:', getStackInfo(10));
     });
 
-    console.log('✅ [startup-guard] API guards activated');
+    // console.log('✅ [startup-guard] API guards activated');
 }, {
     name: 'startup-guard',
     dependencies: []

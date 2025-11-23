@@ -1,17 +1,18 @@
+import * as crypto from "node:crypto";
+import { randomBytes } from "node:crypto";
+
+import argon2 from 'argon2';
 import bcrypt from 'bcryptjs';
 import type { FastifyReply, FastifyRequest, RawServerBase, RouteGenericInterface } from "fastify";
-import * as crypto from "node:crypto";
 import type { Pool } from "pg";
+
 import { BCRYPT_ROUNDS, PG_UNIQUE_VIOLATION, PROJECT_NAMES } from "../config.js";
 import { ERROR_CODES, ERROR_MESSAGES, HTTP_STATUS } from "../errors.js";
 import type { LoginUserData, LoginUserResponses, LogoutUserResponses, RegisterUserData, RegisterUserResponses } from "../generated/fastify/types.gen.js";
-import { createPlansService } from "./plans.js";
-import { getDefaultProjectId, sendError, sendServerError } from "./utils.js";
-
-import argon2 from 'argon2';
-import { randomBytes } from "node:crypto";
 import { routes } from '../routes/routes.js';
 import { parsePat } from "./pats.js";
+import { createPlansService } from "./plans.js";
+import { getDefaultProjectId, sendError, sendServerError } from "./utils.js";
 
 
 // PAT pepper constant (same as in pats.ts)
@@ -35,6 +36,19 @@ export async function registerUser(
         }
         if (password.length < 8) {
             return sendError(rep, HTTP_STATUS.BAD_REQUEST, ERROR_CODES.INVALID_INPUT, 'Password must be at least 8 characters', request_id);
+        }
+        // Enforce additional complexity rules to match dashboard validations
+        if (!/[a-z]/.test(password)) {
+            return sendError(rep, HTTP_STATUS.BAD_REQUEST, ERROR_CODES.INVALID_INPUT, 'Password must contain at least one lowercase letter', request_id);
+        }
+        if (!/[A-Z]/.test(password)) {
+            return sendError(rep, HTTP_STATUS.BAD_REQUEST, ERROR_CODES.INVALID_INPUT, 'Password must contain at least one uppercase letter', request_id);
+        }
+        if (!/[0-9]/.test(password)) {
+            return sendError(rep, HTTP_STATUS.BAD_REQUEST, ERROR_CODES.INVALID_INPUT, 'Password must contain at least one number', request_id);
+        }
+        if (!/[^a-zA-Z0-9]/.test(password)) {
+            return sendError(rep, HTTP_STATUS.BAD_REQUEST, ERROR_CODES.INVALID_INPUT, 'Password must contain at least one special character', request_id);
         }
         if (!confirm_password || typeof confirm_password !== 'string') {
             return sendError(rep, HTTP_STATUS.BAD_REQUEST, ERROR_CODES.INVALID_INPUT, 'Valid confirm_password is required', request_id);
@@ -66,6 +80,7 @@ export async function registerUser(
         );
 
         // Set session cookie for dashboard access
+        // eslint-disable-next-line require-atomic-updates
         request.session.user_id = user.id;
 
         const response: RegisterUserResponses[201] = { user, request_id };
@@ -123,6 +138,15 @@ export async function loginUser(
                 ; (request as any).session.maxAge = sessionMaxAge
         }
 
+        // Debug: Log session state after setting
+        request.log.info({
+            userId: user.id,
+            sessionId: (request as any).session.id,
+            sessionHasSet: typeof (request as any).session?.set === 'function',
+            sessionUserId: (request as any).session?.user_id,
+            sessionGetUserId: (request as any).session?.get?.('user_id'),
+        }, 'Login - session state after setting user_id');
+
         // Generate CSRF token bound to session
         const csrf = randomBytes(32).toString('base64url')
 
@@ -146,23 +170,16 @@ export async function loginUser(
             maxAge: sessionMaxAge / 1000, // Convert to seconds
         })
 
-        rep.setCookie('orbitcheck_session', (request as any).session.id, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'lax',
-            path: '/',
-            domain: process.env.NODE_ENV === 'production' ? 'orbitcheck.io' : undefined,
-            maxAge: sessionMaxAge / 1000, // Convert to seconds
-        })
+        // Note: @fastify/secure-session automatically manages the session cookie
+        // based on the configuration in server.ts, so we don't need to manually set it
 
         // Debug: Check if session was set and log response headers
-        if (process.env.NODE_ENV === 'production') {
-            request.log.info({
-                sessionSet: !!(request as any).session,
-                hasUserId: !!((request as any).session?.user_id || (request as any).session?.get?.('user_id')),
-                hasCsrfCookie: !!csrf
-            }, 'Session state after setting');
-        }
+        request.log.info({
+            sessionSet: !!(request as any).session,
+            hasUserId: !!((request as any).session?.user_id || (request as any).session?.get?.('user_id')),
+            hasCsrfCookie: !!csrf,
+            sessionId: (request as any).session?.id,
+        }, 'Login - final session state before sending response');
 
 
         const response: LoginUserResponses[200] = {
@@ -201,9 +218,12 @@ export async function logoutUser(
         // CSRF is enforced by the csrfHeader guard; here we just destroy session
         try {
             if (typeof (request as any).destroySession === 'function') {
-                await new Promise<void>((resolve, reject) =>
-                    (request as any).destroySession((err: any) => err ? reject(err) : resolve())
-                )
+                await new Promise<void>((resolve, reject) => {
+                    (request as any).destroySession((err: any) => {
+                        if (err) reject(err);
+                        else resolve();
+                    })
+                })
             } else if ((request as any).session) {
                 // Fallback clear
                 (request as any).session.user_id = undefined
@@ -213,9 +233,11 @@ export async function logoutUser(
         } catch { }
 
         // Clear cookie explicitly (provided by @fastify/cookie)
+        // Note: While @fastify/secure-session manages the session cookie,
+        // we explicitly clear it on logout to ensure it's removed
         rep.clearCookie('orbitcheck_session', {
             path: '/',
-            sameSite: process.env.NODE_ENV === 'lax',
+            sameSite: 'lax',
             secure: process.env.NODE_ENV === 'production',
             httpOnly: true,
             domain: process.env.NODE_ENV === 'production'
@@ -265,11 +287,31 @@ export async function verifySession<TServer extends RawServerBase = RawServerBas
     request: FastifyRequest<RouteGenericInterface, TServer>,
     pool: Pool
 ): Promise<void> {
+    // For @fastify/secure-session, data must be retrieved using .get()
     const sidUser =
-        (request as any).session?.user_id ??
-        (request as any).session?.get?.('user_id')
+        (request as any).session?.get?.('user_id') ??
+        (request as any).session?.user_id
+
+    // Debug logging for session verification
+    request.log.info({
+        url: request.url,
+        method: request.method,
+        hasSession: !!(request as any).session,
+        sessionUserId: (request as any).session?.user_id,
+        sessionGetUserId: (request as any).session?.get?.('user_id'),
+        sidUser,
+        sessionId: (request as any).session?.id,
+        cookies: request.cookies,
+        hasCsrfToken: !!(request.cookies?.csrf_token),
+        hasSessionCookie: !!(request.cookies?.orbitcheck_session),
+    }, 'verifySession - checking session state');
 
     if (!sidUser) {
+        request.log.info({
+            url: request.url,
+            hasSession: !!(request as any).session,
+            sessionKeys: (request as any).session ? Object.keys((request as any).session) : [],
+        }, 'verifySession failed - no user_id in session');
         throw { status: HTTP_STATUS.UNAUTHORIZED, error: { code: ERROR_CODES.UNAUTHORIZED, message: ERROR_MESSAGES[ERROR_CODES.UNAUTHORIZED] } }
     }
 
@@ -278,7 +320,12 @@ export async function verifySession<TServer extends RawServerBase = RawServerBas
         // invalid session — destroy if possible
         try {
             if (typeof (request as any).destroySession === 'function') {
-                await new Promise((res, rej) => (request as any).destroySession((err: any) => err ? rej(err) : res(null)))
+                await new Promise((res, rej) => {
+                    (request as any).destroySession((err: any) => {
+                        if (err) rej(err);
+                        else res(null);
+                    })
+                })
             } else if ((request as any).session) {
                 (request as any).session.user_id = undefined;
                 (request as any).session.set?.('user_id', undefined);
@@ -457,7 +504,7 @@ export async function verifyHttpMessageSignature(request: FastifyRequest, pool: 
  * @param pool - PostgreSQL connection pool
  * @returns {Promise<void>} Resolves on success, sends 401 on failure
  */
-export async function verifyPAT<TServer extends RawServerBase = RawServerBase>(req: FastifyRequest<RouteGenericInterface, TServer>, pool: Pool) {
+export async function verifyPAT<TServer extends RawServerBase = RawServerBase>(req: FastifyRequest<RouteGenericInterface, TServer>, pool: Pool): Promise<any | null> {
     // Node lowercases header names
     const authHeader = req.headers['authorization'] as string | undefined;
     const parsed = parsePat(authHeader);
@@ -522,10 +569,13 @@ export async function verifyPAT<TServer extends RawServerBase = RawServerBase>(r
     }
 
     // Update last_used_at and last_used_ip asynchronously
+    // eslint-disable-next-line promise/prefer-await-to-then
     pool.query(
         "UPDATE personal_access_tokens SET last_used_at = now(), last_used_ip = $1 WHERE id = $2",
         [req.ip, pat.id]
-    ).catch(() => { }); // Non-blocking
+    )
+        // eslint-disable-next-line promise/prefer-await-to-then
+        .catch(() => { }); // Non-blocking
 
     // Decorate request object with PAT information for downstream handlers
     (req as any).user_id = pat.user_id;

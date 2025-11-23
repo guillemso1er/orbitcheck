@@ -3,7 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 
 test.describe('Full Application Journey', () => {
   let testEmail: string;
-  const password = 'password123';
+  const password = 'Password123*';
 
 
   test.beforeEach(async () => {
@@ -87,7 +87,7 @@ test.describe('Full Application Journey', () => {
     // Note: Number of keys may vary, but revoke functionality is tested
 
     // Step 7: Navigate to Usage Dashboard
-     await page.locator('#nav-link-usage').click();
+    await page.locator('#nav-link-usage').click();
     await expect(page).toHaveURL(/.*\/usage/);
     await page.waitForLoadState('networkidle');
 
@@ -95,12 +95,12 @@ test.describe('Full Application Journey', () => {
     await expect(page.getByRole('heading', { name: 'Usage Dashboard' })).toBeVisible({ timeout: 15000 });
 
     // Step 9: Navigate to Log Explorer
-     await page.locator('#nav-link-logs').click();
+    await page.locator('#nav-link-logs').click();
     await expect(page).toHaveURL(/.*\/logs/);
     await page.waitForLoadState('networkidle');
 
     // Step 10: Apply filters in log explorer
-     await expect(page.locator('#log-explorer')).toBeVisible();
+    await expect(page.locator('#log-explorer')).toBeVisible();
     await page.waitForSelector('input#reason-code', { state: 'visible' });
     await page.fill('input#reason-code', 'test');
     await page.getByRole('button', { name: 'Apply Filters' }).click();
@@ -144,7 +144,7 @@ test.describe('Full Application Journey', () => {
     await expect(page.locator('input#reason-code')).toHaveValue('');
 
     // Step 17: Navigate to Webhook Tester
-     await page.locator('#nav-link-webhooks').click();
+    await page.locator('#nav-link-webhooks').click();
     await expect(page).toHaveURL(/.*\/webhooks/);
     await page.waitForLoadState('networkidle');
 
@@ -195,7 +195,7 @@ test.describe('Full Application Journey', () => {
     // Step 23: Skip API Docs test (opens in new tab, not testable in current setup)
 
     // Step 24: Navigate to Bulk CSV Tool
-     await page.locator('#nav-link-bulk-csv').click();
+    await page.locator('#nav-link-bulk-csv').click();
     await expect(page).toHaveURL(/.*\/bulk-csv/);
     await page.waitForLoadState('networkidle');
 
@@ -235,7 +235,7 @@ test.describe('Full Application Journey', () => {
     await page.waitForTimeout(500);
 
     // Step 32: Navigate to Rules Editor
-     await page.locator('#nav-link-rules').click();
+    await page.locator('#nav-link-rules').click();
     await expect(page).toHaveURL(/.*\/rules/);
     await page.waitForLoadState('networkidle');
 
@@ -292,7 +292,7 @@ test.describe('Full Application Journey', () => {
     // Note: Save functionality may show an alert, but in e2e context we just verify the action completes
 
     // Step 34: Logout from the application
-     await page.locator('#logout-btn').click();
+    await page.locator('#logout-btn').click();
     await expect(page).toHaveURL(/.*\/login/);
 
     // Step 35: Login again with same credentials

@@ -17,6 +17,9 @@ jest.mock('./environment', () => ({
         DATABASE_URL: 'postgres://test:test@localhost:5432/testdb',
         REDIS_URL: 'redis://localhost:6379',
         LOG_LEVEL: 'silent',
+        ENCRYPTION_KEY: '1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef',
+        POSTHOG_KEY: '',
+        POSTHOG_HOST: 'https://us.i.posthog.com',
         // Add any other env variables your application needs during tests
     },
 }));

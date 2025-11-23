@@ -1,4 +1,5 @@
 import type { FastifyReply, FastifyRequest } from "fastify";
+
 import type { NormalizeAddressData, NormalizeAddressResponses } from "../generated/fastify/types.gen.js";
 import { generateRequestId, sendServerError } from "./utils.js";
 

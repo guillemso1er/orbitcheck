@@ -1,0 +1,43 @@
+tags:
+  - Integrations
+summary: Confirm address fix selection
+description: Confirms customer's address selection and updates Shopify order
+operationId: shopifyAddressFixConfirm
+security: []
+parameters:
+  - name: token
+    in: path
+    required: true
+    description: Fix session token
+    schema:
+      type: string
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        $ref: '../../../components/schemas/ShopifyAddressFixConfirmRequest.yml'
+responses:
+  '200':
+    description: Address fix confirmed and order updated successfully
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            success:
+              type: boolean
+            message:
+              type: string
+  '404':
+    description: Session not found or expired
+    content:
+      application/json:
+        schema:
+          $ref: '../../../components/schemas/NotFoundError.yml'
+  '400':
+    description: Invalid request
+    content:
+      application/json:
+        schema:
+          $ref: '../../../components/schemas/Error.yml'

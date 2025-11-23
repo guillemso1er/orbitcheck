@@ -1,0 +1,21 @@
+tags:
+  - Integrations
+summary: Shopify app/uninstalled webhook
+description: Handles Shopify app/uninstalled webhook events
+operationId: shopifyAppUninstalledWebhook
+security: []
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        $ref: '../../../../components/schemas/ShopifyShop.yml'
+responses:
+  '200':
+    description: Webhook processed successfully
+  '400':
+    description: Invalid webhook data
+    content:
+      application/json:
+        schema:
+          $ref: '../../../../components/schemas/Error.yml'

@@ -34,8 +34,8 @@ beforeAll(async () => {
             url: '/auth/register',
             payload: {
                 email: 'test@example.com',
-                password: 'password123',
-                confirm_password: 'password123'
+                password: 'Password123*',
+                confirm_password: 'Password123*'
             }
         })
 
@@ -44,7 +44,7 @@ beforeAll(async () => {
             url: '/auth/login',
             payload: {
                 email: 'test@example.com',
-                password: 'password123'
+                password: 'Password123*'
             }
         })
 
@@ -1040,12 +1040,12 @@ describe('Comprehensive Rule Logic Testing', () => {
             await app.inject({
                 method: 'POST',
                 url: '/auth/register',
-                payload: { email, password: 'password123', confirm_password: 'password123' }
+                payload: { email, password: 'Password123*', confirm_password: 'Password123*' }
             });
             const login = await app.inject({
                 method: 'POST',
                 url: '/auth/login',
-                payload: { email, password: 'password123' }
+                payload: { email, password: 'Password123*' }
             });
             rwCookieJar = {}
             for (const c of login.cookies ?? []) {

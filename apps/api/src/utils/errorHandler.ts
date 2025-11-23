@@ -63,7 +63,7 @@ export class ErrorHandler {
     /**
      * Logs error details securely (without sensitive data)
      */
-    static logErrorSecurely(logger: any, error: any, context: any = {}) {
+    static logErrorSecurely(logger: any, error: any, context: any = {}): void {
         if (!logger) return;
 
         const safeError = {
@@ -88,7 +88,7 @@ export class ErrorHandler {
     /**
      * Handles database errors safely
      */
-    static handleDatabaseError<TServer extends RawServerBase = RawServerBase>(reply: FastifyReply<RouteGenericInterface, TServer>, error: any, operation: string) {
+    static handleDatabaseError<TServer extends RawServerBase = RawServerBase>(reply: FastifyReply<RouteGenericInterface, TServer>, error: any, operation: string): FastifyReply<RouteGenericInterface, TServer> {
         // Log the full error for debugging
         console.error(`Database error in ${operation}:`, {
             code: error?.code,
@@ -125,7 +125,7 @@ export class ErrorHandler {
     /**
      * Handles external service errors safely
      */
-    static handleExternalServiceError<TServer extends RawServerBase = RawServerBase>(reply: FastifyReply<RouteGenericInterface, TServer>, error: any, serviceName: string) {
+    static handleExternalServiceError<TServer extends RawServerBase = RawServerBase>(reply: FastifyReply<RouteGenericInterface, TServer>, error: any, serviceName: string): FastifyReply<RouteGenericInterface, TServer> {
         // Log error details for debugging
         console.error(`External service error (${serviceName}):`, {
             message: error?.message,

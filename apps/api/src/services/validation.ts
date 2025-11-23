@@ -2,6 +2,7 @@ import type { FastifyReply, FastifyRequest } from "fastify";
 import type { Redis as IORedisType } from "ioredis";
 import type { Pool } from "pg";
 import twilio from 'twilio';
+
 import { TWILIO_CHANNEL_SMS } from "../config.js";
 import { environment } from "../environment.js";
 import { HTTP_STATUS } from "../errors.js";
@@ -37,7 +38,7 @@ export async function validateEmailAddress(
         let out;
         try {
             out = await validateEmail(email, redis);
-        } catch (error) {
+        } catch {
             out = {
                 valid: false,
                 normalized: email.toLowerCase().trim(),
@@ -116,7 +117,7 @@ export async function validateAddress(
         const request_id = generateRequestId();
         const body = request.body as ValidateAddressData['body'];
         const { address } = body;
-        
+
         // Validate required fields at the service level
         if (!address ||
             !address.line1?.trim() ||
@@ -131,13 +132,37 @@ export async function validateAddress(
                 request_id
             });
         }
-        
-        const out = await validateAddressLogic(address, pool, redis);
+
+        const cleanedAddress = { ...address, line2: address.line2 ?? undefined };
+        const out = await validateAddressLogic(cleanedAddress, pool, redis);
         if (rep.saveIdem) {
             await rep.saveIdem(out);
         }
+
+        // Log the validation source
+        // Log the validation source and debug info
+        if (out.geo?.source) {
+            request.log.info({
+                source: out.geo.source,
+                valid: out.valid,
+                debug_log: out.debug_log
+            }, `Address validation source: ${out.geo.source}`);
+        } else if (out.postal_city_match) {
+            request.log.info({
+                source: 'database_fallback',
+                valid: out.valid,
+                debug_log: out.debug_log
+            }, `Address validation source: database_fallback`);
+        } else {
+            request.log.info({
+                source: 'none',
+                valid: out.valid,
+                debug_log: out.debug_log
+            }, `Address validation source: none`);
+        }
+
         await logEvent((request as any).project_id!, "validation", "/v1/validate/address", out.reason_codes, HTTP_STATUS.OK, { po_box: out.po_box, postal_city_match: out.postal_city_match }, pool);
-        const response: ValidateAddressResponses[200] = { ...out, request_id };
+        const response: ValidateAddressResponses[200] = { ...out, normalized: out.normalized ?? undefined, request_id };
         return rep.send(response);
     } catch (error) {
         return sendServerError(request, rep, error, "/v1/validate/address", generateRequestId());
@@ -154,7 +179,7 @@ export async function validateTaxId(
         const request_id = generateRequestId();
         const body = request.body as ValidateTaxIdData['body'];
         const { type, value, country } = body;
-        const out = await validateTaxIdLogic({ type, value: value, country: country || "", redis });
+        const out = await validateTaxIdLogic({ type, value, country: country || "", redis });
         if (rep.saveIdem) {
             await rep.saveIdem(out);
         }
