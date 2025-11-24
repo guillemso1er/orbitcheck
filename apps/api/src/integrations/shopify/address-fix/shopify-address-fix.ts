@@ -1,9 +1,9 @@
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import type { Pool } from 'pg';
 
-import type { ShopifyAddressFixConfirmData, ShopifyAddressFixGetData } from '../generated/fastify/types.gen.js';
-import { createAddressFixService } from '../integrations/shopify/address-fix/service.js';
-import { createShopifyService } from '../services/shopify.js';
+import type { ShopifyAddressFixConfirmData, ShopifyAddressFixGetData } from '../../../generated/fastify/types.gen.js';
+import { createShopifyService } from '../../../services/shopify.js';
+import { createAddressFixService } from './service.js';
 
 export async function getAddressFixSession(
     request: FastifyRequest<{ Params: ShopifyAddressFixGetData['path'] }>,

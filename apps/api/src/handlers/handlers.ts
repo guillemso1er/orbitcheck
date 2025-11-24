@@ -5,6 +5,7 @@ import type { Redis as IORedisType } from "ioredis";
 import type { Pool } from "pg";
 
 import type { RouteHandlers } from "../generated/fastify/fastify.gen.js";
+import { confirmAddressFixSession, getAddressFixSession } from "../integrations/shopify/address-fix/shopify-address-fix.js";
 import { getAccessScopes } from "../integrations/shopify/api/access-scopes.js";
 import { getShopSettings, updateShopSettings } from "../integrations/shopify/api/shop-settings.js";
 import { callback } from "../integrations/shopify/auth/callback.js";
@@ -32,7 +33,6 @@ import { deleteCustomRule, getAvailableRules, getBuiltInRules, getErrorCodeCatal
 import { getTenantSettings, updateTenantSettings } from "../services/settings.js";
 import { validateAddress, validateEmailAddress, validateName, validatePhoneNumber, validateTaxId, verifyPhoneOtp } from "../services/validation.js";
 import { createWebhook, deleteWebhook, listWebhooks, testWebhook } from "../services/webhook.js";
-import { confirmAddressFixSession, getAddressFixSession } from "./shopify-address-fix.js";
 
 const makeAuthHandlers = <TServer extends RawServerBase = RawServerBase>(pool: Pool, _redis: IORedisType, _app: FastifyInstance<TServer>): Partial<RouteHandlers> => ({
     loginUser: async (request, reply) => loginUser(request, reply, pool),
