@@ -181,6 +181,20 @@ test.describe('Address Fix Flow', () => {
         );
         const updatedSession = updatedSessionResult.rows[0];
         expect(updatedSession.fix_status).toBe('confirmed');
+
+        // Verify the fixed address matches what was entered in the form
+        // Note: PostgreSQL's JSONB type is automatically deserialized by the pg library
+        const expectedFixedAddress = {
+            line1: '123 Main St',
+            city: 'New York',
+            postal_code: '10001',
+            state: 'NY',
+            country: 'US',
+            line2: '', // empty from form
+            first_name: 'John', // from original address
+            last_name: 'Doe'    // from original address
+        };
+        expect(updatedSession.normalized_address).toMatchObject(expectedFixedAddress);
     });
 
     test.afterAll(async () => {

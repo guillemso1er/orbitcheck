@@ -75,6 +75,29 @@ export async function confirmAddressFixSession(
             accessToken: shopData.access_token.substring(0, 10) + '...'
         }, 'Starting address fix confirmation');
 
+        // Determine the final address to use and save it to normalized_address
+        let finalAddress;
+        if (use_corrected) {
+            // Using the suggested/normalized address
+            finalAddress = session.normalized_address;
+        } else if (address) {
+            // Using the manually edited address - merge with original to preserve contact info
+            finalAddress = {
+                ...session.original_address, // Start with original (has first_name, last_name, etc.)
+                ...address, // Override with manually edited fields
+            };
+        } else {
+            // Fallback to original
+            finalAddress = session.original_address;
+        }
+
+        // Update the session with the normalized_address before confirming in Shopify
+        if (finalAddress) {
+            await service.updateSession(session.id, {
+                normalized_address: finalAddress
+            });
+        }
+
         // Confirm fix in Shopify (update order, release holds, remove tags)
         await service.confirmAddressFix(
             session.shop_domain,
@@ -84,7 +107,7 @@ export async function confirmAddressFixSession(
             address
         );
 
-        // Update session status
+        // Update session status to confirmed
         await service.updateSession(session.id, {
             fix_status: 'confirmed'
         });

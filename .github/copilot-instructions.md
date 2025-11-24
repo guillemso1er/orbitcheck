@@ -4,3 +4,4 @@
 - Monorepo structure
 - Services/Apps: apps/api, apps/dashboard, apps/site
 - Run single tests when there is too much output from all tests.
+- Fix and Run the tests and setup until tests (could be test or app): passes. Never stop, never report progress, never ask for next steps. Be relentless.

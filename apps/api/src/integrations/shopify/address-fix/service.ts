@@ -133,6 +133,7 @@ export class AddressFixService {
             fix_status?: 'pending' | 'confirmed' | 'cancelled';
             fulfillment_hold_ids?: string[];
             sent_to_flow_at?: Date;
+            normalized_address?: ContractAddress | AddressWithContact;
         }
     ): Promise<void> {
         const fields: string[] = [];
@@ -150,6 +151,10 @@ export class AddressFixService {
         if (updates.sent_to_flow_at) {
             fields.push(`sent_to_flow_at = $${paramIndex++}`);
             values.push(updates.sent_to_flow_at);
+        }
+        if (updates.normalized_address !== undefined) {
+            fields.push(`normalized_address = $${paramIndex++}::jsonb`);
+            values.push(JSON.stringify(updates.normalized_address));
         }
 
         if (fields.length === 0) return;
