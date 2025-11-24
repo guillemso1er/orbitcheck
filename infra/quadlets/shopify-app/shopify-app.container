@@ -1,0 +1,53 @@
+[Unit]
+Description=Shopify App
+After=api-db.service valkey.service
+Wants=api-db.service valkey.service
+
+[Container]
+LogDriver=journald
+# Placeholder only. The deploy script patches this line to an immutable digest (name@sha256:...)
+Image=ghcr.io/guillemso1er/orbitcheck/shopify-app:v0.0.0
+ContainerName=shopify-app
+Pod=orbitcheck.pod
+
+# Config files written by deploy (or ExecStartPre below)
+EnvironmentFile=%h/.config/shopify-app/shopify-app.env
+EnvironmentFile=%h/.config/shopify-app/shopify-app.secrets.env
+
+# Ensure the pinned digest is pulled if not present
+Pull=missing
+
+# We do controlled rollouts; remove auto-update
+# Label="io.containers.autoupdate=image"
+
+NoNewPrivileges=yes
+ReadOnly=true
+Tmpfs=/tmp:size=64M
+
+[Service]
+Restart=always
+RestartSec=3
+
+# Ensure config dir exists
+ExecStartPre=/usr/bin/install -d -m 700 %h/.config/shopify-app
+
+# OPTIONAL: keep this if you want JIT secret fetch on every start
+# If you keep it, you can remove the duplicate secret fetch for /shopify-app in the deploy script.
+ExecStartPre=/bin/sh -ceu ' \
+  tok="$(cat %h/.secrets/infisical/shopify-app.token)"; \
+  export INFISICAL_TOKEN="$tok"; \
+  /bin/infisical export \
+    --domain=https://infisical.bastiat.xyz \
+    --path=/shopify-app \
+    --env=prod \
+    --format=dotenv \
+    --silent \
+    --include-imports \
+    | sed "s/'\''//g" \
+  > %h/.config/shopify-app/.shopify-app.secrets.env.tmp; \
+  chmod 600 %h/.config/shopify-app/.shopify-app.secrets.env.tmp; \
+  mv %h/.config/shopify-app/.shopify-app.secrets.env.tmp %h/.config/shopify-app/shopify-app.secrets.env \
+'
+
+[Install]
+WantedBy=default.target
