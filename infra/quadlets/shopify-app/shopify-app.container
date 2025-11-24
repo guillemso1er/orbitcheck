@@ -15,6 +15,7 @@ EnvironmentFile=%h/.config/shopify-app/shopify-app.env
 EnvironmentFile=%h/.config/shopify-app/shopify-app.secrets.env
 Environment=XDG_CACHE_HOME=/tmp
 Environment=npm_config_cache=/tmp
+Environment=PORT=3001
 
 # Ensure the pinned digest is pulled if not present
 Pull=missing
