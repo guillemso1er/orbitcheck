@@ -430,7 +430,19 @@ const AddressFixPage: React.FC = () => {
                 }
             });
 
-            if (error) throw new Error((error as any).message || 'Confirmation failed.');
+            if (error) {
+                const errData = error as any;
+                // The API returns { error: { code: ..., message: ... } }
+                // So we need to check if errData.error exists
+                const apiError = errData.error || errData;
+
+                if (apiError.code === 'ADDRESS_VALIDATION_FAILED') {
+                    const reasons = apiError.details?.reasons?.join(', ');
+                    const message = apiError.message || 'The provided address could not be validated.';
+                    throw new Error(reasons ? `Address validation failed: ${reasons}` : message);
+                }
+                throw new Error(apiError.message || 'Confirmation failed.');
+            }
             setSuccess(true);
         } catch (err) {
             setError(err instanceof Error ? err.message : 'An error occurred while confirming.');

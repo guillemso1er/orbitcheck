@@ -3,6 +3,7 @@ import type { Pool } from 'pg';
 
 import type { ShopifyAddressFixConfirmData, ShopifyAddressFixGetData } from '../../../generated/fastify/types.gen.js';
 import { createShopifyService } from '../../../services/shopify.js';
+import { validateAddress } from '../../../validators/address.js';
 import { createAddressFixService } from './service.js';
 
 export async function getAddressFixSession(
@@ -93,6 +94,29 @@ export async function confirmAddressFixSession(
 
         // Update the session with the normalized_address before confirming in Shopify
         if (finalAddress) {
+            // Validate the address before proceeding
+            const rawAddress = {
+                line1: finalAddress.line1 || '',
+                line2: finalAddress.line2 || '',
+                city: finalAddress.city || '',
+                state: finalAddress.state || '',
+                postal_code: finalAddress.postal_code || '',
+                country: finalAddress.country || ''
+            };
+
+            const validationResult = await validateAddress(rawAddress, pool);
+            if (!validationResult.valid) {
+                return reply.status(400).send({
+                    error: {
+                        code: 'ADDRESS_VALIDATION_FAILED',
+                        message: 'The provided address could not be validated.',
+                        details: {
+                            reasons: validationResult.reason_codes
+                        }
+                    }
+                });
+            }
+
             await service.updateSession(session.id, {
                 normalized_address: finalAddress
             });

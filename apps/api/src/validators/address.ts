@@ -361,7 +361,7 @@ async function validateWithGeoapify(
             needsReview = true;
         }
 
-        if (buildingConf < 0.8 && overallConf < 0.8) { // Relaxed slightly
+        if (buildingConf < 0.7 && overallConf < 0.7) { // Relaxed slightly
             reasons.push("GEO_BUILDING_CONFIDENCE_LOW");
             needsReview = true;
         }
@@ -400,7 +400,7 @@ async function validateWithGeoapify(
             !hardFail &&
             (
                 (isHighConfidence) || // TRUST THE SCORE: 1600 Amphitheatre has conf=1.0
-                (!needsReview && ["full_match", "match_by_building"].includes(matchType) && buildingConf >= 0.9)
+                (!needsReview && ["full_match", "match_by_building"].includes(matchType) && buildingConf >= 0.7)
             );
 
         return {
