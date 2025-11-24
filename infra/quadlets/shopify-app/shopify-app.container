@@ -13,6 +13,8 @@ Pod=orbitcheck.pod
 # Config files written by deploy (or ExecStartPre below)
 EnvironmentFile=%h/.config/shopify-app/shopify-app.env
 EnvironmentFile=%h/.config/shopify-app/shopify-app.secrets.env
+Environment=XDG_CACHE_HOME=/tmp
+Environment=npm_config_cache=/tmp
 
 # Ensure the pinned digest is pulled if not present
 Pull=missing
