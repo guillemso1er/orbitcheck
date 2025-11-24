@@ -23,13 +23,21 @@ export default function Index() {
   const apiClient = useApiClient();
 
   // State Management
+  const [mounted, setMounted] = useState(false);
   const [loading, setLoading] = useState(true);
   const [status, setStatus] = useState<Status>('disconnected');
   const [mode, setMode] = useState<Mode>('disabled');
   const [dashboardLoading, setDashboardLoading] = useState(false);
 
+  // Client-only mounting to avoid hydration issues with web components
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   // Initial Data Load
   useEffect(() => {
+    if (!mounted) return;
+
     const checkStatus = async () => {
       setLoading(true);
       try {
@@ -49,7 +57,10 @@ export default function Index() {
       }
     };
     checkStatus();
-  }, [apiClient]);
+  }, [apiClient, mounted]);
+
+
+
 
   // Logic Handlers
   const handleUpdateMode = async (event: Event & { currentTarget: { value: string } }) => {
@@ -83,8 +94,8 @@ export default function Index() {
     }
   };
 
-  // Render Loading State
-  if (loading) {
+  // Don't render web components during SSR to avoid hydration mismatch
+  if (!mounted || loading) {
     return (
       <s-page>
         <s-section>
@@ -154,9 +165,9 @@ export default function Index() {
         <s-section heading="Configuration">
           <s-stack gap="large-400">
             <s-select label="Order Validation Mode" value={mode} onChange={handleUpdateMode}>
-              <s-choice value="disabled" selected={mode === 'disabled'}>Disabled - No validation</s-choice>
-              <s-choice value="notify" selected={mode === 'notify'}>Notify - Tag high-risk orders</s-choice>
-              <s-choice value="activated" selected={mode === 'activated'}>Activated - Block high-risk orders</s-choice>
+              <s-option value="disabled" selected={mode === 'disabled'}>Disabled - No validation</s-option>
+              <s-option value="notify" selected={mode === 'notify'}>Notify - Tag high-risk orders</s-option>
+              <s-option value="activated" selected={mode === 'activated'}>Activated - Block high-risk orders</s-option>
             </s-select>
 
             <s-text tone="neutral">

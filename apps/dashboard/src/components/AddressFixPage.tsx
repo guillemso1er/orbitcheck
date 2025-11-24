@@ -157,6 +157,7 @@ const AddressCard: React.FC<{
     };
 
     const style = styles[type];
+    const fields = address ? getAddressFields(address) : { line1: '', line2: '', city: '', state: '', postal_code: '', country: '' };
 
     return (
         <div
@@ -170,7 +171,7 @@ const AddressCard: React.FC<{
                 ${disabled ? 'opacity-50 cursor-not-allowed' : ''}
             `}
         >
-            <div className="flex justify-between items-start mb-3">
+            <div className="flex justify-between items-start mb-4">
                 <div className="flex items-center gap-3">
                     <div className={`p-2 rounded-lg ${style.iconBg} ${style.iconColor}`}>
                         {type === 'original' && <Icons.AlertTriangle className="w-5 h-5" />}
@@ -189,7 +190,17 @@ const AddressCard: React.FC<{
                 </div>
             </div>
 
-            {address ? (
+            {/* LOGIC CHANGED: Render Inputs for Original Type, Text for Suggested */}
+            {type === 'original' && address ? (
+                <div className="grid grid-cols-2 gap-3 mt-2 pointer-events-none">
+                    <AddressInput label="Address Line 1" name="line1" value={fields.line1} readOnly />
+                    <AddressInput label="Address Line 2" name="line2" value={fields.line2} readOnly />
+                    <AddressInput label="City" name="city" value={fields.city} width="half" readOnly />
+                    <AddressInput label="State" name="state" value={fields.state} width="half" readOnly />
+                    <AddressInput label="ZIP Code" name="postal_code" value={fields.postal_code} width="half" readOnly />
+                    <AddressInput label="Country" name="country" value={fields.country} width="half" readOnly />
+                </div>
+            ) : address ? (
                 <FormattedAddressBlock address={address} />
             ) : (
                 <p className="text-sm text-gray-500 dark:text-gray-400 ml-1 leading-relaxed">
@@ -211,29 +222,33 @@ const AddressInput: React.FC<{
     label: string;
     name: keyof Address;
     value: string;
-    onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+    onChange?: (e: React.ChangeEvent<HTMLInputElement>) => void; // Made optional
     error?: boolean;
     required?: boolean;
     width?: "full" | "half";
-}> = ({ label, name, value, onChange, error, required, width = "full" }) => (
+    readOnly?: boolean; // Added prop
+}> = ({ label, name, value, onChange, error, required, width = "full", readOnly }) => (
     <div className={width === "half" ? "col-span-1" : "col-span-2"}>
         <label className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2">
             <span>{label}</span>
-            {required && <span className="text-red-400 text-[10px] font-normal bg-red-50 dark:bg-red-900/20 px-1.5 py-0.5 rounded">Required</span>}
+            {required && !readOnly && <span className="text-red-400 text-[10px] font-normal bg-red-50 dark:bg-red-900/20 px-1.5 py-0.5 rounded">Required</span>}
         </label>
         <input
             type="text"
             name={name}
             value={value || ''}
             onChange={onChange}
-            autoComplete={name === 'postal_code' ? 'postal-code' : name === 'line1' ? 'address-line1' : 'off'}
+            readOnly={readOnly}
+            disabled={readOnly}
+            autoComplete={readOnly ? 'off' : (name === 'postal_code' ? 'postal-code' : name === 'line1' ? 'address-line1' : 'off')}
             className={`
                 block w-full h-11 px-3 rounded-lg shadow-sm text-sm transition-all duration-200
-                bg-gray-50 dark:bg-gray-800/50 text-gray-900 dark:text-white placeholder-gray-400
-                ${error
-                    ? 'border border-red-300 focus:border-red-500 focus:ring-2 focus:ring-red-500/20 dark:border-red-800'
-                    : 'border border-gray-200 dark:border-gray-700 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20'
+                ${readOnly
+                    ? 'bg-gray-100 dark:bg-gray-800/80 text-gray-600 dark:text-gray-400 cursor-not-allowed border-transparent'
+                    : 'bg-gray-50 dark:bg-gray-800/50 text-gray-900 dark:text-white placeholder-gray-400 border-gray-200 dark:border-gray-700 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20'
                 }
+                ${error && !readOnly ? 'border-red-300 focus:border-red-500 focus:ring-red-500/20 dark:border-red-800' : ''}
+                ${!readOnly ? 'border' : ''}
             `}
         />
     </div>
