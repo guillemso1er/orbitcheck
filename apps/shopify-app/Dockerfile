@@ -32,6 +32,7 @@ RUN pnpm --filter @orbitcheck/orbitcheck-shopify-app run build
 # Deploy to /app
 RUN pnpm --filter @orbitcheck/orbitcheck-shopify-app deploy --prod /app
 
+RUN cp -r apps/shopify-app/build /app/build
 RUN cd /app && DATABASE_URL="postgresql://dummy:dummy@localhost:5432/dummy" pnpm exec prisma generate
 
 WORKDIR /app
