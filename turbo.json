@@ -1,12 +1,21 @@
 {
-  "pipeline": {
+  "tasks": {
     "build": {
-      "dependsOn": ["^build"],
-      "outputs": ["dist/**", "generated/**"]
+      "dependsOn": [
+        "^build"
+      ],
+      "outputs": [
+        "dist/**",
+        "generated/**"
+      ]
     },
     "gen": {
-      "dependsOn": ["^build"],
-      "outputs": ["**/src/generated/**"],
+      "dependsOn": [
+        "^build"
+      ],
+      "outputs": [
+        "**/src/generated/**"
+      ],
       "cache": false
     },
     "dev": {

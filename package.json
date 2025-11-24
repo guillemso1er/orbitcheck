@@ -30,10 +30,13 @@
   },
   "devDependencies": {
     "@hey-api/openapi-ts": "0.87.1",
+    "@playwright/test": "^1.55.1",
     "@types/adm-zip": "^0.5.7",
     "@types/jsonwebtoken": "^9.0.10",
+    "@types/pg": "^8.15.5",
     "adm-zip": "^0.5.16",
     "dotenv": "^17.2.2",
+    "pg": "8.16.3",
     "ts-node-dev": "2.0.0",
     "turbo": "^2.6.0",
     "typescript": "5.9.2"

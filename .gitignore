@@ -94,3 +94,6 @@ infra/ansible/vars/secrets.txt
 .turbo/daemon/*
 tasks/
 .turbo/cookies/1.cookie
+playwright-report/
+test-results/
+tests/playwright/results.xml

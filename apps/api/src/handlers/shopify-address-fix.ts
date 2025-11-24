@@ -67,6 +67,14 @@ export async function confirmAddressFixSession(
     }
 
     try {
+        request.log.info({
+            sessionId: session.id,
+            shopDomain: session.shop_domain,
+            use_corrected,
+            hasAddress: !!address,
+            accessToken: shopData.access_token.substring(0, 10) + '...'
+        }, 'Starting address fix confirmation');
+
         // Confirm fix in Shopify (update order, release holds, remove tags)
         await service.confirmAddressFix(
             session.shop_domain,
@@ -83,12 +91,16 @@ export async function confirmAddressFixSession(
 
         return reply.send({ success: true });
     } catch (error) {
-        request.log.error({ err: error, session }, 'Failed to confirm address fix');
-        return reply.status(500).send({
-            error: {
-                code: 'CONFIRMATION_FAILED',
-                message: 'Failed to confirm address fix'
-            }
-        });
+        request.log.error({
+            err: error,
+            session,
+            errorMessage: error instanceof Error ? error.message : String(error),
+            errorStack: error instanceof Error ? error.stack : undefined,
+            errorName: error instanceof Error ? error.name : undefined,
+            errorCode: (error as any)?.code
+        }, 'Failed to confirm address fix');
+
+        // Re-throw to let the error handler deal with it
+        throw error;
     }
 }

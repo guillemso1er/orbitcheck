@@ -1,3 +1,10 @@
+// Load environment variables FIRST, before any imports
+import * as dotenv from 'dotenv';
+if (process.env.NODE_ENV !== 'production' && process.env.NODE_ENV !== 'test') {
+    dotenv.config();
+    dotenv.config({ path: '.env.local', override: true });
+}
+
 import { once } from 'node:events';
 
 import cookie from "@fastify/cookie";
@@ -5,7 +12,6 @@ import secureSession from '@fastify/secure-session';
 import metrics from "@immobiliarelabs/fastify-metrics";
 import * as Sentry from '@sentry/node';
 import { Queue, Worker } from 'bullmq';
-import * as dotenv from 'dotenv';
 import type { FastifyInstance } from "fastify";
 import Fastify from "fastify";
 import { type Redis as IORedisType, Redis } from 'ioredis';
@@ -30,12 +36,6 @@ import { registerHealthRoutes } from "./routes/health.js";
 import { main as seedDatabase } from "./seed.js";
 import startupGuard from './startup-guard.js';
 import { registerRoutes } from "./web.js";
-
-if (process.env.NODE_ENV !== 'production' && process.env.NODE_ENV !== 'test') {
-    dotenv.config();
-    //also load .env.local to override
-    dotenv.config({ path: '.env.local', override: true });
-}
 
 // Store active workers and cron tasks for cleanup
 let activeWorkers: Worker[] = [];

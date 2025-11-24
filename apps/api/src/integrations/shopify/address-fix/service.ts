@@ -280,6 +280,14 @@ export class AddressFixService {
         useCorrected: boolean,
         addressOverride?: AddressWithContact
     ): Promise<void> {
+        // Skip Shopify GraphQL calls in test mode
+        const isTestMode = accessToken === 'test-access-token' || process.env.SHOPIFY_MOCK_MODE === 'true';
+
+        if (isTestMode) {
+            this.logger.info({ shopDomain, orderId: session.order_id }, 'Test mode: Skipping Shopify GraphQL calls');
+            return;
+        }
+
         const client = await shopifyGraphql(shopDomain, accessToken, process.env.SHOPIFY_API_VERSION || '2025-10');
 
         // Update order address if using corrected or override provided
