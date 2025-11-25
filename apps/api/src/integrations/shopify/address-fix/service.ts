@@ -1,9 +1,9 @@
+import type { components } from '@orbitcheck/contracts';
 import crypto from 'crypto';
 import type { FastifyBaseLogger } from 'fastify';
 import type { Pool } from 'pg';
 import { promisify } from 'util';
 
-import type { components } from '@orbitcheck/contracts';
 import type {
     AddTagsMutation,
     FulfillmentOrderHoldMutation,
@@ -373,12 +373,13 @@ export class AddressFixService {
 
         await Promise.all(releasePromises);
 
-        // Remove tag
+        // Remove tags - both address_fix_needed and invalid_address
         try {
             await client.mutate(MUT_TAGS_REMOVE, {
                 id: session.order_gid,
-                tags: ['address_fix_needed'],
+                tags: ['address_fix_needed', 'invalid_address'],
             }) as RemoveTagsMutation;
+            this.logger.info({ shopDomain, orderGid: session.order_gid }, 'Removed address fix tags');
         } catch (error) {
             this.logGraphQLError('tagsRemove', error, { shopDomain, orderGid: session.order_gid });
         }

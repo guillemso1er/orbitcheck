@@ -138,7 +138,39 @@ export async function evaluateOrderForRiskAndRulesDirect(
         match_type: m.match_type
     }));
 
-    if (address_matches.length > 0) {
+    // Check if this is a returning customer using the same address
+    let isSafeReturningCustomer = false;
+    if (address_matches.length > 0 && customer?.email) {
+        try {
+            const previousHistory = await pool.query(
+                `SELECT id FROM orders 
+                 WHERE project_id = $1 
+                 AND customer_email = $2 
+                 AND shipping_address->>'postal_code' = $3
+                 AND (
+                     LOWER(shipping_address->>'line1') = LOWER($4)
+                     OR 
+                     similarity(shipping_address->>'line1', $4) > 0.6
+                 )
+                 LIMIT 1`,
+                [
+                    project_id,
+                    customer.email,
+                    shipping_address.postal_code,
+                    shipping_address.line1
+                ]
+            );
+
+            if (previousHistory.rows.length > 0) {
+                isSafeReturningCustomer = true;
+            }
+        } catch {
+            // Continue without safe customer check on error
+        }
+    }
+
+    // Only add duplicate address risk if it's NOT a returning customer using their known address
+    if (address_matches.length > 0 && !isSafeReturningCustomer) {
         risk_score += RISK_ADDRESS_DEDUPE;
         tags.push(ORDER_TAGS.POTENTIAL_DUPLICATE_ADDRESS);
         reason_codes.push(REASON_CODES.ORDER_ADDRESS_DEDUPE_MATCH);

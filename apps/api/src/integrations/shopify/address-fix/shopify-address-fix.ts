@@ -78,6 +78,9 @@ export async function confirmAddressFixSession(
 
         // Determine the final address to use and save it to normalized_address
         let finalAddress;
+        // Track whether the customer explicitly chose to keep the original (invalid) address
+        const keepingOriginalAddress = !use_corrected && !address;
+
         if (use_corrected) {
             // Using the suggested/normalized address
             finalAddress = session.normalized_address;
@@ -88,33 +91,42 @@ export async function confirmAddressFixSession(
                 ...address, // Override with manually edited fields
             };
         } else {
-            // Fallback to original
+            // Fallback to original - customer confirmed they want to keep the original address
             finalAddress = session.original_address;
         }
 
         // Update the session with the normalized_address before confirming in Shopify
         if (finalAddress) {
-            // Validate the address before proceeding
-            const rawAddress = {
-                line1: finalAddress.line1 || '',
-                line2: finalAddress.line2 || '',
-                city: finalAddress.city || '',
-                state: finalAddress.state || '',
-                postal_code: finalAddress.postal_code || '',
-                country: finalAddress.country || ''
-            };
+            // Skip validation if customer explicitly chose to keep their original address
+            // This allows customers to proceed even if the address was flagged as invalid
+            if (!keepingOriginalAddress) {
+                // Validate the address before proceeding
+                const rawAddress = {
+                    line1: finalAddress.line1 || '',
+                    line2: finalAddress.line2 || '',
+                    city: finalAddress.city || '',
+                    state: finalAddress.state || '',
+                    postal_code: finalAddress.postal_code || '',
+                    country: finalAddress.country || ''
+                };
 
-            const validationResult = await validateAddress(rawAddress, pool);
-            if (!validationResult.valid) {
-                return reply.status(400).send({
-                    error: {
-                        code: 'ADDRESS_VALIDATION_FAILED',
-                        message: 'The provided address could not be validated.',
-                        details: {
-                            reasons: validationResult.reason_codes
+                const validationResult = await validateAddress(rawAddress, pool);
+                if (!validationResult.valid) {
+                    return reply.status(400).send({
+                        error: {
+                            code: 'ADDRESS_VALIDATION_FAILED',
+                            message: 'The provided address could not be validated.',
+                            details: {
+                                reasons: validationResult.reason_codes
+                            }
                         }
-                    }
-                });
+                    });
+                }
+            } else {
+                request.log.info({
+                    sessionId: session.id,
+                    shopDomain: session.shop_domain
+                }, 'Skipping address validation - customer confirmed original address');
             }
 
             await service.updateSession(session.id, {
@@ -123,12 +135,13 @@ export async function confirmAddressFixSession(
         }
 
         // Confirm fix in Shopify (update order, release holds, remove tags)
+        // When keeping original address, don't update the Shopify order address
         await service.confirmAddressFix(
             session.shop_domain,
             shopData.access_token,
             session,
             use_corrected,
-            address
+            keepingOriginalAddress ? undefined : address
         );
 
         // Update session status to confirmed
