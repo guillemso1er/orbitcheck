@@ -17,7 +17,7 @@
     "generate": "pnpm --filter @orbitcheck/contracts run build && pnpm --filter @orbitcheck/api run gen",
     "infra": "podman compose -f infra/compose/local.compose.yml up -d",
     "shopify": "pnpm --filter @orbitcheck/orbitcheck-shopify-app dev",
-    "all": "pnpm infra && concurrently \"pnpm api\" \"pnpm dashboard\"",
+    "all": "pnpm infra && concurrently \"pnpm api\" \"pnpm dashboard\" \"pnpm shopify\"",
     "podman": "podman compose -f  infra/compose/dev.compose.yml up --build -d",
     "typecheck": "pnpm -r typecheck",
     "lint": "pnpm -r lint",

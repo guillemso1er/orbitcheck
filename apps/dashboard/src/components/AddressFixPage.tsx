@@ -1,7 +1,10 @@
 import { Address, shopifyAddressFixConfirm, shopifyAddressFixGet, ShopifyAddressFixSession } from '@orbitcheck/contracts';
 import React, { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import Select from 'react-select';
+import countries from 'world-countries';
 import { useApiClient } from '../utils/api';
+
 
 // --- Types ---
 
@@ -190,7 +193,6 @@ const AddressCard: React.FC<{
                 </div>
             </div>
 
-            {/* LOGIC CHANGED: Render Inputs for Original Type, Text for Suggested */}
             {type === 'original' && address ? (
                 <div className="grid grid-cols-2 gap-3 mt-2 pointer-events-none">
                     <AddressInput label="Address Line 1" name="line1" value={fields.line1} readOnly />
@@ -254,6 +256,81 @@ const AddressInput: React.FC<{
     </div>
 );
 
+const CountryInput: React.FC<{
+    label: string;
+    value: string;
+    onValueChange: (value: string) => void;
+    error?: boolean;
+    required?: boolean;
+}> = ({ label, value, onValueChange, error, required }) => {
+    const countryOptions = countries.map(country => ({
+        value: country.cca2,
+        label: `${country.flag} ${country.name.common}`,
+        country
+    }));
+
+    const selectedOption = countryOptions.find(option => option.value === value) || null;
+
+    const isDark = typeof document !== 'undefined' && document.documentElement.classList.contains('dark');
+
+    const customStyles = {
+        control: (provided: any, state: any) => ({
+            ...provided,
+            height: '44px',
+            borderRadius: '8px',
+            borderColor: error ? '#ef4444' : state.isFocused ? '#3b82f6' : '#d1d5db',
+            boxShadow: state.isFocused ? (error ? '0 0 0 3px rgba(239, 68, 68, 0.1)' : '0 0 0 3px rgba(59, 130, 246, 0.1)') : 'none',
+            '&:hover': {
+                borderColor: error ? '#ef4444' : '#3b82f6'
+            },
+            backgroundColor: isDark ? '#1f2937' : '#f9fafb',
+            fontSize: '14px'
+        }),
+        option: (provided: any, state: any) => ({
+            ...provided,
+            backgroundColor: state.isSelected ? '#3b82f6' : state.isFocused ? (isDark ? '#1e3a8a' : '#eff6ff') : (isDark ? '#111827' : 'white'),
+            color: state.isSelected ? 'white' : (isDark ? '#e5e7eb' : '#374151'),
+            '&:active': {
+                backgroundColor: state.isSelected ? '#2563eb' : (isDark ? '#1e40af' : '#dbeafe')
+            }
+        }),
+        singleValue: (provided: any) => ({
+            ...provided,
+            color: isDark ? '#f9fafb' : '#111827'
+        }),
+        placeholder: (provided: any) => ({
+            ...provided,
+            color: isDark ? '#9ca3af' : '#9ca3af'
+        }),
+        // FIX: Ensure the menu sits on top of other elements when ported to body
+        menuPortal: (provided: any) => ({
+            ...provided,
+            zIndex: 9999
+        })
+    };
+
+    return (
+        <div className="col-span-2">
+            <label className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2">
+                <span>{label}</span>
+                {required && <span className="text-red-400 text-[10px] font-normal bg-red-50 dark:bg-red-900/20 px-1.5 py-0.5 rounded">Required</span>}
+            </label>
+            <Select
+                options={countryOptions}
+                value={selectedOption}
+                onChange={(option) => onValueChange(option?.value || '')}
+                placeholder="Select a country..."
+                styles={customStyles}
+                isSearchable={true}
+                menuPortalTarget={typeof document !== 'undefined' ? document.body : null}
+                menuPosition="fixed"
+                className="react-select-container"
+                classNamePrefix="react-select"
+            />
+        </div>
+    );
+};
+
 const AddressForm: React.FC<{
     data: Address;
     onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
@@ -314,14 +391,17 @@ const AddressForm: React.FC<{
                     required
                     width="half"
                 />
-                <AddressInput
-                    label="Country Code"
-                    name="country"
+                <CountryInput
+                    label="Country"
                     value={data.country || ''}
-                    onChange={onChange}
+                    onValueChange={(value: string) => {
+                        const event = {
+                            target: { name: 'country' as const, value } as React.ChangeEvent<HTMLInputElement>['target'],
+                        };
+                        onChange(event as any);
+                    }}
                     error={errors?.country}
                     required
-                    width="half"
                 />
             </div>
         </div>
