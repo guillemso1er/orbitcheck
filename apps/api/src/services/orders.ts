@@ -102,7 +102,13 @@ export async function evaluateOrderForRiskAndRulesDirect(
             match_type: m.match_type
         })));
     }
-    if (customer_matches.length > 0) {
+
+    const distinctMatches = customer_matches.filter(m => {
+        if (m.email === customer.email) return false;
+        return true;
+    });
+
+    if (distinctMatches.length > 0) {
         risk_score += RISK_CUSTOMER_DEDUPE;
         tags.push(ORDER_TAGS.POTENTIAL_DUPLICATE_CUSTOMER);
         reason_codes.push(REASON_CODES.ORDER_CUSTOMER_DEDUPE_MATCH);
@@ -603,10 +609,45 @@ export async function evaluateOrderForRiskAndRules<TServer extends RawServerBase
             similarity_score: m.similarity_score,
             match_type: m.match_type
         }));
+        let isSafeReturningCustomer = false;
 
-        app.log.info({ request_id, address_matches }, "Address dedupe matches found");
+        if (address_matches.length > 0 && customer.email) {
+            // We look for ANY previous order by this email that has a similar address.
+            // We use Postgres 'similarity' (fuzzy match) just like your dedupe logic does.
+            // This handles cases where user typed "St." previously and "Street" today.
 
-        if (address_matches.length > 0) {
+            try {
+                const previousHistory = await pool.query(
+                    `SELECT id FROM orders 
+                 WHERE project_id = $1 
+                 AND customer_email = $2 
+                 AND shipping_address->>'postal_code' = $3 -- Strict match on Zip
+                 AND (
+                     -- Strict match on Line 1 (Case Insensitive)
+                     LOWER(shipping_address->>'line1') = LOWER($4)
+                     OR 
+                     -- Fuzzy match on Line 1 (Handles St vs Street)
+                     similarity(shipping_address->>'line1', $4) > 0.6
+                 )
+                 LIMIT 1`,
+                    [
+                        project_id,
+                        customer.email,
+                        shipping_address.postal_code, // $3
+                        shipping_address.line1        // $4
+                    ]
+                );
+
+                if (previousHistory.rows.length > 0) {
+                    isSafeReturningCustomer = true;
+                }
+            } catch (err) {
+                console.error("Error checking returning customer history:", err);
+            }
+        }
+
+        // Only add the tag/score if it is NOT a known safe location for this user
+        if (address_matches.length > 0 && !isSafeReturningCustomer) {
             risk_score += RISK_ADDRESS_DEDUPE;
             tags.push(ORDER_TAGS.POTENTIAL_DUPLICATE_ADDRESS);
             reason_codes.push(REASON_CODES.ORDER_ADDRESS_DEDUPE_MATCH);
