@@ -1,3 +1,33 @@
+/**
+ * Webhook Data Mappers for Shopify GraphQL Responses
+ *
+ * These mappers convert Shopify GraphQL responses to contract types for the OrbitCheck API.
+ *
+ * PII (Personally Identifiable Information) Null Safety:
+ * -------------------------------------------------------
+ * When Shopify PCD (Protected Customer Data) Level 2 requirements are in effect,
+ * apps may not have access to certain customer PII fields. These fields will return
+ * `null` from the GraphQL API when access is denied.
+ *
+ * The following PII fields may be null when access is denied:
+ * - customer.email
+ * - customer.phone
+ * - customer.firstName
+ * - customer.lastName
+ * - customer.defaultAddress
+ * - customer.addresses
+ * - order.billingAddress
+ * - order.shippingAddress
+ * - order.email
+ * - order.phone
+ *
+ * All mappers use optional chaining (?.) and nullish coalescing (??) to handle
+ * these cases gracefully. The resulting contract objects will have `null` or
+ * `undefined` for unavailable PII fields.
+ *
+ * See: https://shopify.dev/docs/apps/build/privacy-law-compliance
+ */
+
 import type { ShopifyAddress, ShopifyCustomer, ShopifyOrder, ShopifyShop } from "@orbitcheck/contracts";
 
 import type { Customer, MailingAddress, Order } from "../types/admin.types";

@@ -1,0 +1,57 @@
+# Development/Staging configuration for OrbitCheck Shopify App
+# This file is used for development and staging environments
+# The production configuration is in shopify.app.orbitcheck.toml
+# 
+# See: https://shopify.dev/docs/apps/tools/cli/configuration
+
+# NOTE: Create a new app in the Shopify Partners dashboard for dev/staging
+# and update the client_id below with the new app's client ID
+client_id = "YOUR_DEV_APP_CLIENT_ID"
+name = "orbitcheck-dev"
+application_url = "https://shopify.dev/apps/default-app-home"
+embedded = true
+
+[build]
+automatically_update_urls_on_dev = true
+include_config_on_deploy = true
+
+[webhooks]
+api_version = "2025-10"
+
+[[webhooks.subscriptions]]
+topics = [ "app/uninstalled" ]
+uri = "/webhooks/app/uninstalled"
+
+[[webhooks.subscriptions]]
+topics = [ "orders/create" ]
+uri = "/webhooks/orders/create"
+
+[[webhooks.subscriptions]]
+topics = [ "customers/create" ]
+uri = "/webhooks/customers/create"
+
+[[webhooks.subscriptions]]
+topics = [ "customers/update" ]
+uri = "/webhooks/customers/update"
+
+[[webhooks.subscriptions]]
+topics = [ "app/scopes_update" ]
+uri = "/webhooks/app/scopes_update"
+
+# GDPR compliance webhooks (mandatory)
+[[webhooks.subscriptions]]
+compliance_topics = [ "customers/data_request", "customers/redact", "shop/redact" ]
+uri = "/webhooks/gdpr"
+
+[access_scopes]
+# Development scopes - same as production for consistency
+scopes = "read_orders,write_orders,read_customers,write_customers,read_merchant_managed_fulfillment_orders,write_merchant_managed_fulfillment_orders"
+
+[auth]
+redirect_urls = [ "https://shopify.dev/apps/default-app-home/api/auth" ]
+
+# App proxy for development - use local or staging API
+[app_proxy]
+url = "http://localhost:8080"
+subpath = "apps"
+prefix = "apps"

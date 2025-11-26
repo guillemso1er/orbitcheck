@@ -10,6 +10,7 @@ import { BCRYPT_ROUNDS, PG_UNIQUE_VIOLATION, PROJECT_NAMES } from "../config.js"
 import { ERROR_CODES, ERROR_MESSAGES, HTTP_STATUS } from "../errors.js";
 import type { LoginUserData, LoginUserResponses, LogoutUserResponses, RegisterUserData, RegisterUserResponses } from "../generated/fastify/types.gen.js";
 import { routes } from '../routes/routes.js';
+import { createAuditService, hashIpForAudit, sanitizeUserAgent } from "./audit.js";
 import { parsePat } from "./pats.js";
 import { createPlansService } from "./plans.js";
 import { getDefaultProjectId, sendError, sendServerError } from "./utils.js";
@@ -101,6 +102,7 @@ export async function loginUser(
     try {
         const request_id = generateRequestId()
         const { email, password, rememberMe } = request.body as LoginUserData['body']
+        const auditService = createAuditService(pool);
 
         const { rows } = await pool.query(
             'SELECT id, email, password_hash, first_name, last_name, created_at, updated_at FROM users WHERE email = $1',
@@ -108,10 +110,25 @@ export async function loginUser(
         )
 
         if (rows.length === 0 || !(await bcrypt.compare(password, rows[0].password_hash))) {
+            // Log failed login attempt (don't include email in audit log)
+            if (rows.length > 0) {
+                await auditService.logAuthEvent(rows[0].id, 'login', {
+                    ipHash: hashIpForAudit(request.ip),
+                    userAgent: sanitizeUserAgent(request.headers['user-agent']),
+                    result: 'failure',
+                });
+            }
             return await sendError(rep, HTTP_STATUS.UNAUTHORIZED, ERROR_CODES.INVALID_CREDENTIALS, ERROR_MESSAGES[ERROR_CODES.INVALID_CREDENTIALS], request_id)
         }
 
         const user = rows[0]
+
+        // Log successful login
+        await auditService.logAuthEvent(user.id, 'login', {
+            ipHash: hashIpForAudit(request.ip),
+            userAgent: sanitizeUserAgent(request.headers['user-agent']),
+            result: 'success',
+        });
 
         // Debug: Log request protocol and headers in production
         if (process.env.NODE_ENV === 'production') {
@@ -212,9 +229,22 @@ export async function loginUser(
 
 export async function logoutUser(
     request: FastifyRequest,
-    rep: FastifyReply
+    rep: FastifyReply,
+    pool: Pool
 ): Promise<FastifyReply<{ Body: LogoutUserResponses }>> {
     try {
+        const auditService = createAuditService(pool);
+        const userId = (request as any).session?.get?.('user_id') ?? (request as any).session?.user_id;
+
+        // Log logout event before destroying session
+        if (userId) {
+            await auditService.logAuthEvent(userId, 'logout', {
+                ipHash: hashIpForAudit(request.ip),
+                userAgent: sanitizeUserAgent(request.headers['user-agent']),
+                result: 'success',
+            });
+        }
+
         // CSRF is enforced by the csrfHeader guard; here we just destroy session
         try {
             if (typeof (request as any).destroySession === 'function') {

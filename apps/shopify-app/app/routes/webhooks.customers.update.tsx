@@ -2,6 +2,7 @@ import { shopifyCustomersUpdateWebhook } from "@orbitcheck/contracts";
 import type { ActionFunctionArgs } from "react-router";
 import { authenticate } from "../shopify.server";
 import type { Customer } from "../types/admin.types";
+import { handleGraphQLResponse } from "../utils/graphql-error-handler";
 import { getOrbitcheckClient } from "../utils/orbitcheck.server.js";
 import { mapCustomerGraphQLToContract } from "../utils/webhook-mapper";
 
@@ -73,10 +74,26 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       { variables: { id: resourceId } }
     );
 
-    const { data } = await response.json();
+    const jsonResponse = await response.json();
+
+    // Handle GraphQL errors including PII access denied
+    const { data, errorResult } = handleGraphQLResponse(jsonResponse, shop, topic);
+
+    // If there are non-PII errors, log them but continue processing
+    // PII access denied is expected in some cases and data will have null fields
+    if (errorResult.otherErrors.length > 0) {
+      console.warn(`[${topic}] GraphQL returned errors for ${shop}`, {
+        errors: errorResult.otherErrors,
+      });
+    }
 
     if (!data?.customer) {
-      console.error("Failed to fetch customer data from Shopify GraphQL");
+      console.error("Failed to fetch customer data from Shopify GraphQL", {
+        shop,
+        resourceId,
+        hasPiiAccessDenied: errorResult.hasPiiAccessDenied,
+        deniedFields: errorResult.deniedPiiFields,
+      });
       return new Response();
     }
 

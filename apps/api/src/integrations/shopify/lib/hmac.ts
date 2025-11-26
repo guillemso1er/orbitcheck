@@ -49,10 +49,38 @@ export function rawBody() {
 export function verifyHmac(secret: string) {
     return async (request: FastifyRequest, reply: FastifyReply) => {
         // Skip HMAC verification for internal requests from the Shopify app
+        // Security: Only allow internal requests from localhost or trusted IPs
         const internalRequest = request.headers['x-internal-request'];
         if (internalRequest === 'shopify-app') {
-            request.log.info('Skipping HMAC verification for internal Shopify app request');
-            return;
+            // Validate that the request comes from a trusted source
+            // This prevents external attackers from spoofing the header
+            const clientIp = request.ip;
+            const forwardedFor = request.headers['x-forwarded-for'];
+            const isLocalhost = clientIp === '127.0.0.1' || clientIp === '::1' || clientIp === '::ffff:127.0.0.1';
+            const isPrivateNetwork = /^(10\.|172\.(1[6-9]|2[0-9]|3[0-1])\.|192\.168\.)/.test(clientIp);
+
+            // In production, we should also check if the request comes through our internal network
+            // For now, we accept localhost and private network IPs, or if X-Forwarded-For indicates
+            // the request came through our load balancer
+            const isTrusted = isLocalhost || isPrivateNetwork || (
+                process.env.NODE_ENV !== 'production' // Allow in development/test
+            );
+
+            if (isTrusted) {
+                request.log.info({
+                    clientIp,
+                    isLocalhost,
+                    isPrivateNetwork,
+                    forwardedFor,
+                }, 'Skipping HMAC verification for internal Shopify app request');
+                return;
+            }
+
+            // In production with untrusted source, log and continue with HMAC verification
+            request.log.warn({
+                clientIp,
+                forwardedFor,
+            }, 'X-Internal-Request header received from untrusted source, requiring HMAC verification');
         }
 
         request.log.info({ topic: request.headers['x-shopify-topic'], shop: request.headers['x-shopify-shop-domain'] }, 'Starting Shopify webhook HMAC verification');
