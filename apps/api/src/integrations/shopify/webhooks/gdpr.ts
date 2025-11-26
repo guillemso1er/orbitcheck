@@ -1,5 +1,6 @@
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { type Redis as IORedisType } from 'ioredis';
+import type { Pool } from 'pg';
 
 import type { GdprCustomersDataRequest, GdprCustomersRedact, GdprShopRedact } from '../../../generated/fastify/index.js';
 import { createShopifyService } from '../../../services/shopify.js';
@@ -32,11 +33,10 @@ async function redactCustomerLogsFromDatabase(
         await client.query(`
             UPDATE logs
             SET
-                meta = meta - 'email' - 'phone' - 'address' - 'name' - 'tax_id',
-                meta = meta || jsonb_build_object(
+                meta = (meta - 'email' - 'phone' - 'address' - 'name' - 'tax_id') || jsonb_build_object(
                     'redacted_at', now(),
                     'redacted_customer_id', $1,
-                    'original_meta_size', jsonb_object_length(meta)
+                    'original_meta_size', (SELECT count(*) FROM jsonb_object_keys(meta))
                 )
             WHERE
                 meta ?| array['email', 'phone', 'address', 'name', 'tax_id']
@@ -88,8 +88,7 @@ async function redactCustomerValidationData(
         await client.query(`
             UPDATE logs
             SET
-                meta = meta - 'customer' - 'billing_address' - 'shipping_address',
-                meta = meta || jsonb_build_object(
+                meta = (meta - 'customer' - 'billing_address' - 'shipping_address') || jsonb_build_object(
                     'customer_data_redacted', true,
                     'redacted_at', now()
                 )
@@ -160,7 +159,7 @@ async function clearCustomerCacheData(
     }
 }
 
-export async function customersDataRequest(request: FastifyRequest, reply: FastifyReply): Promise<any> {
+export async function customersDataRequest(request: FastifyRequest, reply: FastifyReply, pool: Pool, _redis: IORedisType): Promise<any> {
     const shop = (request.headers['x-shopify-shop-domain'] as string) || ((request as any).shopDomain as string);
     const payload: GdprCustomersDataRequest = request.body as any;
     const customerId = extractCustomerId(payload);
@@ -176,7 +175,7 @@ export async function customersDataRequest(request: FastifyRequest, reply: Fasti
         requestType: 'data_request'
     }, 'Processing Shopify customers/data_request webhook');
 
-    const shopifyService = createShopifyService((request as any).server.pg.pool);
+    const shopifyService = createShopifyService(pool);
 
     try {
         await shopifyService.recordGdprEvent(shop, 'customers/data_request', payload);
@@ -283,7 +282,7 @@ export async function customersDataRequest(request: FastifyRequest, reply: Fasti
     }
 }
 
-export async function customersRedact(request: FastifyRequest, reply: FastifyReply): Promise<any> {
+export async function customersRedact(request: FastifyRequest, reply: FastifyReply, pool: Pool, redis: IORedisType): Promise<any> {
     const shop = (request.headers['x-shopify-shop-domain'] as string) || ((request as any).shopDomain as string);
     const payload: GdprCustomersRedact = request.body as any;
     const customerId = extractCustomerId(payload);
@@ -299,7 +298,7 @@ export async function customersRedact(request: FastifyRequest, reply: FastifyRep
         requestType: 'redact'
     }, 'Processing Shopify customers/redact webhook');
 
-    const shopifyService = createShopifyService((request as any).server.pg.pool);
+    const shopifyService = createShopifyService(pool);
 
     try {
         await shopifyService.recordGdprEvent(shop, 'customers/redact', payload);
@@ -337,7 +336,7 @@ export async function customersRedact(request: FastifyRequest, reply: FastifyRep
                         await redactCustomerValidationData(shop, customerId, shopifyService);
 
                         // 3. Clear any cached data related to this customer
-                        await clearCustomerCacheData(shop, customerId, (request as any).server.redis);
+                        await clearCustomerCacheData(shop, customerId, redis);
 
                         request.log.info({
                             shop,
@@ -408,7 +407,7 @@ export async function customersRedact(request: FastifyRequest, reply: FastifyRep
     }
 }
 
-export async function shopRedact(request: FastifyRequest, reply: FastifyReply): Promise<any> {
+export async function shopRedact(request: FastifyRequest, reply: FastifyReply, pool: Pool): Promise<any> {
     const shop = request.headers['x-shopify-shop-domain'] as string;
     const payload: GdprShopRedact = request.body as any;
 
@@ -423,7 +422,7 @@ export async function shopRedact(request: FastifyRequest, reply: FastifyReply): 
         requestType: 'shop_redact'
     }, 'Processing Shopify shop/redact webhook');
 
-    const shopifyService = createShopifyService((request as any).server.pg.pool);
+    const shopifyService = createShopifyService(pool);
 
     try {
         await shopifyService.recordGdprEvent(shop, 'shop/redact', payload);

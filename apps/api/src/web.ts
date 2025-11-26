@@ -1,5 +1,3 @@
-import crypto from 'node:crypto';
-
 import openapiSpec from "@orbitcheck/contracts/openapi.v1.json" with { type: "json" };
 import type { FastifyInstance, FastifyPluginAsync, FastifyReply, FastifyRequest, RawServerBase, RouteGenericInterface } from "fastify";
 import openapiGlue from "fastify-openapi-glue";
@@ -140,17 +138,21 @@ const routesPlugin: FastifyPluginAsync<RoutesPluginOptions> = async (app, { pool
             shopifySessionToken: async (request, reply) => {
                 if (!shopifyAppKey || !shopifyAppSecret) {
                     request.log.warn('Shopify API credentials missing; cannot verify session token');
-                    await reply.status(503).send({
-                        error: {
-                            code: 'SHOPIFY_CREDENTIALS_MISSING',
-                            message: 'Shopify API credentials are not configured'
-                        },
-                        request_id: crypto.randomUUID?.() ?? 'unknown'
-                    });
-                    return;
+                    const err = new Error('Shopify API credentials are not configured');
+                    (err as any).statusCode = 503;
+                    (err as any).code = 'SHOPIFY_CREDENTIALS_MISSING';
+                    throw err;
                 }
                 const shopifySessionVerifier = verifyShopifySessionToken(shopifyAppKey, shopifyAppSecret);
-                await shopifySessionVerifier(request, reply);
+                const result = await shopifySessionVerifier(request, reply);
+                // If the verifier sent a response (returned a reply), it means auth failed
+                // In that case, we need to throw to signal failure to fastify-auth
+                if (result) {
+                    const err = new Error('Shopify session token verification failed');
+                    (err as any).statusCode = 401;
+                    (err as any).code = 'UNAUTHORIZED';
+                    throw err;
+                }
             },
         },
     });

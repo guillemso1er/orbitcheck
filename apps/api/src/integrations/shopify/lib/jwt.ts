@@ -4,7 +4,7 @@ import jwt from 'jsonwebtoken';
 const RETRY_HEADER = 'X-Shopify-Retry-Invalid-Session-Request';
 
 export function verifyShopifySessionToken(appKey: string, appSecret: string) {
-    return async (request: FastifyRequest, reply: FastifyReply) => {
+    return async (request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply | void> => {
         const auth = request.headers.authorization || '';
         const token = auth.startsWith('Bearer ') ? auth.slice(7) : null;
         if (!token) {
@@ -33,6 +33,7 @@ export function verifyShopifySessionToken(appKey: string, appSecret: string) {
             (request as any).sessionToken = token;
 
             request.log.info({ shop: shopDomain }, 'Shopify session token verified successfully');
+            // Return void/undefined on success
         } catch (error) {
             reply.header(RETRY_HEADER, '1');
             request.log.warn({ error: error instanceof Error ? error.message : 'Unknown error' }, 'Shopify session token validation failed');

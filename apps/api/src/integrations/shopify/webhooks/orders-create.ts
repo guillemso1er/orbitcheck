@@ -1,9 +1,9 @@
+import type { components } from '@orbitcheck/contracts';
 import { Queue } from 'bullmq';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { type Redis as IORedisType } from 'ioredis';
 import type { Pool } from 'pg';
 
-import type { components } from '@orbitcheck/contracts';
 import { env } from '../../../environment.js';
 import type { ShopifyOrder } from '../../../generated/fastify/index.js';
 import type { AddTagsMutation, GetShopNameQuery } from '../../../generated/shopify/admin/admin.generated.js';
@@ -11,7 +11,7 @@ import { CompositeEmailService, KlaviyoEmailService, ShopifyFlowEmailService } f
 import { evaluateOrderForRiskAndRulesDirect } from '../../../services/orders.js';
 import { createShopifyService } from '../../../services/shopify.js';
 import { validateAddress as validateAddressUtil } from '../../../validators/address.js';
-import { createAddressFixService, type AddressWithContact } from '../address-fix/service.js';
+import { type AddressWithContact, createAddressFixService } from '../address-fix/service.js';
 import { MUT_TAGS_ADD, QUERY_SHOP_NAME, shopifyGraphql } from '../lib/graphql.js';
 import { captureShopifyEvent } from '../lib/telemetry.js';
 import type { OrderEvaluatePayload } from '../lib/types.js';
@@ -147,8 +147,8 @@ export async function ordersCreate(request: FastifyRequest, reply: FastifyReply,
         request.log.debug({ shop: shopDomain, order: payload.order_id, action: result?.action }, 'No new order tags returned');
     }
 
-    // Address fix workflow - run asynchronously after main processing
-    if (shouldProcess) {
+    // Address fix workflow - only run in 'activated' mode (not in 'notify' mode)
+    if (isActivated) {
         queueMicrotask(() => {
             // eslint-disable-next-line @typescript-eslint/no-floating-promises
             (async () => {

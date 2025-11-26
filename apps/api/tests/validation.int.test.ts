@@ -8,7 +8,7 @@ let pool: ReturnType<typeof getPool>
 let redis: Redis
 let apiKey: string
 let cookieJar: Record<string, string>
-
+let csrfToken: string
 beforeAll(async () => {
   try {
     // Start environment first
@@ -118,17 +118,29 @@ beforeEach(async () => {
     }
   })
 
+  // Update cookieJar and CSRF token with new session cookies after reset
+  cookieJar = {}
+  csrfToken = ''
+  for (const c of loginRes.cookies ?? []) {
+    cookieJar[c.name] = c.value
+    if (c.name === 'csrf_token_client') {
+      csrfToken = c.value
+    }
+  }
+
   const projectRes = await app.inject({
     method: 'POST',
     url: '/projects',
     payload: { name: 'Test Project' },
-    cookies: cookieJar
+    cookies: cookieJar,
+    headers: { 'x-csrf-token': csrfToken }
   })
 
   const keyRes = await app.inject({
     method: 'POST',
     url: '/v1/api-keys',
     cookies: cookieJar,
+    headers: { 'x-csrf-token': csrfToken },
     payload: { name: 'Test API Key' }
   })
   apiKey = keyRes.json().full_key

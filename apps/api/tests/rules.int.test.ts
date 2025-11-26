@@ -7,6 +7,8 @@ let app: Awaited<ReturnType<typeof build>>
 let pool: ReturnType<typeof getPool>
 let redis: Redis
 let cookieJar: Record<string, string>
+let csrfToken: string
+let apiKey: string
 
 beforeAll(async () => {
   try {
@@ -82,11 +84,33 @@ beforeEach(async () => {
       }
     })
 
-    // Extract session cookies from login response
+    // Extract session cookies and CSRF token from login response
     cookieJar = {}
+    csrfToken = ''
     for (const c of loginRes.cookies ?? []) {
       cookieJar[c.name] = c.value
+      if (c.name === 'csrf_token_client') {
+        csrfToken = c.value
+      }
     }
+
+    // Create project and API key for rules tests
+    const projectRes = await app.inject({
+      method: 'POST',
+      url: '/projects',
+      payload: { name: 'Test Project' },
+      cookies: cookieJar,
+      headers: { 'x-csrf-token': csrfToken }
+    })
+
+    const keyRes = await app.inject({
+      method: 'POST',
+      url: '/v1/api-keys',
+      cookies: cookieJar,
+      headers: { 'x-csrf-token': csrfToken },
+      payload: { name: 'Test API Key' }
+    })
+    apiKey = keyRes.json().full_key
   } catch (error) {
     console.error('Failed to reset test environment:', error)
     throw error
@@ -99,11 +123,15 @@ describe('Rules Integration Tests', () => {
       const res = await app.inject({
         method: 'GET',
         url: '/v1/rules',
-        cookies: cookieJar
+        cookies: cookieJar,
+        headers: { 'x-csrf-token': csrfToken }
       })
 
       expect(res.statusCode).toBe(200)
-      expect(res.json()).toEqual([])
+      const body = res.json()
+      expect(body).toHaveProperty('rules')
+      expect(body).toHaveProperty('request_id')
+      expect(body.rules).toEqual([])
     })
 
     test('GET /v1/rules with existing rules', async () => {

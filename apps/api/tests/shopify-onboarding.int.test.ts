@@ -234,18 +234,9 @@ describe('Shopify Onboarding Integration', () => {
             expect(body.user.id).toBe(userId);
             expect(body.project_id).toBe(projectId);
             expect(body.dashboard_url).toBeTruthy();
-
-            // Verify cookies are set
-            const cookies = response.headers['set-cookie'];
-            expect(cookies).toBeDefined();
-            if (Array.isArray(cookies)) {
-                const cookieNames = cookies.map((c) => c.split('=')[0]);
-                expect(cookieNames).toContain('orbitcheck_session');
-                expect(cookieNames).toContain('csrf_token');
-                expect(cookieNames).toContain('csrf_token_client');
-            } else if (typeof cookies === 'string') {
-                expect(cookies).toContain('orbitcheck_session');
-            }
+            // The dashboard_url contains a one-time SSO token that will be exchanged
+            // for session cookies at the /auth/shopify-sso endpoint
+            expect(body.dashboard_url).toContain('/auth/shopify-sso?token=');
         });
 
         test('should return 503 for shop with incomplete onboarding', async () => {

@@ -43,10 +43,12 @@ process.env.GOOGLE_GEOCODING_KEY = ''
 process.env.USE_GOOGLE_FALLBACK = 'false'
 process.env.LOCATIONIQ_KEY = ''
 process.env.PAT_PEPPER = 'test-pat-pepper-for-orbitcheck'
+// Shopify API credentials for test mode
+process.env.SHOPIFY_API_KEY = 'test-shopify-api-key'
+process.env.SHOPIFY_API_SECRET = 'test-shopify-api-secret'
 
 import { PostgreSqlContainer, StartedPostgreSqlContainer } from '@testcontainers/postgresql';
 import { RedisContainer, StartedRedisContainer } from '@testcontainers/redis';
-import { promises as fs } from 'fs';
 import { exec } from 'child_process';
 import Redis from 'ioredis';
 import path from 'path';
@@ -130,7 +132,7 @@ export async function resetDb() {
         await pool.query(`DELETE FROM ${tableName};`);
       } catch (error) {
         // Table might not exist, continue
-        console.warn(`Failed to delete from ${tableName}:`, error.message);
+        console.warn(`Failed to delete from ${tableName}:`, error instanceof Error ? error.message : String(error));
       }
     }
 
@@ -151,9 +153,9 @@ async function runMigrations() {
   try {
     // Use node-pg-migrate CLI to run migrations
     const command = `DATABASE_URL="${dbUrl}" node-pg-migrate -m "${migrationsDir}" up --no-check-order`;
-    
+
     console.log(`[Migrations] Executing: ${command.replace(/:\/\/.*@/, '://***@')}`);
-    
+
     await new Promise<void>((resolve, reject) => {
       exec(command, (error, stdout, stderr) => {
         if (stdout) {
@@ -162,7 +164,7 @@ async function runMigrations() {
         if (stderr) {
           console.log('[Migrations] stderr:', stderr);
         }
-        
+
         if (error) {
           console.error(`[Migrations] Command failed:`, error);
           reject(new Error(`Migration failed: ${error.message}`));
@@ -191,14 +193,14 @@ async function runMigrations() {
           SELECT 1 FROM information_schema.tables
           WHERE table_name = $1 AND table_schema = 'public' AND table_type = 'BASE TABLE'
         `, [table]);
-        
+
         if (result.rows.length > 0) {
           console.log(`[Migrations] Table ${table} exists and is accessible`);
         } else {
           throw new Error(`Table not found in information_schema`);
         }
       } catch (error) {
-        console.error(`[Migrations] Table ${table} does not exist or is not accessible:`, error.message);
+        console.error(`[Migrations] Table ${table} does not exist or is not accessible:`, error instanceof Error ? error.message : String(error));
         throw new Error(`Critical table ${table} is missing after migrations`);
       }
     }
@@ -227,7 +229,7 @@ export async function seedTestData() {
     'disposable.com',
     'testmail.com'
   ]
-  
+
   await redis.sadd('disposable_domains', ...testDisposableDomains)
   await redis.quit()
 }

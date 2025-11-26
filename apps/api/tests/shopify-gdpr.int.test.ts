@@ -3,11 +3,17 @@
  * Tests compliance with mandatory GDPR webhooks: customers/data_request, customers/redact, shop/redact
  */
 
+import crypto from 'crypto';
 import { Redis } from 'ioredis';
 import type { Pool } from 'pg';
 import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'vitest';
 import { build } from '../src/server.js';
 import { getPool, getRedis, startTestEnv, stopTestEnv } from './setup.js';
+
+// Generate a unique webhook ID for each request to avoid idempotency conflicts
+function generateWebhookId(): string {
+    return crypto.randomUUID();
+}
 
 let app: Awaited<ReturnType<typeof build>>;
 let pool: Pool;
@@ -81,6 +87,7 @@ describe('Shopify GDPR Webhooks Integration', () => {
                 payload,
                 headers: {
                     'X-Shopify-Shop-Domain': testShop,
+                    'X-Shopify-Webhook-Id': generateWebhookId(),
                     'Content-Type': 'application/json',
                     'X-Internal-Request': 'shopify-app',
                 },
@@ -117,6 +124,7 @@ describe('Shopify GDPR Webhooks Integration', () => {
                 payload,
                 headers: {
                     'X-Shopify-Shop-Domain': 'unknown-shop.myshopify.com',
+                    'X-Shopify-Webhook-Id': generateWebhookId(),
                     'Content-Type': 'application/json',
                     'X-Internal-Request': 'shopify-app',
                 },
@@ -146,6 +154,7 @@ describe('Shopify GDPR Webhooks Integration', () => {
                 payload,
                 headers: {
                     'X-Shopify-Shop-Domain': testShop,
+                    'X-Shopify-Webhook-Id': generateWebhookId(),
                     'Content-Type': 'application/json',
                     'X-Internal-Request': 'shopify-app',
                 },
@@ -194,6 +203,7 @@ describe('Shopify GDPR Webhooks Integration', () => {
                 payload,
                 headers: {
                     'X-Shopify-Shop-Domain': testShop,
+                    'X-Shopify-Webhook-Id': generateWebhookId(),
                     'Content-Type': 'application/json',
                     'X-Internal-Request': 'shopify-app',
                 },
@@ -245,6 +255,7 @@ describe('Shopify GDPR Webhooks Integration', () => {
                 payload,
                 headers: {
                     'X-Shopify-Shop-Domain': shopToDelete,
+                    'X-Shopify-Webhook-Id': generateWebhookId(),
                     'Content-Type': 'application/json',
                     'X-Internal-Request': 'shopify-app',
                 },
@@ -275,6 +286,7 @@ describe('Shopify GDPR Webhooks Integration', () => {
                 payload,
                 headers: {
                     'X-Shopify-Shop-Domain': 'already-deleted.myshopify.com',
+                    'X-Shopify-Webhook-Id': generateWebhookId(),
                     'Content-Type': 'application/json',
                     'X-Internal-Request': 'shopify-app',
                 },
@@ -302,6 +314,7 @@ describe('Shopify GDPR Webhooks Integration', () => {
                 },
                 headers: {
                     'X-Shopify-Shop-Domain': testShop,
+                    'X-Shopify-Webhook-Id': generateWebhookId(),
                     'Content-Type': 'application/json',
                     'X-Internal-Request': 'shopify-app',
                 },
@@ -319,6 +332,7 @@ describe('Shopify GDPR Webhooks Integration', () => {
                 },
                 headers: {
                     'X-Shopify-Shop-Domain': testShop,
+                    'X-Shopify-Webhook-Id': generateWebhookId(),
                     'Content-Type': 'application/json',
                     'X-Internal-Request': 'shopify-app',
                 },

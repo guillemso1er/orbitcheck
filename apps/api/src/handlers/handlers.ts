@@ -179,11 +179,11 @@ const makeShopifyHandlers = (pool: Pool, redis: IORedisType): Partial<RouteHandl
     // eslint-disable-next-line promise/prefer-await-to-callbacks
     shopifyAppUninstalledWebhook: async (request, reply) => appUninstalled(request, reply, pool),
     // eslint-disable-next-line promise/prefer-await-to-callbacks
-    shopifyGdprCustomersDataRequestWebhook: async (request, reply) => customersDataRequest(request, reply),
+    shopifyGdprCustomersDataRequestWebhook: async (request, reply) => customersDataRequest(request, reply, pool, redis),
     // eslint-disable-next-line promise/prefer-await-to-callbacks
-    shopifyGdprCustomersRedactWebhook: async (request, reply) => customersRedact(request, reply),
+    shopifyGdprCustomersRedactWebhook: async (request, reply) => customersRedact(request, reply, pool, redis),
     // eslint-disable-next-line promise/prefer-await-to-callbacks
-    shopifyGdprShopRedactWebhook: async (request, reply) => shopRedact(request, reply),
+    shopifyGdprShopRedactWebhook: async (request, reply) => shopRedact(request, reply, pool),
 
     // eslint-disable-next-line promise/prefer-await-to-callbacks
     shopifyAddressFixGet: async (request, reply) => getAddressFixSession(request, reply, pool),

@@ -7,6 +7,7 @@ let app: Awaited<ReturnType<typeof build>>
 let pool: ReturnType<typeof getPool>
 let redis: Redis
 let cookieJar: Record<string, string>
+let csrfToken: string
 
 beforeAll(async () => {
   try {
@@ -78,10 +79,14 @@ beforeEach(async () => {
     }
   })
 
-  // Extract session cookies from login response
+  // Extract session cookies and CSRF token from login response
   cookieJar = {}
+  csrfToken = ''
   for (const c of loginRes.cookies ?? []) {
     cookieJar[c.name] = c.value
+    if (c.name === 'csrf_token_client') {
+      csrfToken = c.value
+    }
   }
 })
 
@@ -840,33 +845,14 @@ describe('Projects Integration Tests', () => {
 
   describe('Error Handling and Edge Cases', () => {
     test('handles database errors gracefully', async () => {
-      // Register and login
-      const userRes = await app.inject({
-        method: 'POST',
-        url: '/auth/register',
-        payload: {
-          email: 'test@example.com',
-          password: 'Password123*',
-          confirm_password: 'Password123*'
-        }
-      })
-
-      const loginRes = await app.inject({
-        method: 'POST',
-        url: '/auth/login',
-        payload: {
-          email: 'test@example.com',
-          password: 'Password123*'
-        }
-      })
-
       // This would require mocking database failures
-      // For now, ensure normal operation works
+      // For now, ensure normal operation works using the session from beforeEach
       const projectRes = await app.inject({
         method: 'POST',
         url: '/projects',
         payload: { name: 'Test Project' },
-        cookies: cookieJar
+        cookies: cookieJar,
+        headers: { 'x-csrf-token': csrfToken }
       })
       expect(projectRes.statusCode).toBe(201)
     })

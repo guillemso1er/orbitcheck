@@ -141,14 +141,14 @@ describe('Authentication Integration Tests', () => {
       })
       expect(res1.statusCode).toBe(201)
 
-      // Duplicate registration
+      // Duplicate registration - use a valid password that meets complexity requirements
       const res2 = await app.inject({
         method: 'POST',
         url: '/auth/register',
         payload: {
           email: 'test@example.com',
-          password: 'password456',
-          confirm_password: 'password456'
+          password: 'Password456!',
+          confirm_password: 'Password456!'
         }
       })
       expect(res2.statusCode).toBe(400)
