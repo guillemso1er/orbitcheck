@@ -100,7 +100,8 @@ export async function ordersCreate(request: FastifyRequest, reply: FastifyReply,
     }
 
     const tags = Array.isArray(result?.tags) ? result.tags : [];
-    if (tags.length && shouldProcess) {
+    // Only tag orders in 'activated' mode, not in 'notify' mode
+    if (tags.length && isActivated) {
         let orderGid = o.admin_graphql_api_id;
         if (!orderGid && o.id) {
             request.log.warn({ shop: shopDomain, orderId: o.id }, 'Missing admin_graphql_api_id, constructing from ID');
