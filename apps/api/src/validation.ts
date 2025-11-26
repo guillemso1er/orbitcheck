@@ -78,16 +78,23 @@ export const ORDER_ACTIONS = {
 } as const;
 
 export const ORDER_TAGS = {
-  POTENTIAL_DUPLICATE_CUSTOMER: 'potential_duplicate_customer',
-  POTENTIAL_DUPLICATE_ADDRESS: 'potential_duplicate_address',
-  PO_BOX_DETECTED: 'po_box_detected',
-  VIRTUAL_ADDRESS: 'virtual_address',
-  INVALID_ADDRESS: 'invalid_address',
-  DISPOSABLE_EMAIL: 'disposable_email',
-  DUPLICATE_ORDER: 'duplicate_order',
-  COD_ORDER: 'cod_order',
-  HIGH_RISK_RTO: 'high_risk_rto',
-  HIGH_VALUE_ORDER: 'high_value_order',
+  POTENTIAL_DUPLICATE_CUSTOMER: '👥 Risk: Duplicate Customer',
+  POTENTIAL_DUPLICATE_ADDRESS: '🏠 Risk: Duplicate Address',
+  PO_BOX_DETECTED: '📮 Risk: P.O. Box',
+  VIRTUAL_ADDRESS: '🏢 Risk: Virtual Address',
+  INVALID_ADDRESS: '📍 Risk: Invalid Address',
+  DISPOSABLE_EMAIL: '📧 Risk: Disposable Email',
+  DUPLICATE_ORDER: '🔄 Risk: Duplicate Order',
+  COD_ORDER: '💵 Risk: COD Payment',
+  HIGH_RISK_RTO: '🚨 Risk: High RTO',
+  HIGH_VALUE_ORDER: '💰 Risk: High Value',
+} as const;
+
+// Status tags for address fix workflow
+export const VALIDATION_TAGS = {
+  PENDING: '⏳ Validation: Pending',
+  VERIFIED: '✅ Validation: Verified',
+  FAILED: '❌ Validation: Failed',
 } as const;
 
 export const PAYMENT_METHODS = {

@@ -173,7 +173,7 @@ describe('Shopify Address Fix Integration', () => {
                 expect.stringContaining(SHOP_DOMAIN),
                 expect.objectContaining({
                     method: 'POST',
-                    body: expect.stringContaining('address_fix_needed')
+                    body: expect.stringContaining('⏳ Validation: Pending')
                 })
             );
         });

@@ -144,10 +144,10 @@ const routesPlugin: FastifyPluginAsync<RoutesPluginOptions> = async (app, { pool
                     throw err;
                 }
                 const shopifySessionVerifier = verifyShopifySessionToken(shopifyAppKey, shopifyAppSecret);
-                const result = await shopifySessionVerifier(request, reply);
-                // If the verifier sent a response (returned a reply), it means auth failed
-                // In that case, we need to throw to signal failure to fastify-auth
-                if (result) {
+                await shopifySessionVerifier(request, reply);
+                // If a response was already sent (reply.sent === true), the verifier handled auth failure
+                // If no response sent, it means success - let fastify-auth continue
+                if (reply.sent) {
                     const err = new Error('Shopify session token verification failed');
                     (err as any).statusCode = 401;
                     (err as any).code = 'UNAUTHORIZED';

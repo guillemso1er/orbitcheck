@@ -188,6 +188,42 @@ export default function Index() {
           </s-unordered-list>
         </s-section>
       )}
+
+      {/* Tags Reference Section */}
+      {status !== 'disconnected' && (
+        <s-section heading="Order Tags Reference">
+          <s-stack gap="large-400">
+            <s-text tone="neutral">
+              OrbitCheck applies the following tags to orders based on validation results:
+            </s-text>
+
+            <s-stack gap="base">
+              <s-text variant="headingSm">Status Tags (Workflow)</s-text>
+              <s-unordered-list>
+                <s-list-item><strong>⏳ Validation: Pending</strong> - Address needs customer confirmation</s-list-item>
+                <s-list-item><strong>✅ Validation: Verified</strong> - Address has been confirmed</s-list-item>
+                <s-list-item><strong>❌ Validation: Failed</strong> - Address validation failed</s-list-item>
+              </s-unordered-list>
+            </s-stack>
+
+            <s-stack gap="base">
+              <s-text variant="headingSm">Risk Tags (Warnings)</s-text>
+              <s-unordered-list>
+                <s-list-item><strong>👥 Risk: Duplicate Customer</strong> - Potential duplicate customer detected</s-list-item>
+                <s-list-item><strong>🏠 Risk: Duplicate Address</strong> - Potential duplicate address detected</s-list-item>
+                <s-list-item><strong>🔄 Risk: Duplicate Order</strong> - Duplicate order detected</s-list-item>
+                <s-list-item><strong>📮 Risk: P.O. Box</strong> - Shipping to P.O. Box address</s-list-item>
+                <s-list-item><strong>🏢 Risk: Virtual Address</strong> - Virtual/forwarding address detected</s-list-item>
+                <s-list-item><strong>📍 Risk: Invalid Address</strong> - Address could not be validated</s-list-item>
+                <s-list-item><strong>📧 Risk: Disposable Email</strong> - Disposable email domain used</s-list-item>
+                <s-list-item><strong>💵 Risk: COD Payment</strong> - Cash on delivery payment method</s-list-item>
+                <s-list-item><strong>🚨 Risk: High RTO</strong> - High return-to-origin risk</s-list-item>
+                <s-list-item><strong>💰 Risk: High Value</strong> - High value order</s-list-item>
+              </s-unordered-list>
+            </s-stack>
+          </s-stack>
+        </s-section>
+      )}
     </s-page>
   );
 }

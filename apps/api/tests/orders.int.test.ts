@@ -264,7 +264,7 @@ describe('Orders Integration Tests', () => {
 
             // Second order should have higher risk due to duplicate detection
             expect(body2.risk_score).toBeGreaterThan(body1.risk_score)
-            expect(body2.tags).toContain('duplicate_order')
+            expect(body2.tags).toContain('🔄 Risk: Duplicate Order')
             expect(body2.reason_codes).toContain('ORDER_DUPLICATE_DETECTED')
         })
 
@@ -288,7 +288,7 @@ describe('Orders Integration Tests', () => {
             expect(res.statusCode).toBe(200)
             const body = res.json()
 
-            expect(body.tags).toContain('po_box_detected')
+            expect(body.tags).toContain('📮 Risk: P.O. Box')
             expect(body.reason_codes).toContain('ORDER_PO_BOX_BLOCK')
         })
 
@@ -307,7 +307,7 @@ describe('Orders Integration Tests', () => {
             expect(res.statusCode).toBe(200)
             const body = res.json()
 
-            expect(body.tags).toContain('high_value_order')
+            expect(body.tags).toContain('💰 Risk: High Value')
             expect(body.reason_codes).toContain('ORDER_HIGH_VALUE')
         })
 
@@ -326,7 +326,7 @@ describe('Orders Integration Tests', () => {
             expect(res.statusCode).toBe(200)
             const body = res.json()
 
-            expect(body.tags).toContain('cod_order')
+            expect(body.tags).toContain('💵 Risk: COD Payment')
             expect(body.reason_codes).toContain('ORDER_COD_RISK')
         })
 
@@ -399,7 +399,7 @@ describe('Orders Integration Tests', () => {
             expect(res.statusCode).toBe(200)
             const body = res.json()
 
-            expect(body.tags).toContain('disposable_email')
+            expect(body.tags).toContain('📧 Risk: Disposable Email')
             expect(body.reason_codes).toContain('ORDER_DISPOSABLE_EMAIL')
         })
 
@@ -551,7 +551,7 @@ describe('Orders Integration Tests', () => {
 
             // Should have address dedupe matches
             expect(body2.address_dedupe.matches.length).toBeGreaterThan(0)
-            expect(body2.tags).toContain('potential_duplicate_address')
+            expect(body2.tags).toContain('🏠 Risk: Duplicate Address')
             expect(body2.reason_codes).toContain('ORDER_ADDRESS_DEDUPE_MATCH')
         })
     })
@@ -599,7 +599,7 @@ describe('Orders Integration Tests', () => {
 
             // Should have customer dedupe matches
             expect(body2.customer_dedupe.matches.length).toBeGreaterThan(0)
-            expect(body2.tags).toContain('potential_duplicate_customer')
+            expect(body2.tags).toContain('👥 Risk: Duplicate Customer')
             expect(body2.reason_codes).toContain('ORDER_CUSTOMER_DEDUPE_MATCH')
         })
     })

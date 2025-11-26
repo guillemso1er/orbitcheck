@@ -12,6 +12,7 @@ import type {
     MetafieldsSetMutation,
     RemoveTagsMutation
 } from '../../../generated/shopify/admin/admin.generated.js';
+import { ORDER_TAGS, VALIDATION_TAGS } from '../../../validation.js';
 import { MUT_TAGS_ADD, shopifyGraphql } from '../lib/graphql.js';
 import {
     MUT_FULFILLMENT_ORDER_HOLD,
@@ -179,7 +180,7 @@ export class AddressFixService {
     ): Promise<void> {
         const client = await shopifyGraphql(shopDomain, accessToken, process.env.SHOPIFY_API_VERSION || '2025-10');
 
-        const tags = ['address_fix_needed'];
+        const tags = [VALIDATION_TAGS.PENDING];
 
         // Add tag
         try {
@@ -373,11 +374,10 @@ export class AddressFixService {
 
         await Promise.all(releasePromises);
 
-        // Remove tags - both address_fix_needed and invalid_address
         try {
             await client.mutate(MUT_TAGS_REMOVE, {
                 id: session.order_gid,
-                tags: ['address_fix_needed', 'invalid_address'],
+                tags: [VALIDATION_TAGS.PENDING, ORDER_TAGS.INVALID_ADDRESS],
             }) as RemoveTagsMutation;
             this.logger.info({ shopDomain, orderGid: session.order_gid }, 'Removed address fix tags');
         } catch (error) {
