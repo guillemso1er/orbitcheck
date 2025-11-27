@@ -75,21 +75,31 @@ async function handleFormSubmit(e: Event): Promise<void> {
     const formData = new FormData(roiForm);
     const ordersPerMonth = parseInt((formData.get('monthly_orders') as string) || '1000') || 1000;
 
+    // Create a controller for the timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+
     try {
         const response = await fetch('https://api.orbitcheck.io/public/roi/estimate', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ orders_per_month: ordersPerMonth }),
+            signal: controller.signal,
         });
+
+        clearTimeout(timeoutId);
 
         if (response.ok) {
             // Show success
             roiForm.classList.add('hidden');
             if (successMessage) successMessage.classList.remove('hidden');
         } else {
-            throw new Error('Request failed');
+            throw new Error(`Request failed with status ${response.status}`);
         }
-    } catch {
+    } catch (error) {
+        clearTimeout(timeoutId);
+        console.error('ROI Calculator Error:', error);
+
         // Show error notification
         if (notification) {
             notification.className =

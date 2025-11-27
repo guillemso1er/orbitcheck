@@ -62,14 +62,45 @@ const {
       import { initROICalculator } from '../scripts/roi-calculator';
       import { initTheme } from '../scripts/theme';
 
+      console.log('Layout script starting...');
+
       // Initialize all functionality
-      initCopyrightYear();
-      initMobileMenu();
-      initTheme();
-      initROICalculator();
-      initAnimations();
-      initSmoothScroll();
-      initFAQKeyboard();
+      try {
+        initCopyrightYear();
+        console.log('Copyright initialized');
+      } catch (e) { console.error('Error initializing copyright:', e); }
+
+      try {
+        initMobileMenu();
+        console.log('Mobile menu initialized');
+      } catch (e) { console.error('Error initializing mobile menu:', e); }
+
+      try {
+        initTheme();
+        console.log('Theme initialized (called)');
+      } catch (e) { console.error('Error initializing theme:', e); }
+
+      try {
+        initROICalculator();
+        console.log('ROI Calculator initialized');
+      } catch (e) { console.error('Error initializing ROI calculator:', e); }
+
+      try {
+        initAnimations();
+        console.log('Animations initialized');
+      } catch (e) { console.error('Error initializing animations:', e); }
+
+      try {
+        initSmoothScroll();
+        console.log('Smooth scroll initialized');
+      } catch (e) { console.error('Error initializing smooth scroll:', e); }
+
+      try {
+        initFAQKeyboard();
+        console.log('FAQ keyboard initialized');
+      } catch (e) { console.error('Error initializing FAQ keyboard:', e); }
+      
+      console.log('Layout script finished');
     </script>
   </body>
 </html>

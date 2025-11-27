@@ -6,22 +6,28 @@
 export function initTheme(): void {
     const themeToggle = document.getElementById('theme-toggle');
     const themeToggleMobile = document.getElementById('theme-toggle-mobile');
-    const themeIconLight = document.getElementById('theme-icon-light');
-    const themeIconDark = document.getElementById('theme-icon-dark');
-
-    function updateIcons(): void {
-        const isDark = document.documentElement.classList.contains('dark');
-        themeIconLight?.classList.toggle('hidden', isDark);
-        themeIconDark?.classList.toggle('hidden', !isDark);
-    }
 
     function toggleTheme(): void {
+        console.log('Toggle theme clicked. Current dark:', document.documentElement.classList.contains('dark'));
         const isDark = document.documentElement.classList.toggle('dark');
-        localStorage.setItem('theme', isDark ? 'dark' : 'light');
-        updateIcons();
+        console.log('After toggle, dark:', isDark);
+        try {
+            localStorage.setItem('theme', isDark ? 'dark' : 'light');
+        } catch (e) {
+            console.warn('Unable to save theme preference:', e);
+        }
     }
 
-    themeToggle?.addEventListener('click', toggleTheme);
-    themeToggleMobile?.addEventListener('click', toggleTheme);
-    updateIcons();
+    if (themeToggle) {
+        themeToggle.addEventListener('click', toggleTheme);
+        console.log('Theme toggle listener attached');
+    } else {
+        console.warn('Theme toggle element not found');
+    }
+
+    if (themeToggleMobile) {
+        themeToggleMobile.addEventListener('click', toggleTheme);
+    }
+
+    console.log('Theme initialized. Current mode:', document.documentElement.classList.contains('dark') ? 'dark' : 'light');
 }
