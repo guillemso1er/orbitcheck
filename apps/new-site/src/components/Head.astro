@@ -1,13 +1,29 @@
+---
+interface Props {
+  title?: string;
+  description?: string;
+  canonical?: string;
+  ogImage?: string;
+  noIndex?: boolean;
+}
+
+const {
+  title = 'Stop Failed Deliveries & Save 30-60% on Shipping | Orbitcheck',
+  description = 'Orbitcheck validates addresses, phones, emails, and tax IDs globally. Cut failed deliveries by 30-60%, reduce RTOs, and ensure VAT compliance. API-first for any platform.',
+  canonical = 'https://orbitcheck.io',
+  ogImage = 'https://orbitcheck.io/og-cover.png',
+  noIndex = false,
+} = Astro.props;
+---
+
 <head>
   <meta charset="utf-8" />
-  <title>Stop Failed Deliveries & Save 30-60% on Shipping | Orbitcheck</title>
+  <title>{title}</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta
-    name="description"
-    content="Orbitcheck validates addresses, phones, emails, and tax IDs globally. Cut failed deliveries by 30-60%, reduce RTOs, and ensure VAT compliance. API-first for any platform."
-  />
-  <link rel="canonical" href="https://orbitcheck.io" />
+  <meta name="description" content={description} />
+  <link rel="canonical" href={canonical} />
   <link rel="icon" href="/logo.svg" type="image/svg+xml" />
+  {noIndex && <meta name="robots" content="noindex, nofollow" />}
 
   <!-- Preconnect for performance -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -19,30 +35,18 @@
 
   <!-- Open Graph -->
   <meta property="og:type" content="website" />
-  <meta property="og:url" content="https://orbitcheck.io/" />
-  <meta
-    property="og:title"
-    content="Stop Failed Deliveries & Save 30-60% on Shipping | Orbitcheck"
-  />
-  <meta
-    property="og:description"
-    content="API-first data validation that prevents failed deliveries, cuts RTOs, and ensures global VAT/TAX compliance. Works with any ecommerce platform."
-  />
-  <meta property="og:image" content="https://orbitcheck.io/og-cover.png" />
+  <meta property="og:url" content={canonical} />
+  <meta property="og:title" content={title} />
+  <meta property="og:description" content={description} />
+  <meta property="og:image" content={ogImage} />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
 
   <!-- Twitter Card -->
   <meta name="twitter:card" content="summary_large_image" />
-  <meta
-    name="twitter:title"
-    content="Stop Failed Deliveries. Validate Globally. | Orbitcheck"
-  />
-  <meta
-    name="twitter:description"
-    content="Deep global validation for addresses, phones, emails, VAT/TAX IDs. Platform-independent API."
-  />
-  <meta name="twitter:image" content="https://orbitcheck.io/og-cover.png" />
+  <meta name="twitter:title" content={title} />
+  <meta name="twitter:description" content={description} />
+  <meta name="twitter:image" content={ogImage} />
 
   <!-- Additional SEO -->
   <meta name="robots" content="index, follow" />
@@ -505,7 +509,7 @@
   </style>
 
   <!-- Structured data -->
-  <script type="application/ld+json">
+  <script type="application/ld+json" is:inline>
     {
       "@context": "https://schema.org",
       "@type": "Organization",
@@ -523,7 +527,7 @@
   </script>
 
   <!-- Software Application structured data -->
-  <script type="application/ld+json">
+  <script type="application/ld+json" is:inline>
     {
       "@context": "https://schema.org",
       "@type": "SoftwareApplication",
@@ -544,7 +548,7 @@
   </script>
 
   <!-- FAQ structured data -->
-  <script type="application/ld+json">
+  <script type="application/ld+json" is:inline>
     {
       "@context": "https://schema.org",
       "@type": "FAQPage",

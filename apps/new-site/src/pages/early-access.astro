@@ -1,7 +1,5 @@
 ---
 import Layout from '@layouts/Layout.astro';
-import Header from '@components/Header.astro';
-import Footer from '@components/Footer.astro';
 ---
 
 <Layout
@@ -363,7 +361,6 @@ import Footer from '@components/Footer.astro';
   form?.addEventListener('submit', async (e) => {
     e.preventDefault();
 
-    const originalText = submitBtn.textContent;
     submitBtn.disabled = true;
     submitBtn.textContent = 'Submitting...';
 

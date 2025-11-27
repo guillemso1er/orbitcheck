@@ -1,7 +1,5 @@
 ---
 import Layout from '@layouts/Layout.astro';
-import Header from '@components/Header.astro';
-import Footer from '@components/Footer.astro';
 ---
 
 <Layout
@@ -9,7 +7,6 @@ import Footer from '@components/Footer.astro';
   description="Free online tool for EU VAT validation and Spain NIF/NIE checksum checks."
   canonical="https://orbitcheck.io/tools/vat"
 >
-
   <main class="bg-gray-50 dark:bg-gray-900">
     <section class="max-w-3xl mx-auto px-4 py-12">
       <h1 class="text-3xl font-extrabold">EU VAT Checker</h1>
@@ -51,7 +48,6 @@ import Footer from '@components/Footer.astro';
       </form>
     </section>
   </main>
-
 </Layout>
 
 <script>
@@ -68,19 +64,19 @@ import Footer from '@components/Footer.astro';
       const letters = 'TRWAGMYFPDXBNJZSQVHLCKE';
 
       if (nifRegex.test(v)) {
-        const num = parseInt(v.substr(0, 8), 10);
+        const num = parseInt(v.slice(0, 8), 10);
         const letter = letters[num % 23];
         return { valid: letter === v[8], type: 'DNI', normalized: v };
       }
       if (nieRegex.test(v)) {
         const map: Record<string, string> = { X: '0', Y: '1', Z: '2' };
-        const num = parseInt(map[v[0]] + v.substr(1, 7), 10);
+        const num = parseInt(map[v[0]] + v.slice(1, 8), 10);
         const letter = letters[num % 23];
         return { valid: letter === v[8], type: 'NIE', normalized: v };
       }
       if (cifRegex.test(v)) {
         const control = v.slice(-1);
-        const digits = v.substr(1, 7).split('').map(Number);
+        const digits = v.slice(1, 8).split('').map(Number);
         let sum = 0;
         for (let i = 0; i < digits.length; i++) {
           const n = digits[i];
