@@ -94,9 +94,11 @@ import Layout from '@layouts/Layout.astro';
           (/[KPQS]/.test(v[0]) && expectedLetter === control) ||
           (/[CDFGJLMNRUVW]/.test(v[0]) &&
             (String(res) === control || expectedLetter === control));
-        const expectedControl = /[ABEH]/.test(v[0]) ? String(res) : 
-          /[KPQS]/.test(v[0]) ? expectedLetter : 
-          `${res} or ${expectedLetter}`;
+        const expectedControl = /[ABEH]/.test(v[0])
+          ? String(res)
+          : /[KPQS]/.test(v[0])
+            ? expectedLetter
+            : `${res} or ${expectedLetter}`;
         return { valid, type: 'CIF', normalized: v, expectedControl };
       }
       return null;
@@ -123,12 +125,23 @@ import Layout from '@layouts/Layout.astro';
         if (es) {
           if (es.valid) {
             out.innerHTML =
-              '✅ Valid ' + es.type + ' (Spain). Normalized: <code>ES' + es.normalized + '</code>. For live VIES verification: use API.';
+              '✅ Valid ' +
+              es.type +
+              ' (Spain). Normalized: <code>ES' +
+              es.normalized +
+              '</code>. For live VIES verification: use API.';
           } else {
-            const hint = es.expectedControl ? ` Expected control character: <strong>${es.expectedControl}</strong>.` : '';
+            const hint = es.expectedControl
+              ? ` Expected control character: <strong>${es.expectedControl}</strong>.`
+              : '';
             out.innerHTML =
-              '❌ Invalid ' + es.type + ' checksum (Spain). Format is correct but checksum fails.' + hint + 
-              ' Normalized: <code>' + es.normalized + '</code>. For live VIES verification: use API.';
+              '❌ Invalid ' +
+              es.type +
+              ' checksum (Spain). Format is correct but checksum fails.' +
+              hint +
+              ' Normalized: <code>' +
+              es.normalized +
+              '</code>. For live VIES verification: use API.';
           }
           return;
         }

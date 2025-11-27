@@ -11,7 +11,8 @@ import Layout from '@layouts/Layout.astro';
     <section class="max-w-3xl mx-auto px-4 py-12">
       <h1 class="text-3xl font-extrabold">Address Validator</h1>
       <p class="mt-2 text-gray-700 dark:text-gray-300">
-        Basic address format and structure checks. For full validation with geocoding and deliverability, use the API.
+        Basic address format and structure checks. For full validation with
+        geocoding and deliverability, use the API.
       </p>
       <form
         class="bg-white border border-gray-100 rounded-lg p-6 mt-6 dark:bg-gray-800 dark:border-gray-700"
@@ -129,16 +130,31 @@ import Layout from '@layouts/Layout.astro';
     // Postal code patterns by country
     const postalPatterns: Record<string, { regex: RegExp; format: string }> = {
       ES: { regex: /^\d{5}$/, format: '5 digits (e.g., 08001)' },
-      PT: { regex: /^\d{4}-\d{3}$/, format: '4 digits-3 digits (e.g., 1000-001)' },
+      PT: {
+        regex: /^\d{4}-\d{3}$/,
+        format: '4 digits-3 digits (e.g., 1000-001)',
+      },
       FR: { regex: /^\d{5}$/, format: '5 digits (e.g., 75001)' },
       DE: { regex: /^\d{5}$/, format: '5 digits (e.g., 10115)' },
       IT: { regex: /^\d{5}$/, format: '5 digits (e.g., 00100)' },
-      GB: { regex: /^[A-Z]{1,2}\d[A-Z\d]?\s*\d[A-Z]{2}$/i, format: 'UK format (e.g., SW1A 1AA)' },
-      US: { regex: /^\d{5}(-\d{4})?$/, format: '5 digits or ZIP+4 (e.g., 10001 or 10001-1234)' },
-      CA: { regex: /^[A-Z]\d[A-Z]\s*\d[A-Z]\d$/i, format: 'Canadian format (e.g., K1A 0B1)' },
+      GB: {
+        regex: /^[A-Z]{1,2}\d[A-Z\d]?\s*\d[A-Z]{2}$/i,
+        format: 'UK format (e.g., SW1A 1AA)',
+      },
+      US: {
+        regex: /^\d{5}(-\d{4})?$/,
+        format: '5 digits or ZIP+4 (e.g., 10001 or 10001-1234)',
+      },
+      CA: {
+        regex: /^[A-Z]\d[A-Z]\s*\d[A-Z]\d$/i,
+        format: 'Canadian format (e.g., K1A 0B1)',
+      },
       MX: { regex: /^\d{5}$/, format: '5 digits (e.g., 06600)' },
       BR: { regex: /^\d{5}-?\d{3}$/, format: '8 digits (e.g., 01310-100)' },
-      AR: { regex: /^[A-Z]\d{4}[A-Z]{3}$|^\d{4}$/i, format: 'CPA or 4 digits (e.g., C1425ABC or 1425)' },
+      AR: {
+        regex: /^[A-Z]\d{4}[A-Z]{3}$|^\d{4}$/i,
+        format: 'CPA or 4 digits (e.g., C1425ABC or 1425)',
+      },
       CL: { regex: /^\d{7}$/, format: '7 digits (e.g., 8320000)' },
       CO: { regex: /^\d{6}$/, format: '6 digits (e.g., 110111)' },
     };
@@ -151,11 +167,20 @@ import Layout from '@layouts/Layout.astro';
     }
 
     function validateAddress(): ValidationResult {
-      const street = (document.getElementById('street') as HTMLInputElement)?.value.trim() || '';
-      const city = (document.getElementById('city') as HTMLInputElement)?.value.trim() || '';
-      const state = (document.getElementById('state') as HTMLInputElement)?.value.trim() || '';
-      const postal = (document.getElementById('postal') as HTMLInputElement)?.value.trim() || '';
-      const country = (document.getElementById('country') as HTMLSelectElement)?.value || '';
+      const street =
+        (document.getElementById('street') as HTMLInputElement)?.value.trim() ||
+        '';
+      const city =
+        (document.getElementById('city') as HTMLInputElement)?.value.trim() ||
+        '';
+      const state =
+        (document.getElementById('state') as HTMLInputElement)?.value.trim() ||
+        '';
+      const postal =
+        (document.getElementById('postal') as HTMLInputElement)?.value.trim() ||
+        '';
+      const country =
+        (document.getElementById('country') as HTMLSelectElement)?.value || '';
 
       const issues: string[] = [];
       const warnings: string[] = [];
@@ -169,8 +194,10 @@ import Layout from '@layouts/Layout.astro';
       if (street) {
         if (street.length < 5) warnings.push('Street address seems too short');
         if (street.length > 200) issues.push('Street address is too long');
-        if (/^\d+$/.test(street)) warnings.push('Street address contains only numbers');
-        if (/[<>{}|\\^~\[\]`]/.test(street)) issues.push('Street contains invalid characters');
+        if (/^\d+$/.test(street))
+          warnings.push('Street address contains only numbers');
+        if (/[<>{}|\\^~\[\]`]/.test(street))
+          issues.push('Street contains invalid characters');
       }
 
       // City validation
@@ -183,7 +210,9 @@ import Layout from '@layouts/Layout.astro';
       if (postal && country) {
         const pattern = postalPatterns[country];
         if (pattern && !pattern.regex.test(postal)) {
-          issues.push(`Invalid postal code format for ${country}. Expected: ${pattern.format}`);
+          issues.push(
+            `Invalid postal code format for ${country}. Expected: ${pattern.format}`
+          );
         }
       } else if (!postal && country) {
         warnings.push('Postal code is recommended for accurate delivery');
@@ -199,14 +228,15 @@ import Layout from '@layouts/Layout.astro';
       if (street) normalized.street = street;
       if (city) normalized.city = city;
       if (state) normalized.state = state;
-      if (postal) normalized.postal_code = postal.toUpperCase().replace(/\s+/g, ' ');
+      if (postal)
+        normalized.postal_code = postal.toUpperCase().replace(/\s+/g, ' ');
       if (country) normalized.country = country;
 
       return {
         valid: issues.length === 0,
         issues,
         warnings,
-        normalized
+        normalized,
       };
     }
 
@@ -218,24 +248,32 @@ import Layout from '@layouts/Layout.astro';
 
       let html = '';
       if (result.valid) {
-        html += '<div class="p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg mb-3">';
-        html += '<span class="text-green-700 dark:text-green-300">✅ Address format looks valid</span>';
+        html +=
+          '<div class="p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg mb-3">';
+        html +=
+          '<span class="text-green-700 dark:text-green-300">✅ Address format looks valid</span>';
         html += '</div>';
       } else {
-        html += '<div class="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg mb-3">';
-        html += '<span class="text-red-700 dark:text-red-300">❌ Issues found:</span>';
-        html += '<ul class="mt-1 ml-4 list-disc text-red-600 dark:text-red-400">';
-        result.issues.forEach(issue => {
+        html +=
+          '<div class="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg mb-3">';
+        html +=
+          '<span class="text-red-700 dark:text-red-300">❌ Issues found:</span>';
+        html +=
+          '<ul class="mt-1 ml-4 list-disc text-red-600 dark:text-red-400">';
+        result.issues.forEach((issue) => {
           html += `<li>${issue}</li>`;
         });
         html += '</ul></div>';
       }
 
       if (result.warnings.length > 0) {
-        html += '<div class="p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg mb-3">';
-        html += '<span class="text-yellow-700 dark:text-yellow-300">⚠️ Warnings:</span>';
-        html += '<ul class="mt-1 ml-4 list-disc text-yellow-600 dark:text-yellow-400">';
-        result.warnings.forEach(warning => {
+        html +=
+          '<div class="p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg mb-3">';
+        html +=
+          '<span class="text-yellow-700 dark:text-yellow-300">⚠️ Warnings:</span>';
+        html +=
+          '<ul class="mt-1 ml-4 list-disc text-yellow-600 dark:text-yellow-400">';
+        result.warnings.forEach((warning) => {
           html += `<li>${warning}</li>`;
         });
         html += '</ul></div>';
@@ -243,11 +281,15 @@ import Layout from '@layouts/Layout.astro';
 
       html += '<div class="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">';
       html += '<span class="font-medium">Normalized:</span>';
-      html += '<pre class="mt-1 text-xs overflow-x-auto"><code>' + JSON.stringify(result.normalized, null, 2) + '</code></pre>';
+      html +=
+        '<pre class="mt-1 text-xs overflow-x-auto"><code>' +
+        JSON.stringify(result.normalized, null, 2) +
+        '</code></pre>';
       html += '</div>';
 
       html += '<p class="mt-3 text-xs text-gray-500 dark:text-gray-400">';
-      html += 'This is a basic format check. For full validation with geocoding, deliverability scoring, and normalization, use the <a href="/docs#address-validation" class="text-indigo-600 hover:text-indigo-700 underline">Orbitcheck API</a>.';
+      html +=
+        'This is a basic format check. For full validation with geocoding, deliverability scoring, and normalization, use the <a href="/docs#address-validation" class="text-indigo-600 hover:text-indigo-700 underline">Orbitcheck API</a>.';
       html += '</p>';
 
       out.innerHTML = html;
