@@ -1,0 +1,57 @@
+---
+import Footer from '@components/Footer.astro';
+import Layout from '@layouts/Layout.astro';
+---
+
+<Layout
+  title="Free Tools — Orbitcheck"
+  description="Free tools for validating VAT IDs, ES-LATAM tax IDs, and formatting phones to E.164."
+  canonical="https://orbitcheck.io/tools"
+>
+
+  <main class="bg-gray-50 dark:bg-gray-900">
+    <section class="max-w-5xl mx-auto px-4 py-12">
+      <h1 class="text-3xl font-extrabold">Free Tools</h1>
+      <p class="mt-2 text-gray-700 dark:text-gray-300">
+        Validate VAT and ES-LATAM IDs, and format phones to E.164. Works without
+        JavaScript (with instructions), better with it.
+      </p>
+      <div class="grid md:grid-cols-3 gap-6 mt-8">
+        <a
+          href="/tools/vat"
+          class="bg-white border border-gray-100 rounded-lg p-6 hover:shadow-md transition dark:bg-gray-800 dark:border-gray-700 dark:hover:bg-gray-700"
+        >
+          <h2 class="font-semibold text-gray-900 dark:text-gray-100">
+            VAT checker
+          </h2>
+          <p class="text-sm text-gray-600 mt-1 dark:text-gray-400">
+            EU VIES + Spain NIF/NIE logic.
+          </p>
+        </a>
+        <a
+          href="/tools/cpf-cnpj"
+          class="bg-white border border-gray-100 rounded-lg p-6 hover:shadow-md transition dark:bg-gray-800 dark:border-gray-700 dark:hover:bg-gray-700"
+        >
+          <h2 class="font-semibold text-gray-900 dark:text-gray-100">
+            CPF/CNPJ checker
+          </h2>
+          <p class="text-sm text-gray-600 mt-1 dark:text-gray-400">
+            Brazilian checksum validation.
+          </p>
+        </a>
+        <a
+          href="/tools/phone"
+          class="bg-white border border-gray-100 rounded-lg p-6 hover:shadow-md transition dark:bg-gray-800 dark:border-gray-700 dark:hover:bg-gray-700"
+        >
+          <h2 class="font-semibold text-gray-900 dark:text-gray-100">
+            E.164 formatter
+          </h2>
+          <p class="text-sm text-gray-600 mt-1 dark:text-gray-400">
+            Normalize phones for global delivery.
+          </p>
+        </a>
+      </div>
+    </section>
+  </main>
+
+</Layout>

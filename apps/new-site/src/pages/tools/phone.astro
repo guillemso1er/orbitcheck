@@ -1,0 +1,109 @@
+---
+import Layout from '@layouts/Layout.astro';
+import Header from '@components/Header.astro';
+import Footer from '@components/Footer.astro';
+---
+
+<Layout
+  title="E.164 Formatter — Orbitcheck"
+  description="Free online tool for formatting phone numbers to E.164 standard for global delivery."
+  canonical="https://orbitcheck.io/tools/phone"
+>
+
+  <main class="bg-gray-50 dark:bg-gray-900">
+    <section class="max-w-3xl mx-auto px-4 py-12">
+      <h1 class="text-3xl font-extrabold">E.164 Phone Formatter</h1>
+      <p class="mt-2 text-gray-700 dark:text-gray-300">
+        Lightweight normalizer for global phone numbers. For authoritative
+        parsing, use the API.
+      </p>
+      <form
+        class="bg-white border border-gray-100 rounded-lg p-6 mt-6 dark:bg-gray-800 dark:border-gray-700"
+        onsubmit="return false"
+      >
+        <label
+          for="num"
+          class="block text-sm font-medium text-gray-700 mb-1 dark:text-gray-300"
+          >Phone</label
+        >
+        <input
+          id="num"
+          class="w-full border border-gray-300 rounded-md px-3 py-2 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
+          placeholder="(600) 123-456"
+        />
+        <label
+          for="cc"
+          class="block text-sm font-medium text-gray-700 mb-1 mt-4 dark:text-gray-300"
+          >Country code</label
+        >
+        <select
+          id="cc"
+          class="w-full border border-gray-300 rounded-md px-3 py-2 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
+        >
+          <option value="">Auto (if leading + or 00)</option>
+          <option value="34">Spain (+34)</option>
+          <option value="55">Brazil (+55)</option>
+          <option value="52">Mexico (+52)</option>
+          <option value="54">Argentina (+54)</option>
+          <option value="56">Chile (+56)</option>
+          <option value="57">Colombia (+57)</option>
+          <option value="351">Portugal (+351)</option>
+          <option value="33">France (+33)</option>
+          <option value="49">Germany (+49)</option>
+          <option value="44">UK (+44)</option>
+          <option value="1">US/CA (+1)</option>
+        </select>
+        <button
+          id="fmt"
+          class="mt-4 inline-flex items-center px-4 py-2 rounded-md bg-indigo-600 text-white hover:bg-indigo-700"
+        >
+          Format
+        </button>
+        <div id="out" class="mt-4 text-sm text-gray-800 dark:text-gray-200">
+        </div>
+        <noscript>
+          <div class="mt-4 text-sm text-gray-700 dark:text-gray-300">
+            JavaScript disabled. Use the API:
+            <pre
+              class="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto text-sm mt-2"><code>curl -s https://api.orbitcheck.io/v1/validate/phone \
+  -H "Authorization: Bearer YOUR_KEY" \
+  -H "Content-Type: application/json" \
+  -d '&#123; "phone": "(600) 123-456", "country": "ES" &#125;'</code></pre>
+          </div>
+        </noscript>
+      </form>
+    </section>
+  </main>
+
+</Layout>
+
+<script>
+  (function () {
+    const fmt = document.getElementById('fmt');
+    if (!fmt) return;
+
+    function normalize(num: string, cc: string): string {
+      let s = (num || '').toString().trim();
+      s = s.replace(/[^\d+]/g, '');
+      if (s.startsWith('+')) return '+' + s.replace(/[^\d]/g, '');
+      if (s.startsWith('00')) return '+' + s.slice(2).replace(/[^\d]/g, '');
+      const digits = s.replace(/\D/g, '');
+      if (!cc) return '⚠️ Add country code or prefix with + or 00';
+      return '+' + cc + digits;
+    }
+
+    fmt.addEventListener('click', function () {
+      const numInput = document.getElementById('num') as HTMLInputElement;
+      const ccSelect = document.getElementById('cc') as HTMLSelectElement;
+      const out = document.getElementById('out');
+
+      const num = numInput?.value || '';
+      const cc = ccSelect?.value || '';
+
+      if (out) {
+        const e164 = normalize(num, cc);
+        out.innerHTML = 'Result: <code>' + e164 + '</code>';
+      }
+    });
+  })();
+</script>

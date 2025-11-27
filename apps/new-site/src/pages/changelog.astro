@@ -1,0 +1,105 @@
+---
+import Footer from '@components/Footer.astro';
+import Header from '@components/Header.astro';
+import Layout from '@layouts/Layout.astro';
+
+// Changelog entries - could be moved to a data file or CMS
+const changelogEntries = [
+  {
+    version: '1.0.0',
+    date: 'October 2025',
+    title: 'Initial Public Release',
+    changes: [
+      { type: 'feature', text: 'Address validation with global coverage' },
+      { type: 'feature', text: 'Email and phone validation' },
+      {
+        type: 'feature',
+        text: 'EU VAT and ES-LATAM tax ID checks (NIF, NIE, CPF, CNPJ, RFC, CUIT, RUT, RUC)',
+      },
+      { type: 'feature', text: 'Deduplication and entity resolution' },
+      { type: 'feature', text: 'Risk scoring and fraud signals' },
+      { type: 'feature', text: 'Shopify integration' },
+      { type: 'feature', text: 'Dashboard with analytics' },
+      { type: 'feature', text: 'RESTful API with OpenAPI spec' },
+    ],
+  },
+];
+---
+
+<Layout
+  title="Changelog — Orbitcheck"
+  description="See what's new in Orbitcheck. Product updates, new features, and improvements."
+  canonical="https://orbitcheck.io/changelog"
+>
+
+  <main class="bg-gray-50 dark:bg-gray-900">
+    <section class="py-16 sm:py-20">
+      <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
+        <h1 class="text-4xl font-extrabold tracking-tight text-center mb-4">
+          Changelog
+        </h1>
+        <p class="text-lg text-gray-600 dark:text-gray-300 text-center mb-12">
+          Product updates, new features, and improvements.
+        </p>
+
+        <div class="space-y-12">
+          {
+            changelogEntries.map((entry) => (
+              <article class="relative">
+                <div class="flex items-center gap-4 mb-4">
+                  <span class="inline-flex items-center rounded-full bg-indigo-100 px-3 py-1 text-sm font-semibold text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300">
+                    v{entry.version}
+                  </span>
+                  <time class="text-sm text-gray-500 dark:text-gray-400">
+                    {entry.date}
+                  </time>
+                </div>
+                <h2 class="text-2xl font-bold mb-4">{entry.title}</h2>
+                <ul class="space-y-2">
+                  {entry.changes.map((change) => (
+                    <li class="flex items-start gap-3 text-gray-600 dark:text-gray-300">
+                      {change.type === 'feature' && (
+                        <span class="mt-0.5 inline-flex items-center rounded bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700 dark:bg-green-900/50 dark:text-green-300">
+                          New
+                        </span>
+                      )}
+                      {change.type === 'improvement' && (
+                        <span class="mt-0.5 inline-flex items-center rounded bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700 dark:bg-blue-900/50 dark:text-blue-300">
+                          Improved
+                        </span>
+                      )}
+                      {change.type === 'fix' && (
+                        <span class="mt-0.5 inline-flex items-center rounded bg-yellow-100 px-2 py-0.5 text-xs font-medium text-yellow-700 dark:bg-yellow-900/50 dark:text-yellow-300">
+                          Fixed
+                        </span>
+                      )}
+                      <span>{change.text}</span>
+                    </li>
+                  ))}
+                </ul>
+              </article>
+            ))
+          }
+        </div>
+
+        <div class="mt-16 text-center">
+          <p class="text-gray-500 dark:text-gray-400">
+            Subscribe to updates via
+            <a
+              href="https://twitter.com/orbitcheck"
+              class="text-indigo-600 hover:underline dark:text-indigo-400"
+              >Twitter</a
+            >
+            or check our
+            <a
+              href="https://status.orbitcheck.io"
+              class="text-indigo-600 hover:underline dark:text-indigo-400"
+              >status page</a
+            >.
+          </p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+</Layout>

@@ -1,0 +1,126 @@
+---
+import Layout from '@layouts/Layout.astro';
+import Footer from '@components/Footer.astro';
+---
+
+<Layout
+  title="CPF/CNPJ Checker — Orbitcheck"
+  description="Free online tool for validating Brazilian CPF and CNPJ tax IDs with checksum logic."
+  canonical="https://orbitcheck.io/tools/cpf-cnpj"
+>
+  <main class="bg-gray-50 dark:bg-gray-900">
+    <section class="max-w-3xl mx-auto px-4 py-12">
+      <h1 class="text-3xl font-extrabold">CPF/CNPJ Checker</h1>
+      <p class="mt-2 text-gray-700 dark:text-gray-300">
+        Local checksum validation for Brazilian tax IDs.
+      </p>
+      <form
+        class="bg-white border border-gray-100 rounded-lg p-6 mt-6 dark:bg-gray-800 dark:border-gray-700"
+        onsubmit="return false"
+      >
+        <label
+          for="id"
+          class="block text-sm font-medium text-gray-700 mb-1 dark:text-gray-300"
+          >CPF or CNPJ</label
+        >
+        <input
+          id="id"
+          class="w-full border border-gray-300 rounded-md px-3 py-2 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
+          placeholder="123.456.789-09 or 12.345.678/0001-95"
+        />
+        <button
+          id="go"
+          class="mt-4 inline-flex items-center px-4 py-2 rounded-md bg-indigo-600 text-white hover:bg-indigo-700"
+        >
+          Validate
+        </button>
+        <div id="out" class="mt-4 text-sm text-gray-800 dark:text-gray-200">
+        </div>
+        <noscript>
+          <div class="mt-4 text-sm text-gray-700 dark:text-gray-300">
+            JavaScript disabled. Validate via API:
+            <pre
+              class="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto text-sm mt-2"><code>curl -s https://api.orbitcheck.io/v1/validate/tax-id \
+  -H "Authorization: Bearer YOUR_KEY" \
+  -H "Content-Type: application/json" \
+  -d '&#123; "type": "br_cpf", "value": "12345678909", "country": "BR" &#125;'</code></pre>
+          </div>
+        </noscript>
+      </form>
+    </section>
+  </main>
+
+</Layout>
+
+<script>
+  (function () {
+    function onlyDigits(s: string): string {
+      return (s || '').replace(/\D/g, '');
+    }
+
+    function isRepeated(s: string): boolean {
+      return /^(\d)\1+$/.test(s);
+    }
+
+    function cpfValid(s: string): boolean {
+      s = onlyDigits(s);
+      if (s.length !== 11 || isRepeated(s)) return false;
+      let sum = 0;
+      for (let i = 0; i < 9; i++) sum += parseInt(s[i]) * (10 - i);
+      let d1 = (sum * 10) % 11;
+      if (d1 === 10) d1 = 0;
+      if (d1 !== parseInt(s[9])) return false;
+      sum = 0;
+      for (let i = 0; i < 10; i++) sum += parseInt(s[i]) * (11 - i);
+      let d2 = (sum * 10) % 11;
+      if (d2 === 10) d2 = 0;
+      return d2 === parseInt(s[10]);
+    }
+
+    function cnpjValid(s: string): boolean {
+      s = onlyDigits(s);
+      if (s.length !== 14 || isRepeated(s)) return false;
+      const b1 = [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2];
+      const b2 = [6, ...b1];
+
+      function calc(base: number[], len: number): number {
+        let sum = 0;
+        for (let i = 0; i < len; i++) sum += parseInt(s[i]) * base[i];
+        const rest = sum % 11;
+        return rest < 2 ? 0 : 11 - rest;
+      }
+
+      const d1 = calc(b1, 12);
+      if (d1 !== parseInt(s[12])) return false;
+      const d2 = calc(b2, 13);
+      return d2 === parseInt(s[13]);
+    }
+
+    const btn = document.getElementById('go');
+    if (!btn) return;
+
+    btn.addEventListener('click', function () {
+      const input = document.getElementById('id') as HTMLInputElement;
+      const v = input?.value || '';
+      const digits = onlyDigits(v);
+      const out = document.getElementById('out');
+      if (!out) return;
+
+      if (digits.length <= 11) {
+        const ok = cpfValid(v);
+        out.innerHTML =
+          (ok ? '✅ Valid CPF' : '❌ Invalid CPF') +
+          ' • normalized: <code>' +
+          digits.padStart(11, '0') +
+          '</code>';
+      } else {
+        const ok = cnpjValid(v);
+        out.innerHTML =
+          (ok ? '✅ Valid CNPJ' : '❌ Invalid CNPJ') +
+          ' • normalized: <code>' +
+          digits.padStart(14, '0') +
+          '</code>';
+      }
+    });
+  })();
+</script>

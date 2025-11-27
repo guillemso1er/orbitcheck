@@ -1,0 +1,236 @@
+---
+import Footer from '@components/Footer.astro';
+import Header from '@components/Header.astro';
+import Layout from '@layouts/Layout.astro';
+---
+
+<Layout
+  title="Privacy Policy — Orbitcheck"
+  description="Learn how Orbitcheck handles your data privacy and complies with regulations."
+  canonical="https://orbitcheck.io/legal/privacy"
+>
+
+  <main class="bg-gray-50 dark:bg-gray-900">
+    <article class="max-w-3xl mx-auto px-4 py-12">
+      <h1 class="text-3xl font-extrabold">Privacy Policy</h1>
+      <p class="mt-4 text-gray-700 dark:text-gray-300">
+        This Privacy Policy explains how Orbitcheck ("Orbitcheck," "we," "us,"
+        or "our") collects, uses, discloses, and protects Personal Data when you
+        visit our websites, use our APIs, SDKs, connectors, and dashboards (the
+        "Services"), or otherwise interact with us. It also describes your
+        privacy rights and how to exercise them.
+      </p>
+      <p class="mt-2 text-gray-700 dark:text-gray-300">
+        If you require a countersigned copy or have questions, contact <a
+          href="mailto:privacy@orbitcheck.io"
+          class="text-indigo-700 hover:underline dark:text-indigo-400"
+          >privacy@orbitcheck.io</a
+        >.
+      </p>
+
+      <div
+        class="mt-6 rounded-md border border-gray-200 bg-gray-100 p-4 dark:bg-gray-800 dark:border-gray-700"
+      >
+        <p class="font-semibold text-gray-800 dark:text-gray-200">
+          Highlights:
+        </p>
+        <ul
+          class="list-disc pl-6 mt-2 text-gray-700 dark:text-gray-300 space-y-1"
+        >
+          <li>
+            We process end-customer data on your instructions to validate
+            addresses, phones, emails, and business/tax IDs.
+          </li>
+          <li>
+            We do not sell or share Personal Data for cross-context behavioral
+            advertising.
+          </li>
+          <li>
+            Data retention is configurable by plan (typically 7–365 days);
+            caches and logs are short-lived.
+          </li>
+          <li>
+            Strong security: encryption in transit and at rest, access controls,
+            monitoring, and incident response.
+          </li>
+        </ul>
+      </div>
+
+      <h2 id="scope" class="text-xl font-semibold mt-8">
+        1. Who We Are and Scope
+      </h2>
+      <p class="mt-2 text-gray-700 dark:text-gray-300">
+        Orbitcheck provides API-first data hygiene and validation for ecommerce:
+        addresses, phones, emails, EU VAT, and ES–LATAM tax IDs with
+        deduplication, entity resolution, and risk-driven order controls.
+      </p>
+      <p class="mt-2 text-gray-700 dark:text-gray-300">
+        This Policy applies to: (a) visitors to our websites and people who
+        interact with our marketing or sales (we act as a controller); and (b)
+        customers and their end users whose Personal Data is submitted to the
+        Services (we generally act as a processor/service provider on behalf of
+        our customers). For processor activities, our <a
+          href="/legal/dpa"
+          class="text-indigo-700 hover:underline dark:text-indigo-400"
+          >Data Processing Addendum</a
+        > governs.
+      </p>
+
+      <h2 id="data-we-collect" class="text-xl font-semibold mt-6">
+        2. Personal Data We Collect
+      </h2>
+      <p class="mt-2 text-gray-700 dark:text-gray-300">
+        The Personal Data we process depends on how you interact with us and
+        which features you use.
+      </p>
+      <ul
+        class="list-disc pl-6 mt-2 text-gray-700 dark:text-gray-300 space-y-2"
+      >
+        <li>
+          <strong>Account and Contact Data</strong>: name, company, role, email,
+          phone, login identifiers, workspace/user IDs.
+        </li>
+        <li>
+          <strong>Service (Customer) Data</strong>: data you submit to validate
+          or deduplicate, such as names, emails, phone numbers, shipping/billing
+          addresses, and supported identifiers (e.g., EU VAT IDs, ES NIF/NIE, BR
+          CPF/CNPJ, MX RFC, AR CUIT, CL RUT, PE RUC/DNI). We also generate
+          structured reason codes, match scores, and risk signals.
+        </li>
+        <li>
+          <strong>Transaction and Billing Data</strong>: subscription tier,
+          invoices, tax/VAT numbers, and payment status. Card data is processed
+          by our payment processor; we do not store full card numbers.
+        </li>
+        <li>
+          <strong>Technical and Usage Data</strong>: IP address,
+          device/browser/user agent, API keys/IDs, request metadata, logs,
+          diagnostics, and event telemetry needed to secure and operate the
+          Services.
+        </li>
+        <li>
+          <strong>Support Content</strong>: information you send to support,
+          including attachments or screenshots.
+        </li>
+      </ul>
+
+      <h2 id="how-we-use" class="text-xl font-semibold mt-6">
+        3. How We Use Personal Data
+      </h2>
+      <ul
+        class="list-disc pl-6 mt-2 text-gray-700 dark:text-gray-300 space-y-2"
+      >
+        <li>
+          Provide, maintain, validate, deduplicate, and improve the Services.
+        </li>
+        <li>
+          Secure the Services, prevent abuse and fraud, and ensure integrity and
+          availability.
+        </li>
+        <li>Operate account management, billing, and customer support.</li>
+        <li>
+          Develop new features and perform analytics using de-identified or
+          aggregated data.
+        </li>
+        <li>
+          Send service and transactional communications; send product updates or
+          marketing where permitted.
+        </li>
+        <li>Comply with legal obligations and enforce terms.</li>
+      </ul>
+
+      <h2 id="sharing" class="text-xl font-semibold mt-6">
+        4. How We Share Personal Data
+      </h2>
+      <ul
+        class="list-disc pl-6 mt-2 text-gray-700 dark:text-gray-300 space-y-2"
+      >
+        <li>
+          <strong>Subprocessors/Service Providers</strong> that host, store, or process
+          data for us.
+        </li>
+        <li>
+          <strong>Integrations You Authorize</strong> (e.g., Shopify/Woo/BigCommerce
+          connectors).
+        </li>
+        <li>
+          <strong>Professional Advisors</strong> (legal, auditors) under confidentiality.
+        </li>
+        <li>
+          <strong>Legal/Compliance</strong> when required by law or to protect rights
+          and safety.
+        </li>
+        <li>
+          <strong>Corporate Transactions</strong> (merger, acquisition, financing).
+        </li>
+      </ul>
+      <p class="mt-2 text-gray-700 dark:text-gray-300">
+        We do <strong>not</strong> sell or share Personal Data for cross-context
+        behavioral advertising.
+      </p>
+
+      <h2 id="retention" class="text-xl font-semibold mt-6">5. Retention</h2>
+      <p class="mt-2 text-gray-700 dark:text-gray-300">
+        We retain Personal Data only as long as necessary for the purposes
+        described. For Service Data, retention is configurable by plan
+        (typically 7–365 days). Ephemeral caches and logs are short-lived and
+        purged regularly.
+      </p>
+
+      <h2 id="your-rights" class="text-xl font-semibold mt-6">
+        6. Your Privacy Rights
+      </h2>
+      <p class="mt-2 text-gray-700 dark:text-gray-300">
+        Depending on your location, you may have rights to request: access,
+        correction, deletion, restriction, portability, and to object to certain
+        processing. We honor browser-based Global Privacy Control (GPC) signals
+        where legally required.
+      </p>
+      <p class="mt-2 text-gray-700 dark:text-gray-300">
+        To exercise your rights, contact <a
+          href="mailto:privacy@orbitcheck.io"
+          class="text-indigo-700 hover:underline dark:text-indigo-400"
+          >privacy@orbitcheck.io</a
+        >.
+      </p>
+
+      <h2 id="contact" class="text-xl font-semibold mt-6">7. Contact Us</h2>
+      <p class="mt-2 text-gray-700 dark:text-gray-300">
+        Questions, requests, or complaints:<br />
+        Email: <a
+          href="mailto:privacy@orbitcheck.io"
+          class="text-indigo-700 hover:underline dark:text-indigo-400"
+          >privacy@orbitcheck.io</a
+        ><br />
+        Security incidents: <a
+          href="mailto:security@orbitcheck.io"
+          class="text-indigo-700 hover:underline dark:text-indigo-400"
+          >security@orbitcheck.io</a
+        >
+      </p>
+
+      <h2 id="links" class="text-xl font-semibold mt-6">Related Documents</h2>
+      <ul
+        class="list-disc pl-6 mt-2 text-gray-700 dark:text-gray-300 space-y-2"
+      >
+        <li>
+          <a
+            href="/legal/tos"
+            class="text-indigo-700 hover:underline dark:text-indigo-400"
+            >Terms of Service</a>
+        </li>
+        <li>
+          <a
+            href="/legal/dpa"
+            class="text-indigo-700 hover:underline dark:text-indigo-400"
+            >Data Processing Addendum (DPA)</a>
+        </li>
+      </ul>
+
+      <p class="mt-10 text-sm text-gray-500 dark:text-gray-400">
+        Last updated: 2025-10-16
+      </p>
+    </article>
+  </main>
+
+</Layout>

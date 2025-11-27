@@ -1,0 +1,174 @@
+---
+import Layout from '@layouts/Layout.astro';
+---
+
+<Layout
+  title="API Documentation — Orbitcheck"
+  description="Explore Orbitcheck's API with interactive documentation, examples, and test endpoints."
+  canonical="https://orbitcheck.io/docs"
+>
+  <main class="bg-gray-50 dark:bg-gray-900">
+    <!-- Hero Section -->
+    <section
+      class="bg-gradient-to-r from-indigo-600 to-purple-600 text-white py-20"
+    >
+      <div class="max-w-4xl mx-auto text-center px-4">
+        <h1 class="text-4xl font-bold mb-4">Explore Our API</h1>
+        <p class="text-xl mb-8 text-indigo-100">
+          View interactive documentation with examples and test endpoints
+        </p>
+        <div class="flex flex-col sm:flex-row gap-4 justify-center">
+          <a
+            href="https://api.orbitcheck.io/documentation"
+            class="inline-flex items-center justify-center px-8 py-4 rounded-lg font-semibold bg-white text-indigo-600 hover:bg-gray-50 transition-colors"
+          >
+            <span class="mr-2">📖</span> View API Documentation
+          </a>
+          <a
+            href="https://dashboard.orbitcheck.io"
+            class="inline-flex items-center justify-center px-8 py-4 rounded-lg font-semibold bg-indigo-500 text-white hover:bg-indigo-400 transition-colors"
+          >
+            <span class="mr-2">⚡</span> Try Live in Dashboard
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <!-- Features Grid -->
+    <section class="py-20">
+      <div class="max-w-6xl mx-auto px-4">
+        <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <div
+            class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700"
+          >
+            <div class="text-4xl mb-4">🔍</div>
+            <h3
+              class="text-xl font-semibold mb-3 text-gray-900 dark:text-gray-100"
+            >
+              Comprehensive Validation
+            </h3>
+            <p class="text-gray-600 dark:text-gray-300">
+              Validate emails, phone numbers, addresses, and tax IDs with high
+              accuracy and real-time verification.
+            </p>
+          </div>
+          <div
+            class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700"
+          >
+            <div class="text-4xl mb-4">⚡</div>
+            <h3
+              class="text-xl font-semibold mb-3 text-gray-900 dark:text-gray-100"
+            >
+              Real-time Risk Assessment
+            </h3>
+            <p class="text-gray-600 dark:text-gray-300">
+              Advanced fraud detection with machine learning-powered risk
+              scoring and automated decision making.
+            </p>
+          </div>
+          <div
+            class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700"
+          >
+            <div class="text-4xl mb-4">🛡️</div>
+            <h3
+              class="text-xl font-semibold mb-3 text-gray-900 dark:text-gray-100"
+            >
+              Fraud Prevention
+            </h3>
+            <p class="text-gray-600 dark:text-gray-300">
+              Protect your business from fraudulent orders with intelligent
+              rules and comprehensive monitoring.
+            </p>
+          </div>
+          <div
+            class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700"
+          >
+            <div class="text-4xl mb-4">📊</div>
+            <h3
+              class="text-xl font-semibold mb-3 text-gray-900 dark:text-gray-100"
+            >
+              Detailed Analytics
+            </h3>
+            <p class="text-gray-600 dark:text-gray-300">
+              Track API usage, view detailed logs, and gain insights into your
+              validation patterns.
+            </p>
+          </div>
+          <div
+            class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700"
+          >
+            <div class="text-4xl mb-4">🔧</div>
+            <h3
+              class="text-xl font-semibold mb-3 text-gray-900 dark:text-gray-100"
+            >
+              Easy Integration
+            </h3>
+            <p class="text-gray-600 dark:text-gray-300">
+              RESTful API with comprehensive SDKs and developer tools for
+              seamless integration.
+            </p>
+          </div>
+          <div
+            class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700"
+          >
+            <div class="text-4xl mb-4">📈</div>
+            <h3
+              class="text-xl font-semibold mb-3 text-gray-900 dark:text-gray-100"
+            >
+              Scalable & Reliable
+            </h3>
+            <p class="text-gray-600 dark:text-gray-300">
+              Built for high-volume processing with enterprise-grade security
+              and 99.9% uptime.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Quick Links -->
+    <section class="py-16 bg-white dark:bg-gray-800">
+      <div class="max-w-4xl mx-auto px-4">
+        <h2 class="text-2xl font-bold text-center mb-10">Quick Links</h2>
+        <div class="grid sm:grid-cols-2 gap-4">
+          <a
+            href="https://api.orbitcheck.io/documentation#/Address"
+            class="block p-4 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-indigo-500 transition-colors"
+          >
+            <h3 class="font-semibold">Address Validation</h3>
+            <p class="text-sm text-gray-500 dark:text-gray-400">
+              Validate and normalize shipping addresses globally
+            </p>
+          </a>
+          <a
+            href="https://api.orbitcheck.io/documentation#/Email"
+            class="block p-4 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-indigo-500 transition-colors"
+          >
+            <h3 class="font-semibold">Email Validation</h3>
+            <p class="text-sm text-gray-500 dark:text-gray-400">
+              Verify email deliverability and detect disposable domains
+            </p>
+          </a>
+          <a
+            href="https://api.orbitcheck.io/documentation#/Phone"
+            class="block p-4 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-indigo-500 transition-colors"
+          >
+            <h3 class="font-semibold">Phone Validation</h3>
+            <p class="text-sm text-gray-500 dark:text-gray-400">
+              Format and validate phone numbers to E.164
+            </p>
+          </a>
+          <a
+            href="https://api.orbitcheck.io/documentation#/TaxID"
+            class="block p-4 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-indigo-500 transition-colors"
+          >
+            <h3 class="font-semibold">Tax ID Validation</h3>
+            <p class="text-sm text-gray-500 dark:text-gray-400">
+              Validate EU VAT, CPF, CNPJ, RFC, and more
+            </p>
+          </a>
+        </div>
+      </div>
+    </section>
+  </main>
+</Layout>
