@@ -6,7 +6,7 @@
 
 # NOTE: Create a new app in the Shopify Partners dashboard for dev/staging
 # and update the client_id below with the new app's client ID
-client_id = "YOUR_DEV_APP_CLIENT_ID"
+client_id = "a8dee13928c38c5c6e31ea375ac1d05a"
 name = "orbitcheck-dev"
 application_url = "https://shopify.dev/apps/default-app-home"
 embedded = true
