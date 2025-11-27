@@ -143,6 +143,7 @@ if (someTwilio && !allTwilio) {
 // Derived/normalized values
 export const environment = {
   ...env,
+  isProd,
   DATABASE_URL: env.DATABASE_URL || env.APP_DATABASE_URL || (isProd ? '' : 'postgres://postgres:postgres@localhost:5432/orbitcheck'),
   // If CORS_ORIGINS is empty in prod, fallback to FRONTEND_URL
   CORS_ORIGINS: env.CORS_ORIGINS.length ? env.CORS_ORIGINS : [env.FRONTEND_URL],
