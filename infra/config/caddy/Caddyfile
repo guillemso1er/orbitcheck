@@ -205,11 +205,13 @@ shopify.orbitcheck.io {
     
     header {
         -Server
+        -X-Frame-Options
         X-Content-Type-Options nosniff
         Referrer-Policy no-referrer-when-downgrade
         Permissions-Policy "geolocation=(), microphone=(), camera=(), fullscreen=*"
         Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
     }
+
     encode zstd gzip
     # Allow credentialed CORS only from the dashboard and site
     @cors_origin {
