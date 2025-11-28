@@ -517,3 +517,39 @@ jobs:
 
             chmod +x "${{ env.REMOTE_TARGET_BASE_DIR }}/deploy.sh"
             "${{ env.REMOTE_TARGET_BASE_DIR }}/deploy.sh"
+
+  release-shopify:
+    name: Release Config & Extensions to Shopify
+    needs: [deploy, meta] # Important: Wait for the server to be live
+    runs-on: ubuntu-latest
+    if: |
+      needs.deploy.result == 'success' && (
+        needs.meta.outputs.is_stable_release == 'true' ||
+        (github.event_name == 'workflow_dispatch' && inputs.force_shopify_build)
+      )
+    steps:
+      - uses: actions/checkout@v4
+
+      # 1. Setup Node/PNPM
+      - uses: pnpm/action-setup@v4
+        with: { version: 9.12.0 }
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      # 2. Install dependencies (needed to run the CLI)
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # 3. Deploy to Shopify
+      - name: Shopify App Deploy
+        env:
+          # Get this token from Partner Dashboard -> Settings -> CLI Token
+          SHOPIFY_CLI_PARTNER_TOKEN: ${{ secrets.SHOPIFY_CLI_PARTNER_TOKEN }}
+        run: |
+          cd apps/shopify-app
+
+          # --force bypasses the interactive confirmation prompt
+          pnpm exec shopify app deploy --config shopify.app.orbitcheck.toml --force
