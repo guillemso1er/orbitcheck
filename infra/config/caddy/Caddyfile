@@ -42,6 +42,7 @@ api.orbitcheck.io {
     }
     header @cors_origin Access-Control-Allow-Origin "{http.request.header.Origin}"
     header @cors_origin Access-Control-Allow-Credentials "true"
+    header @cors_origin Access-Control-Expose-Headers "X-Request-Id, Correlation-Id, X-RateLimit-Remaining, X-RateLimit-Reset, X-Shopify-Retry-Invalid-Session-Request"
     header @cors_origin Vary "Origin"
 
     # Preflight handler
@@ -54,7 +55,7 @@ api.orbitcheck.io {
         header Access-Control-Allow-Origin "{http.request.header.Origin}"
         header Access-Control-Allow-Credentials "true"
         header Access-Control-Allow-Methods "GET, POST, PUT, PATCH, DELETE, OPTIONS"
-        header Access-Control-Allow-Headers "Content-Type, X-CSRF-Token"
+        header Access-Control-Allow-Headers "Content-Type, Authorization, X-CSRF-Token, X-Idempotency-Key, Idempotency-Key, X-Request-Id, Correlation-Id, X-Correlation-Id"
         header Access-Control-Max-Age "3600"
         header Vary "Origin, Access-Control-Request-Method, Access-Control-Request-Headers"
         respond 204
