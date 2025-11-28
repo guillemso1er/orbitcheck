@@ -72,8 +72,4 @@ const shopifyPlugin = async (app: any, opts: ShopifyPluginOpts): Promise<void> =
     });
 };
 
-// 3. THE FIX:
-// We wrap it in fp(), then explicitly cast the RESULT to FastifyPluginAsync.
-// This breaks the dependency on the internal .pnpm path and forces the type
-// to match what your main application expects.
 export default fp(shopifyPlugin) as FastifyPluginAsync<ShopifyPluginOpts>;

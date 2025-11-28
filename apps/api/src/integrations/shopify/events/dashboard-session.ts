@@ -4,6 +4,7 @@ import { promisify } from 'node:util';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import type Redis from 'ioredis';
 import type { Pool } from 'pg';
+import { environment } from '../../../environment.js';
 
 /**
  * Create OrbitCheck dashboard session for a Shopify merchant.
@@ -134,7 +135,7 @@ export async function createDashboardSession(
 
     // The SSO URL should point to the API's /auth/shopify-sso endpoint
     // which will validate the token, create the session, and redirect to the dashboard
-    const apiUrl = process.env.API_URL || 'http://localhost:8080';
+    const apiUrl = environment.BASE_URL || 'http://localhost:8080';
     const ssoUrl = `${apiUrl}/auth/shopify-sso?token=${oneTimeToken}`;
 
     return reply.send({
