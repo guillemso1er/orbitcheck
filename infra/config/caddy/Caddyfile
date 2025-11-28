@@ -205,7 +205,13 @@ shopify.orbitcheck.io {
     
     header {
         -Server
+        # 1. Ensure X-Frame-Options is REMOVED
         -X-Frame-Options
+        
+        # 2. Force the CSP header required by Shopify
+        # This tells the browser: "It is safe to load this in an iframe on my shopify store"
+        Content-Security-Policy "frame-ancestors https://*.myshopify.com https://admin.shopify.com;"
+
         X-Content-Type-Options nosniff
         Referrer-Policy no-referrer-when-downgrade
         Permissions-Policy "geolocation=(), microphone=(), camera=(), fullscreen=*"
@@ -213,19 +219,17 @@ shopify.orbitcheck.io {
     }
 
     encode zstd gzip
-    # Allow credentialed CORS only from the dashboard and site
+
     @cors_origin {
         header Origin https://dashboard.orbitcheck.io
         header Origin https://orbitcheck.io
         header Origin https://api.orbitcheck.io
-
         not method OPTIONS
     }
     header @cors_origin Access-Control-Allow-Origin "{http.request.header.Origin}"
     header @cors_origin Access-Control-Allow-Credentials "true"
     header @cors_origin Vary "Origin"
 
-    # Preflight handler
     @preflight {
         method OPTIONS
         header Origin *
@@ -246,7 +250,8 @@ shopify.orbitcheck.io {
         header_up Host {host}
         header_up X-Real-IP {remote_host}
         header_up +X-Forwarded-For {remote_host}
-        trusted_proxies private_ranges
+        
+        trusted_proxies 173.245.48.0/20 103.21.244.0/22 103.22.200.0/22 103.31.4.0/22 141.101.64.0/18 108.162.192.0/18 190.93.240.0/20 188.114.96.0/20 197.234.240.0/22 198.41.128.0/17 162.158.0.0/15 104.16.0.0/13 104.24.0.0/14 172.64.0.0/13 131.0.72.0/22
     }
 
     handle_errors {
