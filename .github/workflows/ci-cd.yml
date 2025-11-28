@@ -548,8 +548,4 @@ jobs:
         env:
           # Get this token from Partner Dashboard -> Settings -> CLI Token
           SHOPIFY_CLI_PARTNER_TOKEN: ${{ secrets.SHOPIFY_CLI_PARTNER_TOKEN }}
-        run: |
-          cd apps/shopify-app
-
-          # --force bypasses the interactive confirmation prompt
-          pnpm exec shopify app deploy --config shopify.app.orbitcheck.toml --force
+        run: pnpm --filter "./apps/shopify-app" run deploy --force
