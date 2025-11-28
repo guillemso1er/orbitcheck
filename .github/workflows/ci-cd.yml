@@ -548,4 +548,7 @@ jobs:
         env:
           # Get this token from Partner Dashboard -> Settings -> CLI Token
           SHOPIFY_CLI_PARTNER_TOKEN: ${{ secrets.SHOPIFY_CLI_PARTNER_TOKEN }}
-        run: pnpm --filter "./apps/shopify-app" run deploy --force
+        run: |
+          cd apps/shopify-app
+          pnpm install --frozen-lockfile
+          pnpm run deploy --force
