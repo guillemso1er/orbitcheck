@@ -10,6 +10,10 @@ ENV PNPM_HOME=/pnpm
 ENV PATH=$PNPM_HOME:$PATH
 RUN corepack enable
 
+# Build-time arguments for Vite environment variables
+ARG VITE_API_BASE=https://api.orbitcheck.io
+ENV VITE_API_BASE=$VITE_API_BASE
+
 # --- CHANGE 1: REMOVE NODE_ENV=production FROM HERE ---
 
 # Copy manifests
