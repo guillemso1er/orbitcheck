@@ -522,6 +522,7 @@ jobs:
     name: Release Config & Extensions to Shopify
     needs: [deploy, meta] # Important: Wait for the server to be live
     runs-on: ubuntu-latest
+    environment: production
     if: |
       needs.deploy.result == 'success' && (
         needs.meta.outputs.is_stable_release == 'true' ||
@@ -546,8 +547,8 @@ jobs:
       # 3. Deploy to Shopify
       - name: Shopify App Deploy
         env:
-          # Get this token from Partner Dashboard -> Settings -> CLI Token
           SHOPIFY_CLI_PARTNER_TOKEN: ${{ secrets.SHOPIFY_CLI_PARTNER_TOKEN }}
+          SHOPIFY_CLI_PARTNERS_TOKEN: ${{ secrets.SHOPIFY_CLI_PARTNER_TOKEN }}
         run: |
           cd apps/shopify-app
           pnpm run deploy --force
