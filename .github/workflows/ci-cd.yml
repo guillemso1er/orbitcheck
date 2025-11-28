@@ -550,5 +550,4 @@ jobs:
           SHOPIFY_CLI_PARTNER_TOKEN: ${{ secrets.SHOPIFY_CLI_PARTNER_TOKEN }}
         run: |
           cd apps/shopify-app
-          pnpm install --frozen-lockfile
           pnpm run deploy --force
