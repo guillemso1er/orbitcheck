@@ -472,13 +472,13 @@ jobs:
           target: "${{ env.REMOTE_TARGET_BASE_DIR }}/infra"
           strip_components: 1
 
-      - name: Copy deploy script
+      - name: Copy deploy scripts
         uses: appleboy/scp-action@v0.1.4
         with:
           host: ${{ secrets.HETZNER_HOST }}
           username: ${{ env.REMOTE_USER }}
           key: ${{ secrets.HETZNER_SSH_KEY }}
-          source: ".github/scripts/deploy.sh"
+          source: ".github/scripts/**"
           target: "${{ env.REMOTE_TARGET_BASE_DIR }}"
           strip_components: 2
 
