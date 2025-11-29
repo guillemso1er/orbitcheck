@@ -3,7 +3,7 @@
   "private": true,
   "scripts": {
     "build": "react-router build",
-    "dev": "shopify app dev --path . --config shopify.app.dev.toml",
+    "dev": "shopify app dev --path . --config shopify.app.orbitcheck-dev.toml",
     "config:link": "shopify app config link",
     "generate": "shopify app generate",
     "deploy": "shopify app deploy --config shopify.app.orbitcheck.toml",

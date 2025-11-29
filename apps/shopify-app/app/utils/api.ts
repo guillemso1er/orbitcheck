@@ -13,7 +13,10 @@ export const useApiClient = (): ReturnType<typeof createClient> => {
         // Get the Shopify session token for authentication
         const token = await shopify.idToken();
 
-        const headers = new Headers(init?.headers);
+        // Handle headers from both Request objects and init options
+        // When input is a Request, headers may be in the Request, not in init
+        const existingHeaders = input instanceof Request ? input.headers : init?.headers;
+        const headers = new Headers(existingHeaders);
         headers.set('Authorization', `Bearer ${token}`);
 
         return fetchWithRetry(input, {

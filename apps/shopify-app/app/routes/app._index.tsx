@@ -5,7 +5,7 @@ import {
 } from "@orbitcheck/contracts";
 import { useAppBridge } from "@shopify/app-bridge-react";
 import { boundary } from "@shopify/shopify-app-react-router/server";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { HeadersFunction, LoaderFunctionArgs } from "react-router";
 import { authenticate } from "../shopify.server";
 import { useApiClient } from "../utils/api.js";
@@ -65,16 +65,22 @@ export default function Index() {
 
 
   // Logic Handlers
+  const modalRef = useRef<HTMLElement>(null);
+
+  // Update handleModeChange to show modal programmatically
   const handleModeChange = (event: Event & { currentTarget: { value: string } }) => {
     const newMode = event.currentTarget.value as Mode;
     setPendingMode(newMode);
-    setShowConfirmModal(true);
+    // Show modal using the web component's method
+    (modalRef.current as any)?.showOverlay?.();
   };
 
   const handleConfirmModeChange = async () => {
     if (!pendingMode) return;
-    setMode(pendingMode); // Optimistic UI
-    setShowConfirmModal(false);
+    setMode(pendingMode);
+    // Hide modal using the web component's method
+    (modalRef.current as any)?.hideOverlay?.();
+
     try {
       await updateShopifyShopSettings({
         client: apiClient,
@@ -91,7 +97,7 @@ export default function Index() {
 
   const handleCancelModeChange = () => {
     setPendingMode(null);
-    setShowConfirmModal(false);
+    (modalRef.current as any)?.hideOverlay?.();
   };
 
   const handleOpenDashboard = async () => {
@@ -193,7 +199,7 @@ export default function Index() {
       {status !== 'disconnected' && (
         <s-section slot="aside" heading="What OrbitCheck Does">
           <s-stack gap="large-400">
-            <s-text variant="headingSm">When an order is placed:</s-text>
+            <s-heading >When an order is placed:</s-heading>
             <s-unordered-list>
               <s-list-item>Validates the shipping address for deliverability</s-list-item>
               <s-list-item>Checks for duplicate customers and addresses</s-list-item>
@@ -202,7 +208,7 @@ export default function Index() {
               <s-list-item>Applies risk tags to the order in Shopify</s-list-item>
             </s-unordered-list>
 
-            <s-text variant="headingSm">In Full Protection mode:</s-text>
+            <s-heading >In Full Protection mode:</s-heading>
             <s-unordered-list>
               <s-list-item>Sends an email to customers with invalid addresses</s-list-item>
               <s-list-item>Holds fulfillment until the address is corrected</s-list-item>
@@ -221,7 +227,7 @@ export default function Index() {
             </s-text>
 
             <s-stack gap="base">
-              <s-text variant="headingSm">Workflow Tags</s-text>
+              <s-heading >Workflow Tags</s-heading>
               <s-unordered-list>
                 <s-list-item><strong>⏳ Validation: Pending</strong> - Waiting for customer to confirm address</s-list-item>
                 <s-list-item><strong>✅ Validation: Verified</strong> - Address confirmed by customer</s-list-item>
@@ -230,7 +236,7 @@ export default function Index() {
             </s-stack>
 
             <s-stack gap="base">
-              <s-text variant="headingSm">Risk Indicators</s-text>
+              <s-heading >Risk Indicators</s-heading>
               <s-unordered-list>
                 <s-list-item><strong>👥 Risk: Duplicate Customer</strong> - Similar customer already exists</s-list-item>
                 <s-list-item><strong>🏠 Risk: Duplicate Address</strong> - Address used by another customer</s-list-item>
@@ -248,25 +254,25 @@ export default function Index() {
         </s-section>
       )}
 
-      {/* Confirmation Modal */}
-      {showConfirmModal && (
-        <s-modal
-          heading="Change Validation Mode"
-          onHide={handleCancelModeChange}
-        >
-          <s-text>
-            {pendingMode === 'disabled' && "Are you sure you want to disable order validation? Orders will no longer be checked."}
-            {pendingMode === 'notify' && "Switch to Notify Only mode? Orders will be validated and tagged, but no actions will be taken."}
-            {pendingMode === 'activated' && "Enable Full Protection? Customers with invalid addresses will receive correction emails and fulfillment will be held."}
-          </s-text>
-          <s-button slot="secondary-actions" onClick={handleCancelModeChange}>
-            Cancel
-          </s-button>
-          <s-button slot="primary-action" variant="primary" onClick={handleConfirmModeChange}>
-            Confirm
-          </s-button>
-        </s-modal>
-      )}
+
+      <s-modal
+        ref={modalRef}
+        id="confirm-mode-modal"
+        heading="Change Validation Mode"
+      >
+        <s-text>
+          {pendingMode === 'disabled' && "Are you sure you want to disable order validation? Orders will no longer be checked."}
+          {pendingMode === 'notify' && "Switch to Notify Only mode? Orders will be validated and tagged, but no actions will be taken."}
+          {pendingMode === 'activated' && "Enable Full Protection? Customers with invalid addresses will receive correction emails and fulfillment will be held."}
+        </s-text>
+        <s-button slot="secondary-actions" onClick={handleCancelModeChange}>
+          Cancel
+        </s-button>
+        <s-button slot="primary-action" variant="primary" onClick={handleConfirmModeChange}>
+          Confirm
+        </s-button>
+      </s-modal>
+
     </s-page>
   );
 }
