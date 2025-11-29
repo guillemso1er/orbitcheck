@@ -797,8 +797,9 @@ runtime_manage_systemd_services() {
 }
 
 runtime_graphroot() {
-  local p
-  p="$(podman info --format '{{ .Store.GraphRoot }}' 2>/dev/null | tr -d '\r')"
+  local p=""
+  # Use || true to prevent set -e from triggering on podman failure
+  p="$(podman info --format '{{ .Store.GraphRoot }}' 2>/dev/null | tr -d '\r')" || true
   if [[ -z "$p" ]]; then
     # Fallback default for rootless
     p="$HOME/.local/share/containers/storage"
