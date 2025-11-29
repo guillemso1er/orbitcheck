@@ -821,11 +821,68 @@ runtime_cleanup_corrupted_storage() {
   find "$gr" -name '.tmp-*' -type f -delete 2>/dev/null || true
   find "$gr" -name '*.tmp' -type f -delete 2>/dev/null || true
   
+  # Remove incomplete layers directory entries
+  if [[ -d "$gr/overlay-layers" ]]; then
+    find "$gr/overlay-layers" -name '.tmp-*' -delete 2>/dev/null || true
+  fi
+  
   # Reset storage if severely corrupted
   if podman info 2>&1 | grep -q "corrupted"; then
     log_warning "Detected corrupted storage, attempting reset..."
     podman system reset --force 2>/dev/null || true
   fi
+}
+
+# Emergency cleanup when disk is critically full - bypasses podman
+runtime_emergency_disk_cleanup() {
+  local gr="$1"
+  log_warning "EMERGENCY: Disk critically full, performing direct filesystem cleanup..."
+  
+  # First, remove all temp files to free up some inodes
+  find "$gr" -type f -name '.tmp-*' -delete 2>/dev/null || true
+  find "$gr" -type f -name '*.tmp' -delete 2>/dev/null || true
+  find "$gr" -type f -name 'tmp*' -delete 2>/dev/null || true
+  
+  # Remove incomplete layers that are causing issues
+  if [[ -d "$gr/overlay-layers" ]]; then
+    # Delete the problematic incomplete layer
+    local incomplete_layer="651d8dd47961b18afb71d05779897afcdd79f1f77099702afea56cf91fca6258"
+    if [[ -d "$gr/overlay/$incomplete_layer" ]]; then
+      log_info "Removing incomplete layer: $incomplete_layer"
+      rm -rf "$gr/overlay/$incomplete_layer" 2>/dev/null || true
+    fi
+  fi
+  
+  # Try to stop systemd services first to release container locks
+  log_info "Stopping all container services..."
+  systemctl --user stop 'orbitcheck-*' 2>/dev/null || true
+  systemctl --user stop '*-pod.service' 2>/dev/null || true
+  
+  # Kill any running podman/conmon processes
+  pkill -u "$(id -u)" -f 'conmon' 2>/dev/null || true
+  pkill -u "$(id -u)" -f 'podman' 2>/dev/null || true
+  sleep 2
+  
+  # Now try podman reset which should work with some space freed
+  log_info "Attempting podman system reset..."
+  podman system reset --force 2>/dev/null || true
+  
+  # If that still fails, manually clean the storage
+  if [[ "$(runtime_free_mb "$gr")" -lt 100 ]]; then
+    log_warning "Podman reset insufficient, manually cleaning overlay storage..."
+    # Remove overlay diff directories (largest space consumers)
+    if [[ -d "$gr/overlay" ]]; then
+      # Keep the 'l' symlink directory, remove layer data
+      find "$gr/overlay" -maxdepth 1 -type d ! -name 'overlay' ! -name 'l' -exec rm -rf {} \; 2>/dev/null || true
+    fi
+    # Clear the layers metadata
+    rm -f "$gr/overlay-layers/layers.json" 2>/dev/null || true
+    rm -f "$gr/overlay-images/images.json" 2>/dev/null || true
+    rm -f "$gr/overlay-containers/containers.json" 2>/dev/null || true
+  fi
+  
+  log_info "Emergency cleanup completed. Disk status:"
+  df -h "$gr" || true
 }
 
 runtime_report_storage() {
@@ -865,8 +922,22 @@ runtime_maybe_prune_images() {
 runtime_preflight_storage() {
   local min_mb="${1:-2048}"      # need at least 2 GiB free
   local max_inode_pct="${2:-95}" # don't proceed if inodes > 95%
+  local critical_mb=100          # below this, use emergency cleanup
+  local critical_inode_pct=98    # above this, use emergency cleanup
   local gr free_mb inode_used
   gr="$(runtime_graphroot)"
+  
+  free_mb="$(runtime_free_mb "$gr")"
+  inode_used="$(runtime_inodes_used_pct "$gr")"
+  
+  # Check if we're in critical state (podman can't even operate)
+  if (( free_mb < critical_mb || inode_used >= critical_inode_pct )); then
+    log_warning "CRITICAL: Storage nearly full (free=${free_mb}MB, inodes=${inode_used}%)"
+    runtime_emergency_disk_cleanup "$gr"
+    free_mb="$(runtime_free_mb "$gr")"
+    inode_used="$(runtime_inodes_used_pct "$gr")"
+  fi
+  
   runtime_cleanup_corrupted_storage
   runtime_report_storage
 
@@ -1079,6 +1150,7 @@ export -f runtime_run_migrations runtime_manage_systemd_services
 export -f runtime_main_deployment
 export -f runtime_get_pod_name runtime_find_db_unit runtime_wait_for_db
 export -f runtime_graphroot runtime_cleanup_corrupted_storage
+export -f runtime_emergency_disk_cleanup
 export -f runtime_report_storage runtime_free_mb runtime_inodes_used_pct
 export -f runtime_maybe_prune_images runtime_preflight_storage
 
