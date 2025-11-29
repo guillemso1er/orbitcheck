@@ -801,10 +801,31 @@ runtime_graphroot() {
   # Use || true to prevent set -e from triggering on podman failure
   p="$(podman info --format '{{ .Store.GraphRoot }}' 2>/dev/null | tr -d '\r')" || true
   if [[ -z "$p" ]]; then
-    # Fallback default for rootless
-    p="$HOME/.local/share/containers/storage"
+    # Check common custom location first
+    if [[ -d "$HOME/containers/storage" ]]; then
+      p="$HOME/containers/storage"
+    else
+      # Fallback default for rootless
+      p="$HOME/.local/share/containers/storage"
+    fi
   fi
   echo "$p"
+}
+
+runtime_cleanup_corrupted_storage() {
+  log_info "Cleaning up any corrupted container storage..."
+  local gr
+  gr="$(runtime_graphroot)"
+  
+  # Remove incomplete/tmp files that can cause issues
+  find "$gr" -name '.tmp-*' -type f -delete 2>/dev/null || true
+  find "$gr" -name '*.tmp' -type f -delete 2>/dev/null || true
+  
+  # Reset storage if severely corrupted
+  if podman info 2>&1 | grep -q "corrupted"; then
+    log_warning "Detected corrupted storage, attempting reset..."
+    podman system reset --force 2>/dev/null || true
+  fi
 }
 
 runtime_report_storage() {
@@ -831,24 +852,29 @@ runtime_inodes_used_pct() {
 
 runtime_maybe_prune_images() {
   log_warning "Low space at Podman GraphRoot; pruning unused images..."
+  runtime_cleanup_corrupted_storage
+  podman stop -a 2>/dev/null || true
   podman container prune -f || true
   podman image prune -a -f || true
+  podman volume prune -f || true
+  podman builder prune -a -f 2>/dev/null || true
+  podman system prune -a -f --volumes 2>/dev/null || true
   runtime_report_storage
 }
 
 runtime_preflight_storage() {
   local min_mb="${1:-2048}"      # need at least 2 GiB free
-  local max_inode_pct="${2:-95}" # don’t proceed if inodes > 95%
+  local max_inode_pct="${2:-95}" # don't proceed if inodes > 95%
   local gr free_mb inode_used
-
   gr="$(runtime_graphroot)"
+  runtime_cleanup_corrupted_storage
   runtime_report_storage
 
   free_mb="$(runtime_free_mb "$gr")"
   inode_used="$(runtime_inodes_used_pct "$gr")"
 
   if (( free_mb < min_mb || inode_used > max_inode_pct )); then
-    log_warning "Preflight: free=${free_mb}MB, inodes=${inode_used}% at $gr — attempting prune"
+    log_warning "Preflight: free=${free_mb}MB, inodes=${inode_used}% at $gr - attempting prune"
     runtime_maybe_prune_images
     free_mb="$(runtime_free_mb "$gr")"
     inode_used="$(runtime_inodes_used_pct "$gr")"
@@ -1052,6 +1078,9 @@ export -f runtime_fetch_infisical_secrets runtime_provision_database
 export -f runtime_run_migrations runtime_manage_systemd_services
 export -f runtime_main_deployment
 export -f runtime_get_pod_name runtime_find_db_unit runtime_wait_for_db
+export -f runtime_graphroot runtime_cleanup_corrupted_storage
+export -f runtime_report_storage runtime_free_mb runtime_inodes_used_pct
+export -f runtime_maybe_prune_images runtime_preflight_storage
 
 # ============================================================================
 # Section 2: Podman/Systemd operations
