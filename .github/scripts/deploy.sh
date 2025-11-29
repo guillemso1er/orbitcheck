@@ -304,7 +304,7 @@ runtime_wait_for_db() {
   while (( tries-- > 0 )); do
     # The podman run command now succeeds only if the DB container is already running
     if podman run --rm "${pod_args[@]}" --env-file "$admin_env" \
-       docker.io/library/postgres:16-alpine sh -c '
+       docker.io/library/postgres:18-alpine sh -c '
          set -e
          : "${PGHOST:=127.0.0.1}"
          : "${PGADMIN_USER:?Missing PGADMIN_USER}"
@@ -511,7 +511,7 @@ runtime_provision_database() {
 
     [[ -f "$admin_env" ]] || { log_error "Admin env not found: $admin_env"; return 1; }
 
-    podman pull docker.io/library/postgres:16-alpine 2>/dev/null || true
+    podman pull docker.io/library/postgres:18-alpine 2>/dev/null || true
 
     # Prepare the SQL script - avoiding psql variables inside DO blocks
     local sql_script
@@ -596,7 +596,7 @@ EOSQL
     if ! podman run --rm "${pod_args[@]}" \
         --env-file "$admin_env" \
         -i \
-        docker.io/library/postgres:16-alpine sh -c '
+        docker.io/library/postgres:18-alpine sh -c '
         set -e
         
         # Create a temporary file to hold our SQL script
