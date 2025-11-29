@@ -12,7 +12,6 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   console.log("Incoming webhook request", {
     method: request.method,
     url: request.url,
-    headers: Object.fromEntries(request.headers.entries())
   });
 
   const { shop, topic, payload, apiVersion, webhookId, admin } = await authenticate.webhook(request);

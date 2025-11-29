@@ -12,7 +12,6 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   console.log("Incoming webhook request", {
     method: request.method,
     url: request.url,
-    headers: Object.fromEntries(request.headers.entries())
   });
 
   const { shop, topic, payload, apiVersion, webhookId, admin } = await authenticate.webhook(request);
@@ -39,8 +38,6 @@ export const action = async ({ request }: ActionFunctionArgs) => {
             query getCustomer($id: ID!) {
               customer(id: $id) {
                 id
-                email
-                phone
                 createdAt
                 updatedAt
                 firstName
@@ -51,23 +48,24 @@ export const action = async ({ request }: ActionFunctionArgs) => {
                 tags
                 numberOfOrders
                 amountSpent { amount currencyCode }
-                currency
+                defaultEmailAddress {
+                  emailAddress
+                  marketingState
+                  marketingOptInLevel
+                  marketingUpdatedAt
+                }
+                defaultPhoneNumber {
+                  phoneNumber
+                  marketingState
+                  marketingOptInLevel
+                  marketingUpdatedAt
+                  marketingCollectedFrom
+                }
                 defaultAddress {
                   firstName lastName address1 address2 city province provinceCode zip country countryCodeV2 company phone latitude longitude name
                 }
                 addresses {
                   firstName lastName address1 address2 city province provinceCode zip country countryCodeV2 company phone latitude longitude name
-                }
-                emailMarketingConsent {
-                  marketingState
-                  marketingOptInLevel
-                  consentUpdatedAt
-                }
-                smsMarketingConsent {
-                  marketingState
-                  marketingOptInLevel
-                  consentUpdatedAt
-                  consentCollectedFrom
                 }
               }
             }`,
