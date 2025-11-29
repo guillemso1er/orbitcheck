@@ -1,12 +1,12 @@
 import type { FastifyBaseLogger } from 'fastify';
 
-import type { AddressFixEmailParams } from './email-service.js';
+import type { AddressFixEmailParams } from '../services/email/email-service.js';
 import {
     BrevoEmailService,
     CompositeEmailService,
     KlaviyoEmailService,
     ShopifyFlowEmailService,
-} from './email-service.js';
+} from '../services/email/email-service.js';
 
 // Mock fetch
 const mockFetch = jest.fn();
@@ -92,7 +92,7 @@ describe('EmailService', () => {
     });
 
     describe('BrevoEmailService', () => {
-        it('should send email via Brevo API', async () => {
+        it('should send email via Brevo API with template', async () => {
             const service = new BrevoEmailService(mockLogger);
             const params: AddressFixEmailParams = {
                 shopDomain: 'test.myshopify.com',
@@ -139,6 +139,50 @@ describe('EmailService', () => {
             expect(body.params.SHIPPING_ADDRESS.address1).toBe('123 Main St');
         });
 
+        it('should send email with inline HTML template when no template ID is set', async () => {
+            process.env.BREVO_TEMPLATE_ID = '';
+            const service = new BrevoEmailService(mockLogger);
+            const params: AddressFixEmailParams = {
+                shopDomain: 'test.myshopify.com',
+                shopName: 'Test Shop',
+                customerEmail: 'customer@example.com',
+                customerName: 'John Doe',
+                fixUrl: 'https://orbitcheck.io/fix?token=abc123',
+                orderId: '123',
+                orderGid: 'gid://shopify/Order/123',
+                orderName: '#123',
+                address1: '123 Main St',
+                address2: 'Apt 4B',
+                city: 'New York',
+                province: 'NY',
+                zip: '10001',
+                country: 'US'
+            };
+
+            mockFetch.mockResolvedValueOnce({
+                ok: true,
+                json: async () => ({ messageId: '<abc123@smtp.brevo.com>' })
+            });
+
+            await service.sendAddressFixEmail(params);
+
+            expect(mockFetch).toHaveBeenCalled();
+
+            const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+            // Should NOT have templateId
+            expect(body.templateId).toBeUndefined();
+            // Should have htmlContent and subject
+            expect(body.subject).toContain('Action Required');
+            expect(body.subject).toContain('#123');
+            expect(body.htmlContent).toContain('John Doe');
+            expect(body.htmlContent).toContain('123 Main St');
+            expect(body.htmlContent).toContain('Apt 4B');
+            expect(body.htmlContent).toContain('New York');
+            expect(body.htmlContent).toContain('https://orbitcheck.io/fix?token=abc123');
+            expect(body.htmlContent).toContain('Test Shop');
+            expect(body.htmlContent).toContain('Verify My Address');
+        });
+
         it('should log warning if API key is missing', async () => {
             process.env.BREVO_API_KEY = '';
             const service = new BrevoEmailService(mockLogger);
@@ -162,8 +206,8 @@ describe('EmailService', () => {
             expect(mockLogger.warn).toHaveBeenCalledWith(expect.objectContaining({ shop: 'test.myshopify.com' }), expect.stringContaining('Skipping Brevo email'));
         });
 
-        it('should log warning if template ID is missing', async () => {
-            process.env.BREVO_TEMPLATE_ID = '';
+        it('should log warning if sender email is missing', async () => {
+            process.env.BREVO_SENDER_EMAIL = '';
             const service = new BrevoEmailService(mockLogger);
             const params: AddressFixEmailParams = {
                 shopDomain: 'test.myshopify.com',
@@ -182,6 +226,7 @@ describe('EmailService', () => {
             await service.sendAddressFixEmail(params);
 
             expect(mockFetch).not.toHaveBeenCalled();
+            expect(mockLogger.warn).toHaveBeenCalledWith(expect.objectContaining({ shop: 'test.myshopify.com' }), expect.stringContaining('Skipping Brevo email: Missing Sender Email'));
         });
 
         it('should handle API errors gracefully', async () => {
@@ -214,6 +259,39 @@ describe('EmailService', () => {
                 expect.objectContaining({ shop: 'test.myshopify.com' }),
                 'Failed to send Brevo email'
             );
+        });
+
+        it('should escape HTML special characters in template', async () => {
+            process.env.BREVO_TEMPLATE_ID = '';
+            const service = new BrevoEmailService(mockLogger);
+            const params: AddressFixEmailParams = {
+                shopDomain: 'test.myshopify.com',
+                shopName: 'Test <Script> Shop',
+                customerEmail: 'customer@example.com',
+                customerName: 'John "Danger" Doe',
+                fixUrl: 'https://orbitcheck.io/fix',
+                orderId: '123',
+                orderGid: 'gid://shopify/Order/123',
+                orderName: '#123',
+                address1: '123 Main & Oak St',
+                city: 'New York',
+                province: 'NY',
+                zip: '10001',
+                country: 'US'
+            };
+
+            mockFetch.mockResolvedValueOnce({
+                ok: true,
+                json: async () => ({ messageId: '<abc123@smtp.brevo.com>' })
+            });
+
+            await service.sendAddressFixEmail(params);
+
+            const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+            // Should have escaped HTML entities
+            expect(body.htmlContent).toContain('Test &lt;Script&gt; Shop');
+            expect(body.htmlContent).toContain('John &quot;Danger&quot; Doe');
+            expect(body.htmlContent).toContain('123 Main &amp; Oak St');
         });
     });
 

@@ -7,7 +7,7 @@ import type { Pool } from 'pg';
 import { env } from '../../../environment.js';
 import type { ShopifyOrder } from '../../../generated/fastify/index.js';
 import type { AddTagsMutation, GetShopNameQuery } from '../../../generated/shopify/admin/admin.generated.js';
-import { CompositeEmailService, KlaviyoEmailService, ShopifyFlowEmailService } from '../../../services/email/email-service.js';
+import { BrevoEmailService, CompositeEmailService, KlaviyoEmailService, ShopifyFlowEmailService } from '../../../services/email/email-service.js';
 import { evaluateOrderForRiskAndRulesDirect } from '../../../services/orders.js';
 import { createShopifyService } from '../../../services/shopify.js';
 import { validateAddress as validateAddressUtil } from '../../../validators/address.js';
@@ -297,6 +297,7 @@ async function handleOrderAddressFix(
 
     // Send email notification
     const emailService = new CompositeEmailService([
+        new BrevoEmailService(request.log),
         new KlaviyoEmailService(request.log),
         new ShopifyFlowEmailService(request.log)
     ]);

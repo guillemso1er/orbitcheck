@@ -44,7 +44,7 @@ scopes = "read_orders,write_orders,read_customers,write_customers,read_merchant_
 redirect_urls = [ "https://shopify.orbitcheck.io" ]
 
 [app_proxy]
-url = "https://api.orbitcheck.io"
+url = "https://api.orbitcheck.io/integrations/shopify/auth/callback"
 subpath = "apps"
 prefix = "apps"
 
