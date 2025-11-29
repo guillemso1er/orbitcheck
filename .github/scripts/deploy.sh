@@ -860,11 +860,13 @@ runtime_preflight_storage() {
 
 runtime_main_deployment() {
     set -euo pipefail
+    
+    # Set XDG_RUNTIME_DIR early - required for rootless podman to work
+    export XDG_RUNTIME_DIR="/run/user/$(id -u)"
+    
     for cmd in rsync podman; do
         command -v "$cmd" >/dev/null 2>&1 || { log_error "Required '$cmd' missing"; exit 1; }
     done
-
-    export XDG_RUNTIME_DIR="/run/user/$(id -u)"
 
     local src="$REMOTE_TARGET_BASE_DIR/infra/quadlets"
     local dest_sys_d="$HOME/$REMOTE_SYSTEMD_USER_DIR"
