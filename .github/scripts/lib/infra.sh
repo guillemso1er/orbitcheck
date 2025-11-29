@@ -10,9 +10,9 @@ readonly _ORBITCHECK_INFRA_SOURCED=1
 set -Eeuo pipefail
 
 # Source dependencies
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "$SCRIPT_DIR/common.sh"
-source "$SCRIPT_DIR/helpers.sh"
+_INFRA_LIB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$_INFRA_LIB_DIR/common.sh"
+source "$_INFRA_LIB_DIR/helpers.sh"
 
 # ============================================================================
 # Infrastructure Functions

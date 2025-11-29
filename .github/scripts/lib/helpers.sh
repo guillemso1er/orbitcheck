@@ -10,8 +10,8 @@ readonly _ORBITCHECK_HELPERS_SOURCED=1
 set -Eeuo pipefail
 
 # Source dependencies
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "$SCRIPT_DIR/common.sh"
+_HELPERS_LIB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$_HELPERS_LIB_DIR/common.sh"
 
 # ============================================================================
 # Utility Functions

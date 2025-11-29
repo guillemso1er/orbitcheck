@@ -10,9 +10,9 @@ readonly _ORBITCHECK_QUADLET_SOURCED=1
 set -Eeuo pipefail
 
 # Source dependencies
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "$SCRIPT_DIR/common.sh"
-source "$SCRIPT_DIR/infra.sh"
+_QUADLET_LIB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$_QUADLET_LIB_DIR/common.sh"
+source "$_QUADLET_LIB_DIR/infra.sh"
 
 # ============================================================================
 # Quadlet Helper Functions

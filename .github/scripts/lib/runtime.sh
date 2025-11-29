@@ -10,14 +10,14 @@ readonly _ORBITCHECK_RUNTIME_SOURCED=1
 set -Eeuo pipefail
 
 # Source dependencies
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "$SCRIPT_DIR/common.sh"
-source "$SCRIPT_DIR/infra.sh"
-source "$SCRIPT_DIR/quadlet.sh"
-source "$SCRIPT_DIR/secrets.sh"
-source "$SCRIPT_DIR/database.sh"
-source "$SCRIPT_DIR/storage.sh"
-source "$SCRIPT_DIR/systemd.sh"
+_RUNTIME_LIB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$_RUNTIME_LIB_DIR/common.sh"
+source "$_RUNTIME_LIB_DIR/infra.sh"
+source "$_RUNTIME_LIB_DIR/quadlet.sh"
+source "$_RUNTIME_LIB_DIR/secrets.sh"
+source "$_RUNTIME_LIB_DIR/database.sh"
+source "$_RUNTIME_LIB_DIR/storage.sh"
+source "$_RUNTIME_LIB_DIR/systemd.sh"
 
 # ============================================================================
 # Runtime Main Deployment
