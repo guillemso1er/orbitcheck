@@ -24,7 +24,7 @@ export async function ordersCreate(request: FastifyRequest, reply: FastifyReply,
     const mode = await shopifyService.getShopMode(shopDomain);
     if (mode === 'disabled') return reply.code(200).send();
 
-    // In 'notify' mode, we evaluate and log but do not tag or fix
+    // In 'notify' mode, we evaluate, log and tag but do not run address fix workflow
     const isActivated = mode === 'activated';
     const isNotify = mode === 'notify';
     const shouldProcess = isActivated || isNotify;
@@ -100,8 +100,8 @@ export async function ordersCreate(request: FastifyRequest, reply: FastifyReply,
     }
 
     const tags = Array.isArray(result?.tags) ? result.tags : [];
-    // Only tag orders in 'activated' mode, not in 'notify' mode
-    if (tags.length && isActivated) {
+    // Tag orders in both 'activated' and 'notify' modes for visibility
+    if (tags.length && shouldProcess) {
         let orderGid = o.admin_graphql_api_id;
         if (!orderGid && o.id) {
             request.log.warn({ shop: shopDomain, orderId: o.id }, 'Missing admin_graphql_api_id, constructing from ID');
