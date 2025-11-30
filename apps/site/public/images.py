@@ -7,7 +7,8 @@ input_svg = "favicon.svg"
 sizes = {
     "favicon-16x16.png": 16,
     "favicon-32x32.png": 32,
-    "apple-touch-icon.png": 180
+    "apple-touch-icon.png": 180,
+    "shopify-icon-1200x1200.png": 1200
 }
 
 # 2. Generate the PNGs

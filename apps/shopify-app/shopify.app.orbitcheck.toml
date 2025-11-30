@@ -2,7 +2,7 @@
 
 client_id = "2ebc37999d5484575916bbdf29900ac2"
 name = "orbitcheck"
-application_url = "https://shopify.orbitcheck.io"
+application_url = "https://shp.orbitcheck.io"
 embedded = true
 
 [build]
@@ -41,7 +41,7 @@ uri = "/webhooks/gdpr"
 scopes = "read_orders,write_orders,read_customers,write_customers,read_merchant_managed_fulfillment_orders,write_merchant_managed_fulfillment_orders"
 
 [auth]
-redirect_urls = [ "https://shopify.orbitcheck.io" ]
+redirect_urls = [ "https://shp.orbitcheck.io" ]
 
 [app_proxy]
 url = "https://api.orbitcheck.io/integrations/shopify/auth/callback"

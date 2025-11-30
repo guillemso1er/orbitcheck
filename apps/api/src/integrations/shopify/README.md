@@ -9,7 +9,7 @@ Add the following to the API environment configuration:
 - `SHOPIFY_API_KEY`: The API key from Shopify Partner Dashboard
 - `SHOPIFY_API_SECRET`: The API secret from Shopify Partner Dashboard
 - `SHOPIFY_API_VERSION`: 2025-10
-- `APP_BASE_URL`: https://shopify.orbitcheck.io
+- `APP_BASE_URL`: https://shp.orbitcheck.io
 
 ## OAuth Install URL
 
